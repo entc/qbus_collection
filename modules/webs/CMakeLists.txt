@@ -1,5 +1,5 @@
 
-INCLUDE_DIRECTORIES("../../l_3rdp/cape/src" "../../l_3rdp/qbus/src" "../../l_3rdp/qwebs/src" "../../l_3rdp/qcrypt/src")
+INCLUDE_DIRECTORIES("../../libs/cape/src" "../../libs/qbus/src" "../../libs/qwebs/src" "../../libs/qcrypt/src")
 
 #----------------------------------------------------------------------------------------
 
