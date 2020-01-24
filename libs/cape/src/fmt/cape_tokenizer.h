@@ -11,6 +11,9 @@
                                   /* returns a list of CapeString's */
 __CAPE_LIBEX   CapeList           cape_tokenizer_buf           (const char* buffer, number_t len, char token);
 
+                                  /* returns a list of CapeString's, ignore all empty parts */
+__CAPE_LIBEX   CapeList           cape_tokenizer_buf__noempty  (const char* buffer, number_t len, char token);
+
                                   /* returns TRUE / FALSE if successfull */
 __CAPE_LIBEX   int                cape_tokenizer_split         (const CapeString source, char token, CapeString* p_left, CapeString* p_right);
 

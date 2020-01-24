@@ -718,7 +718,9 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   number_t port = qbus_config_n (qbus, "port", 8082);
   number_t threads = qbus_config_n (qbus, "threads", 4);
   
-  QWebs webs = qwebs_new (site, host, port, threads, pages);
+  CapeUdc route_list = qbus_config_node (qbus, "route_list");
+  
+  QWebs webs = qwebs_new (site, host, port, threads, pages, route_list);
   
   res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
   if (res)

@@ -52,6 +52,60 @@ CapeList cape_tokenizer_buf (const char* buffer, number_t len, char delimeter)
 
 //-----------------------------------------------------------------------------------------------------------
 
+CapeList cape_tokenizer_buf__noempty (const char* buffer, number_t len, char delimeter)
+{
+  CapeList tokens = cape_list_new (cape_tokenizer_onDestroy);
+  
+  const char* posR = buffer;
+  const char* posL = buffer;
+  
+  number_t posI = 0;
+  
+  if (buffer == NULL)
+  {
+    return tokens;
+  }
+  
+  for (posI = 0; posI < len; posI++)
+  {
+    if (*posR == delimeter)
+    {
+      // calculate the length of the last segment
+      CapeString h = cape_str_sub (posL, posR - posL);
+      
+      if (cape_str_empty (h))
+      {
+        cape_str_del (&h);
+      }
+      else
+      {
+        cape_list_push_back (tokens, h);
+      }
+            
+      posL = posR + 1;
+    }
+    
+    posR++;
+  }
+  
+  {
+    CapeString h = cape_str_sub (posL, posR - posL);
+    
+    if (cape_str_empty (h))
+    {
+      cape_str_del (&h);
+    }
+    else
+    {
+      cape_list_push_back (tokens, h);
+    }
+  }
+  
+  return tokens; 
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
 int cape_tokenizer_split (const CapeString source, char token, CapeString* p_left, CapeString* p_right)
 {
   if (source == NULL)

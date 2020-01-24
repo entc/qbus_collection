@@ -63,6 +63,8 @@ struct QWebs_s
   CapeQueue queue;
   
   QWebsFiles files;
+  
+  CapeUdc route_list;
 };
 
 //-----------------------------------------------------------------------------
@@ -79,7 +81,7 @@ static void __STDCALL qwebs__intern__on_api_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-QWebs qwebs_new (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages)
+QWebs qwebs_new (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list)
 {
   QWebs self = CAPE_NEW (struct QWebs_s);
   
@@ -96,6 +98,8 @@ QWebs qwebs_new (const CapeString site, const CapeString host, number_t port, nu
   self->queue = cape_queue_new ();
   
   self->files = qwebs_files_new (site, self);
+  
+  self->route_list = cape_udc_cp (route_list);
   
   return self;
 }
@@ -118,6 +122,8 @@ void qwebs_del (QWebs* p_self)
     cape_queue_del (&(self->queue));
     
     qwebs_files_del (&(self->files));
+    
+    cape_udc_del (&(self->route_list));
     
     CAPE_DEL (p_self, struct QWebs_s);
   }
@@ -176,6 +182,15 @@ const CapeString qwebs_pages (QWebs self)
   }
   
   return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_route (QWebs self, const CapeString name)
+{
+  CapeUdc h = cape_udc_get (self->route_list, name);
+  
+  return h ? TRUE : FALSE;
 }
 
 //-----------------------------------------------------------------------------

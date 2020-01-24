@@ -135,29 +135,41 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       cape_str_del (&opt);
     }
     
-    // split the url into tis parts
-    self->url_values = cape_tokenizer_buf (at + 1, length - 1, '/');
-    
-    if (cape_list_size (self->url_values) > 2)
+    // split the url into its parts
+    self->url_values = cape_tokenizer_buf__noempty (at + 1, length - 1, '/');
+
+    if (cape_list_size (self->url_values) >= 1)
     {
       CapeListNode n = cape_list_node_front (self->url_values);
       
-      // anaylse the URL if we have an API or not
-      self->api = qwebs_get_api (self->webs, cape_list_node_data (n));
+      // get the first part
+      const CapeString first_part = cape_list_node_data (n);
       
-      if (self->api)
+      printf ("FIRST '%s'\n", first_part);
+      
+      if (qwebs_route (self->webs, first_part))
       {
-        // reduce the url values by one
-        {
-          CapeListNode n = cape_list_node_front (self->url_values);
-
-          cape_list_node_erase (self->url_values, n);
-        }
-        
-        self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
-        self->body_value = cape_stream_new ();
+        cape_str_replace_cp (&(self->url), "/index.html");
       }
-    }
+      else if (cape_list_size (self->url_values) > 2)
+      {
+        // anaylse the URL if we have an API or not
+        self->api = qwebs_get_api (self->webs, first_part);
+        
+        if (self->api)
+        {
+          // reduce the url values by one
+          {
+            CapeListNode n = cape_list_node_front (self->url_values);
+            
+            cape_list_node_erase (self->url_values, n);
+          }
+          
+          self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+          self->body_value = cape_stream_new ();
+        }
+      }
+    }    
     else
     {
       if (cape_str_equal ("/", self->url))

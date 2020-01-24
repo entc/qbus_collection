@@ -43,7 +43,7 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  webs = qwebs_new ("public", "127.0.0.1", 8082, 4, "pages");
+  webs = qwebs_new ("public", "127.0.0.1", 8082, 4, "pages", NULL);
   
   res = qwebs_reg (webs, "json", NULL, main_on_json, err);
   if (res)
