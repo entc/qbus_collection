@@ -1,0 +1,603 @@
+#include "qwebs_connection.h"
+#include "qwebs.h"
+#include "qwebs_files.h"
+#include "http_parser.h"
+#include "qwebs_response.h"
+
+// cape includes
+#include <aio/cape_aio_sock.h>
+#include <sys/cape_socket.h>
+#include <stc/cape_map.h>
+#include <stc/cape_list.h>
+#include <sys/cape_log.h>
+#include <fmt/cape_tokenizer.h>
+#include <sys/cape_mutex.h>
+#include <fmt/cape_json.h>
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_send (QWebsConnection, CapeStream*);
+
+void qwebs_connection_inc (QWebsConnection);
+
+void qwebs_connection_dec (QWebsConnection);
+
+//-----------------------------------------------------------------------------
+
+struct QWebsRequest_s
+{
+  QWebs webs;                      // reference
+  
+  QWebsApi api;                    // reference
+  
+  QWebsConnection conn;            // reference
+  
+  CapeString method;
+  
+  CapeString url;
+  
+  CapeString mime;
+  
+  CapeMap header_values;
+  
+  CapeList url_values;
+  
+  CapeStream body_value;
+  
+  // temporary members
+  
+  CapeString last_header_field;
+
+  int is_complete;
+  
+};
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_request__intern__on_headers_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    CapeString h = val; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
+{
+  QWebsRequest self = CAPE_NEW (struct QWebsRequest_s);
+
+  self->webs = webs;
+  self->conn = conn;
+  
+  self->api = NULL;
+  
+  self->method = NULL;
+  self->url = NULL;
+  
+  // this will be set in API mode
+  self->header_values = NULL;
+  self->url_values = NULL;
+  self->body_value = NULL;
+  
+  self->last_header_field = NULL;
+  self->is_complete = FALSE;
+  
+  qwebs_connection_inc (self->conn);
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_del (QWebsRequest* p_self)
+{
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    qwebs_connection_dec (self->conn);
+
+    cape_str_del (&(self->method));
+    cape_str_del (&(self->url));
+
+    cape_map_del (&(self->header_values));
+    cape_list_del (&(self->url_values));
+    cape_stream_del (&(self->body_value));
+    
+    cape_str_del (&(self->last_header_field));
+    
+    CAPE_DEL (p_self, struct QWebsRequest_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_url (http_parser* parser, const char *at, size_t length)
+{
+  QWebsRequest self = parser->data;
+  
+  self->url = cape_str_sub (at, length);
+
+  //printf ("URL: %s\n", self->url);
+  
+  if ('/' == *(self->url))
+  {
+    CapeString url = NULL;
+    CapeString opt = NULL;
+    
+    if (cape_tokenizer_split (self->url, '?', &url, &opt))
+    {
+      cape_str_replace_mv (&(self->url), &url);
+      cape_str_del (&opt);
+    }
+    
+    // split the url into tis parts
+    self->url_values = cape_tokenizer_buf (at + 1, length - 1, '/');
+    
+    if (cape_list_size (self->url_values) > 2)
+    {
+      CapeListNode n = cape_list_node_front (self->url_values);
+      
+      // anaylse the URL if we have an API or not
+      self->api = qwebs_get_api (self->webs, cape_list_node_data (n));
+      
+      if (self->api)
+      {
+        // reduce the url values by one
+        {
+          CapeListNode n = cape_list_node_front (self->url_values);
+
+          cape_list_node_erase (self->url_values, n);
+        }
+        
+        self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+        self->body_value = cape_stream_new ();
+      }
+    }
+    else
+    {
+      if (cape_str_equal ("/", self->url))
+      {
+        cape_str_replace_cp (&(self->url), "/index.html");
+      }
+    }
+  }
+
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_header_field (http_parser* parser, const char *at, size_t length)
+{
+  QWebsRequest self = parser->data;
+
+  if (self->api)
+  {
+    CapeString h = cape_str_sub (at, length);
+    
+    cape_str_replace_mv (&(self->last_header_field), &h);
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_header_value (http_parser* parser, const char *at, size_t length)
+{
+  QWebsRequest self = parser->data;
+  
+  if (self->api)
+  {
+    if (NULL == self->last_header_field)
+    {
+      return 1;
+    }
+    
+    {
+      CapeString h = cape_str_sub (at, length);
+      
+      // transfer ownership to the map
+      cape_map_insert (self->header_values, self->last_header_field, h);
+      self->last_header_field = NULL;
+    }
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_body (http_parser* parser, const char* at, size_t length)
+{
+  QWebsRequest self = parser->data;
+  
+  if (self->api)
+  {
+    cape_stream_append_buf (self->body_value, at, length);
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_message_begin (http_parser* parser)
+{
+  QWebsRequest self = parser->data;
+
+  self->is_complete = FALSE;
+
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+static int qwebs_request__internal__on_message_complete (http_parser* parser)
+{
+  QWebsRequest self = parser->data;
+
+  self->is_complete = TRUE;
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, CapeErr err)
+{
+  QWebsRequest self = *p_self;
+  
+  // local objects
+  CapeStream s = cape_stream_new ();
+  
+  if (cape_err_code (err))
+  {
+    // create the HTTP error response
+    qwebs_response_err (s, self->webs, content, "application/json", err);
+  }
+  else
+  {
+    // create the JSON response
+    qwebs_response_json (s, self->webs, content);
+  }
+  
+  qwebs_connection_send (self->conn, &s);
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_send_file (QWebsRequest* p_self, CapeUdc file_node, CapeErr err)
+{
+  QWebsRequest self = *p_self;
+
+  // local objects
+  CapeStream s = cape_stream_new ();
+  
+  qwebs_response_file (s, self->webs, file_node);
+  
+  qwebs_connection_send (self->conn, &s);
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_api (QWebsRequest* p_self)
+{
+  int res;
+  QWebsRequest self = *p_self;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  res = qwebs_api_call (self->api, self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  qwebs_request_send_json (p_self, NULL, err);
+
+exit_and_cleanup:
+  
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeList qwebs_request_clist (QWebsRequest self)
+{
+  return self->url_values;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMap qwebs_request_headers (QWebsRequest self)
+{
+  return self->header_values;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream qwebs_request_body (QWebsRequest self)
+{
+  return self->body_value;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_request_method (QWebsRequest self)
+{
+  return self->method;
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_request__internal__on_run (void* ptr, number_t pos)
+{
+  QWebsRequest self = ptr;
+ 
+  if (self->api)
+  {
+    qwebs_request_api (&self);
+  }
+  else
+  {
+    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->url);
+
+    if (s)
+    {
+      qwebs_connection_send (self->conn, &s);
+    }
+    
+    qwebs_request_del (&self);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_request__internal__on_del (void* ptr, number_t pos)
+{
+}
+
+//-----------------------------------------------------------------------------
+
+struct QWebsConnection_s
+{
+  QWebs webs;                      // reference
+  CapeQueue queue;                 // reference
+
+  CapeAioSocket aio_socket;
+  CapeAioContext aio_attached;
+  
+  CapeList send_cache;
+  
+  http_parser parser;
+  http_parser_settings settings;
+  
+  CapeMutex mutex;
+};
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__cache__on_del (void* ptr)
+{
+  CapeStream s = ptr; cape_stream_del (&s);
+}
+
+//-----------------------------------------------------------------------------
+
+QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs)
+{
+  QWebsConnection self = CAPE_NEW (struct QWebsConnection_s);
+  
+  self->webs = webs;
+  self->queue = queue;
+  
+  self->aio_socket = cape_aio_socket_new (handle);
+  
+  http_parser_init (&(self->parser), HTTP_REQUEST);
+  
+  // initialize the HTTP parser
+  http_parser_settings_init (&(self->settings));
+
+  // set some callbacks
+  self->settings.on_message_begin = qwebs_request__internal__on_message_begin;
+  self->settings.on_url = qwebs_request__internal__on_url;
+  self->settings.on_status = NULL;
+  self->settings.on_header_field = qwebs_request__internal__on_header_field;
+  self->settings.on_header_value = qwebs_request__internal__on_header_value;
+  self->settings.on_headers_complete = NULL;
+  self->settings.on_body = qwebs_request__internal__on_body;
+  self->settings.on_message_complete = qwebs_request__internal__on_message_complete;
+  self->settings.on_chunk_header = NULL;
+  self->settings.on_chunk_complete = NULL;
+  
+  self->send_cache = cape_list_new (qwebs_connection__cache__on_del);
+  self->mutex = cape_mutex_new ();
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_del (QWebsConnection* p_self)
+{
+  if (*p_self)
+  {
+    QWebsConnection self = *p_self;
+    
+    cape_list_del (&(self->send_cache));
+    cape_mutex_del (&(self->mutex));
+    
+    CAPE_DEL (p_self, struct QWebsConnection_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, CapeAioSocket socket, void* userdata)
+{
+  QWebsConnection self = ptr;
+
+  CapeStream s;
+  
+  // check for userdata
+  if (userdata)
+  {
+    // userdata is always a stream
+    s = userdata;
+    
+    // cleanup stream
+    cape_stream_del (&s);
+  }
+  
+  cape_mutex_lock (self->mutex);
+
+  s = cape_list_pop_front (self->send_cache);
+
+  cape_mutex_unlock (self->mutex);
+  
+  if (s)
+  {
+    // if we do have a stream send it to the socket
+    cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
+{
+  QWebsConnection self = ptr;
+  
+  if (NULL == self->parser.data)
+  {
+    self->parser.data = qwebs_request_new (self->webs, self);
+  }
+  
+  int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+  
+  if (self->parser.http_errno > 0)
+  {
+    CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
+
+    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error: %s", h);
+    
+    cape_str_del (&h);
+    
+    // close it
+    cape_aio_socket_close (self->aio_socket, self->aio_attached);
+    
+    return;
+  }
+  
+  if (http_body_is_final (&(self->parser)))
+  {
+    
+    return;
+  }
+
+  {
+    QWebsRequest request = self->parser.data;
+
+    request->method = cape_str_cp (http_method_str (self->parser.method));
+    
+    if (request->is_complete)
+    {
+      if (request->api)
+      {
+        qwebs_request_api (&request);
+      }
+      else
+      {
+        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->url);
+        
+        if (s)
+        {
+          qwebs_connection_send (self, &s);
+        }
+
+        qwebs_request_del (&request);
+      }
+      
+      // this is faster but it block the process and results in a zombie
+      //cape_queue_add (self->queue, NULL, qwebs_request__internal__on_run, qwebs_request__internal__on_del, self->parser.data, 0);
+      
+      self->parser.data = NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__internal__on_done (void* ptr, void* userdata)
+{
+  QWebsConnection self = ptr;
+  
+  // check for userdata
+  if (userdata)
+  {
+    // userdata is always a stream
+    CapeStream s = userdata;
+    
+    // cleanup stream
+    cape_stream_del (&s);
+  }
+
+  qwebs_connection_del (&self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_attach (QWebsConnection self, CapeAioContext aio_context)
+{
+  
+  // set the callbacks
+  cape_aio_socket_callback (self->aio_socket, self, qwebs_connection__internal__on_send_ready, qwebs_connection__internal__on_recv, qwebs_connection__internal__on_done);
+  
+  {
+    CapeAioSocket h = self->aio_socket;
+    
+    // attach it to the AIO subsytem
+    cape_aio_socket_add_r (&h, aio_context);
+  }
+  
+  self->aio_attached = aio_context;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_send (QWebsConnection self, CapeStream* p_stream)
+{
+  cape_mutex_lock (self->mutex);
+  
+  cape_list_push_back (self->send_cache, *p_stream);
+  *p_stream = NULL;
+
+  cape_mutex_unlock (self->mutex);
+
+  cape_aio_socket_markSent (self->aio_socket, self->aio_attached);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_inc (QWebsConnection self)
+{
+  cape_aio_socket_inref (self->aio_socket);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_dec (QWebsConnection self)
+{
+  cape_aio_socket_unref (self->aio_socket);
+}
+
+//-----------------------------------------------------------------------------
