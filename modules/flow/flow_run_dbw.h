@@ -1,0 +1,108 @@
+#ifndef __FLOW__RUN_DBW__H
+#define __FLOW__RUN_DBW__H 1
+
+// CAPE includes
+#include <sys/cape_export.h>
+#include <sys/cape_types.h>
+#include <sys/cape_queue.h>
+
+// QBUS includes
+#include <qbus.h>
+
+// ADBL includes
+#include <adbl.h>
+
+//-----------------------------------------------------------------------------
+
+#define FLOW_ACTION__PRIM             0    // first time this task was called
+#define FLOW_ACTION__REDO             1    // redo
+#define FLOW_ACTION__SET              2    // set
+#define FLOW_ACTION__OVERRIDE         3    // override
+#define FLOW_ACTION__ABORT            4    // abort -> deactivate the task
+#define FLOW_ACTION__NONE             7    // ignore
+
+//-----------------------------------------------------------------------------
+
+struct FlowRunDbw_s; typedef struct FlowRunDbw_s* FlowRunDbw;
+
+//-----------------------------------------------------------------------------
+// constructor / destructor
+
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, CapeQueue, number_t wpid, number_t psid, const CapeString remote, CapeUdc rinfo, number_t refid);
+
+__CAPE_LOCAL   void         flow_run_dbw_del               (FlowRunDbw*);
+
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw);
+
+//-----------------------------------------------------------------------------
+// QBUS methods
+
+__CAPE_LOCAL   int          flow_run_dbw_set               (FlowRunDbw*, int initial, number_t action, CapeUdc* p_params, CapeErr err);
+
+//-----------------------------------------------------------------------------
+// getter
+
+__CAPE_LOCAL   number_t     flow_run_dbw_state_get         (FlowRunDbw);
+
+__CAPE_LOCAL   number_t     flow_run_dbw_fctid_get         (FlowRunDbw);
+
+__CAPE_LOCAL   number_t     flow_run_dbw_synct_get         (FlowRunDbw);
+
+__CAPE_LOCAL   CapeUdc      flow_run_dbw_rinfo_get         (FlowRunDbw);
+
+//-----------------------------------------------------------------------------
+// process manipulators
+
+                            /* create entries in the database for the new process */
+__CAPE_LOCAL   int          flow_run_dbw_init              (FlowRunDbw, number_t wfid, number_t syncid, int add_psid, CapeErr err);
+
+                            /* set a new state and ends the current processing step */
+__CAPE_LOCAL   void         flow_run_dbw_state_set         (FlowRunDbw, number_t state, CapeErr result_err);
+
+                            /* run the next process step */
+__CAPE_LOCAL   int          flow_run_dbw_next              (FlowRunDbw, CapeErr err);
+
+//-----------------------------------------------------------------------------
+// data manipulators
+
+                            /* retrieve QBUS info for continue */
+__CAPE_LOCAL   int          flow_run_dbw_pdata__qbus       (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* params, CapeErr err);
+
+                            /* retrieve a list with all splits */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__split      (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeErr err);
+
+                            /* retrieve all data for a switch */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__switch     (FlowRunDbw, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err);
+
+                            /* check pdata if the logs shall be merged into params */
+__CAPE_LOCAL   void         flow_run_dbw_pdata__logs_merge (FlowRunDbw, CapeUdc params);
+
+                            /* merge content of TDATA to params */
+__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_in   (FlowRunDbw, CapeUdc params);
+
+                            /* merge content of params to TDATA */
+__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_to   (FlowRunDbw, CapeUdc* params);
+
+                            /* copy variable in TDATA */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__var_copy   (FlowRunDbw, CapeErr err);
+
+                            /* add an vdata event */
+__CAPE_LOCAL   void         flow_run_dbw__event_add        (FlowRunDbw, number_t err_code, const CapeString err_text, number_t vaid, number_t stype);
+
+//-----------------------------------------------------------------------------
+// sync tools
+
+__CAPE_LOCAL   number_t     flow_run_dbw_sync__add         (FlowRunDbw, number_t cnt, CapeErr);
+
+//-----------------------------------------------------------------------------
+// data tools
+
+__CAPE_LOCAL   CapeUdc      flow_data_get                  (AdblSession adbl_session, number_t dataid, CapeErr err);
+
+__CAPE_LOCAL   number_t     flow_data_add                  (AdblTrx trx, CapeUdc content, CapeErr err);
+
+__CAPE_LOCAL   int          flow_data_rm                   (AdblTrx trx, number_t dataid, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+#endif

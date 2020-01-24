@@ -1,0 +1,1762 @@
+#include "flow_run_dbw.h"
+#include "flow_run_step.h"
+#include "flow_chain.h"
+
+// cape includes
+#include <sys/cape_log.h>
+#include <fmt/cape_json.h>
+#include <stc/cape_list.h>
+
+//-----------------------------------------------------------------------------
+
+number_t flow_data_add (AdblTrx trx, CapeUdc content, CapeErr err)
+{
+  number_t ret = 0;
+  
+  if (content == NULL)
+  {
+    return 0;
+  }
+  
+  if (cape_udc_size (content) == 0)
+  {
+    return 0;
+  }
+  
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    {
+      CapeString h = cape_json_to_s (content);
+      cape_udc_add_s_mv    (values, "content"         , &h);
+    }
+    
+    // execute the query
+    ret = adbl_trx_insert (trx, "proc_data", &values, err);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_data_set (AdblTrx trx, number_t dataid, CapeUdc content, CapeErr err)
+{
+  int res;
+  
+  if (content == NULL)
+  {
+    return CAPE_ERR_NONE;
+  }
+  
+  if (cape_udc_size (content) == 0)
+  {
+    return CAPE_ERR_NONE;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , dataid);
+
+    {
+      CapeString h = cape_json_to_s (content);
+      cape_udc_add_s_mv    (values, "content"         , &h);
+    }
+
+    // execute the query
+    res = adbl_trx_update (trx, "proc_data", &params, &values, err);
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_data_rm (AdblTrx trx, number_t dataid, CapeErr err)
+{
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  cape_udc_add_n      (params, "id"           , dataid);
+
+  return adbl_trx_delete (trx, "proc_data", &params, err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc flow_data_get (AdblSession adbl_session, number_t dataid, CapeErr err)
+{
+  CapeUdc ret = NULL;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc data = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , dataid);
+
+    cape_udc_add_node   (values, "content"       );
+
+    // execute the query
+    query_results = adbl_session_query (adbl_session, "proc_data", &params, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  data = cape_udc_ext_first (query_results);
+  if (NULL == data)
+  {
+    cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find proc_data");
+    goto exit_and_cleanup;
+  }
+  
+  // extract content
+  {
+    CapeUdc content = cape_udc_ext (data, "content");
+    
+    if (content)
+    {
+      cape_udc_replace_mv (&ret, &content);
+    }
+  }
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  cape_udc_del (&data);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+struct FlowRunDbw_s
+{
+  QBus qbus;                   // reference
+  AdblSession adbl_session;    // reference
+  CapeQueue queue;             // reference
+  
+  AdblTrx trx;
+  
+  CapeString remote;
+  CapeUdc rinfo;
+  
+  number_t wpid;               // workspace id
+  number_t psid;               // process id
+  
+  // current variables
+  
+  number_t wsid;               // workstep id
+  number_t sqid;               // sequence id
+  
+  number_t fctid;              // function id
+  number_t refid;              // reference id
+  
+  number_t syncid;             // syncronization id
+  number_t syncnt;             // syncronization counter
+  number_t syncmy;             // referenced syncid on itself
+
+  number_t pdata_id;           // parameters for this step
+  CapeUdc pdata;
+  
+  number_t tdata_id;           // runtime variables
+  CapeUdc tdata;
+  
+  number_t vdata_id;
+  CapeUdc vdata;
+  
+  number_t logid;              // log id
+  number_t state;
+  
+  CapeUdc params;
+};
+
+//-----------------------------------------------------------------------------
+
+FlowRunDbw flow_run_dbw_new (QBus qbus, AdblSession adbl_session, CapeQueue queue, number_t wpid, number_t psid, const CapeString remote, CapeUdc rinfo, number_t refid)
+{
+  FlowRunDbw self = CAPE_NEW(struct FlowRunDbw_s);
+  
+  self->qbus = qbus;
+  self->adbl_session = adbl_session;
+  self->queue = queue;
+  
+  self->trx = NULL;
+  self->remote = cape_str_cp (remote);
+  self->rinfo = cape_udc_cp (rinfo);
+  self->refid = refid;
+
+  self->wpid = wpid;
+  self->psid = psid;
+  
+  self->wsid = 0;
+  self->sqid = 0;
+  
+  self->fctid = 0;
+  
+  self->syncid = 0;
+  self->syncnt = 0;
+  self->syncmy = 0;
+  
+  self->pdata_id = 0;
+  self->pdata = NULL;
+  
+  self->tdata_id = 0;
+  self->tdata = NULL;
+  
+  self->vdata_id = 0;
+  self->vdata = NULL;
+  
+  self->logid = 0;
+  self->state = 0;
+  
+  self->params = NULL;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw_del (FlowRunDbw* p_self)
+{
+  if (*p_self)
+  {
+    FlowRunDbw self = *p_self;
+    
+    cape_str_del (&(self->remote));
+    cape_udc_del (&(self->rinfo));
+    
+    adbl_trx_rollback (&(self->trx), NULL);
+    
+    cape_udc_del (&(self->tdata));
+    cape_udc_del (&(self->pdata));
+    cape_udc_del (&(self->vdata));
+
+    CAPE_DEL (p_self, struct FlowRunDbw_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
+{
+  FlowRunDbw self = CAPE_NEW(struct FlowRunDbw_s);
+  
+  self->qbus = rhs->qbus;
+  self->adbl_session = rhs->adbl_session;
+  self->queue = rhs->queue;
+  
+  self->trx = NULL;
+  self->remote = cape_str_cp (rhs->remote);
+  self->rinfo = cape_udc_cp (rhs->rinfo);
+  self->refid = rhs->refid;
+
+  self->wpid = rhs->wpid;
+  self->psid = rhs->psid;
+  
+  self->wsid = 0;
+  self->sqid = 0;
+  
+  self->fctid = 0;
+  
+  self->syncid = 0;
+  self->syncnt = 0;
+  self->syncmy = 0;
+  
+  self->pdata_id = 0;
+  self->pdata = NULL;
+  
+  self->tdata_id = 0;
+  self->tdata = cape_udc_cp (rhs->tdata);
+  
+  self->vdata_id = 0;
+  self->vdata = NULL;
+  
+  self->logid = 0;
+  self->state = 0;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__tdata_update (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  if (self->tdata_id)
+  {
+    if (self->tdata)
+    {
+      res = flow_data_set (self->trx, self->tdata_id, self->tdata, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      res = flow_data_rm (self->trx, self->tdata_id, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      self->tdata_id = 0;
+    }
+  }
+  else
+  {
+    if (self->tdata)
+    {
+      self->tdata_id = flow_data_add (self->trx, self->tdata, err);
+      if (0 == self->tdata_id)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_init__save (FlowRunDbw self, AdblTrx trx, number_t wfid, CapeErr err)
+{
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_n    (values, "wpid"         , self->wpid);
+  cape_udc_add_n    (values, "wfid"         , wfid);
+  cape_udc_add_n    (values, "active"       , 1);
+  cape_udc_add_n    (values, "refid"        , self->refid);
+
+  if (self->syncid)
+  {
+    cape_udc_add_n    (values, "sync"        , self->syncid);
+  }
+
+  if (self->tdata_id)
+  {
+    cape_udc_add_n    (values, "t_data"      , self->tdata_id);
+  }
+
+  // execute the query
+  self->psid = adbl_trx_insert (trx, "proc_tasks", &values, err);
+
+  return (0 == self->psid) ? cape_err_code (err) : CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int add_psid, CapeErr err)
+{
+  int res;
+  
+  self->syncid = syncid;
+  
+  self->trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == self->trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // create a new data entry if there is content
+  self->tdata_id = flow_data_add (self->trx, self->tdata, err);
+  if (cape_err_code (err))
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  // create a new taskflow
+  res = flow_run_dbw_init__save (self, self->trx, wfid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  if (NULL == self->tdata)
+  {
+    // if there is no TDATA create a new node
+    self->tdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+
+  // set the current psid
+  {
+    CapeUdc psid_node = cape_udc_get (self->tdata, "psid");
+    if (psid_node)
+    {
+      cape_udc_set_n (psid_node, self->psid);
+    }
+    else
+    {
+      // add the PSID for the tdata of this process
+      cape_udc_add_n (self->tdata, "psid", self->psid);
+    }
+  }
+  
+  if (add_psid)
+  {
+    // add the PSID for the tdata, which will be available in all sub-processes aswell
+    cape_udc_add_n (self->tdata, "psid_root", self->psid);
+  }
+
+  res = flow_run_dbw__tdata_update (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", " P R O C E S S   C R E A T E D                      [%4i]", wfid);
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
+  
+  adbl_trx_commit (&(self->trx), err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&(self->trx), err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__data_load (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  if (self->pdata_id)
+  {
+    self->pdata = flow_data_get (self->adbl_session, self->pdata_id, err);
+    
+    res = cape_err_code (err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // debug
+    {
+      CapeString h = cape_json_to_s (self->pdata);
+      
+      printf ("..............................................................................\n");
+      printf ("PDATA: %s\n", h);
+    }
+  }
+
+  if (self->tdata_id)
+  {
+    self->tdata = flow_data_get (self->adbl_session, self->tdata_id, err);
+    
+    res = cape_err_code (err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    // debug
+    {
+      CapeString h = cape_json_to_s (self->tdata);
+      
+      printf ("..............................................................................\n");
+      printf ("TDATA: %s\n", h);
+    }
+  }
+
+  if (self->vdata_id)
+  {
+    self->vdata = flow_data_get (self->adbl_session, self->vdata_id, err);
+    
+    res = cape_err_code (err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_logs__update (FlowRunDbw self, number_t logref, CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+  number_t gpid = 0;
+  
+  if (self->tdata)
+  {
+    gpid = cape_udc_get_n (self->tdata, "gpid", 0);
+  }
+
+  if (self->logid)
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->logid);
+
+    cape_udc_add_n (values, "state", self->state);
+
+    if (self->vdata_id)
+    {
+      cape_udc_add_n (values, "vdata", self->vdata_id);
+    }
+    
+    if (self->syncmy)
+    {
+      cape_udc_add_n (values, "sync", self->syncmy);
+    }
+    
+    if (gpid)
+    {
+      cape_udc_add_n (values, "gpid", gpid);
+    }
+    
+    if (logref)
+    {
+      cape_udc_add_n (values, "refid", logref);
+    }
+
+    // execute the query
+    res = adbl_trx_update (self->trx, "proc_task_logs", &params, &values, err);
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_logs__initialize (FlowRunDbw self, CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+  number_t gpid = 0;
+  
+  if (self->tdata)
+  {
+    gpid = cape_udc_get_n (self->tdata, "gpid", 0);
+  }
+  
+  if (self->logid == 0)   // insert
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (values, "taid"          , self->psid);
+    cape_udc_add_n      (values, "wsid"          , self->wsid);
+
+    cape_udc_add_n      (values, "state"         , FLOW_STATE__NONE);
+    
+    {
+      CapeDatetime dt; cape_datetime_utc (&dt);
+      cape_udc_add_d (values, "created", &dt);
+    }
+    
+    if (gpid)
+    {
+      cape_udc_add_n (values, "gpid", gpid);
+    }
+
+    // execute the query
+    self->logid = adbl_trx_insert (self->trx, "proc_task_logs", &values, err);
+    if (0 == self->logid)
+    {
+      res = cape_err_code (err);
+    }
+  }
+  else  // update
+  {
+    // update gpid
+    res = flow_run_dbw_logs__update (self, 0, err);
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (params, "taid"          , self->psid);
+
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "sqtid"         , 0);
+
+    cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_n      (values, "refid"         , 0);
+
+    cape_udc_add_n      (values, "p_data"        , 0);
+    cape_udc_add_n      (values, "t_data"        , 0);
+
+    // execute the query
+    query_results = adbl_trx_query (self->trx, "proc_next_workstep_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_ext_first (query_results);
+
+  if (first_row)
+  {
+    self->wsid = cape_udc_get_n (first_row, "id", 0);
+    self->sqid = cape_udc_get_n (first_row, "sqtid", 0);
+    
+    self->fctid = cape_udc_get_n (first_row, "fctid", 0);
+    self->refid = cape_udc_get_n (first_row, "refid", 0);
+    
+    self->pdata_id = cape_udc_get_n (first_row, "p_data", 0);
+    self->tdata_id = cape_udc_get_n (first_row, "t_data", 0);
+
+    self->logid = 0;
+    self->state = FLOW_STATE__NONE;
+
+    self->vdata_id = 0;
+    cape_udc_del (&(self->vdata));
+    
+    res = flow_run_dbw__data_load (self, err);
+  }
+  else
+  {
+    self->wsid = 0;
+  }
+  
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (params, "taid"          , self->psid);
+
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "sqtid"         , 0);
+
+    cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_n      (values, "refid"         , 0);
+    cape_udc_add_n      (values, "sync"          , 0);
+    cape_udc_add_n      (values, "sync_cnt"      , 0);
+
+    cape_udc_add_n      (values, "p_data"        , 0);
+    cape_udc_add_n      (values, "t_data"        , 0);
+
+    cape_udc_add_n      (values, "logid"         , 0);
+    cape_udc_add_n      (values, "state"         , 0);
+    cape_udc_add_n      (values, "vdata"         , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_current_workstep_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "no current process step found");
+    goto exit_and_cleanup;
+  }
+  
+  self->wsid = cape_udc_get_n (first_row, "id", 0);
+  self->sqid = cape_udc_get_n (first_row, "sqtid", 0);
+  
+  self->fctid = cape_udc_get_n (first_row, "fctid", 0);
+  self->refid = cape_udc_get_n (first_row, "refid", 0);
+  self->syncid = cape_udc_get_n (first_row, "sync", 0);
+  self->syncnt = cape_udc_get_n (first_row, "sync_cnt", -1);
+  self->syncmy = 0;
+  
+  self->pdata_id = cape_udc_get_n (first_row, "p_data", 0);
+  self->tdata_id = cape_udc_get_n (first_row, "t_data", 0);
+  
+  self->logid = cape_udc_get_n (first_row, "logid", 0);
+  self->state = cape_udc_get_n (first_row, "state", 0);
+  self->vdata_id = cape_udc_get_n (first_row, "vdata", 0);
+
+  res = flow_run_dbw__data_load (self, err);
+
+exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__vdata_update (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  if (self->vdata_id)
+  {
+    if (self->vdata)
+    {
+      res = flow_data_set (self->trx, self->vdata_id, self->vdata, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      res = flow_data_rm (self->trx, self->vdata_id, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      self->vdata_id = 0;
+    }
+  }
+  else
+  {
+    if (self->vdata)
+    {
+      self->vdata_id = flow_data_add (self->trx, self->vdata, err);
+      if (0 == self->vdata_id)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__current_task_save (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  // update tdata
+  res = flow_run_dbw__tdata_update (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // update vdata
+  res = flow_run_dbw__vdata_update (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_run_dbw_logs__update (self, 0, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->psid);
+
+    if (self->tdata_id)
+    {
+      cape_udc_add_n      (values, "t_data"            , self->tdata_id);
+    }
+    
+    /*
+    if (self->state == FLOW_STATE__DONE)
+    {
+      cape_udc_add_n      (values, "active"        , 0);
+    }
+    else
+    {
+      cape_udc_add_n      (values, "active"        , 1);
+    }
+     */
+    
+    // execute the query
+    res = adbl_trx_update (self->trx, "proc_tasks", &params, &values, err);
+  }
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString flow_run_dbw_state_str (number_t state)
+{
+  switch (state)
+  {
+    case FLOW_STATE__NONE: return "FLOW_STATE__NONE";
+    case FLOW_STATE__DONE: return "FLOW_STATE__DONE";
+    case FLOW_STATE__HALT: return "FLOW_STATE__HALT";
+    case FLOW_STATE__ERROR: return "FLOW_STATE__ERROR";
+    case FLOW_STATE__ABORTED: return "FLOW_STATE__ABORTED";
+    default: return "[UNKNOWN]";
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw__event_add (FlowRunDbw self, number_t err_code, const CapeString err_text, number_t vaid, number_t stype)
+{
+  if (self->vdata == NULL)
+  {
+    self->vdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    if (self->remote)
+    {
+      cape_udc_add_s_cp (self->vdata, "remote", self->remote);
+    }
+  }
+  
+  // get the event list
+  {
+    CapeUdc events = cape_udc_ext (self->vdata, "events");
+    
+    if (events == NULL)
+    {
+      events = cape_udc_new (CAPE_UDC_LIST, "events");
+    }
+    
+    // add events
+    {
+      CapeUdc event = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n (event, "err_code", err_code);
+      
+      if (err_text)
+      {
+        cape_udc_add_s_cp (event, "err_text", err_text);
+      }
+      
+      if (vaid)
+      {
+        cape_udc_add_n (event, "vaid", vaid);
+      }
+      
+      if (stype)
+      {
+        cape_udc_add_n (event, "stype", stype);
+      }
+      
+      // timestamp
+      {
+        CapeDatetime dt; cape_datetime_utc (&dt);
+
+        cape_udc_add_d (event, "timestamp", &dt);
+      }
+      
+      cape_udc_add (events, &event);
+    }
+    
+    cape_udc_add (self->vdata, &events);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err)
+{
+  int res;
+  CapeErr err = cape_err_new ();
+
+  // set the new state
+  self->state = state;
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run dbw", "set new state = %s", flow_run_dbw_state_str (self->state));
+
+  if (result_err)
+  {
+    // override the state with error state
+    self->state = FLOW_STATE__ERROR;
+
+    cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run dbw", "set state to error = %s", cape_err_text (result_err));
+
+    flow_run_dbw__event_add (self, cape_err_code (result_err), cape_err_text (result_err), 0, 0);
+  }
+  
+  // save all variables to the database
+  res = flow_run_dbw__current_task_save (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // commit all changes
+  adbl_trx_commit (&(self->trx), err);
+
+exit_and_cleanup:
+  
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_update (FlowRunDbw self, CapeErr err)
+{
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_n      (params, "id"            , self->psid);
+  cape_udc_add_n      (values, "current_step"  , self->wsid);
+
+  // execute the query
+  return adbl_trx_update (self->trx, "proc_tasks", &params, &values, err);
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_continue (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->syncid);
+    cape_udc_add_n      (values, "taid"          , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_task_sync", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't find sync");
+    goto exit_and_cleanup;
+  }
+  
+  number_t psid = cape_udc_get_n (first_row, "taid", 0);
+  if (0 == psid)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "taid is zero");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    FlowRunDbw dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, psid, self->remote, self->rinfo, self->refid);
+    
+    res = flow_run_dbw_set (&dbw, FALSE, FLOW_STATE__NONE, NULL, err);
+  }
+  
+exit_and_cleanup:
+  
+  if (cape_err_code(err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "FLOW", "continue", cape_err_text (err));
+  }
+  
+  cape_udc_del (&query_results);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_sync__merge_tdata (AdblTrx trx, number_t syncid, CapeUdc tdata, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+  CapeUdc pdata_db;
+  CapeUdc tdata_db;
+  const CapeString merge_node;
+  CapeUdc merge_tdata_db;
+  number_t tdid;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc merge_node_tdata = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , syncid);
+    cape_udc_add_n      (values, "tdid"          , 0);
+    cape_udc_add_node   (values, "tdata"         );
+    cape_udc_add_node   (values, "pdata"         );
+
+    // execute the query
+    query_results = adbl_trx_query (trx, "flow_process_sync_tdata_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    // there is nothing to update
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  tdid = cape_udc_get_n (first_row, "tdid", 0);
+  if (0 == tdid)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "pdid is zero");
+    goto exit_and_cleanup;
+  }
+
+  pdata_db = cape_udc_get (first_row, "pdata");
+  if (NULL == pdata_db)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "pdata is zero");
+    goto exit_and_cleanup;
+  }
+
+  tdata_db = cape_udc_get (first_row, "tdata");
+  if (NULL == tdata_db)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "tdata is zero");
+    goto exit_and_cleanup;
+  }
+
+  // check for merge object
+  merge_node = cape_udc_get_s (pdata_db, "merge_node", NULL);
+  if (NULL == merge_node)
+  {
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "merge tdata", "there is no merge defined");
+    
+    // there is nothing to update
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "merge tdata", "found merge node = %s", merge_node);
+
+  // try to find this node in tdata
+  merge_node_tdata = cape_udc_ext (tdata, merge_node);
+  if (NULL == merge_node_tdata)
+  {
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "merge tdata", "can't find merge node in TDATA");
+    
+    // there is nothing to update
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  merge_tdata_db = cape_udc_get (tdata_db, merge_node);
+  if (merge_tdata_db)
+  {
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "merge tdata", "merge TDATA");
+
+    // merge both TDATA's
+    cape_udc_merge_mv (merge_tdata_db, &merge_node_tdata);
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "merge tdata", "add TDATA");
+
+    // add as new entry to TDATA
+    cape_udc_add_name (tdata_db, &merge_node_tdata, merge_node);
+  }
+  
+  res = flow_data_set (trx, tdid, tdata_db, err);
+
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  cape_udc_del (&merge_node_tdata);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
+  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "run init", " P R O C E S S   E N D E D                     ");
+  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
+
+  if (self->syncid)
+  {
+    res = flow_run_dbw_sync__merge_tdata (self->trx, self->syncid, self->tdata, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // commit all
+  adbl_trx_commit (&(self->trx), err);
+  
+  if (self->syncid)
+  {
+    number_t cnt;
+    
+    {
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n      (params, "id"            , self->syncid);
+
+      // running an atomar query
+      cnt = adbl_session_atomic_dec (self->adbl_session, "proc_task_sync", &params, "cnt", err);
+    }
+    
+    if ((cape_err_code (err) == CAPE_ERR_NONE) && (cnt == 0))
+    {
+      res = flow_run_dbw_continue (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = cape_err_set (err, CAPE_ERR_EOF, "end of processing chain");
+
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
+{
+  int res;
+  FlowRunDbw self = ptr;
+
+  CapeErr err = cape_err_new ();
+ 
+  self->trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == self->trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step, wpid = %i, psid = %i", self->wpid, self->psid);
+
+  switch (self->state)
+  {
+    case FLOW_STATE__INIT:
+    {
+      // load initial data sets
+      res = flow_run_dbw__next_load (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got initial processing step, wsid = %i", self->wsid);
+
+      if (0 == self->wsid)
+      {
+        res = flow_run_dbw_done (self, err);
+        goto exit_and_cleanup;
+      }
+      
+      res = flow_run_dbw_update (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      // write or update the log entry
+      res = flow_run_dbw_logs__initialize (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      break;
+    }
+    case FLOW_STATE__NONE:
+    {
+      // load all variables from the current state of the database
+      res = flow_run_dbw__current_task_load (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got current processing step, wsid = %i", self->wsid);
+
+      break;
+    }
+    case FLOW_STATE__DONE:
+    {
+      res = flow_run_dbw_next (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      break;
+    }
+  }
+  
+  while (TRUE)
+  {
+    FlowRunStep run_step = flow_run_step_new (self->qbus);
+
+    // transfer ownership and business logic to step class
+    res = flow_run_step_set (&run_step, &self, action, self->params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    // clear the input params
+    cape_udc_del (&(self->params));
+    
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
+    
+    flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
+    
+    res = flow_run_dbw_next (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+exit_and_cleanup:
+  
+  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "queue worker", "end of loop");
+  
+  if (res && self)
+  {
+    if (res == CAPE_ERR_CONTINUE)
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__HALT, NULL);
+    }
+    else
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__ERROR, err);
+    }
+  }
+
+  // cleanup
+  flow_run_dbw_del (&self);
+  
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_set (FlowRunDbw* p_self, int initial, number_t action, CapeUdc* p_params, CapeErr err)
+{
+  FlowRunDbw self = *p_self;
+
+  if (initial)
+  {
+    self->state = FLOW_STATE__INIT;
+  }
+  
+  // take over the input params
+  if (p_params)
+  {
+    cape_udc_replace_mv (&(self->params), p_params);
+  }
+  else
+  {
+    cape_udc_del (&(self->params));
+  }
+  
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  *p_self = NULL;
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  // reset some values
+  self->logid = 0;
+  
+  // start a new transaction for the next step
+  self->trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == self->trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_run_dbw__next_load (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", "got next processing step, wsid = %i", self->wsid);
+  
+  if (self->wsid)
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", "------------------------------------------------------------");
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", " N E X T   S T E P");
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", "------------------------------------------------------------");
+
+    // update
+    res = flow_run_dbw_update (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // write or update the log entry
+    res = flow_run_dbw_logs__initialize (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    res = flow_run_dbw_done (self, err);
+  }
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t flow_run_dbw_state_get (FlowRunDbw self)
+{
+  return self->state;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t flow_run_dbw_fctid_get (FlowRunDbw self)
+{
+  return self->fctid;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t flow_run_dbw_synct_get (FlowRunDbw self)
+{
+  return self->syncnt;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc flow_run_dbw_rinfo_get (FlowRunDbw self)
+{
+  return self->rinfo;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString* p_method, CapeUdc* p_params, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString module = NULL;
+  CapeString method = NULL;
+  CapeUdc params = NULL;
+  
+  if (self->pdata)
+  {
+    module = cape_udc_ext_s (self->pdata, "module");
+    method = cape_udc_ext_s (self->pdata, "method");
+
+    params = cape_udc_ext (self->pdata, "params");
+  }
+  
+  if (module == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'module' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  if (method == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'method' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  if (params == NULL)
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "FLOW", "dbw pdata", "module = %s, method = %s, params = none", module, method);
+
+    params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+  else
+  {
+    CapeString h = cape_json_to_s (params);
+
+    cape_log_fmt (CAPE_LL_TRACE, "FLOW", "dbw pdata", "module = %s, method = %s, params = %s", module, method, h);
+
+    cape_str_del (&h);
+  }
+
+  res = CAPE_ERR_NONE;
+  
+  cape_str_replace_mv (p_module, &module);
+  cape_str_replace_mv (p_method, &method);
+  cape_udc_replace_mv (p_params, &params);
+  
+exit_and_cleanup:
+  
+  cape_str_del (&module);
+  cape_str_del (&method);
+
+  cape_udc_del (&params);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfid, CapeErr err)
+{
+  int res;
+  
+  // names of objects in the user data
+  const CapeString list_node_name = NULL;
+  const CapeString refid_node_name = NULL;
+  
+  number_t wfid = 0;
+
+  CapeUdc list = NULL;
+
+  if (self->pdata)
+  {
+    list_node_name = cape_udc_get_s (self->pdata, "list_node", NULL);
+    refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
+    
+    wfid = cape_udc_get_n (self->pdata, "wfid", 0);
+  }
+  
+  if (list_node_name == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'split_list' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  if (wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'wfid' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  // check for the list in t_data
+  if (self->tdata)
+  {
+    list = cape_udc_ext (self->tdata, list_node_name);
+  }
+  
+  if (list == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't find the list defined by 'split_list'");
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+  cape_udc_replace_mv (p_list, &list);
+  *p_wfid = wfid;
+  
+exit_and_cleanup:
+
+  cape_udc_del (&list);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_xdata__switch (FlowRunDbw self, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err)
+{
+  int res;
+  
+  // names of objects in the user data
+  const CapeString value_node_name = NULL;
+  const CapeString refid_node_name = NULL;
+  
+  CapeUdc value_node = NULL;
+
+  // local objects
+  CapeString value = NULL;
+  CapeUdc switch_node = NULL;
+
+  if (self->pdata)
+  {
+    value_node_name = cape_udc_get_s (self->pdata, "value_node", NULL);
+    refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
+    
+    switch_node = cape_udc_ext (self->pdata, "switch");
+  }
+  
+  if (value_node_name == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'value_node' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  if (switch_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'switch' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  // check for the list in t_data
+  if (self->tdata)
+  {
+    value_node = cape_udc_get (self->tdata, value_node_name);
+  }
+  
+  if (value_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'value_node' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  switch (cape_udc_type (value_node))
+  {
+    case CAPE_UDC_STRING:
+    {
+      value = cape_str_cp (cape_udc_s (value_node, NULL));
+      break;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      value = cape_str_n (cape_udc_n (value_node, 0));
+      break;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      value = cape_str_f (cape_udc_f (value_node, .0));
+      break;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+  cape_str_replace_mv (p_value, &value);
+  cape_udc_replace_mv (p_switch_node, &switch_node);
+  
+exit_and_cleanup:
+
+  cape_str_del (&value);
+  cape_udc_del (&switch_node);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params)
+{
+  int add_logs = FALSE;
+  
+  if (self->pdata)
+  {
+    CapeUdc add_logs_node = cape_udc_get (self->pdata, "add_logs");
+    
+    if (add_logs_node)
+    {
+      add_logs = cape_udc_b (add_logs_node, cape_udc_n (add_logs_node, FALSE));
+    }
+  }
+  
+  // add logs
+  if (add_logs)
+  {
+    CapeErr err = cape_err_new ();
+    
+    CapeUdc logs = cape_udc_new (CAPE_UDC_LIST, NULL);
+    
+    int res = flow_chain_get__fetch (self->trx, self->psid, logs, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "FLOW", "logs merge", "can't fetch logs: %s", cape_err_text (err));
+    }
+    else
+    {
+      cape_udc_add_name (params, &logs, "logs");
+    }
+    
+    cape_udc_del (&logs);
+      
+    cape_err_del (&err);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw_tdata__merge_in (FlowRunDbw self, CapeUdc params)
+{
+  if (self->tdata)
+  {
+    // merge params
+    cape_udc_merge_cp (params, self->tdata);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
+{
+  if (self->tdata)
+  {
+    // merge params
+    cape_udc_merge_mv (self->tdata, p_params);
+  }
+  else
+  {
+    self->tdata = cape_udc_mv (p_params);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_xdata__var_copy (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  const CapeString var_name;
+  const CapeString new_name;
+  CapeUdc var_node;
+  
+  // local objects
+  CapeUdc var_copy = NULL;
+
+  if (NULL == self->pdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "pdata is empty");
+    goto exit_and_cleanup;
+  }
+  
+  if (NULL == self->tdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "tdata is empty");
+    goto exit_and_cleanup;
+  }
+  
+  var_name = cape_udc_get_s (self->pdata, "var_name", NULL);
+  if (NULL == var_name)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'var_name' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  new_name = cape_udc_get_s (self->pdata, "new_name", NULL);
+  if (NULL == new_name)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'new_name' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  var_node = cape_udc_get (self->tdata, var_name);
+  if (NULL == var_node)
+  {
+    res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "variable '%s' was not found", var_name);
+    goto exit_and_cleanup;
+  }
+  
+  // create the copy
+  var_copy = cape_udc_cp (var_node);
+  
+  // add with new name
+  cape_udc_add_name (self->tdata, &var_copy, new_name);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&var_copy);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t flow_run_dbw_sync__add (FlowRunDbw self, number_t cnt, CapeErr err)
+{
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    cape_udc_add_n (values, "taid"      , self->psid);
+    cape_udc_add_n (values, "cnt"       , cnt);
+
+    // execute the query
+    self->syncmy = adbl_trx_insert (self->trx, "proc_task_sync", &values, err);
+  }
+
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "flow run", "sync object created: %i", self->syncmy);
+
+  return self->syncmy;
+}
+
+//-----------------------------------------------------------------------------
