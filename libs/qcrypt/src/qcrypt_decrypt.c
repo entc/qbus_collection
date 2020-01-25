@@ -5,12 +5,6 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
 
-// entc includes
-#include <tools/eccrypt.h>
-#include <tools/eccode.h>
-#include <types/ecstream.h>
-#include <types/ecerr.h>
-
 #if defined __WINDOWS_OS
 
 #include <windows.h>
@@ -118,7 +112,7 @@ void qdecrypt_aes_del (QDecryptAES* p_self)
     EVP_CIPHER_CTX_free (self->ctx);
 
 #endif
-    
+
     qcrypt_aes_keys_del (&(self->keys));
     cape_str_del (&(self->secret));
     
@@ -139,12 +133,12 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
     
   switch (self->key_type)
   {
-    case ENTC_KEY_SHA256:
+    case QCRYPT_KEY_SHA256:
     {
       self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
       break;
     }
-    case ENTC_KEY_PASSPHRASE_MD5:
+    case QCRYPT_KEY_PASSPHRASE_MD5:
     {
       self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
       
@@ -153,17 +147,17 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
       
       break;
     }
-    case ENTC_PADDING_ZEROS:
+    case QCRYPT_PADDING_ZEROS:
     {
       self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
       break;
     }
-    case ENTC_PADDING_ANSI_X923:
+    case QCRYPT_PADDING_ANSI_X923:
     {
       self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
       break;
     }
-    case ENTC_PADDING_PKCS7:
+    case QCRYPT_PADDING_PKCS7:
     {
       self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
       break;
@@ -185,7 +179,7 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
   // check for the blocksize
   self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
   
-  return ENTC_ERR_NONE;
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

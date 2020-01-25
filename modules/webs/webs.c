@@ -501,7 +501,7 @@ int webs_run (WebsAuth* p_self, CapeErr err)
       
       // content needs to be base64 encrypted
       {
-        CapeString h = qcrypt__base64__encrypt (auth_cont);
+        CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
         cape_udc_add_s_mv (msg->cdata, "content", &h);
       }
       
