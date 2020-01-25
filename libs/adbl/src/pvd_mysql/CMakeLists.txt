@@ -36,6 +36,9 @@ endif()
   INSTALL (TARGETS adbl2_mysql DESTINATION docker/qore/mods/adbl)
   INSTALL (FILES ${MYSQL_LIBRARIES} DESTINATION docker/qore/lib)
 
+  # set for later
+  SET (ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
+
   #--------------------------------------------------------------
   # unit tests 
   
