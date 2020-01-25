@@ -33,17 +33,21 @@ int qcrypt__decrypt_process (QDecryptAES dec, const char* bufdat, number_t bufle
   int res;
 
   // local objects
-  CapeStream data = NULL;
+  EcBuffer data = NULL;
+  EcBuffer_s h;
+  
+  h.buffer = (unsigned char*)bufdat;
+  h.size = buflen;
   
   // convert from base64 to binary
-  data = qcrypt__decode_base64_o (bufdat, buflen);
+  data = eccode_base64_decode (&h);
   if (data == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
     goto exit_and_cleanup;
   }
   
-  res = qdecrypt_aes_process (dec, cape_stream_data (data), cape_stream_size (data), err);
+  res = qdecrypt_aes_process (dec, (char*)data->buffer, data->size, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -59,7 +63,11 @@ int qcrypt__decrypt_process (QDecryptAES dec, const char* bufdat, number_t bufle
   
 exit_and_cleanup:
   
-  cape_stream_del (&data);
+  if (data)
+  {
+    ecbuf_destroy (&data);
+  }
+  
   return res;
 }
 
@@ -81,7 +89,7 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
   
   s = cape_stream_new ();
   
-  dec = qdecrypt_aes_new (s, vsec, QCRYPT_AES_TYPE_CFB, QCRYPT_KEY_PASSPHRASE_MD5);
+  dec = qdecrypt_aes_new (s, vsec, ENTC_AES_TYPE_CFB, ENTC_KEY_PASSPHRASE_MD5);
   
   res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
   
@@ -216,12 +224,15 @@ exit_and_cleanup:
 
 CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_text, CapeErr err)
 {
-  int res;
   CapeString ret = NULL;
   
-  // local objects
-  CapeStream s = cape_stream_new ();
-  QEncryptAES enc = NULL;
+  EcErr entc_err = ecerr_create ();
+  EcStream str = ecstream_create ();
+  EcBuffer dat = ecbuf_create_str_cp (decrypted_text);
+  EcBuffer buf = NULL;
+  EcBuffer bas = NULL;
+  
+  EcEncryptAES enc = NULL;
   
   if (vsec == NULL)
   {
@@ -230,96 +241,72 @@ CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_te
   }
   
   // create encryption engine
-  enc = qencrypt_aes_new (s, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
+  enc = ecencrypt_aes_create (ENTC_AES_TYPE_CFB, ENTC_PADDING_ANSI_X923, vsec, ENTC_KEY_PASSPHRASE_MD5);
   
   // encrypt the buffer 'decrypted_text'
-  res = qencrypt_aes_process (enc, decrypted_text, cape_str_size (decrypted_text), err);
-  if (res)
+  buf = ecencrypt_aes_update (enc, dat, entc_err);
+  if (buf == NULL)
   {
+    cape_err_set (err, entc_err->code, entc_err->text);
     goto exit_and_cleanup;
   }
+  
+  ecstream_append_ecbuf (str, buf);
   
   // finalize the encryption
-  res = qencrypt_aes_finalize (enc, err);
-  if (res)
+  buf = ecencrypt_aes_finalize (enc, entc_err);
+  if (buf == NULL)
   {
+    cape_err_set (err, entc_err->code, entc_err->text);
     goto exit_and_cleanup;
   }
   
+  ecstream_append_ecbuf (str, buf);
+  
+  // convert stream into another buffer
+  buf = ecstream_tobuf (&str);
+  
   // encode bytes into base64 string
-  ret = qcrypt__encode_base64_m (s);
+  bas = eccode_base64_encode (buf);
+  
+  // convert into return string
+  ret = ecbuf_str (&bas);
+  ecbuf_destroy (&buf);
   
 exit_and_cleanup:
-
-  cape_stream_del (&s);
-  qencrypt_aes_del (&enc);
+  
+  ecerr_destroy (&entc_err);
+  
+  if (str)
+  {
+    ecstream_destroy (&str);
+  }
+  
+  if (dat)
+  {
+    ecbuf_destroy (&dat);
+  }
+  
+  if (enc)
+  {
+    ecencrypt_aes_destroy (&enc);
+  }
   
   return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
+CapeString qcrypt__base64__encrypt (const CapeString source)
 {
-  number_t len = ((buflen + 2) / 3 * 4) + 1;
-  CapeString ret = CAPE_ALLOC (len);
+  EcBuffer_s buffer;
   
-  // openssl function
-  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret, (const unsigned char*)bufdat, buflen);
+  buffer.buffer = (unsigned char*)source;
+  buffer.size = cape_str_size (source);
   
-  // everything worked fine
-  if ((decodedSize > 0) && (decodedSize < len))
-  {
-    ret[decodedSize] = 0;
-    return ret;
-  }
+  EcBuffer h = eccode_base64_encode (&buffer);
 
-  CAPE_FREE (ret);
-  return NULL;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeString qcrypt__encode_base64_m (const CapeStream source)
-{
-  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source));
-}
-
-//-----------------------------------------------------------------------------
-
-CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
-{
-  number_t len = ((buflen + 3) / 4 * 3) + 1;
-  CapeStream ret = cape_stream_new ();
-
-  // reserve memory
-  cape_stream_cap (ret, len);
-  
-  // openssl function
-  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, buflen);
-  
-  // everything worked fine
-  if ((decodedSize > 0) && (decodedSize < len))
-  {
-    // trim the last bytes which are 0
-    while ((cape_stream_pos (ret)[decodedSize - 1] == '\0') && (decodedSize > 0))
-    {
-      decodedSize--;
-    }
-    
-    cape_stream_set (ret, decodedSize);
-    return ret;
-  }
-  
-  cape_stream_del (&ret);
-  return NULL;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeStream qcrypt__decode_base64_s (const CapeString source)
-{
-  return qcrypt__decode_base64_o (source, cape_str_size (source));
+  return ecbuf_str(&h);
 }
 
 //-----------------------------------------------------------------------------
@@ -502,3 +489,4 @@ CapeString qcrypt__hash_sha256__hex_m (const CapeStream source, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
+
