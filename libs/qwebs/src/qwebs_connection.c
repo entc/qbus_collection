@@ -145,8 +145,6 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       // get the first part
       const CapeString first_part = cape_list_node_data (n);
       
-      printf ("FIRST '%s'\n", first_part);
-      
       if (qwebs_route (self->webs, first_part))
       {
         cape_str_replace_cp (&(self->url), "/index.html");

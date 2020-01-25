@@ -28,6 +28,7 @@ TARGET_LINK_LIBRARIES(qbus_mod_flow qbus qflow adbl2)
 
 # for docker
 INSTALL (TARGETS qbus_mod_flow DESTINATION docker/flow/mods)
+INSTALL (TARGETS qflow DESTINATION docker/flow/lib)
 
 # remove none used ones (needs to fix)
 INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_flow:1.0.0)")

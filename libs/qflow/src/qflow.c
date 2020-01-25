@@ -206,35 +206,38 @@ exit_and_cleanup:
 
 void qflow_set (QFlow self, number_t current)
 {
-  // local objects
-  CapeErr err = cape_err_new ();
-  
-  QFlowCtx ctx = qflow_get_ctx ();
-  if (ctx == NULL)
+  if (self)
   {
-    goto exit_and_cleanup;
-  }
-  
-  {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    // local objects
+    CapeErr err = cape_err_new ();
     
-    cape_udc_add_n     (params, "id"         , self->rsid);
-
-    adbl_session_atomic_inc (ctx->session, "flow_run_section", &params, "cur", err);
-    if (cape_err_code (err))
+    QFlowCtx ctx = qflow_get_ctx ();
+    if (ctx == NULL)
     {
       goto exit_and_cleanup;
     }
-  }
-  
+    
+    {
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n     (params, "id"         , self->rsid);
+
+      adbl_session_atomic_inc (ctx->session, "flow_run_section", &params, "cur", err);
+      if (cape_err_code (err))
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    
 exit_and_cleanup:
+      
+    if (cape_err_code (err))
+    {
+      
+    }
     
-  if (cape_err_code (err))
-  {
-    
+    cape_err_del (&err);
   }
-  
-  cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
