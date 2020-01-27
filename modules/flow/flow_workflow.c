@@ -108,7 +108,7 @@ int flow_workflow_add (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp (values, "name", workflow_name);
     
     // insert into database, return value is the primary key
-    self->wfid = adbl_trx_insert (adbl_trx, "flow_workflows", &values, err);
+    self->wfid = adbl_trx_insert (adbl_trx, "proc_workflows", &values, err);
     if (self->wfid == 0)
     {
       res = cape_err_code (err);
@@ -181,7 +181,7 @@ int flow_workflow_set (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp (values, "name", workflow_name);
     
     // insert into database, return value is the primary key
-    res = adbl_trx_update (adbl_trx, "flow_workflows", &params, &values, err);
+    res = adbl_trx_update (adbl_trx, "proc_workflows", &params, &values, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -216,7 +216,7 @@ int flow_workflow_rm (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
   self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
   if (self->wfid == 0)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workflow_set} missing parameter 'wfid'");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workflow_rm} missing parameter 'wfid'");
     goto exit_and_cleanup;
   }
   
@@ -237,6 +237,9 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   FlowWorkflow self = *p_self;
   
+  // local objects
+  CapeUdc query_results = NULL;
+  
   res = flow_workflow__intern__qin_check (self, qin, err);
   if (res)
   {
@@ -244,15 +247,31 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
-  if (self->wfid == 0)
+
+  if (self->wfid)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workflow_set} missing parameter 'wfid'");
-    goto exit_and_cleanup;
+    
+    
+    
+    
+  }
+  else
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (values, "id"          , 0);
+    cape_udc_add_s_cp  (values, "name"        , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_workflows", NULL, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
-  
-  
   res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
   
 exit_and_cleanup:
   
