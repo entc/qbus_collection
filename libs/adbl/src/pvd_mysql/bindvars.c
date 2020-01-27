@@ -211,7 +211,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         bind->is_null = 0;
         bind->length = 0;
         bind->error = 0; 
-        bind->is_unsigned = 0;
+        bind->is_unsigned = 1;
         
         self->pos++;
       }
