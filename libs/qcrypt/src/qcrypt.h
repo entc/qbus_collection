@@ -31,7 +31,19 @@ __CAPE_LIBEX  CapeString     qcrypt__encrypt            (const CapeString vsec, 
 __CAPE_LIBEX  CapeString     qcrypt__base64__encrypt    (const CapeString source);
 
 //-----------------------------------------------------------------------------
+// encode / decode methods
+
+__CAPE_LIBEX  CapeString     qcrypt__encode_base64_m     (const CapeStream source);
+
+__CAPE_LIBEX  CapeString     qcrypt__encode_base64_o     (const char* bufdat, number_t buflen);
+
+__CAPE_LIBEX  CapeStream     qcrypt__decode_base64_s     (const CapeString source);
+
+__CAPE_LIBEX  CapeStream     qcrypt__decode_base64_o     (const char* bufdat, number_t buflen);
+
+//-----------------------------------------------------------------------------
 // hash methods
+
 __CAPE_LIBEX  CapeString     qcrypt__hash_sha256__hex_m  (const CapeStream source, CapeErr err);
 
 __CAPE_LIBEX  CapeString     qcrypt__hash_sha256__hex_o  (const char* bufdat, number_t buflen, CapeErr err);

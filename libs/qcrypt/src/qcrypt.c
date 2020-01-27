@@ -311,6 +311,71 @@ CapeString qcrypt__base64__encrypt (const CapeString source)
 
 //-----------------------------------------------------------------------------
 
+CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
+{
+  number_t len = ((buflen + 2) / 3 * 4) + 1;
+  CapeString ret = CAPE_ALLOC (len);
+  
+  // openssl function
+  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret, (const unsigned char*)bufdat, buflen);
+  
+  // everything worked fine
+  if ((decodedSize > 0) && (decodedSize < len))
+  {
+    ret[decodedSize] = 0;
+    return ret;
+  }
+
+  CAPE_FREE (ret);
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encode_base64_m (const CapeStream source)
+{
+  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source));
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
+{
+  number_t len = ((buflen + 3) / 4 * 3) + 1;
+  CapeStream ret = cape_stream_new ();
+
+  // reserve memory
+  cape_stream_cap (ret, len);
+  
+  // openssl function
+  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, buflen);
+  
+  // everything worked fine
+  if ((decodedSize > 0) && (decodedSize < len))
+  {
+    // trim the last bytes which are 0
+    while ((cape_stream_pos (ret)[decodedSize - 1] == '\0') && (decodedSize > 0))
+    {
+      decodedSize--;
+    }
+    
+    cape_stream_set (ret, decodedSize);
+    return ret;
+  }
+  
+  cape_stream_del (&ret);
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream qcrypt__decode_base64_s (const CapeString source)
+{
+  return qcrypt__decode_base64_o (source, cape_str_size (source));
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString qcrypt__encode_hex (const char* bufdat, number_t buflen)
 {
   const char hexmap [256][2] = {
