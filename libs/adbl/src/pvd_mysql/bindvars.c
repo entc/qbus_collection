@@ -118,7 +118,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
       {
         MYSQL_BIND* bind = &(self->binds[self->pos]);
         
-        bind->buffer_type = MYSQL_TYPE_LONG;
+        bind->buffer_type = MYSQL_TYPE_LONGLONG;
         bind->buffer = cape_udc_data (item);
         bind->buffer_length = 0;
         bind->is_null = 0;
@@ -364,7 +364,7 @@ void adbl_bind_add (MYSQL_BIND* bind, CapeUdc item)
     }
     case CAPE_UDC_NUMBER:
     {
-      bind->buffer_type = MYSQL_TYPE_LONG;
+      bind->buffer_type = MYSQL_TYPE_LONGLONG;
       
       bind->buffer = CAPE_ALLOC(8);
       memset (bind->buffer, 0, 8);
@@ -477,7 +477,7 @@ int adbl_bind_get (MYSQL_BIND* bind, CapeUdc item)
     }
     case CAPE_UDC_NUMBER:
     {
-      number_t* h = bind->buffer;      
+      number_t* h = bind->buffer;
       cape_udc_set_n (item, *h);
       
       break;
