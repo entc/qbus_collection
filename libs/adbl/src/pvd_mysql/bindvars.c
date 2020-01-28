@@ -478,9 +478,6 @@ int adbl_bind_get (MYSQL_BIND* bind, CapeUdc item)
     case CAPE_UDC_NUMBER:
     {
       number_t* h = bind->buffer;
-      
-      printf ("NUMBER %li\n", *h);
-      
       cape_udc_set_n (item, *h);
       
       break;
