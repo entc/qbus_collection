@@ -92,9 +92,9 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
   dec = qdecrypt_aes_new (s, vsec, ENTC_AES_TYPE_CFB, ENTC_KEY_PASSPHRASE_MD5);
   
   res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
-  
+
   qdecrypt_aes_del (&dec);
-  
+
   if (res)
   {
     cape_stream_del (&s);
@@ -107,7 +107,7 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
     
     // we need to trim, because sometimes the decryption results in a wrong ending
     ret = cape_str_trim_utf8 (h);
-    
+
     cape_str_del (&h);
     
     return ret;
@@ -193,7 +193,6 @@ int qcrypt__decrypt_row_node (const CapeString vsec, const CapeUdc row, const Ca
     if (encrypted_text)
     {
       CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
-      
       if (decrypted)
       {
         // convert to cape node

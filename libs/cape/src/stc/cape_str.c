@@ -670,7 +670,6 @@ CapeString cape_str_trim_utf8 (const CapeString source)
   while (*c)
   {
     clen = cape_str_char__len (*c);
-    
     if (clen > 1)
     {
       int i;
@@ -716,7 +715,6 @@ CapeString cape_str_trim_utf8 (const CapeString source)
   while (*c)
   {
     clen = cape_str_char__len (*c);
-
     if (clen > 1)
     {
       int i;
@@ -736,7 +734,8 @@ CapeString cape_str_trim_utf8 (const CapeString source)
       }
       else
       {
-        clen = i - 1;
+        // something is corupt
+        break;
       }
     }
     else
