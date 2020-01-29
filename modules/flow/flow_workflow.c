@@ -250,10 +250,23 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   if (self->wfid)
   {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
+    cape_udc_add_n     (params, "wfid"        , self->wfid);
+
+    cape_udc_add_n     (values, "id"          , 0);
+    cape_udc_add_n     (values, "sqtid"       , 0);
+    cape_udc_add_s_cp  (values, "name"        , NULL);
+    cape_udc_add_n     (values, "prev"        , 0);
+    cape_udc_add_n     (values, "fctid"       , 0);
     
-    
-    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_worksteps", &params, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
   }
   else
   {
