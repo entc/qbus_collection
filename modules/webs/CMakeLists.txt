@@ -20,6 +20,9 @@ INSTALL (TARGETS qbus_mod_webs DESTINATION docker/webs/mods)
 INSTALL (TARGETS qwebs DESTINATION docker/webs/lib)
 INSTALL (TARGETS qcrypt DESTINATION docker/webs/lib)
 
+# set some symlinks for direct starting
+add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/webs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/webs.json)
+
 # remove none used ones (needs to fix)
 INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_webs:1.0.0)")
 

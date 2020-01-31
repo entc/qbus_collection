@@ -1,11 +1,5 @@
 #include "qcrypt_aes.h"
 
-// entc includes
-#include <tools/eccrypt.h>
-#include <tools/eccode.h>
-#include <types/ecstream.h>
-#include <types/ecerr.h>
-
 // cape includes
 #include <sys/cape_log.h>
 
