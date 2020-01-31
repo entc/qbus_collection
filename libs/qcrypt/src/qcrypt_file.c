@@ -7,6 +7,10 @@
 #include <fmt/cape_json.h>
 #include <stc/cape_str.h>
 
+// entc includes
+#include <tools/eccode.h>
+#include <tools/eccrypt.h>
+
 //-----------------------------------------------------------------------------
 
 int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr, fct_cape_fs_file_load cb, CapeErr err)
@@ -83,7 +87,6 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-/*
 struct QCryptDecrypt_s
 {
   CapeString file;
@@ -337,4 +340,4 @@ exit:
 }
 
 //-----------------------------------------------------------------------------
-*/
+

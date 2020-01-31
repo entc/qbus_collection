@@ -17,7 +17,6 @@ __CAPE_LIBEX  int            qcrypt_decrypt_file        (const CapeString vsec, 
 //-----------------------------------------------------------------------------
 // decrypt using a file
 
-/*
 struct QCryptDecrypt_s; typedef struct QCryptDecrypt_s* QCryptDecrypt;
 
 __CAPE_LIBEX  QCryptDecrypt  qcrypt_decrypt_new         (const CapeString path, const CapeString file, const CapeString vsec);
@@ -44,6 +43,5 @@ __CAPE_LIBEX  int            qcrypt_file_write          (QCryptFile, const char*
 __CAPE_LIBEX  int            qcrypt_file_finalize       (QCryptFile, CapeErr err);
 
 //-----------------------------------------------------------------------------
-*/
 
 #endif
