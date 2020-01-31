@@ -5,12 +5,6 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
 
-// entc includes
-#include <tools/eccrypt.h>
-#include <tools/eccode.h>
-#include <types/ecstream.h>
-#include <types/ecerr.h>
-
 #if defined __WINDOWS_OS
 
 #include <windows.h>

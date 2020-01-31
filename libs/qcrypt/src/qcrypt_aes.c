@@ -1,10 +1,5 @@
 #include "qcrypt_aes.h"
-
-// entc includes
-#include <tools/eccrypt.h>
-#include <tools/eccode.h>
-#include <types/ecstream.h>
-#include <types/ecerr.h>
+#include "qcrypt.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -103,10 +98,6 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
 {
   QCryptAESKeys self = NULL;
   
-  // local objects
-  EcErr entc_err = NULL;
-  EcBuffer r = NULL;
-  
   int keyLength = EVP_CIPHER_key_length (cypher);
 
   // length in 8 bit blocks
@@ -121,47 +112,23 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
   self->key = NULL;
   self->iv = NULL;
 
-  entc_err = ecerr_create ();
-
-  // old entc stuff, which needs to be replaced
+  // convert key into sha256 buffer, which has exactly the correct size (no padding needed)
+  self->key = (unsigned char*)qcrypt__hash_sha256__hex_o (secret, cape_str_size (secret), err);
+  
+  if (NULL == self->key)
   {
-    EcBuffer_s h;
-
-    h.buffer = (unsigned char*)secret;
-    h.size = ecstr_len(secret);
-    
-    // convert key into sha256 buffer, which has exactly the correct size (no padding needed)
-    // TODO: replace with qcrypt version
-    r = echash_sha256 (&h, entc_err);
-    if (r == NULL)
-    {
-      cape_err_set (err, entc_err->code, entc_err->text);
-      
-      // destroy the object
-      qcrypt_aes_keys_del (&self);
-      goto exit_and_cleanup;
-    }
+    // destroy the object
+    qcrypt_aes_keys_del (&self);
+    goto exit_and_cleanup;
   }
-    
-  self->key = (unsigned char*)ecbuf_str (&r);
-
+  
 exit_and_cleanup:
   
   if (cape_err_code (err))
   {
     cape_log_msg (CAPE_LL_ERROR, "QCRYPT", "aes keys sha256", cape_err_text(err));
   }
-  
-  if (entc_err)
-  {
-    ecerr_destroy (&entc_err);
-  }
-  
-  if (r)
-  {
-    ecbuf_destroy (&r);
-  }
-  
+
   return self;
 }
 
@@ -349,23 +316,23 @@ const EVP_CIPHER* qencrypt_aes__get_cipher (number_t type)
 {
   switch (type)
   {
-    case ENTC_AES_TYPE_CBC:
+    case QCRYPT_AES_TYPE_CBC:
     {
       return EVP_aes_256_cbc();
     }
-    case ENTC_AES_TYPE_CFB:
+    case QCRYPT_AES_TYPE_CFB:
     {
       return EVP_aes_256_cfb();
     }
-    case ENTC_AES_TYPE_CFB_1:
+    case QCRYPT_AES_TYPE_CFB_1:
     {
       return EVP_aes_256_cfb1();
     }
-    case ENTC_AES_TYPE_CFB_8:
+    case QCRYPT_AES_TYPE_CFB_8:
     {
       return EVP_aes_256_cfb8();
     }
-    case ENTC_AES_TYPE_CFB_128:
+    case QCRYPT_AES_TYPE_CFB_128:
     {
       return EVP_aes_256_cfb128();
     }
