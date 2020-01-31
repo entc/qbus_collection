@@ -270,12 +270,12 @@ int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, C
     
   switch (self->key_type)
   {
-    case ENTC_KEY_SHA256:
+    case QCRYPT_KEY_SHA256:
     {
       self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
       break;
     }
-    case ENTC_KEY_PASSPHRASE_MD5:
+    case QCRYPT_KEY_PASSPHRASE_MD5:
     {
       number_t size = cape_stream_size (self->product);
       
@@ -286,17 +286,17 @@ int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, C
       
       break;
     }
-    case ENTC_PADDING_ZEROS:
+    case QCRYPT_PADDING_ZEROS:
     {
       self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
       break;
     }
-    case ENTC_PADDING_ANSI_X923:
+    case QCRYPT_PADDING_ANSI_X923:
     {
       self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
       break;
     }
-    case ENTC_PADDING_PKCS7:
+    case QCRYPT_PADDING_PKCS7:
     {
       self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
       break;
@@ -328,7 +328,7 @@ int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, C
     EVP_CIPHER_CTX_set_padding (self->ctx, 1);
   }
   
-  return ENTC_ERR_NONE;
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -383,7 +383,7 @@ int qencrypt_aes_finalize (QEncryptAES self, CapeErr err)
     {
       break;
     }
-    case ENTC_PADDING_ANSI_X923:   // force padding
+    case QCRYPT_PADDING_ANSI_X923:   // force padding
     {
       int lenLast;
       int encrRes;
