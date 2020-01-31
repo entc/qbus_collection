@@ -27,10 +27,6 @@ __CAPE_LIBEX  int            qcrypt__decrypt_row_node   (const CapeString vsec, 
 __CAPE_LIBEX  CapeString     qcrypt__encrypt            (const CapeString vsec, const CapeString decrypted_text, CapeErr err);
 
 //-----------------------------------------------------------------------------
-
-__CAPE_LIBEX  CapeString     qcrypt__base64__encrypt    (const CapeString source);
-
-//-----------------------------------------------------------------------------
 // encode / decode methods
 
 __CAPE_LIBEX  CapeString     qcrypt__encode_base64_m     (const CapeStream source);

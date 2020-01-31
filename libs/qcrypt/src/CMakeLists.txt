@@ -5,7 +5,7 @@ PROJECT(qcrypt)
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 
 find_package(Crypt REQUIRED)
-find_package(Entc_1_4 REQUIRED)
+#find_package(Entc_1_4 REQUIRED)
 
 #----------------------------------------------------------------------------------
 
