@@ -112,14 +112,16 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
   self->key = NULL;
   self->iv = NULL;
 
-  // convert key into sha256 buffer, which has exactly the correct size (no padding needed)
-  self->key = (unsigned char*)qcrypt__hash_sha256__hex_o (secret, cape_str_size (secret), err);
-  
-  if (NULL == self->key)
   {
-    // destroy the object
-    qcrypt_aes_keys_del (&self);
-    goto exit_and_cleanup;
+    CapeStream h = qcrypt__hash_sha256__bin_o (secret, cape_str_size (secret), err);
+    if (NULL == h)
+    {
+      // destroy the object
+      qcrypt_aes_keys_del (&self);
+      goto exit_and_cleanup;
+    }
+
+    self->key = (unsigned char*)cape_stream_to_str (&h);
   }
   
 exit_and_cleanup:
@@ -128,7 +130,7 @@ exit_and_cleanup:
   {
     cape_log_msg (CAPE_LL_ERROR, "QCRYPT", "aes keys sha256", cape_err_text(err));
   }
-
+  
   return self;
 }
 
