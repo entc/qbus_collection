@@ -1,15 +1,12 @@
 #include "qcrypt_file.h"
 #include "qcrypt_decrypt.h"
+#include "qcrypt_encrypt.h"
 
 // cape includes
 #include <sys/cape_log.h>
 #include <sys/cape_file.h>
 #include <fmt/cape_json.h>
 #include <stc/cape_str.h>
-
-// entc includes
-#include <tools/eccode.h>
-#include <tools/eccrypt.h>
 
 //-----------------------------------------------------------------------------
 
@@ -91,11 +88,13 @@ struct QCryptDecrypt_s
 {
   CapeString file;
   
-  EcDecryptAES dec;
+  QDecryptAES dec;
   
   CapeFileHandle fh;
   
   int state;
+  
+  CapeStream product;
 };
 
 //-----------------------------------------------------------------------------
@@ -110,8 +109,11 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
   // create the file handle
   self->fh = cape_fh_new (NULL, self->file);
   
+  // create the buffer
+  self->product = cape_stream_new ();
+  
   // create the decryption context
-  self->dec = ecdecrypt_aes_create (vsec, 0, 0);
+  self->dec = qdecrypt_aes_new (self->product, vsec, 0, 0);
   
   self->state = TRUE;
 
@@ -126,10 +128,9 @@ void qcrypt_decrypt_del (QCryptDecrypt* p_self)
   {
     QCryptDecrypt self = *p_self;
     
-    if (self->dec)
-    {
-      ecdecrypt_aes_destroy (&(self->dec));
-    }
+    qdecrypt_aes_del (&(self->dec));
+
+    cape_stream_del (&(self->product));
     
     cape_fh_del (&(self->fh));
     cape_str_del (&(self->file));
@@ -149,29 +150,19 @@ int qcrypt_decrypt_open (QCryptDecrypt self, CapeErr err)
 
 number_t qcrypt_decrypt_next (QCryptDecrypt self, char* buffer, number_t len)
 {
+  int res;
   number_t ret = 0;
+  
+  CapeErr err = cape_err_new ();
   
   if (self->state)
   {
-    // entc error object
-    EcErr entc_err = ecerr_create ();
-    
-    // buffers
-    EcBuffer bout = NULL;
-    
     // use the extern buffer to load the data
     number_t bytes_read = cape_fh_read_buf (self->fh, buffer, len);
     if (bytes_read > 0)
     {
-      EcBuffer_s h;
-      
-      // use the pseudobuffer for the correct
-      // bytes_read value as buffer size
-      h.buffer = (unsigned char*)buffer;
-      h.size = bytes_read;
-      
-      bout = ecdecrypt_aes_update (self->dec, &h, entc_err);
-      if (bout == NULL)
+      res = qdecrypt_aes_process (self->dec, buffer, bytes_read, err);
+      if (res)
       {
         //res = cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "update AES decryption: %s", entc_err->text);
         //goto exit_and_cleanup;
@@ -179,14 +170,17 @@ number_t qcrypt_decrypt_next (QCryptDecrypt self, char* buffer, number_t len)
       else
       {
         // copy data
-        ret = bout->size;
-        memcpy (buffer, bout->buffer, ret);
+        ret = cape_stream_size (self->product);
+        memcpy (buffer, cape_stream_data (self->product), ret);
+        
+        // clear the buffer
+        cape_stream_clr (self->product);
       }
     }
     else
     {
-      bout = ecdecrypt_aes_finalize (self->dec, entc_err);
-      if (bout == NULL)
+      res = qdecrypt_aes_finalize (self->dec, err);
+      if (res)
       {
         //res = cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "finalize AES decryption: %s", entc_err->text);
         //goto exit_and_cleanup;
@@ -194,15 +188,18 @@ number_t qcrypt_decrypt_next (QCryptDecrypt self, char* buffer, number_t len)
       else
       {
         // copy data
-        ret = bout->size;
-        memcpy (buffer, bout->buffer, ret);
+        ret = cape_stream_size (self->product);
+        memcpy (buffer, cape_stream_data (self->product), ret);
+        
+        // clear the buffer
+        cape_stream_clr (self->product);
       }
       
       self->state = FALSE;
     }
-    
-    ecerr_destroy (&entc_err);
   }
+  
+  cape_err_del (&err);
   
   return ret;
 }
@@ -211,11 +208,12 @@ number_t qcrypt_decrypt_next (QCryptDecrypt self, char* buffer, number_t len)
 
 struct QCryptFile_s
 {
-  EcEncryptAES enc;
+  QEncryptAES enc;
 
   CapeFileHandle fh;
-  
-  EcErr entc_err;
+
+  // the buffer
+  CapeStream product;
 };
 
 //-----------------------------------------------------------------------------
@@ -227,7 +225,7 @@ QCryptFile qcrypt_file_new (const CapeString file)
   self->enc = NULL;
   self->fh = cape_fh_new (NULL, file);
   
-  self->entc_err = ecerr_create ();
+  self->product = cape_stream_new ();
   
   return self;
 }
@@ -240,17 +238,14 @@ void qcrypt_file_del (QCryptFile* p_self)
   {
     QCryptFile self = *p_self;
     
-    if (self->enc)
-    {
-      ecencrypt_aes_destroy (&(self->enc));
-    }
+    qencrypt_aes_del (&(self->enc));
     
     if (self->fh)
     {
       cape_fh_del (&(self->fh));
     }
-    
-    ecerr_destroy (&(self->entc_err));
+
+    cape_stream_del (&(self->product));
 
     CAPE_DEL (p_self, struct QCryptFile_s);
   }
@@ -269,7 +264,7 @@ int qcrypt_file_encrypt (QCryptFile self, const CapeString vsec, CapeErr err)
   }
   
   // create encryption engine
-  self->enc = ecencrypt_aes_create (0, 0, vsec, 0);
+  self->enc = qencrypt_aes_new (self->product, 0, 0, vsec, 0);
   if (self->enc == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "can't initialize crypt");
@@ -295,24 +290,23 @@ int qcrypt_file_write (QCryptFile self, const char* bufdat, number_t buflen, Cap
 {
   int res;
   
-  EcBuffer_s dat;
-  EcBuffer buf = NULL;
-  
-  dat.buffer = (unsigned char*)bufdat;
-  dat.size = buflen;
-  
   // encrypt the buffer 'decrypted_text'
-  buf = ecencrypt_aes_update (self->enc, &dat, self->entc_err);
-  if (buf == NULL)
+  res = qencrypt_aes_process (self->enc, bufdat, buflen, err);
+  if (res)
   {
-    res = cape_err_set (err, self->entc_err->code, self->entc_err->text);
     goto exit;
   }
+
+  // write the buffer into the file
+  cape_fh_write_buf (self->fh, cape_stream_data (self->product), cape_stream_size (self->product));
   
-  cape_fh_write_buf (self->fh, (const char*)buf->buffer, buf->size);
+  // clean the buffer
+  cape_stream_clr (self->product);
   
   res = CAPE_ERR_NONE;
+
 exit:
+
   return res;
 }
 
@@ -320,22 +314,25 @@ exit:
 
 int qcrypt_file_finalize (QCryptFile self, CapeErr err)
 {
-  int res = CAPE_ERR_NONE;
+  int res;
   
-  EcBuffer buf = NULL;
-
   // finalize the encryption
-  buf = ecencrypt_aes_finalize (self->enc, self->entc_err);
-  if (buf == NULL)
+  res = qencrypt_aes_finalize (self->enc, err);
+  if (res)
   {
-    res = cape_err_set (err, self->entc_err->code, self->entc_err->text);
     goto exit;
   }
 
-  cape_fh_write_buf (self->fh, (const char*)buf->buffer, buf->size);
+  // write the buffer into the file
+  cape_fh_write_buf (self->fh, cape_stream_data (self->product), cape_stream_size (self->product));
+  
+  // clean the buffer
+  cape_stream_clr (self->product);
 
   res = CAPE_ERR_NONE;
+
 exit:
+
   return res;
 }
 

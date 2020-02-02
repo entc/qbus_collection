@@ -5,7 +5,6 @@ PROJECT(qcrypt)
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 
 find_package(Crypt REQUIRED)
-find_package(Entc_1_4 REQUIRED)
 
 #----------------------------------------------------------------------------------
 
@@ -27,10 +26,10 @@ SET(QCRYPT_CORE_HEADERS
 
 #----------------------------------------------------------------------------------
 
-INCLUDE_DIRECTORIES("." "../../cape/src" ${CRYPT_INCLUDES} ${ENTC_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES("." "../../cape/src" ${CRYPT_INCLUDES})
 
 add_library             (qcrypt SHARED ${QCRYPT_CORE_SOURCES} ${QCRYPT_CORE_HEADERS})
-target_link_libraries   (qcrypt cape ${CRYPT_LIBRARIES} ${ENTC_LIBRARIES})
+target_link_libraries   (qcrypt cape ${CRYPT_LIBRARIES})
 
 install (TARGETS qcrypt DESTINATION lib)
 
