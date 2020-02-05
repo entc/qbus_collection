@@ -103,6 +103,8 @@ __CAPE_LOCAL   number_t     flow_data_add                  (AdblTrx trx, CapeUdc
 
 __CAPE_LOCAL   int          flow_data_rm                   (AdblTrx trx, number_t dataid, CapeErr err);
 
+__CAPE_LOCAL   int          flow_data_set                  (AdblTrx trx, number_t dataid, CapeUdc content, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif
