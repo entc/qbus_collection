@@ -158,6 +158,19 @@ static int __STDCALL qbus_flow__workstep__rm (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__workstep__mv (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowWorkstep flow_workstep = flow_workstep_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return flow_workstep_mv (&flow_workstep, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__workstep__get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -311,6 +324,10 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: wfid
   qbus_register (qbus, "workstep_rm"         , ctx, qbus_flow__workstep__rm, NULL, err);
 
+  // move a workstep
+  //   args: wsid, direction
+  qbus_register (qbus, "workstep_mv"         , ctx, qbus_flow__workstep__mv, NULL, err);
+  
   // -------- callback methods --------------------------------------------
 
   // add a new process

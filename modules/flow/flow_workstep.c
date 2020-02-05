@@ -72,6 +72,104 @@ int flow_workstep__intern__qin_check (FlowWorkstep self, QBusM qin, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int flow_workstep__intern__last_prev (FlowWorkstep self, number_t* p_prev, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (params, "wfid"        , self->wfid);    
+    cape_udc_add_n     (values, "wsid"        , 0);
+    
+    // execute the query
+    // select w1.wfid, w1.id wsid from proc_worksteps w1 left join proc_worksteps w2 on w1.id = w2.prev and w1.sqtid = w2.sqtid where w2.id is NULL;
+    query_results = adbl_session_query (self->adbl_session, "flow_last_prev_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row)
+  {
+    *p_prev = cape_udc_get_n (first_row, "wsid", 0);
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_workstep__intern__fetch_prev_succ (FlowWorkstep self, number_t* p_prev, number_t* p_succ, number_t* p_pr_prev, number_t* p_sc_succ, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row;
+  
+  // flow_worksteps_prev_succ_view
+  // select ws.id, ws.wfid, ws.sqtid, ws.prev ws_prev, w2.id ws_succ, w4.prev pr_prev, w3.id sc_succ from proc_worksteps ws left join proc_worksteps w2 on w2.prev = ws.id left join proc_worksteps w3 on w3.prev = w2.id left join proc_worksteps w4 on w4.id = ws.prev;
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->wsid);
+    cape_udc_add_n      (params, "wfid"          , self->wfid);
+    cape_udc_add_n      (params, "sqtid"         , self->sqid);
+    
+    cape_udc_add_n      (values, "ws_prev"       , 0);
+    cape_udc_add_n      (values, "ws_succ"       , 0);
+    cape_udc_add_n      (values, "pr_prev"       , 0);
+    cape_udc_add_n      (values, "sc_succ"       , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_worksteps_prev_succ_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "error in fetching prev and succ of the workstep");
+    goto exit_and_cleanup;
+  }
+  
+  // get the values
+  *p_prev = cape_udc_get_n (first_row, "ws_prev", 0);
+  *p_succ = cape_udc_get_n (first_row, "ws_succ", 0);
+
+  // get the values
+  *p_pr_prev = cape_udc_get_n (first_row, "pr_prev", 0);
+  *p_sc_succ = cape_udc_get_n (first_row, "sc_succ", 0);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_workstep_add (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -123,7 +221,11 @@ int flow_workstep_add (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
   if (0 == prev)
   {
     // get laststepof this workflow
-    // select * from proc_worksteps w1 left join proc_worksteps w2 on w1.id = w2.prev and w1.sqtid = w2.sqtid where w2.id is NULL;
+    res = flow_workstep__intern__last_prev (self, &prev, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
   trx = adbl_trx_new (self->adbl_session, err);
@@ -312,7 +414,7 @@ int flow_workstep_rm (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "wfid"          , self->wfid);
     cape_udc_add_n      (params, "sqtid"         , self->sqid);
     
-    cape_udc_add_n      (params, "id"            , 0);
+    cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "p_data"        , 0);
     
     // execute the query
@@ -365,6 +467,190 @@ int flow_workstep_rm (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }    
   }
+  
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  
+  cape_udc_del (&query_results);
+  
+  flow_workstep_del (p_self);
+  return res;
+}
+//-----------------------------------------------------------------------------
+
+int flow_workstep__intern__swap (AdblTrx trx, number_t pr_prev, number_t ws_prev, number_t ws, number_t ws_succ, CapeErr err)
+{
+  int res;
+  
+  // update ws
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n    (params, "id"       , ws);
+    
+    if (pr_prev)
+    {
+      cape_udc_add_n    (values, "prev"   , pr_prev);
+    }
+    else
+    {
+      cape_udc_add_z    (values, "prev"   );
+    }
+    
+    // insert into database, return value is the primary key
+    res = adbl_trx_update (trx, "proc_worksteps", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // update prev
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n    (params, "id"       , ws_prev);
+    cape_udc_add_n    (values, "prev"     , ws);
+    
+    // insert into database, return value is the primary key
+    res = adbl_trx_update (trx, "proc_worksteps", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }      
+  }
+  
+  // update succ
+  if (ws_succ)
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n    (params, "id"       , ws_succ);
+    cape_udc_add_n    (values, "prev"     , ws_prev);
+    
+    // insert into database, return value is the primary key
+    res = adbl_trx_update (trx, "proc_worksteps", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }      
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_workstep_mv (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowWorkstep self = *p_self;
+  
+  number_t direction;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  AdblTrx trx = NULL;
+  
+  res = flow_workstep__intern__qin_check (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
+  if (self->wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workstep_rm} missing parameter 'wfid'");
+    goto exit_and_cleanup;
+  }
+  
+  self->wsid = cape_udc_get_n (qin->cdata, "wsid", 0);
+  if (self->wsid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workstep_rm} missing parameter 'wsid'");
+    goto exit_and_cleanup;
+  }
+  
+  direction = cape_udc_get_n (qin->cdata, "direction", 0);
+  
+  switch (direction)
+  {
+    case -1:
+    {
+      number_t ws_prev;
+      number_t ws_succ;
+      number_t pr_prev;
+      number_t sc_succ;
+      
+      res = flow_workstep__intern__fetch_prev_succ (self, &ws_prev, &ws_succ, &pr_prev, &sc_succ, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      if (ws_prev)
+      {
+        trx = adbl_trx_new (self->adbl_session, err);
+        if (NULL == trx)
+        {
+          res = cape_err_code (err);
+          goto exit_and_cleanup;
+        }
+        
+        res = flow_workstep__intern__swap (trx, pr_prev, ws_prev, self->wsid, ws_succ, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
+      }
+      
+      break;
+    }
+    case +1:
+    {
+      number_t ws_prev;
+      number_t ws_succ;
+      number_t pr_prev;
+      number_t sc_succ;
+      
+      res = flow_workstep__intern__fetch_prev_succ (self, &ws_prev, &ws_succ, &pr_prev, &sc_succ, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      if (ws_succ)
+      {
+        trx = adbl_trx_new (self->adbl_session, err);
+        if (NULL == trx)
+        {
+          res = cape_err_code (err);
+          goto exit_and_cleanup;
+        }
+        
+        res = flow_workstep__intern__swap (trx, ws_prev, self->wsid, ws_succ, sc_succ, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
+      }
+      
+      break;
+    }
+  }
+  
   
   adbl_trx_commit (&trx, err);
   res = CAPE_ERR_NONE;
