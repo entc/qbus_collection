@@ -275,6 +275,19 @@ static int __STDCALL qbus_flow__chain__get (QBus qbus, void* ptr, QBusM qin, QBu
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__chain__data (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowChain flow_chain = flow_chain_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return flow_chain_data (&flow_chain, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
   int res;
@@ -361,6 +374,10 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get logs of the process chain
   //   args:
   qbus_register (qbus, "chain_get"           , ctx, qbus_flow__chain__get, NULL, err);
+
+  // get data of the process chain
+  //   args: psid
+  qbus_register (qbus, "chain_data"          , ctx, qbus_flow__chain__data, NULL, err);
 
   // -------- callback methods --------------------------------------------
 
