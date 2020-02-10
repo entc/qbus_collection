@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.4)
 
-find_package (PythonLibs COMPONENTS Interpreter Development QUIET)
+find_package (Python3 COMPONENTS Interpreter Development QUIET)
 
-IF(PYTHON_LIBRARIES)
+IF(Python3_FOUND)
 
-  message (STATUS "PYTHON_INCLUDES  = ${PYTHON_INCLUDE_DIR}")
-  message (STATUS "PYTHON_LIBRARIES = ${PYTHON_LIBRARIES}")
+  message (STATUS "Python3_INCLUDE_DIRS  = ${Python3_INCLUDE_DIRS}")
+  message (STATUS "Python3_LIBRARIES = ${Python3_LIBRARIES}")
+  message (STATUS "Python3_VERSION = ${Python3_VERSION}")
 
   # abstract operation-system layer
   INCLUDE_DIRECTORIES("../../../cape/src" "../../src" ${PYTHON_INCLUDE_DIR})
@@ -22,7 +23,7 @@ IF(PYTHON_LIBRARIES)
   )
 
   add_library             (qbus_adapter_python SHARED ${ADAPTER_PYTHON_SOURCES} ${ADAPTER_PYTHON_HEADERS})
-  target_link_libraries   (qbus_adapter_python cape qbus ${PYTHON_LIBRARIES})
+  target_link_libraries   (qbus_adapter_python cape qbus ${Python3_LIBRARIES})
   set_target_properties   (qbus_adapter_python PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
   install (TARGETS qbus_adapter_python DESTINATION lib)
