@@ -9,7 +9,7 @@ IF(Python3_FOUND)
   message (STATUS "Python3_VERSION = ${Python3_VERSION}")
 
   # abstract operation-system layer
-  INCLUDE_DIRECTORIES("../../../cape/src" "../../src" ${PYTHON_INCLUDE_DIR})
+  INCLUDE_DIRECTORIES("../../../cape/src" "../../src" ${Python3_INCLUDE_DIRS})
 
   set(ADAPTER_PYTHON_SOURCES
     py_adapter.c
