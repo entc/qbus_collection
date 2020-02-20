@@ -1,4 +1,5 @@
 #include "flow_chain.h"
+#include "flow_run_dbw.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -14,6 +15,8 @@ struct FlowChain_s
   
   number_t wpid;               // workspace id
   number_t psid;               // process id
+  
+  CapeUdc pdatas;
 };
 
 //-----------------------------------------------------------------------------
@@ -28,6 +31,8 @@ FlowChain flow_chain_new (QBus qbus, AdblSession adbl_session)
   self->wpid = 0;
   self->psid = 0;
   
+  self->pdatas = NULL;
+  
   return self;
 }
 
@@ -37,8 +42,9 @@ void flow_chain_del (FlowChain* p_self)
 {
   if (*p_self)
   {
-    //FlowChain self = *p_self;
+    FlowChain self = *p_self;
     
+    cape_udc_del (&(self->pdatas));
     
     CAPE_DEL (p_self, struct FlowChain_s);
   }
@@ -297,6 +303,140 @@ int flow_chain_get (FlowChain* p_self, QBusM qin, QBusM qout, CapeErr err)
 exit_and_cleanup:
 
   adbl_trx_rollback (&trx, err);
+
+  cape_udc_del (&logs);
+  
+  flow_chain_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_data__seek (FlowChain self, number_t psid, CapeUdc data, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_data__next (FlowChain self, CapeUdc next, CapeUdc data, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdcCursor* cursor = cape_udc_cursor_new (next, CAPE_DIRECTION_FORW);
+
+  while (cape_udc_cursor_next (cursor))
+  {
+    res = flow_chain_data__seek (self, cape_udc_n (cursor->item, 0), data, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_udc_cursor_del (&cursor);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_data__seek (FlowChain self, number_t psid, CapeUdc data, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "chain get", "{fetch} get log of process, psid = %i", psid);
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , psid);
+
+    cape_udc_add_list   (values, "next");
+    cape_udc_add_node   (values, "data");
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_chain_data_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+
+  while (cape_udc_cursor_next (cursor))
+  {
+    // continue recursive
+    {
+      CapeUdc next = cape_udc_get (cursor->item, "next");
+      if (next)
+      {
+        res = flow_chain_data__next (self, next, data, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
+      }
+    }
+    
+    // data
+    {
+      CapeUdc content = cape_udc_ext (cursor->item, "data");
+      if (content)
+      {
+        cape_udc_add (data, &content);
+      }
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_data (FlowChain* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowChain self = *p_self;
+  
+  // local objects
+  CapeUdc data = NULL;
+  
+  res = flow_chain__intern__qin_check (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  data = cape_udc_new (CAPE_UDC_LIST, NULL);
+  
+  res = flow_chain_data__seek (self, self->psid, data, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_udc_replace_mv (&(qout->cdata), &data);
+  res = CAPE_ERR_NONE;
+    
+exit_and_cleanup:
+
+  cape_udc_del (&data);
 
   flow_chain_del (p_self);
   return res;

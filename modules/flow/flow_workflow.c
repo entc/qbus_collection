@@ -232,6 +232,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+void flow_workflow__intern__order (FlowWorkflow self, CapeUdc cdata, CapeUdc results)
+{
+  number_t prev = 0;
+  int run = TRUE;
+  
+  while (run)
+  {
+    CapeUdcCursor* cursor = cape_udc_cursor_new (results, CAPE_DIRECTION_FORW);
+    
+    // don't repeat again, if we won't find a match
+    run = FALSE;
+    
+    while (cape_udc_cursor_next (cursor))
+    {
+      number_t item_prev = cape_udc_get_n (cursor->item, "prev", 0);
+      
+      if (item_prev == prev)
+      {
+        CapeUdc item = cape_udc_cursor_ext (results, cursor);        
+
+        // set new prev
+        prev = cape_udc_get_n (item, "id", 0);
+
+        cape_udc_add (cdata, &item);
+        
+        run = TRUE;
+      }
+    }
+    
+    cape_udc_cursor_del (&cursor);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -247,7 +282,6 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
-
   if (self->wfid)
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -260,13 +294,29 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp  (values, "name"        , NULL);
     cape_udc_add_n     (values, "prev"        , 0);
     cape_udc_add_n     (values, "fctid"       , 0);
+    cape_udc_add_node  (values, "pdata"       );
     
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "proc_worksteps", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "flow_proc_worksteps_view", &params, &values, err);
     if (query_results == NULL)
     {
       goto exit_and_cleanup;
     }
+    
+    if (cape_udc_get_b (qin->cdata, "ordered", FALSE))
+    {
+      CapeUdc h = cape_udc_new (CAPE_UDC_LIST, NULL);
+      
+      flow_workflow__intern__order (self, h, query_results);
+      
+      cape_udc_replace_mv (&(qout->cdata), &h);
+    }
+    else
+    {
+      cape_udc_replace_mv (&(qout->cdata), &query_results);
+    }
+    
+    res = CAPE_ERR_NONE;
   }
   else
   {
@@ -274,19 +324,22 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_udc_add_n     (values, "id"          , 0);
     cape_udc_add_s_cp  (values, "name"        , NULL);
+    cape_udc_add_n     (values, "cnt"         , 0);
     
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "proc_workflows", NULL, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "flow_workflows_view", NULL, &values, err);
     if (query_results == NULL)
     {
       goto exit_and_cleanup;
     }
+
+    res = CAPE_ERR_NONE;
+    cape_udc_replace_mv (&(qout->cdata), &query_results);
   }
   
-  res = CAPE_ERR_NONE;
-  cape_udc_replace_mv (&(qout->cdata), &query_results);
-  
 exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
   
   flow_workflow_del (p_self);
   return res;

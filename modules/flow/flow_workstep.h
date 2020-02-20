@@ -29,6 +29,8 @@ __CAPE_LIBEX   int            flow_workstep_set         (FlowWorkstep*, QBusM qi
 
 __CAPE_LIBEX   int            flow_workstep_rm          (FlowWorkstep*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_workstep_mv          (FlowWorkstep*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int            flow_workstep_get         (FlowWorkstep*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------

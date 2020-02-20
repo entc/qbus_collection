@@ -25,6 +25,8 @@ __CAPE_LIBEX   void           flow_chain_del           (FlowChain*);
 
 __CAPE_LIBEX   int            flow_chain_get           (FlowChain*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_chain_data          (FlowChain*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LOCAL   int            flow_chain_get__fetch    (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err);
 
 //-----------------------------------------------------------------------------

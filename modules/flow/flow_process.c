@@ -413,6 +413,19 @@ int proc_taskflow_rm__entry (FlowProcess self, AdblTrx trx, number_t psid, CapeE
     }
   }
   
+  // remove the process
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    cape_udc_add_n      (params, "id"           , psid);
+
+    res = adbl_trx_delete (trx, "proc_tasks", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
   cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
@@ -427,19 +440,6 @@ int proc_taskflow_rm__entry (FlowProcess self, AdblTrx trx, number_t psid, CapeE
           goto exit_and_cleanup;
         }
       }
-    }
-  }
-
-  // remove the log entry
-  {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-
-    cape_udc_add_n      (params, "id"           , psid);
-
-    res = adbl_trx_delete (trx, "proc_tasks", &params, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
     }
   }
 
