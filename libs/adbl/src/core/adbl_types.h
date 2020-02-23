@@ -39,6 +39,7 @@ typedef CapeUdc   (__STDCALL *fct_adbl_pvd_cursor_get)    (void*);
 
 typedef int       (__STDCALL *fct_adbl_pvd_atomic_dec)    (void*, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr);
 typedef int       (__STDCALL *fct_adbl_pvd_atomic_inc)    (void*, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr);
+typedef int       (__STDCALL *fct_adbl_pvd_atomic_or)     (void*, const char* table, CapeUdc* p_params, const CapeString atomic_column, number_t or_val, CapeErr);
 
 //-----------------------------------------------------------------------------
 
@@ -61,6 +62,7 @@ typedef struct
   fct_adbl_pvd_cursor_get     pvd_cursor_get;
   fct_adbl_pvd_atomic_dec     pvd_atomic_dec;
   fct_adbl_pvd_atomic_inc     pvd_atomic_inc;
+  fct_adbl_pvd_atomic_or      pvd_atomic_or;
 
 } AdblPvd;
 

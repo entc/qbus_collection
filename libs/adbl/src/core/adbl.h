@@ -42,6 +42,9 @@ __CAPE_LIBEX   number_t           adbl_session_atomic_dec    (AdblSession, const
                                   /* increase a value of a column by 1, the result will be returned or an error if not possible */
 __CAPE_LIBEX   number_t           adbl_session_atomic_inc    (AdblSession, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr);
 
+                                  /* apply a binaer operation, the result will be returned or an error if not possible */
+__CAPE_LIBEX   number_t           adbl_session_atomic_or     (AdblSession, const char* table, CapeUdc* p_params, const CapeString atomic_value, number_t or_with, CapeErr);
+
 //=============================================================================
 
 struct AdblTrx_s; typedef struct AdblTrx_s* AdblTrx;
