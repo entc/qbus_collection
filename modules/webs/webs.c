@@ -702,6 +702,44 @@ int __STDCALL qbus_webs__rest (void* user_ptr, QWebsRequest request, CapeErr err
   return CAPE_ERR_NONE;
 }
 
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  // get a list of all known modules in the qbus subsystem
+  qout->cdata = qbus_modules (qbus);
+  
+  // debug
+  {
+    CapeString h = cape_json_to_s (qout->cdata);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "WSRV", "modules get", "got json: %s", h);
+    
+    cape_str_del (&h);
+  }
+  
+  return CAPE_ERR_NONE;  
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__restapi_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  // get a list of all known modules in the qbus subsystem
+  qout->cdata = qbus_modules (qbus);
+  
+  // debug
+  {
+    CapeString h = cape_json_to_s (qout->cdata);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "WSRV", "modules get", "got rest: %s", h);
+    
+    cape_str_del (&h);
+  }
+  
+  return CAPE_ERR_NONE;  
+}
+
 //-------------------------------------------------------------------------------------
 
 static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
@@ -739,6 +777,15 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
+  
+  // --------- RESTAPI callbacks -----------------------------
+  
+  qbus_register (qbus, "GET", webs, qbus_webs__restapi_get, NULL, err);
+  
+  // --------- register callbacks -----------------------------
+  
+  qbus_register (qbus, "modules_get", webs, qbus_webs__modules_get, NULL, err);
+  
   
   *p_ptr = webs;
   
