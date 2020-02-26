@@ -385,7 +385,7 @@ int adbl_prepare_execute (AdblPrepare self, AdblPvdSession session, CapeErr err)
 
 int adbl_prepare_prepare (AdblPrepare self, AdblPvdSession session, CapeStream stream, CapeErr err)
 {
-  //cape_log_msg (CAPE_LL_TRACE, "ADBL", "mysql **SQL**", cape_stream_get (stream));    
+  // cape_log_msg (CAPE_LL_TRACE, "ADBL", "mysql **SQL**", cape_stream_get (stream));    
 
   // execute
   if (mysql_stmt_prepare (self->stmt, cape_stream_get (stream), cape_stream_size (stream)) != 0)
@@ -903,6 +903,37 @@ int adbl_prepare_statement_atoinc (AdblPrepare self, AdblPvdSession session, con
   adbl_prepare_append_constraints__param (stream, ansi, atomic_value, table);
   cape_stream_append_str (stream, " + 1)");
   
+  self->params_used = adbl_prepare_append_where_clause (stream, ansi, self->params, table);
+  
+  res = adbl_prepare_prepare (self, session, stream, err);
+  
+  cape_stream_del (&stream);
+    
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int adbl_prepare_statement_atoor (AdblPrepare self, AdblPvdSession session, const char* schema, const char* table, int ansi, const CapeString atomic_value, number_t or_val, CapeErr err)
+{
+  int res;
+  
+  CapeStream stream = cape_stream_new ();
+
+  cape_stream_append_str (stream, "UPDATE ");
+  
+  adbl_pvd_append_table (stream, ansi, schema, table);
+  
+  cape_stream_append_str (stream, " SET ");
+
+  adbl_prepare_append_constraints__param (stream, ansi, atomic_value, table);
+
+  cape_stream_append_str (stream, " = LAST_INSERT_ID(");
+  adbl_prepare_append_constraints__param (stream, ansi, atomic_value, table);
+  cape_stream_append_str (stream, " | ");
+  cape_stream_append_n (stream, or_val);
+  cape_stream_append_str (stream, ")");
+
   self->params_used = adbl_prepare_append_where_clause (stream, ansi, self->params, table);
   
   res = adbl_prepare_prepare (self, session, stream, err);

@@ -314,6 +314,200 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 #endif
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// reduce input datetine from a certain time period defined in delta string format ( D2:h2:m2:s2:u2 ) and save it in result datetime 
+// Function doesn't change the time zone, so take care to use same time zone for input and result (e.g. both UTC)
+void  cape_datetime__remove_s (CapeDatetime* input,  const CapeString delta, CapeDatetime* result)
+{
+#if defined __WINDOWS_OS
+  
+    
+#else
+
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  time_timeval.tv_sec = cape_datetime_n__unix (input);
+  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+
+  CapeList tokens = cape_tokenizer_buf (delta, cape_str_size (delta), ':');
+  
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+    
+    while (cape_list_cursor_next (cursor))
+    {
+      const CapeString delta_part = cape_list_node_data (cursor->node);
+      
+      switch (delta_part[0])
+      {
+        case 'D':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 3600 * 24;
+          h.tv_usec = 0;
+
+          timersub (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'h':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 3600;
+          h.tv_usec = 0;
+
+          timersub (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'm':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 60;
+          h.tv_usec = 0;
+
+          timersub (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 's':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1);
+          h.tv_usec = 0;
+          
+         timersub (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'u':
+        {
+          struct timeval h;
+          
+          h.tv_sec = 0;
+          h.tv_usec = atol (delta_part + 1) * 1000;
+
+          timersub (&time_timeval, &h, &time_timeval);
+          break;
+        }
+      }
+    }
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+
+  cape_list_del (&tokens);
+  
+  time_tm = localtime(&(time_timeval.tv_sec));
+  
+  cape_datetime__convert_timeinfo (result, time_tm);
+  
+  result->msec = time_timeval.tv_usec / 1000;
+  result->usec = time_timeval.tv_usec;
+  
+  result->is_utc = TRUE;
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// append a certain time period defined in delta string format ( D2:h2:m2:s2:u2 ) and save it in result datetime
+// Function doesn't change the time zone, so take care to use same time zone for input and result (e.g. both UTC)
+void  cape_datetime__add_s (CapeDatetime* input,  const CapeString delta, CapeDatetime* result)
+{
+#if defined __WINDOWS_OS
+  
+    
+#else
+
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  time_timeval.tv_sec = cape_datetime_n__unix (input);
+  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+
+  CapeList tokens = cape_tokenizer_buf (delta, cape_str_size (delta), ':');
+  
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+    
+    while (cape_list_cursor_next (cursor))
+    {
+      const CapeString delta_part = cape_list_node_data (cursor->node);
+      
+      switch (delta_part[0])
+      {
+        case 'D':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 3600 * 24;
+          h.tv_usec = 0;
+
+          timeradd (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'h':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 3600;
+          h.tv_usec = 0;
+
+          timeradd (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'm':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1) * 60;
+          h.tv_usec = 0;
+
+          timeradd (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 's':
+        {
+          struct timeval h;
+          
+          h.tv_sec = atol (delta_part + 1);
+          h.tv_usec = 0;
+          
+         timeradd (&time_timeval, &h, &time_timeval);
+          break;
+        }
+        case 'u':
+        {
+          struct timeval h;
+          
+          h.tv_sec = 0;
+          h.tv_usec = atol (delta_part + 1) * 1000;
+
+          timeradd (&time_timeval, &h, &time_timeval);
+          break;
+        }
+      }
+    }
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+
+  cape_list_del (&tokens);
+  
+  time_tm = localtime(&(time_timeval.tv_sec));
+  
+  cape_datetime__convert_timeinfo (result, time_tm);
+  
+  result->msec = time_timeval.tv_usec / 1000;
+  result->usec = time_timeval.tv_usec;
+  
+  result->is_utc = TRUE;
+
+#endif
+}
+
 //-----------------------------------------------------------------------------
 
 int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)

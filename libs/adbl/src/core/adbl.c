@@ -135,6 +135,12 @@ AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
     goto exit;
   }
 
+  pvd.pvd_atomic_or = cape_dl_funct (hlib, "adbl_pvd_atomic_or", err);
+  if (pvd.pvd_atomic_or == NULL)
+  {
+    goto exit;
+  }
+
   {
     AdblCtx self = CAPE_NEW(struct AdblCtx_s);
     
@@ -257,6 +263,13 @@ number_t adbl_session_atomic_dec (AdblSession self, const char* table, CapeUdc* 
 number_t adbl_session_atomic_inc (AdblSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr err)
 {
   return self->pvd->pvd_atomic_inc (self->session, table, p_params, atomic_value, err);
+}
+
+//-----------------------------------------------------------------------------
+
+number_t adbl_session_atomic_or (AdblSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, number_t or_val, CapeErr err)
+{
+  return self->pvd->pvd_atomic_or (self->session, table, p_params, atomic_value, or_val, err);
 }
 
 //=============================================================================
