@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ConfigService } from 'qbus_auth/auth.service';
+import { ConfigService } from '@qbus/auth.service';
 
 describe('ConfigService', () => {
   beforeEach(() => TestBed.configureTestingModule({}));
