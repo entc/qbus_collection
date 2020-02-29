@@ -44,7 +44,79 @@ export class ConfigService
     return JSON.stringify ({"ha":iv, "id":CryptoJS.SHA256 (user).toString(), "da":hash2});
   }
 
-//-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
+
+  rest_PUT<T> (path: string, params: object): Observable<T>
+  {
+    var user = sessionStorage.getItem ('auth_user');
+    var pass = sessionStorage.getItem ('auth_pass');
+
+    const http_options = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass)})};
+
+    return this.http
+      .put<T>('rest/' + path, JSON.stringify (params), http_options)
+      .pipe(catchError(error => {
+
+        if (error.status == 401)
+        {
+          sessionStorage.removeItem ('auth_user');
+          sessionStorage.removeItem ('auth_pass');
+
+          this.state.modal = this.modalService.open (this.state.template, {ariaLabelledBy: 'modal-basic-title'});
+
+          this.state.modal.result.then((result) => {
+
+          }, () => {
+
+          });
+
+          return throwError(error);
+        }
+        else
+        {
+          return throwError(error);
+        }
+
+      }));
+  }
+
+  //---------------------------------------------------------------------------
+
+  rest_POST<T> (path: string, params: object): Observable<T>
+  {
+    var user = sessionStorage.getItem ('auth_user');
+    var pass = sessionStorage.getItem ('auth_pass');
+
+    const http_options = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass)})};
+
+    return this.http
+      .post<T>('rest/' + path, JSON.stringify (params), http_options)
+      .pipe(catchError(error => {
+
+        if (error.status == 401)
+        {
+          sessionStorage.removeItem ('auth_user');
+          sessionStorage.removeItem ('auth_pass');
+
+          this.state.modal = this.modalService.open (this.state.template, {ariaLabelledBy: 'modal-basic-title'});
+
+          this.state.modal.result.then((result) => {
+
+          }, () => {
+
+          });
+
+          return throwError(error);
+        }
+        else
+        {
+          return throwError(error);
+        }
+
+      }));
+  }
+
+  //---------------------------------------------------------------------------
 
   get<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
@@ -80,7 +152,7 @@ export class ConfigService
       }));
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   cre (user: string, pass: string): Observable<Object>
   {
