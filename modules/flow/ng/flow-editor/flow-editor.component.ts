@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { Observable } from 'rxjs';
 
 // auth service
 import { ConfigService, PageReloadService } from '@qbus/auth.service';
@@ -10,34 +11,24 @@ import { ConfigService, PageReloadService } from '@qbus/auth.service';
   selector: 'app-flow',
   templateUrl: './flow-editor.component.html',
   styleUrls: ['./flow-editor.component.scss'],
-  providers: [ConfigService, PageReloadService]
+  providers: [ConfigService, PageReloadService, NgbModal]
 })
-
 export class FlowEditorComponent implements OnInit {
 
-  workflows = new Array<IWorkflow>();
+  workflows: Observable<Array<IWorkflow>>;
 
-//-----------------------------------------------------------------------------
-
-  workflow_get ()
-  {
-    this.configService.get ('FLOW', 'workflow_get', {}).subscribe((data: Array<IWorkflow>) => {
-
-      this.workflows = data;
-
-    });
-  }
-
-//-----------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------
 
   constructor (private configService: ConfigService, private reloadService: PageReloadService, private modalService: NgbModal)
   {
   }
 
-//-----------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------
 
   ngOnInit()
   {
+    this.workflows = this.configService.get ('FLOW', 'workflow_get', {});
+
     this.reloadService.set (() => {
 
       this.workflow_get ();
@@ -47,7 +38,14 @@ export class FlowEditorComponent implements OnInit {
     this.reloadService.run ();
   }
 
-//-----------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------
+
+  workflow_get ()
+  {
+    this.workflows = this.configService.get ('FLOW', 'workflow_get', {});
+  }
+
+  //-----------------------------------------------------------------------------
 
   modal__workflow_add__open (content)
   {
@@ -102,6 +100,7 @@ export class FlowEditorComponent implements OnInit {
 class IWorkflow {
 
   public id: number;
+  public cnt: number;
   public name: string;
 
 }

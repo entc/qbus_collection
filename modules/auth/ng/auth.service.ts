@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
 import { throwError } from 'rxjs';
 import * as CryptoJS from 'crypto-js';
-import { NgbModal, NgbModalRef, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 
 //-----------------------------------------------------------------------------
 
@@ -55,12 +55,13 @@ export class ConfigService
 
     return this.http
       .put<T>('rest/' + path, JSON.stringify (params), http_options)
-      .pipe(catchError(error => {
+      .pipe (catchError ((error) => {
 
         if (error.status == 401)
         {
           sessionStorage.removeItem ('auth_user');
           sessionStorage.removeItem ('auth_pass');
+
 
           this.state.modal = this.modalService.open (this.state.template, {ariaLabelledBy: 'modal-basic-title'});
 
@@ -70,11 +71,13 @@ export class ConfigService
 
           });
 
-          return throwError(error);
+          console.log ('ERROR');
+
+          return throwError (error);
         }
         else
         {
-          return throwError(error);
+          return throwError (error);
         }
 
       }));
@@ -136,9 +139,10 @@ export class ConfigService
 
           this.state.modal = this.modalService.open (this.state.template, {ariaLabelledBy: 'modal-basic-title'});
 
+
           this.state.modal.result.then((result) => {
 
-          }, () => {
+          }, (data) => {
 
           });
 
@@ -184,13 +188,15 @@ export class ConfigService
 
 @Component({
   selector: 'login-modal-component',
-  templateUrl: './modal_login.html'
+  templateUrl: './modal_login.html',
+  providers: [ConfigService]
 }) export class LoginModalComponent {
 
   //-----------------------------------------------------------------------------
 
   constructor (private configService: ConfigService, private state: LoginState)
   {
+    console.log ('login modal component initialized');
   }
 
   //-----------------------------------------------------------------------------
@@ -210,6 +216,7 @@ export class LoginTemplateDirective
   constructor(loginTemplate: TemplateRef<any>, state: LoginState)
   {
     state.template = loginTemplate;
+    console.log ('login template initialized');
   }
 }
 
