@@ -149,7 +149,7 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       {
         cape_str_replace_cp (&(self->url), "/index.html");
       }
-      else if (cape_list_size (self->url_values) > 2)
+      else if (cape_list_size (self->url_values) >= 2)
       {
         // anaylse the URL if we have an API or not
         self->api = qwebs_get_api (self->webs, first_part);

@@ -122,6 +122,13 @@ export class ConfigService
 
   //---------------------------------------------------------------------------
 
+  rest_PATCH<T> (path: string, params: object): Observable<T>
+  {
+    return this.handle_errors<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.http_crypt4()));
+  }
+
+  //---------------------------------------------------------------------------
+
   json_get<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
     return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4()));

@@ -175,14 +175,14 @@ exit_and_cleanup:
 
   if (cape_err_code (err))
   {
-    cape_log_msg (CAPE_LL_ERROR, "WEBS", "on auth", cape_err_text (err));
+    cape_log_msg (CAPE_LL_ERROR, "WEBS", "on call", cape_err_text (err));
   }
   
   if (qin->cdata)
   {
     CapeString h = cape_json_to_s (qin->cdata);
     
-    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on auth", "having payload = %s", h);
+    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on call", "having payload = %s", h);
     
     cape_str_del (&h);
   }
