@@ -37,5 +37,7 @@ class LoginItem {
 
   public ltime: string;
   public workspace: string;
+  public ip: string;
+  public info: object;
 
 }
