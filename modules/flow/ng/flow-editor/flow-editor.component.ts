@@ -27,7 +27,7 @@ export class FlowEditorComponent implements OnInit {
 
   ngOnInit()
   {
-    this.workflows = this.configService.get ('FLOW', 'workflow_get', {});
+    this.workflows = this.configService.json_get ('FLOW', 'workflow_get', {});
 
     this.reloadService.set (() => {
 
@@ -42,7 +42,7 @@ export class FlowEditorComponent implements OnInit {
 
   workflow_get ()
   {
-    this.workflows = this.configService.get ('FLOW', 'workflow_get', {});
+    this.workflows = this.configService.json_get ('FLOW', 'workflow_get', {});
   }
 
   //-----------------------------------------------------------------------------
@@ -53,7 +53,7 @@ export class FlowEditorComponent implements OnInit {
 
       if (result)
       {
-        this.configService.get ('FLOW', 'workflow_add', {'name' : result.workflow_name}).subscribe(() => {
+        this.configService.json_get ('FLOW', 'workflow_add', {'name' : result.workflow_name}).subscribe(() => {
 
           this.workflow_get ();
 
@@ -71,7 +71,7 @@ export class FlowEditorComponent implements OnInit {
   {
     this.modalService.open(modal_id, {ariaLabelledBy: 'modal-basic-title'}).result.then((result) => {
 
-      this.configService.get ('FLOW', 'workflow_rm', {'wfid' : wfid}).subscribe(() => {
+      this.configService.json_get ('FLOW', 'workflow_rm', {'wfid' : wfid}).subscribe(() => {
 
         this.workflow_get ();
 
@@ -86,7 +86,7 @@ export class FlowEditorComponent implements OnInit {
 
   modal__process_add (wfid: number)
   {
-    this.configService.get ('SASA', 'flow_test', {'wfid' : wfid, 'sqtid' : 1}).subscribe(() => {
+    this.configService.json_get ('SASA', 'flow_test', {'wfid' : wfid, 'sqtid' : 1}).subscribe(() => {
 
 
 

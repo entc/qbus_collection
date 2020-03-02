@@ -69,7 +69,7 @@ export class FlowListComponent implements OnInit
 
   workstep_mv (ws: IWorkstep, direction: number)
   {
-    this.configService.get ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
+    this.configService.json_get ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
 
       this.workflow_get ();
     });
@@ -79,7 +79,7 @@ export class FlowListComponent implements OnInit
 
   workflow_get ()
   {
-    this.configService.get ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
+    this.configService.json_get ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
 
       this.worksteps = data;
 
@@ -96,7 +96,7 @@ export class FlowListComponent implements OnInit
 
       if (modal_content)
       {
-        this.configService.get ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : modal_content.id, 'sqid' : modal_content.sqtid}).subscribe(() => {
+        this.configService.json_get ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : modal_content.id, 'sqid' : modal_content.sqtid}).subscribe(() => {
 
           this.workflow_get ();
         });
@@ -140,7 +140,7 @@ export class FlowListComponent implements OnInit
         delete result.step_name;
         delete result.step_fctid;
 
-        this.configService.get ('FLOW', flow_method, {'wfid' : this.wfid, 'wsid' : modal_content ? modal_content.id : undefined, 'sqid' : 1, 'name': step_name, 'fctid': step_fctid, 'pdata': result}).subscribe(() => {
+        this.configService.json_get ('FLOW', flow_method, {'wfid' : this.wfid, 'wsid' : modal_content ? modal_content.id : undefined, 'sqid' : 1, 'name': step_name, 'fctid': step_fctid, 'pdata': result}).subscribe(() => {
 
           this.workflow_get ();
         });

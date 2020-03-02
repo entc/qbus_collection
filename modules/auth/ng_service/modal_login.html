@@ -1,0 +1,23 @@
+<form #userlogin = "ngForm" (ngSubmit) = "login_submit (userlogin)">
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-user"></i>&nbsp;&nbsp;login
+  </h4>
+</div>
+<div class="modal-body">
+
+  <div class="form-label-group">
+    <input type="text" id="inputEmail" class="form-control" placeholder="Email address" required autofocus ngModel name = "user">
+    <label for="inputEmail">Username</label>
+  </div>
+
+  <div class="form-label-group">
+    <input type="password" id="inputPassword" class="form-control" placeholder="Password" required ngModel name = "pass">
+    <label for="inputPassword">Password</label>
+  </div>
+
+</div>
+<div class="modal-footer">
+  <button type="submit" class="btn btn-primary">Login</button>
+</div>
+</form>

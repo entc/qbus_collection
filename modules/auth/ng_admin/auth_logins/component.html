@@ -1,0 +1,10 @@
+    <table class="table mt-2">
+      <tr>
+        <th></th>
+        <th width="100%">workplace</th>
+      </tr>
+      <tr *ngFor="let item of login_items | async">
+        <td>{{item.ltime}}</td>
+        <td>{{item.workplace}}</td>
+      </tr>
+    </table>

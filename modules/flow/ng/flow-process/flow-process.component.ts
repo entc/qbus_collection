@@ -34,7 +34,7 @@ export class FlowProcessComponent implements OnInit {
 
   processes_get ()
   {
-    this.configService.get ('FLOW', 'process_get', {}).subscribe((data: Array<IProcessStep>) => {
+    this.configService.json_get ('FLOW', 'process_get', {}).subscribe((data: Array<IProcessStep>) => {
 
       this.processes = data;
 
