@@ -55,7 +55,14 @@ export class ConfigService
     var pass = sessionStorage.getItem ('auth_pass');
     var wpid = sessionStorage.getItem ('auth_wpid');
 
-    return {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass, wpid)})};
+    if (user && pass)
+    {
+      return {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass, wpid)})};
+    }
+    else
+    {
+      return {};
+    }
   }
 
   //---------------------------------------------------------------------------
