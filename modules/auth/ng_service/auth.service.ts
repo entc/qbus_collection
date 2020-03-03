@@ -108,6 +108,13 @@ export class ConfigService
 
   //---------------------------------------------------------------------------
 
+  rest_GET<T> (path: string, params: object): Observable<T>
+  {
+    return this.handle_errors<T> (this.http.get<T>('rest/' + path, this.http_crypt4()));
+  }
+
+  //---------------------------------------------------------------------------
+
   rest_PUT<T> (path: string, params: object): Observable<T>
   {
     return this.handle_errors<T> (this.http.put<T>('rest/' + path, JSON.stringify (params), this.http_crypt4()));
