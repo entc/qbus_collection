@@ -242,6 +242,29 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
 
 //-----------------------------------------------------------------------------
 
+void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
+
+  qwebs_response__internal__identification (s);
+  
+  // mime type for JSON
+  {
+    cape_stream_append_str (s, "Content-Type: ");
+    cape_stream_append_str (s, "image/jpeg");
+    cape_stream_append_str (s, "\r\n");
+  }
+  
+  qwebs_response__internal__content_length (s, cape_str_size (buf));
+  cape_stream_append_str (s, "data:image/jpeg;base64,");
+  cape_stream_append_str (s, buf);
+}
+
+//-----------------------------------------------------------------------------
+
 void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeString mime, CapeErr err)
 {
   const CapeString http_code;

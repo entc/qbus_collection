@@ -298,6 +298,21 @@ void qwebs_request_send_file (QWebsRequest* p_self, CapeUdc file_node, CapeErr e
 
 //-----------------------------------------------------------------------------
 
+void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, CapeErr err)
+{
+  QWebsRequest self = *p_self;
+  
+  // local objects
+  CapeStream s = cape_stream_new ();
+
+  qwebs_response_buf (s, self->webs, buf);
+  
+  qwebs_connection_send (self->conn, &s);
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
 void qwebs_request_api (QWebsRequest* p_self)
 {
   int res;

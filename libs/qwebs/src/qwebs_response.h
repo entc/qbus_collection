@@ -17,6 +17,8 @@ __CAPE_LIBEX   void      qwebs_response_file      (CapeStream s, QWebs webs, Cap
 
 __CAPE_LIBEX   void      qwebs_response_json      (CapeStream s, QWebs webs, CapeUdc content);
 
+__CAPE_LIBEX   void      qwebs_response_buf       (CapeStream s, QWebs webs, const CapeString buf);
+
 __CAPE_LIBEX   void      qwebs_response_err       (CapeStream s, QWebs webs, CapeUdc content, const CapeString mime, CapeErr);
 
 //-----------------------------------------------------------------------------
