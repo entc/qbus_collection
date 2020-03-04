@@ -6,6 +6,7 @@
 
 // cape includes
 #include <hpp/cape_stc.hpp>
+#include <hpp/cape_sys.hpp>
 
 // qbus include
 #include <qbus.h>
@@ -89,7 +90,70 @@ namespace qbus
     
   };
   
+  //-----------------------------------------------------------------------------
+
+  template <typename C> struct NextMessageContext
+  {
+    typedef void(C::* fct_next_message)(qbus::Message& msg);
+    
+    fct_next_message fct;
+    C* ptr;
+  };
   
+  //-----------------------------------------------------------------------------
+
+  template <typename C> int __STDCALL send_next_message__on_message (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err);
+  
+  template <typename C> struct NextMessage
+  {
+    typedef void(C::* fct_next_message)(qbus::Message& msg);
+    
+    static void send (qbus::Message& msg, const char* module, const char* method, cape::Udc& content, C* ptr, fct_next_message fct)
+    {
+      cape::ErrHolder errh;
+      
+      msg.set_continue (content);
+      
+      NextMessageContext<C>* ctx = new NextMessageContext<C>;
+      
+      ctx->fct = fct;
+      ctx->ptr = ptr;
+      
+      int res = qbus_continue (msg.qbus(), module, method, msg.qin(), (void**)&ctx, send_next_message__on_message <C>, errh.err);      
+      
+      if (res != CAPE_ERR_CONTINUE)
+      {
+        throw cape::Exception (cape_err_code (errh.err), errh.text());
+      }
+    }
+  };
+  
+  //-----------------------------------------------------------------------------
+
+  template <typename C> int __STDCALL send_next_message__on_message (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+  {
+    int res;
+    NextMessageContext<C>* ctx = static_cast<NextMessageContext<C>*> (ptr);
+    
+    try
+    {
+      qbus::Message msg (qbus, qin, qout);
+      
+      // black magic to call a method
+      (ctx->ptr->*ctx->fct)(msg);
+      
+      res = msg.ret();
+    }
+    catch (std::runtime_error& e)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+    }
+    
+    delete ctx;
+    return res;
+  }
+  
+  //-----------------------------------------------------------------------------
 }
 
 #endif

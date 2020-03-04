@@ -723,6 +723,15 @@ int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL qbus_webs__stream_reg (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  printf ("register stream\n");
+  
+  return CAPE_ERR_NONE;  
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL qbus_webs__restapi_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   // get a list of all known modules in the qbus subsystem
@@ -786,6 +795,9 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   qbus_register (qbus, "modules_get", webs, qbus_webs__modules_get, NULL, err);
   
+  qbus_register (qbus, "stream_reg", webs, qbus_webs__stream_reg, NULL, err);
+
+  // --------- register callbacks -----------------------------
   
   *p_ptr = webs;
   
