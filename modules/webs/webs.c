@@ -723,11 +723,24 @@ int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qbus_webs__stream_reg (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+int __STDCALL qbus_webs__stream_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  
+  
   printf ("register stream\n");
   
-  return CAPE_ERR_NONE;  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__stream_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  
+  
+  printf ("register stream\n");
+  
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -795,8 +808,9 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   qbus_register (qbus, "modules_get", webs, qbus_webs__modules_get, NULL, err);
   
-  qbus_register (qbus, "stream_reg", webs, qbus_webs__stream_reg, NULL, err);
-
+  qbus_register (qbus, "stream_add", webs, qbus_webs__stream_add, NULL, err);
+  qbus_register (qbus, "stream_set", webs, qbus_webs__stream_set, NULL, err);
+  
   // --------- register callbacks -----------------------------
   
   *p_ptr = webs;
