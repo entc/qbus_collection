@@ -22,7 +22,7 @@ namespace qbus
     
   public:
     
-    Message (QBus qbus, QBusM qin, QBusM qout) : m_qbus (qbus), m_qin (qin), m_qout (qout), m_cdata_in (qin->cdata), m_ret (CAPE_ERR_NONE) {}
+    Message (QBus qbus, QBusM qin, QBusM qout) : m_qbus (qbus), m_qin (qin), m_qout (qout), m_cdata_in (qin->cdata), m_pdata_in (qin->pdata), m_ret (CAPE_ERR_NONE) {}
     
     void set_continue (cape::Udc& content)
     {
@@ -52,6 +52,8 @@ namespace qbus
       
       return m_cdata_in;
     }
+
+    cape::Udc& pdata () { return m_pdata_in; }
     
     cape::Udc output (int type)
     {
@@ -85,6 +87,7 @@ namespace qbus
     QBusM m_qout;
     
     cape::Udc m_cdata_in;
+    cape::Udc m_pdata_in;
     
     int m_ret;
     
@@ -122,6 +125,44 @@ namespace qbus
       int res = qbus_continue (msg.qbus(), module, method, msg.qin(), (void**)&ctx, send_next_message__on_message <C>, errh.err);      
       
       if (res != CAPE_ERR_CONTINUE)
+      {
+        throw cape::Exception (cape_err_code (errh.err), errh.text());
+      }
+    }
+  };
+  
+  //-----------------------------------------------------------------------------
+
+  template <typename C> struct NewMessage
+  {
+    typedef void(C::* fct_next_message)(qbus::Message& msg);
+    
+    static void send (QBus qbus, const char* module, const char* method, cape::Udc& pdata, cape::Udc& cdata, C* ptr, fct_next_message fct)
+    {
+      cape::ErrHolder errh;
+      
+      QBusM msg = qbus_message_new (NULL, NULL);
+      
+      if (pdata.valid())
+      {
+        msg->pdata = pdata.release ();
+      }
+      
+      if (cdata.valid())
+      {
+        msg->cdata = cdata.release ();
+      }
+      
+      NextMessageContext<C>* ctx = new NextMessageContext<C>;
+      
+      ctx->fct = fct;
+      ctx->ptr = ptr;
+      
+      int res = qbus_send (qbus, module, method, msg, (void*)ctx, send_next_message__on_message <C>, errh.err);
+
+      qbus_message_del (&msg);
+      
+      if (res)
       {
         throw cape::Exception (cape_err_code (errh.err), errh.text());
       }

@@ -495,6 +495,18 @@ namespace cape
     
     //-----------------------------------------------------------------------------
     
+    void add (const char* name, CapeString* p_value)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+      
+      cape_udc_add_s_mv (m_obj, name, p_value); 
+    }
+    
+    //-----------------------------------------------------------------------------
+    
     template <typename S, typename T> void add (S const &name, T const &val)
     {
       if (m_obj == NULL)

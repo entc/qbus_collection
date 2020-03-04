@@ -725,22 +725,75 @@ int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 int __STDCALL qbus_webs__stream_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  int res;
   
+  // local objects
+  CapeString token = NULL;
+
+
+  token = cape_str_uuid ();
   
   printf ("register stream\n");
+
+
+  res = CAPE_ERR_NONE;
+  qout->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   
-  return CAPE_ERR_NONE;
+  cape_udc_add_s_mv (qout->pdata, "token", &token);
+  
+exit_and_cleanup:
+  
+  cape_str_del (&token);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
 
 int __STDCALL qbus_webs__stream_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  int res;
   
+  // local objects
+  CapeString image = NULL;
+  const CapeString token;
   
-  printf ("register stream\n");
+  if (NULL == qin->pdata)
+  {
+    // post some weired message
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "no security role found");
+    goto exit_and_cleanup;
+  }
   
-  return CAPE_ERR_NONE;
+  token = cape_udc_get_s (qin->pdata, "token", NULL);
+  if (NULL == token)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "no token");
+    goto exit_and_cleanup;
+  }
+  
+  if (NULL == qin->cdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "cdata is NULL");
+    goto exit_and_cleanup;
+  }
+  
+  image = cape_udc_ext_s (qin->cdata, "image");
+  if (NULL == image)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "image is NULL");
+    goto exit_and_cleanup;
+  }
+  
+  printf ("got image: %li\n", cape_str_size (image));
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&image);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
