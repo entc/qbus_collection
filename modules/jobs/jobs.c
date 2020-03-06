@@ -33,6 +33,19 @@ static int __STDCALL qbus_jobs__list_add (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_jobs__list_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  JobsContext ctx = ptr;
+  
+  // create a temporary object
+  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->scheduler);
+  
+  // run the command
+  return jobs_list_get (&jobs_list, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 void qbus_jobs__ctx_del (JobsContext* p_self)
 {
   if (*p_self)
@@ -89,9 +102,13 @@ static int __STDCALL qbus_jobs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // -------- callback methods --------------------------------------------
   
-  // validate all email addresses
-  //   args: recipients
+  // add a new event to the list
+  //   args: 
   qbus_register (qbus, "list_add"       , ctx, qbus_jobs__list_add, NULL, err);
+
+  // get all job events
+  //   args: 
+  qbus_register (qbus, "list_get"       , ctx, qbus_jobs__list_get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

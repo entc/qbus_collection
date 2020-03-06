@@ -19,6 +19,11 @@ TARGET_LINK_LIBRARIES(qbus_mod_jobs qbus adbl2 qcrypt)
 
 install (TARGETS qbus_mod_jobs DESTINATION modules)
 
+# set some symlinks for direct starting
+add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/jobs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/jobs.json)
+add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/adbl_default.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl_default.json)
+add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
+
 # for docker
 INSTALL (TARGETS qbus_mod_jobs DESTINATION docker/jobs/mods)
 

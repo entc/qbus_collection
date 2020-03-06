@@ -1,26 +1,24 @@
 <div class="container mt-2">
 
+  <button (click)="jobs_add__modal_open ()" type="button" class="btn btn-success">schedule a job</button>
+
   <table class="table mt-2">
     <tr>
-      <th width="100%">name</th>
-      <th></th>
+      <th>start</th>
+      <th>stop</th>
       <th></th>
       <th></th>
     </tr>
-    <!--
-    <tr *ngFor="let pr of processes">
-      <td>{{wf.name}}</td>
+    <tr *ngFor="let item of job_list">
+      <td>{{item.event_start}}</td>
       <td>
-
-      </td>
+      <td>{{item.event_stop}}</td>
       <td>
-
-      </td>
+      <td>{{item.active}}</td>
       <td>
-
-      </td>
+      <td>{{item.repeated}}</td>
+      <td>
     </tr>
-    -->
   </table>
 
 </div>
