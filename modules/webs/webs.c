@@ -16,6 +16,7 @@
 #include <sys/cape_mutex.h>
 #include <fmt/cape_tokenizer.h>
 #include <fmt/cape_json.h>
+#include <aio/cape_aio_timer.h>
 
 //-----------------------------------------------------------------------------
 
@@ -50,6 +51,9 @@ struct WebsStream_s
   CapeString image;
   
   CapeMutex mutex;
+  
+  number_t cnt;
+  number_t len;
   
 }; typedef struct WebsStream_s* WebsStream;
 
@@ -725,8 +729,6 @@ int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err
   
   if (self->image)
   {
-    printf ("SEND IMAGE: %li\n", cape_str_size (self->image));
-    
     qwebs_request_send_buf (&h, self->image, err);
   }
   else
@@ -824,9 +826,10 @@ int __STDCALL qbus_webs__stream_set (QBus qbus, void* ptr, QBusM qin, QBusM qout
     goto exit_and_cleanup;
   }
   
-  printf ("[%p] got image: %li\n", self, cape_str_size (image));
-  
   cape_mutex_lock (self->mutex);
+  
+  self->cnt++;
+  self->len = self->len + cape_str_size (image);
   
   cape_str_replace_mv (&(self->image), &image);
 
@@ -839,6 +842,24 @@ exit_and_cleanup:
   cape_str_del (&image);
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL qbus_webs__stream__on_timer (void* ptr)
+{
+  WebsStream self = ptr;
+  
+  cape_mutex_lock (self->mutex);
+
+  cape_log_fmt (CAPE_LL_DEBUG, "WSRV", "stream stats", "stream: %li images/s, %f kb/s", self->cnt, (double)self->len / 1024);
+
+  self->cnt = 0;
+  self->len = 0;
+  
+  cape_mutex_unlock (self->mutex);
+  
+  return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -880,10 +901,14 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   QWebs webs = qwebs_new (site, host, port, threads, pages, route_list);
   
+  CapeAioTimer timer = cape_aio_timer_new ();
+
   WebsStream s = CAPE_NEW (struct WebsStream_s);
 
   s->image = NULL;
   s->mutex = cape_mutex_new ();
+  s->cnt = 0;
+  s->len = 0;
   
   printf ("STREAM %p\n", s);
 
@@ -910,7 +935,19 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
-    
+  
+  res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = cape_aio_timer_add (&timer, qbus_aio (qbus));
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+      
   // --------- RESTAPI callbacks -----------------------------
   
   qbus_register (qbus, "GET", webs, qbus_webs__restapi_get, NULL, err);

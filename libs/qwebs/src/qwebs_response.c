@@ -254,12 +254,14 @@ void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf)
   // mime type for JSON
   {
     cape_stream_append_str (s, "Content-Type: ");
-    cape_stream_append_str (s, "image/jpeg");
+    cape_stream_append_str (s, "text/plain");
     cape_stream_append_str (s, "\r\n");
   }
   
-  qwebs_response__internal__content_length (s, cape_str_size (buf));
-  cape_stream_append_str (s, "data:image/jpeg;base64,");
+  CapeString data_url = "data:image/jpeg;base64,";
+  
+  qwebs_response__internal__content_length (s, cape_str_size (data_url) + cape_str_size (buf));
+  cape_stream_append_str (s, data_url);
   cape_stream_append_str (s, buf);
 }
 
