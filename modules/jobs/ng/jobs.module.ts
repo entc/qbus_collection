@@ -12,7 +12,7 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  declarations: [JobsAddModalComponent],
+  declarations: [JobsListComponent, JobsAddModalComponent],
   imports: [CommonModule, FormsModule, NgbModule, QbngModule, RouterModule.forChild(routes)],
   exports: [RouterModule],
   entryComponents: [JobsAddModalComponent]
