@@ -3,7 +3,7 @@ import { ActivatedRoute, Params } from '@angular/router';
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
 
 // auth service
-import { ConfigService } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ import { ConfigService } from '@qbus/auth.service';
   selector: 'app-flow-list',
   templateUrl: './flow-list.component.html',
   styleUrls: ['./flow-list.component.scss'],
-  providers: [ConfigService]
+  providers: [AuthService]
 })
 
 export class FlowListComponent implements OnInit
@@ -34,7 +34,7 @@ export class FlowListComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private configService: ConfigService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private AuthService: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
   {
   }
 
@@ -69,7 +69,7 @@ export class FlowListComponent implements OnInit
 
   workstep_mv (ws: IWorkstep, direction: number)
   {
-    this.configService.json_get ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
+    this.AuthService.json_rpc ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
 
       this.workflow_get ();
     });
@@ -79,7 +79,7 @@ export class FlowListComponent implements OnInit
 
   workflow_get ()
   {
-    this.configService.json_get ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
+    this.AuthService.json_rpc ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
 
       this.worksteps = data;
 
@@ -96,7 +96,7 @@ export class FlowListComponent implements OnInit
 
       if (modal_content)
       {
-        this.configService.json_get ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : modal_content.id, 'sqid' : modal_content.sqtid}).subscribe(() => {
+        this.AuthService.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : modal_content.id, 'sqid' : modal_content.sqtid}).subscribe(() => {
 
           this.workflow_get ();
         });
@@ -140,7 +140,7 @@ export class FlowListComponent implements OnInit
         delete result.step_name;
         delete result.step_fctid;
 
-        this.configService.json_get ('FLOW', flow_method, {'wfid' : this.wfid, 'wsid' : modal_content ? modal_content.id : undefined, 'sqid' : 1, 'name': step_name, 'fctid': step_fctid, 'pdata': result}).subscribe(() => {
+        this.AuthService.json_rpc ('FLOW', flow_method, {'wfid' : this.wfid, 'wsid' : modal_content ? modal_content.id : undefined, 'sqid' : 1, 'name': step_name, 'fctid': step_fctid, 'pdata': result}).subscribe(() => {
 
           this.workflow_get ();
         });

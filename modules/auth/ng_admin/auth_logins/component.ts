@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 
 // auth service
-import { ConfigService, PageReloadService } from '@qbus/auth.service';
+import { AuthService, PageReloadService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
@@ -10,7 +10,7 @@ import { ConfigService, PageReloadService } from '@qbus/auth.service';
   selector: 'app-flow',
   templateUrl: './component.html',
   styleUrls: ['./component.scss'],
-  providers: [ConfigService, PageReloadService]
+  providers: [AuthService, PageReloadService]
 })
 export class AuthLoginsComponent implements OnInit {
 
@@ -18,7 +18,7 @@ export class AuthLoginsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private configService: ConfigService)
+  constructor (private AuthService: AuthService)
   {
   }
 
@@ -26,7 +26,7 @@ export class AuthLoginsComponent implements OnInit {
 
   ngOnInit()
   {
-    this.login_items = this.configService.json_get ('AUTH', 'ui_login_get', {});
+    this.login_items = this.AuthService.json_rpc ('AUTH', 'ui_login_get', {});
   }
 
 }

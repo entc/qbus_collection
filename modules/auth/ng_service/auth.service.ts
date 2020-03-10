@@ -4,17 +4,17 @@ import { Observable } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
 import { throwError } from 'rxjs';
 import * as CryptoJS from 'crypto-js';
-import { NgbModal, NgbModalRef, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { NgForm } from '@angular/forms';
 
 //-----------------------------------------------------------------------------
 
 @Injectable()
-export class ConfigService
+export class AuthService
 {
   fetch_login: boolean;
 
-  constructor(private http: HttpClient, private modalService: NgbModal, private reloadService: PageReloadService)
+  constructor(private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
   }
@@ -143,7 +143,7 @@ export class ConfigService
 
   //---------------------------------------------------------------------------
 
-  json_get<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
+  json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
     return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4()));
   }
@@ -152,7 +152,7 @@ export class ConfigService
 
   gpg ()
   {
-    this.json_get ('AUTH', 'globperson_get', {}).subscribe((data: Object) => {
+    this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Object) => {
 
       this.fetch_login = false;
 
@@ -182,8 +182,6 @@ export class ConfigService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-
-    this.reloadService.run ();
   }
 
   //-----------------------------------------------------------------------------
@@ -210,7 +208,7 @@ export class ConfigService
 @Component({
   selector: 'auth-login-modal-component',
   templateUrl: './modal_login.html',
-  providers: [ConfigService]
+  providers: [AuthService]
 }) export class AuthLoginModalComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
@@ -239,7 +237,7 @@ export class ConfigService
 @Component({
   selector: 'auth-logout-modal-component',
   templateUrl: './modal_logout.html',
-  providers: [ConfigService]
+  providers: [AuthService]
 }) export class AuthLogoutModalComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
@@ -274,7 +272,7 @@ export class ConfigService
 @Component({
   selector: 'auth-wpace-modal-component',
   templateUrl: './modal_workspaces.html',
-  providers: [ConfigService]
+  providers: [AuthService]
 }) export class AuthWorkspacesModalComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
@@ -302,26 +300,3 @@ export class ConfigService
 }
 
 //-----------------------------------------------------------------------------
-
-@Injectable()
-export class PageReloadService
-{
-  cb : CallableFunction = undefined;
-
-  constructor()
-  {
-  }
-
-  set (cb: CallableFunction)
-  {
-    this.cb = cb;
-  }
-
-  run ()
-  {
-    if (this.cb)
-    {
-      this.cb ();
-    }
-  }
-}

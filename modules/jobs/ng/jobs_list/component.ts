@@ -4,14 +4,14 @@ import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
 
 // auth service
-import { ConfigService } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
 @Component({
   selector: 'app-jobs-list',
   templateUrl: './component.html',
-  providers: [ConfigService]
+  providers: [AuthService]
 })
 
 export class JobsListComponent implements OnInit {
@@ -20,7 +20,7 @@ export class JobsListComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private configService: ConfigService, private modalService: NgbModal)
+  constructor(private AuthService: AuthService, private modalService: NgbModal)
   {
   }
 
@@ -34,7 +34,7 @@ export class JobsListComponent implements OnInit {
 
   jobs_get ()
   {
-    this.job_list = this.configService.json_get ('JOBS', 'list_get', {});
+    this.job_list = this.AuthService.json_rpc ('JOBS', 'list_get', {});
   }
 
   //-----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ export class JobsListComponent implements OnInit {
 
     modal.result.then((result) => {
 
-      this.configService.json_get ('JOBS', 'list_add', {}).subscribe((data: Object) => {
+      this.AuthService.json_rpc ('JOBS', 'list_add', {}).subscribe((data: Object) => {
 
         this.jobs_get ();
       });
@@ -72,7 +72,7 @@ class JobItem
 @Component({
   selector: 'jobs-add-modal-component',
   templateUrl: './modal_add.html',
-  providers: [ConfigService]
+  providers: [AuthService]
 }) export class JobsAddModalComponent implements OnInit {
 
   //-----------------------------------------------------------------------------

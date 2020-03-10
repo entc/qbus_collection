@@ -3,7 +3,7 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
 // auth service
-import { ConfigService, PageReloadService } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ import { ConfigService, PageReloadService } from '@qbus/auth.service';
   selector: 'app-flow',
   templateUrl: './flow-editor.component.html',
   styleUrls: ['./flow-editor.component.scss'],
-  providers: [ConfigService, PageReloadService, NgbModal]
+  providers: [AuthService, NgbModal]
 })
 export class FlowEditorComponent implements OnInit {
 
@@ -19,7 +19,7 @@ export class FlowEditorComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private configService: ConfigService, private reloadService: PageReloadService, private modalService: NgbModal)
+  constructor (private AuthService: AuthService, private modalService: NgbModal)
   {
   }
 
@@ -27,22 +27,14 @@ export class FlowEditorComponent implements OnInit {
 
   ngOnInit()
   {
-    this.workflows = this.configService.json_get ('FLOW', 'workflow_get', {});
-
-    this.reloadService.set (() => {
-
-      this.workflow_get ();
-
-    });
-
-    this.reloadService.run ();
+    this.workflows = this.AuthService.json_rpc ('FLOW', 'workflow_get', {});
   }
 
   //-----------------------------------------------------------------------------
 
   workflow_get ()
   {
-    this.workflows = this.configService.json_get ('FLOW', 'workflow_get', {});
+    this.workflows = this.AuthService.json_rpc ('FLOW', 'workflow_get', {});
   }
 
   //-----------------------------------------------------------------------------
@@ -53,7 +45,7 @@ export class FlowEditorComponent implements OnInit {
 
       if (result)
       {
-        this.configService.json_get ('FLOW', 'workflow_add', {'name' : result.workflow_name}).subscribe(() => {
+        this.AuthService.json_rpc ('FLOW', 'workflow_add', {'name' : result.workflow_name}).subscribe(() => {
 
           this.workflow_get ();
 
@@ -71,7 +63,7 @@ export class FlowEditorComponent implements OnInit {
   {
     this.modalService.open(modal_id, {ariaLabelledBy: 'modal-basic-title'}).result.then((result) => {
 
-      this.configService.json_get ('FLOW', 'workflow_rm', {'wfid' : wfid}).subscribe(() => {
+      this.AuthService.json_rpc ('FLOW', 'workflow_rm', {'wfid' : wfid}).subscribe(() => {
 
         this.workflow_get ();
 
@@ -86,7 +78,7 @@ export class FlowEditorComponent implements OnInit {
 
   modal__process_add (wfid: number)
   {
-    this.configService.json_get ('SASA', 'flow_test', {'wfid' : wfid, 'sqtid' : 1}).subscribe(() => {
+    this.AuthService.json_rpc ('SASA', 'flow_test', {'wfid' : wfid, 'sqtid' : 1}).subscribe(() => {
 
 
 

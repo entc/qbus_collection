@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
 
 // auth service
-import { ConfigService } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
@@ -10,7 +10,7 @@ import { ConfigService } from '@qbus/auth.service';
   selector: 'app-flow-process',
   templateUrl: './flow-process.component.html',
   styleUrls: ['./flow-process.component.scss'],
-  providers: [ConfigService]
+  providers: [AuthService]
 })
 
 export class FlowProcessComponent implements OnInit {
@@ -19,7 +19,7 @@ export class FlowProcessComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private configService: ConfigService, private modalService: NgbModal)
+  constructor(private AuthService: AuthService, private modalService: NgbModal)
   {
   }
 
@@ -34,7 +34,7 @@ export class FlowProcessComponent implements OnInit {
 
   processes_get ()
   {
-    this.configService.json_get ('FLOW', 'process_get', {}).subscribe((data: Array<IProcessStep>) => {
+    this.AuthService.json_rpc ('FLOW', 'process_get', {}).subscribe((data: Array<IProcessStep>) => {
 
       this.processes = data;
 
