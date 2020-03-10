@@ -1,6 +1,6 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Injector } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
 import { throwError } from 'rxjs';
 import * as CryptoJS from 'crypto-js';
@@ -13,10 +13,14 @@ import { NgForm } from '@angular/forms';
 export class AuthService
 {
   fetch_login: boolean;
+  public auth_credentials: BehaviorSubject<AuthCredential>;
 
-  constructor(private http: HttpClient, private modalService: NgbModal)
+  constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
+    this.auth_credentials = new BehaviorSubject<AuthCredential> ({firstname: undefined, lastname: undefined});
+
+    this.gpg ();
   }
 
   //-----------------------------------------------------------------------------
@@ -152,9 +156,10 @@ export class AuthService
 
   gpg ()
   {
-    this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Object) => {
+    this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Array<AuthCredential>) => {
 
       this.fetch_login = false;
+      this.auth_credentials.next (data[0]);
 
     });
   }
@@ -182,6 +187,7 @@ export class AuthService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
+    this.auth_credentials.next ({firstname: undefined, lastname: undefined});
   }
 
   //-----------------------------------------------------------------------------
@@ -203,27 +209,32 @@ export class AuthService
   //-----------------------------------------------------------------------------
 }
 
-//-----------------------------------------------------------------------------
+class AuthCredential
+{
+  firstname: string;
+  lastname: string;
+}
+
+//=============================================================================
 
 @Component({
   selector: 'auth-login-modal-component',
-  templateUrl: './modal_login.html',
-  providers: [AuthService]
+  templateUrl: './modal_login.html'
 }) export class AuthLoginModalComponent implements OnInit {
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   constructor (public activeModal: NgbActiveModal)
   {
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   ngOnInit()
   {
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   login_submit (form: NgForm)
   {
@@ -232,34 +243,33 @@ export class AuthService
   }
 }
 
-//-----------------------------------------------------------------------------
+//=============================================================================
 
 @Component({
   selector: 'auth-logout-modal-component',
-  templateUrl: './modal_logout.html',
-  providers: [AuthService]
+  templateUrl: './modal_logout.html'
 }) export class AuthLogoutModalComponent implements OnInit {
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   constructor (public activeModal: NgbActiveModal)
   {
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   ngOnInit()
   {
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   logout_submit ()
   {
     this.activeModal.close ();
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
   logout_cancel ()
   {
@@ -267,31 +277,36 @@ export class AuthService
   }
 }
 
-//-----------------------------------------------------------------------------
+//=============================================================================
 
 @Component({
   selector: 'auth-wpace-modal-component',
-  templateUrl: './modal_workspaces.html',
-  providers: [AuthService]
+  templateUrl: './modal_workspaces.html'
 }) export class AuthWorkspacesModalComponent implements OnInit {
 
-  //-----------------------------------------------------------------------------
-
   workspaces: any;
+
+  //---------------------------------------------------------------------------
 
   constructor (public activeModal: NgbActiveModal, private response: HttpErrorResponse)
   {
     this.workspaces = response.error;
   }
 
+  //---------------------------------------------------------------------------
+
   ngOnInit()
   {
   }
+
+  //---------------------------------------------------------------------------
 
   select_workspace (wpid: number)
   {
     this.activeModal.close (wpid);
   }
+
+  //---------------------------------------------------------------------------
 
   select_cancel ()
   {
@@ -299,4 +314,32 @@ export class AuthService
   }
 }
 
-//-----------------------------------------------------------------------------
+//=============================================================================
+
+@Component({
+  selector: 'auth-service-component',
+  templateUrl: './component_service.html'
+}) export class AuthServiceComponent {
+
+  public auth_credentials: BehaviorSubject<AuthCredential>;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_service: AuthService)
+  {
+    this.auth_credentials = auth_service.auth_credentials;
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  logout ()
+  {
+    this.auth_service.logout ();
+  }
+}

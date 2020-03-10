@@ -9,8 +9,7 @@ import { AuthService } from '@qbus/auth.service';
 @Component({
   selector: 'app-flow-process',
   templateUrl: './flow-process.component.html',
-  styleUrls: ['./flow-process.component.scss'],
-  providers: [AuthService]
+  styleUrls: ['./flow-process.component.scss']
 })
 
 export class FlowProcessComponent implements OnInit {

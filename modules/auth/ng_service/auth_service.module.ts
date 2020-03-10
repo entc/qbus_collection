@@ -3,13 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 // auth services
-import { AuthService, AuthLoginModalComponent, AuthLogoutModalComponent, AuthWorkspacesModalComponent } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
+import { AuthLoginModalComponent, AuthLogoutModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent } from '@qbus/auth.service';
 
 @NgModule({
   declarations: [
     AuthLoginModalComponent,
     AuthLogoutModalComponent,
     AuthWorkspacesModalComponent,
+    AuthServiceComponent
   ],
   providers: [AuthService],
   imports: [CommonModule, FormsModule],
@@ -18,6 +20,7 @@ import { AuthService, AuthLoginModalComponent, AuthLogoutModalComponent, AuthWor
     AuthLogoutModalComponent,
     AuthWorkspacesModalComponent
   ],
+  exports: [AuthServiceComponent]
 })
 export class AuthServiceModule
 {

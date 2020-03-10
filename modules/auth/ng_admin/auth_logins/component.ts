@@ -2,15 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
 
 // auth service
-import { AuthService, PageReloadService } from '@qbus/auth.service';
+import { AuthService } from '@qbus/auth.service';
 
 //-----------------------------------------------------------------------------
 
 @Component({
   selector: 'app-flow',
   templateUrl: './component.html',
-  styleUrls: ['./component.scss'],
-  providers: [AuthService, PageReloadService]
+  styleUrls: ['./component.scss']
 })
 export class AuthLoginsComponent implements OnInit {
 

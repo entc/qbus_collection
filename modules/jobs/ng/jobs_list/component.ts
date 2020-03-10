@@ -10,8 +10,7 @@ import { AuthService } from '@qbus/auth.service';
 
 @Component({
   selector: 'app-jobs-list',
-  templateUrl: './component.html',
-  providers: [AuthService]
+  templateUrl: './component.html'
 })
 
 export class JobsListComponent implements OnInit {
@@ -71,8 +70,7 @@ class JobItem
 
 @Component({
   selector: 'jobs-add-modal-component',
-  templateUrl: './modal_add.html',
-  providers: [AuthService]
+  templateUrl: './modal_add.html'
 }) export class JobsAddModalComponent implements OnInit {
 
   //-----------------------------------------------------------------------------

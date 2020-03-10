@@ -10,8 +10,7 @@ import { AuthService } from '@qbus/auth.service';
 @Component({
   selector: 'app-flow-list',
   templateUrl: './flow-list.component.html',
-  styleUrls: ['./flow-list.component.scss'],
-  providers: [AuthService]
+  styleUrls: ['./flow-list.component.scss']
 })
 
 export class FlowListComponent implements OnInit

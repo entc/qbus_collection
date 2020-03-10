@@ -10,8 +10,7 @@ import { AuthService } from '@qbus/auth.service';
 @Component({
   selector: 'app-flow',
   templateUrl: './flow-editor.component.html',
-  styleUrls: ['./flow-editor.component.scss'],
-  providers: [AuthService, NgbModal]
+  styleUrls: ['./flow-editor.component.scss']
 })
 export class FlowEditorComponent implements OnInit {
 
