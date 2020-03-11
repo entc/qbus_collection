@@ -4,22 +4,20 @@ import { FormsModule } from '@angular/forms';
 
 // auth services
 import { AuthService } from '@qbus/auth.service';
-import { AuthLoginModalComponent, AuthLogoutModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent } from '@qbus/auth.service';
-import { AuthLoginsComponent } from '@qbus/auth_logins/component';
+import { AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent } from '@qbus/auth.service';
 
 @NgModule({
   declarations: [
     AuthLoginModalComponent,
-    AuthLogoutModalComponent,
+    AuthInfoModalComponent,
     AuthWorkspacesModalComponent,
-    AuthServiceComponent,
-    AuthLoginsComponent
+    AuthServiceComponent
   ],
   providers: [AuthService],
   imports: [CommonModule, FormsModule],
   entryComponents: [
     AuthLoginModalComponent,
-    AuthLogoutModalComponent,
+    AuthInfoModalComponent,
     AuthWorkspacesModalComponent
   ],
   exports: [AuthServiceComponent]

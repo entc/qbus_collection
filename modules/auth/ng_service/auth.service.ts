@@ -192,9 +192,9 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
-  logout ()
+  info ()
   {
-    var modalRef = this.modalService.open (AuthLogoutModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"});
+    var modalRef = this.modalService.open (AuthInfoModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", size: "lg", centered: true});
 
     modalRef.result.then((result) => {
 
@@ -247,13 +247,16 @@ class AuthCredential
 
 @Component({
   selector: 'auth-logout-modal-component',
-  templateUrl: './modal_logout.html'
-}) export class AuthLogoutModalComponent implements OnInit {
+  templateUrl: './modal_info.html'
+}) export class AuthInfoModalComponent implements OnInit {
+
+  public auth_credentials: BehaviorSubject<AuthCredential>;
 
   //---------------------------------------------------------------------------
 
-  constructor (public activeModal: NgbActiveModal)
+  constructor (public auth_service: AuthService, public modal: NgbActiveModal)
   {
+    this.auth_credentials = auth_service.auth_credentials;
   }
 
   //---------------------------------------------------------------------------
@@ -266,14 +269,14 @@ class AuthCredential
 
   logout_submit ()
   {
-    this.activeModal.close ();
+    this.modal.close ();
   }
 
   //---------------------------------------------------------------------------
 
   logout_cancel ()
   {
-    this.activeModal.dismiss ();
+    this.modal.dismiss ();
   }
 }
 
@@ -338,8 +341,8 @@ class AuthCredential
 
   //---------------------------------------------------------------------------
 
-  logout ()
+  info ()
   {
-    this.auth_service.logout ();
+    this.auth_service.info ();
   }
 }
