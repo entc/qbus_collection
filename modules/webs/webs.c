@@ -910,8 +910,6 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   s->cnt = 0;
   s->len = 0;
   
-  printf ("STREAM %p\n", s);
-
   res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
   if (res)
   {
@@ -936,6 +934,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
     goto exit_and_cleanup;
   }
   
+  /*
   res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);
   if (res)
   {
@@ -947,7 +946,8 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
-      
+  */
+
   // --------- RESTAPI callbacks -----------------------------
   
   qbus_register (qbus, "GET", webs, qbus_webs__restapi_get, NULL, err);

@@ -79,5 +79,14 @@ int main (int argc, char *argv[])
     cape_udc_del (&m);
   }
   
+  // parser tests
+  {
+    const CapeString text = "{\"self\":\"https:\\/\\/rest.spryngsms.com\\/v1\\/messages\\/9009f688-fe85-43cb-9233-759b8a066b5a\"}";
+    
+    CapeUdc h = cape_json_from_s (text);
+    
+    
+  }
+  
   return 0;
 }
