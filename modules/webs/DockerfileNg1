@@ -1,6 +1,7 @@
 FROM qore:1.0.0
 
 COPY docker/webs .
+COPY docker/webs_ng1 /mods/site
 
 WORKDIR /mods
 

@@ -24,7 +24,7 @@ INSTALL (TARGETS qbus_mod_webs DESTINATION docker/webs/mods)
 add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/webs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/webs.json)
 
 # remove none used ones (needs to fix)
-INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_webs:1.0.0)")
+INSTALL (CODE "execute_process(COMMAND docker image rm qbus_webs_ng1:1.0.0)")
 
 # build the docker image
-INSTALL (CODE "execute_process(COMMAND docker build -t qbus_mod_webs:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
+INSTALL (CODE "execute_process(COMMAND docker build -t qbus_webs_ng1:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/DockerfileNg1 ${CMAKE_INSTALL_PREFIX})")
