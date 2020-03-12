@@ -14,7 +14,7 @@ struct JobsList_s
 {
   QBus qbus;                          // reference
   AdblSession adbl_session;           // reference
-  JobsScheduler scheduler;            // reference
+  QJobs jobs;                         // reference
   
   number_t wpid;
   number_t joid;
@@ -27,13 +27,13 @@ struct JobsList_s
 
 //-----------------------------------------------------------------------------
 
-JobsList jobs_list_new (QBus qbus, AdblSession adbl_session, JobsScheduler scheduler)
+JobsList jobs_list_new (QBus qbus, AdblSession adbl_session, QJobs jobs)
 {
   JobsList self = CAPE_NEW(struct JobsList_s);
   
   self->qbus = qbus;
   self->adbl_session = adbl_session;
-  self->scheduler = scheduler;
+  self->jobs = jobs;
   
   self->wpid = 0;
   self->joid = 0;
@@ -206,11 +206,9 @@ static int __STDCALL jobs_list_add__on_vsec (QBus qbus, void* ptr, QBusM qin, QB
     }
   }
   
-  res = jobs_sched_add (self->scheduler, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
+  //res = qjobs_event (self->jobs, CapeDatetime* dt, CapeUdc* p_params, err);
+  
+  
   
   adbl_trx_commit (&adbl_trx, err);
   res = CAPE_ERR_NONE;

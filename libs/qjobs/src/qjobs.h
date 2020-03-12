@@ -29,11 +29,11 @@ __CAPE_LIBEX     void        qjobs_del      (QJobs*);
 
 typedef void                  (__STDCALL *fct_qjobs__on_event)   (void* user_ptr, CapeUdc params);
 
-__CAPE_LIBEX     int         qjobs_init     (QJobs, CapeAioContext aio_ctx, void* user_ptr, fct_qjobs__on_event, CapeErr);
+__CAPE_LIBEX     int         qjobs_init     (QJobs, CapeAioContext aio_ctx, number_t precision_in_ms, void* user_ptr, fct_qjobs__on_event, CapeErr);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int         qjobs_event    (QJobs, CapeDatetime* dt, CapeUdc* p_params, CapeErr);
+__CAPE_LIBEX     int         qjobs_event    (QJobs, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, CapeErr);
 
 //-----------------------------------------------------------------------------
 

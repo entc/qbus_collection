@@ -4,8 +4,10 @@
 #include <sys/cape_log.h>
 #include <sys/cape_queue.h>
 
-#include "jobs_sched.h"
 #include "jobs_list.h"
+
+// qjobs includes
+#include <qjobs.h>
 
 //-------------------------------------------------------------------------------------
 
@@ -14,7 +16,7 @@ struct JobsContext_s
   AdblCtx adbl_ctx;
   AdblSession adbl_session;
   
-  JobsScheduler scheduler;
+  QJobs jobs;
 
 }; typedef struct JobsContext_s* JobsContext;
 
@@ -25,7 +27,7 @@ static int __STDCALL qbus_jobs__list_add (QBus qbus, void* ptr, QBusM qin, QBusM
   JobsContext ctx = ptr;
   
   // create a temporary object
-  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->scheduler);
+  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->jobs);
   
   // run the command
   return jobs_list_add (&jobs_list, qin, qout, err);
@@ -38,7 +40,7 @@ static int __STDCALL qbus_jobs__list_get (QBus qbus, void* ptr, QBusM qin, QBusM
   JobsContext ctx = ptr;
   
   // create a temporary object
-  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->scheduler);
+  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->jobs);
   
   // run the command
   return jobs_list_get (&jobs_list, qin, qout, err);
@@ -62,10 +64,19 @@ void qbus_jobs__ctx_del (JobsContext* p_self)
       adbl_ctx_del (&(self->adbl_ctx));
     }
     
-    jobs_sched_del (&(self->scheduler));
+    qjobs_del (&(self->jobs));
     
     CAPE_DEL (p_self, struct JobsContext_s);
   }
+}
+
+//-------------------------------------------------------------------------------------
+
+void __STDCALL qbus_jobs__on_event (void* user_ptr, CapeUdc params)
+{
+  JobsContext ctx = user_ptr;
+  
+  
 }
 
 //-------------------------------------------------------------------------------------
@@ -90,9 +101,9 @@ static int __STDCALL qbus_jobs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
     goto exit_and_cleanup;
   }
   
-  ctx->scheduler = jobs_sched_new (qbus, ctx->adbl_session);
+  ctx->jobs = qjobs_new (ctx->adbl_session, "jobs_list");
   
-  res = jobs_sched_init (ctx->scheduler, qbus, err);
+  res = qjobs_init (ctx->jobs, qbus_aio (qbus), 1000, ctx, qbus_jobs__on_event, err);
   if (res)
   {
     goto exit_and_cleanup;
