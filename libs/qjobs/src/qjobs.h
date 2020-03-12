@@ -33,7 +33,7 @@ __CAPE_LIBEX     int         qjobs_init     (QJobs, CapeAioContext aio_ctx, numb
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int         qjobs_event    (QJobs, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, CapeErr);
+__CAPE_LIBEX     int         qjobs_event    (QJobs, number_t wpid, number_t gpid, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, CapeErr);
 
 //-----------------------------------------------------------------------------
 

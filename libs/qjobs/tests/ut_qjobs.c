@@ -49,6 +49,18 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
+  {
+    CapeDatetime dt;
+    
+    cape_datetime_utc__add_s (&dt, "s10");
+    
+    res = qjobs_event (jobs, 0, 0, &dt, 1, NULL, NULL, NULL, 0, 0, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
   res = cape_aio_context_wait (aio, err);
   
 exit_and_cleanup:
