@@ -5,5 +5,7 @@ COPY docker/webs_ng1 /mods/site
 
 WORKDIR /mods
 
+EXPOSE 8084
+
 CMD ["/mods/qbus_mod_webs"]
 #CMD ["valgrind", "--leak-check=yes", "/mods/qbus_mod_tmpl"]
