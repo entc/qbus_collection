@@ -1,0 +1,44 @@
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-user"></i>&nbsp;&nbsp;user info
+  </h4>
+</div>
+<div class="modal-body">
+
+  <div class="row">
+    <div class="col">
+
+      <div class="card" style="width: 18rem;">
+        <img src="..." class="card-img-top" alt="...">
+        <div class="card-body">
+          <h5 class="card-title">{{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}</h5>
+          <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+        </div>
+      </div>
+
+    </div>
+    <div class="col">
+
+      <h2>environment</h2>
+
+        workspace:
+
+      <hr>
+
+        groups:
+
+      <hr>
+
+        ip:
+
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <button type="button" class="btn btn-outline-danger" (click)="logout_submit ()">logout</button>
+    </div>
+  </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" (click)="logout_cancel ()">close</button>
+</div>
