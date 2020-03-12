@@ -355,3 +355,19 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+/*
+CREATE TABLE `jobs_list` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+                          `wpid` int(10) NOT NULL,
+                          `gpid` int(10) NOT NULL,
+                          `event_date` datetime NOT NULL,
+                          `repeats` int(10) NOT NULL,
+                          `params` varchar(2000) DEFAULT NULL,
+                          `ref_mod` varchar(8) DEFAULT NULL,
+                          `ref_umi` varchar(30) DEFAULT NULL,
+                          `ref_id1` int(10) DEFAULT NULL,
+                          `ref_id2` int(10) DEFAULT NULL,
+                          PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8
+*/
