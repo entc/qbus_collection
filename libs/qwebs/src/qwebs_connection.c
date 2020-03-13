@@ -122,7 +122,7 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   
   self->url = cape_str_sub (at, length);
 
-  //printf ("URL: %s\n", self->url);
+  printf ("URL: %s\n", self->url);
   
   if ('/' == *(self->url))
   {

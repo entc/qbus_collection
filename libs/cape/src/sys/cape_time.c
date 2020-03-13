@@ -226,6 +226,7 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 #else
 
   struct timeval time;
+
   struct tm* l01;
   
   gettimeofday (&time, NULL);
@@ -266,7 +267,7 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
         case 'm':
         {
           struct timeval h;
-          
+
           h.tv_sec = atol (delta_part + 1) * 60;
           h.tv_usec = 0;
 
@@ -301,7 +302,6 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 
   cape_list_del (&tokens);
   
-  gettimeofday (&time, NULL);
   l01 = gmtime (&(time.tv_sec));
   
   cape_datetime__convert_timeinfo (dt, l01);

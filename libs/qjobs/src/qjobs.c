@@ -21,7 +21,7 @@ struct QJobs_s
   
   CapeUdc list;
   
-  CapeDatetime* next_event;
+  const CapeDatetime* next_event;
   CapeUdc next_list_item;
 };
 
@@ -78,7 +78,7 @@ void qjobs__intern__next_event (QJobs self)
   
   while (cape_udc_cursor_next (cursor))
   {
-    CapeDatetime* dt = cape_udc_get_d (cursor->item, "event_date", NULL);
+    const CapeDatetime* dt = cape_udc_get_d (cursor->item, "event_date", NULL);
     if (dt)
     {
       if (self->next_event)

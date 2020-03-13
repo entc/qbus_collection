@@ -50,9 +50,11 @@ int main (int argc, char *argv[])
   }
   
   {
-    CapeDatetime dt;
+    CapeDatetime dt; cape_datetime_utc__add_s (&dt, "m1");
+
+    CapeString h = cape_datetime_s__std (&dt);
     
-    cape_datetime_utc__add_s (&dt, "s10");
+    printf ("NEXT EVENT: %s\n", h);
     
     res = qjobs_event (jobs, 0, 0, &dt, 1, NULL, NULL, NULL, 0, 0, err);
     if (res)
