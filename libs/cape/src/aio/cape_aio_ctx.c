@@ -379,7 +379,7 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
     {
       EV_SET (&(kevs[i]), (number_t)handle, EVFILT_TIMER, flags, 0, option, aioh);
 
-      cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "set filter to TIMER = %i", option);
+      //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "set filter to TIMER");
     }
 
     res = kevent (self->kq, kevs, filter_cnt, NULL, 0, NULL);
@@ -407,7 +407,7 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
 
 int cape_aio_add_event (CapeAioContext self, CapeAioHandle aioh, void* handle, number_t option)
 {
-  return cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_DISPATCH, option);
+  return cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT, option);
 }
 
 //-----------------------------------------------------------------------------
@@ -421,7 +421,7 @@ void cape_aio_delete_event (CapeAioContext self, CapeAioHandle aioh, void* handl
 
 void cape_aio_update_event (CapeAioContext self, CapeAioHandle aioh, void* handle, number_t option)
 {
-  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ENABLE, option);
+  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT, option);
 }
 
 //-----------------------------------------------------------------------------

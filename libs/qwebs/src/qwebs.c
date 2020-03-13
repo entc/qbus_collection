@@ -7,6 +7,7 @@
 #include <sys/cape_socket.h>
 #include <stc/cape_map.h>
 #include <sys/cape_queue.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -158,6 +159,8 @@ static void __STDCALL qwebs__intern__on_connect (void* user_ptr, void* handle, c
   
   // for each connection we create a connection object
   QWebsConnection connection = qwebs_connection_new (handle, self->queue, self);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on connect", "new connection from %s", remote_host);
   
   // attach the connection to the AIO subsytem
   qwebs_connection_attach (connection, self->aio_attached);
