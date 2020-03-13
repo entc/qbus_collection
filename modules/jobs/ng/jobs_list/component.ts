@@ -19,7 +19,7 @@ export class JobsListComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal)
+  constructor (private AuthService: AuthService, private modalService: NgbModal)
   {
   }
 
@@ -27,6 +27,7 @@ export class JobsListComponent implements OnInit {
 
   ngOnInit()
   {
+    this.jobs_get ();
   }
 
   //-----------------------------------------------------------------------------
@@ -44,7 +45,10 @@ export class JobsListComponent implements OnInit {
 
     modal.result.then((result) => {
 
-      this.AuthService.json_rpc ('JOBS', 'list_add', {}).subscribe((data: Object) => {
+      // convert from boostrap to default javscript Date object
+      var d: Date = new Date (result.start_date.year, result.start_date.month - 1, result.start_date.day, result.start_time.hour, result.start_time.minute, result.start_time.second, 0);
+
+      this.AuthService.json_rpc ('JOBS', 'list_add', {'event_start': d.toISOString()}).subscribe((data: Object) => {
 
         this.jobs_get ();
       });
@@ -95,7 +99,9 @@ class JobItem
   {
     var date = new Date();
 
-    this.start_date = {day: date.getUTCDay() + 1, month: date.getUTCMonth()+ 1, year: date.getUTCFullYear()};
+console.log(date);
+
+    this.start_date = {day: date.getUTCDate(), month: date.getUTCMonth()+ 1, year: date.getUTCFullYear()};
     this.start_time = {hour: date.getHours(), minute: date.getMinutes(), second: date.getSeconds()};
   }
 
