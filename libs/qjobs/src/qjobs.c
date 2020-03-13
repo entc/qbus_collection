@@ -342,6 +342,12 @@ int qjobs_event (QJobs self, number_t wpid, number_t gpid, CapeDatetime* dt, num
   
   // finally add it to the database
   res = qjobs__intern__event_add (self, dt, &values, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = qjobs__intern__fetch (self, err);
   
 exit_and_cleanup:
 

@@ -2,4 +2,16 @@
 
 <h4>params</h4>
 
+<div *ngFor="let item of params">
+
+  <div class="input-group mb-3">
+    <input class="form-control" [(ngModel)]="item.key">
+    <input class="form-control" [(ngModel)]="item.val">
+  </div>
+
+</div>
+
+  <button class="btn btn-outline-success" (click)="param_add()" type="button"><i class="fa fa-plus"></i></button>
+
+
 </div>

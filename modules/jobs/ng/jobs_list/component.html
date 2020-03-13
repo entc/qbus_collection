@@ -9,7 +9,7 @@
       <th></th>
       <th></th>
     </tr>
-    <tr *ngFor="let item of job_list">
+    <tr *ngFor="let item of job_list | async">
       <td>{{item.event_start}}</td>
       <td>
       <td>{{item.event_stop}}</td>

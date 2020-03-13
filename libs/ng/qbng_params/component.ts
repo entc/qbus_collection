@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, SimpleChanges } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
@@ -11,10 +11,13 @@ import { NgForm } from '@angular/forms';
 })
 export class QbngParamsComponent implements OnInit {
 
+  public params: Array<object>;
+
   //-----------------------------------------------------------------------------
 
   constructor()
   {
+    this.params = [];
   }
 
   //-----------------------------------------------------------------------------
@@ -24,4 +27,18 @@ export class QbngParamsComponent implements OnInit {
   }
 
   //-----------------------------------------------------------------------------
+
+  ngOnChanges (changes: SimpleChanges)
+  {
+
+    console.log(changes);
+
+  }
+
+  //-----------------------------------------------------------------------------
+
+  param_add()
+  {
+    this.params.push ({key : 'key_name', val : 'value'});
+  }
 }
