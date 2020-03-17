@@ -72,7 +72,7 @@ void qbus_jobs__ctx_del (JobsContext* p_self)
 
 //-------------------------------------------------------------------------------------
 
-void __STDCALL qbus_jobs__on_event (void* user_ptr, CapeUdc params)
+void __STDCALL qbus_jobs__on_event (void* user_ptr, CapeUdc params, CapeUdc rinfo)
 {
   JobsContext ctx = user_ptr;
   

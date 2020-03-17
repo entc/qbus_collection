@@ -6,6 +6,9 @@
 #include <fmt/cape_json.h>
 #include <aio/cape_aio_timer.h>
 
+// qcrypt includes
+#include <qcrypt.h>
+
 //-----------------------------------------------------------------------------
 
 struct QJobs_s
@@ -69,13 +72,6 @@ void qjobs__intern__next_event (QJobs self)
   
   cape_log_fmt (CAPE_LL_TRACE, "QJOBS", "next event", "seek new event");
   
-  {
-    CapeString h = cape_json_to_s (self->list);
-    
-    printf ("LIST: %s\n", h);
-    
-  }
-  
   while (cape_udc_cursor_next (cursor))
   {
     const CapeDatetime* dt = cape_udc_get_d (cursor->item, "event_date", NULL);
@@ -131,6 +127,7 @@ int qjobs__intern__fetch (QJobs self, CapeErr err)
     cape_udc_add_d      (values, "event_date"  , NULL);
     cape_udc_add_n      (values, "repeats"     , 0);
     cape_udc_add_node   (values, "params"      );
+    cape_udc_add_s_cp   (values, "rinfo"       , NULL);
     cape_udc_add_s_cp   (values, "ref_mod"     , NULL);
     cape_udc_add_s_cp   (values, "ref_umi"     , NULL);
     cape_udc_add_n      (values, "ref_id1"     , 0);
@@ -234,6 +231,25 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int qjobs__intern__event_run (QJobs self, CapeErr err)
+{
+  cape_log_msg (CAPE_LL_TRACE, "QJOBS", "jobs loop", "event!");
+  
+  number_t wpid = cape_udc_get_n (self->next_list_item, "wpid", 0);
+  number_t gpid = cape_udc_get_n (self->next_list_item, "gpid", 0);
+
+  const CapeString rinfo = cape_udc_get_s (self->next_list_item, "rinfo", NULL);
+  
+  if (self->user_fct)
+  {
+    self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo);
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL qjobs__on_event (void* ptr)
 {
   int res;
@@ -262,7 +278,7 @@ int __STDCALL qjobs__on_event (void* ptr)
     // if next_event is in the past, trigger that event
     if (cape_datetime_cmp (self->next_event, &dt) <= 0)
     {
-      cape_log_msg (CAPE_LL_TRACE, "QJOBS", "jobs loop", "event!");
+      res = qjobs__intern__event_run (self, err);
       
       res = qjobs__intern__event_rm (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
 
@@ -302,15 +318,47 @@ int qjobs_init (QJobs self, CapeAioContext aio_ctx, number_t precision_in_ms, vo
 
 //-----------------------------------------------------------------------------
 
-int qjobs_event (QJobs self, number_t wpid, number_t gpid, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, CapeErr err)
+int qjobs_event (QJobs self, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr err)
 {
   int res;
   
   // local objects
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  CapeString h1 = NULL;
+  CapeString h2 = NULL;
 
-  cape_udc_add_n (values, "wpid", wpid);
-  cape_udc_add_n (values, "gpid", gpid);
+  if (rinfo)
+  {
+    // rinfo contains personal data -> this must be encrypted
+    if (vsec == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "can't create event with rinfo and no vsec");
+      goto exit_and_cleanup;
+    }
+    
+    // add workspace and user info (this is needed to decrypt rinfo)
+    cape_udc_add_n (values, "wpid", cape_udc_get_n (rinfo, "wpid", 0));
+    cape_udc_add_n (values, "gpid", cape_udc_get_n (rinfo, "gpid", 0));
+
+    // serialize rinfo
+    h1 = cape_json_to_s (rinfo);
+    if (h1 == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize rinfo");
+      goto exit_and_cleanup;
+    }
+    
+    // encrypt rinfo
+    h2 = qcrypt__encrypt (vsec, h1, err);
+    if (h2 == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+    
+    // finally add to the values
+    cape_udc_add_s_mv (values, "rinfo", &h2);
+  }
   
   cape_udc_add_d (values, "event_date", dt);
   cape_udc_add_n (values, "repeats", repeats);
@@ -340,6 +388,11 @@ int qjobs_event (QJobs self, number_t wpid, number_t gpid, CapeDatetime* dt, num
     cape_udc_add_n (values, "ref_id2", ref_id2);
   }
   
+  if (rinfo)
+  {
+    
+  }
+  
   // finally add it to the database
   res = qjobs__intern__event_add (self, dt, &values, err);
   if (res)
@@ -356,6 +409,8 @@ exit_and_cleanup:
     cape_udc_del (p_params);
   }
   
+  cape_str_del (&h1);
+  cape_str_del (&h2);
   cape_udc_del (&values);
   return res;
 }
@@ -363,12 +418,13 @@ exit_and_cleanup:
 //-----------------------------------------------------------------------------
 
 /*
-CREATE TABLE `jobs_list` (
+CREATE TABLE `msgd_jobs` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
-                          `wpid` int(10) NOT NULL,
-                          `gpid` int(10) NOT NULL,
+                          `wpid` int(10),
+                          `gpid` int(10),
                           `event_date` datetime NOT NULL,
                           `repeats` int(10) NOT NULL,
+                          `rinfo` varchar(2000) DEFAULT NULL,
                           `params` varchar(2000) DEFAULT NULL,
                           `ref_mod` varchar(8) DEFAULT NULL,
                           `ref_umi` varchar(30) DEFAULT NULL,

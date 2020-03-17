@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
     
     printf ("NEXT EVENT: %s\n", h);
     
-    res = qjobs_event (jobs, 0, 0, &dt, 1, NULL, NULL, NULL, 0, 0, err);
+    res = qjobs_event (jobs, &dt, 1, NULL, NULL, NULL, NULL, 0, 0, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
