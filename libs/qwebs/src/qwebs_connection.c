@@ -122,8 +122,6 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   
   self->url = cape_str_sub (at, length);
 
-  printf ("URL: %s\n", self->url);
-  
   if ('/' == *(self->url))
   {
     CapeString url = NULL;
@@ -176,6 +174,9 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       }
     }
   }
+
+  printf ("URL: %s\n", self->url);
+  
 
   return 0;
 }
@@ -491,6 +492,8 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
   
   if (s)
   {
+    printf ("SEND BYTES: %i\n", cape_stream_size (s));
+    
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
@@ -509,6 +512,8 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   
   int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
   
+  printf ("BYTES PROCESSED: %i\n", bytes_processed);
+  
   if (self->parser.http_errno > 0)
   {
     CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
@@ -525,7 +530,8 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   
   if (http_body_is_final (&(self->parser)))
   {
-    
+    printf ("BODY IS FINAL\n");
+
     return;
   }
 
@@ -534,16 +540,19 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
     request->method = cape_str_cp (http_method_str (self->parser.method));
     
+    printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
+
     if (request->is_complete)
     {
       if (request->api)
       {
+        printf ("REQUEST API\n");
+
         qwebs_request_api (&request);
       }
       else
       {
         CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->url);
-        
         if (s)
         {
           qwebs_connection_send (self, &s);

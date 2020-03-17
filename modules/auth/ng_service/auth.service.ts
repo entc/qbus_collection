@@ -154,12 +154,34 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
+  decrypt (encrypted_text: string, secret: string): string
+  {
+    var secmode = { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 };
+
+		try
+		{
+			return CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (encrypted_text, secret, secmode));
+		}
+		catch (e)
+		{
+			return '[???]';
+		}
+  }
+
+  //-----------------------------------------------------------------------------
+
   gpg ()
   {
     this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Array<AuthCredential>) => {
 
       this.fetch_login = false;
-      this.auth_credentials.next (data[0]);
+
+      if (data.length > 0)
+      {
+        var c: AuthCredential = data[0];
+
+        this.auth_credentials.next (c);
+      }
 
     });
   }
