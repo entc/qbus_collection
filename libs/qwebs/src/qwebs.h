@@ -18,31 +18,31 @@ struct QWebsApi_s; typedef struct QWebsApi_s* QWebsApi;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     QWebs       qwebs_new      (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list);
+__CAPE_LIBEX     QWebs              qwebs_new        (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list);
 
-__CAPE_LIBEX     void        qwebs_del      (QWebs*);
-
-//-----------------------------------------------------------------------------
-
-typedef int                  (__STDCALL *fct_qwebs__on_request)   (void* user_ptr, QWebsRequest request, CapeErr err);
-
-__CAPE_LIBEX     int         qwebs_reg      (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_request, CapeErr err);
+__CAPE_LIBEX     void               qwebs_del        (QWebs*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int         qwebs_attach   (QWebs, CapeAioContext, CapeErr err);
+typedef int     (__STDCALL *fct_qwebs__on_request)   (void* user_ptr, QWebsRequest request, CapeErr err);
 
-__CAPE_LIBEX     QWebsApi    qwebs_get_api  (QWebs, const CapeString name);
-
-__CAPE_LIBEX     QWebsFiles  qwebs_files    (QWebs);
-
-__CAPE_LIBEX     const CapeString  qwebs_pages    (QWebs);
-
-__CAPE_LIBEX     int         qwebs_route    (QWebs, const CapeString name);
+__CAPE_LIBEX     int                qwebs_reg        (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_request, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int         qwebs_api_call (QWebsApi, QWebsRequest request, CapeErr err);
+__CAPE_LIBEX     int                qwebs_attach     (QWebs, CapeAioContext, CapeErr err);
+
+__CAPE_LIBEX     QWebsApi           qwebs_get_api    (QWebs, const CapeString name);
+
+__CAPE_LIBEX     QWebsFiles         qwebs_files      (QWebs);
+
+__CAPE_LIBEX     const CapeString   qwebs_pages      (QWebs);
+
+__CAPE_LIBEX     int                qwebs_route      (QWebs, const CapeString name);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX     int                qwebs_api_call   (QWebsApi, QWebsRequest request, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

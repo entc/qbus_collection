@@ -408,6 +408,8 @@ struct QWebsConnection_s
   http_parser_settings settings;
   
   CapeMutex mutex;
+  
+  int close_connection;           // closes the connection for each request
 };
 
 //-----------------------------------------------------------------------------
@@ -447,6 +449,8 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs)
   
   self->send_cache = cape_list_new (qwebs_connection__cache__on_del);
   self->mutex = cape_mutex_new ();
+  
+  self->close_connection = FALSE;
   
   return self;
 }
@@ -544,6 +548,16 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
     if (request->is_complete)
     {
+      {
+        CapeMapNode n = cape_map_find (request->header_values, "Connection");
+        if (n)
+        {
+          const CapeString connection_type = cape_map_node_value (n);
+          
+          self->close_connection = cape_str_equal (connection_type, "close");
+        }
+      }
+
       if (request->api)
       {
         printf ("REQUEST API\n");
@@ -565,6 +579,13 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       //cape_queue_add (self->queue, NULL, qwebs_request__internal__on_run, qwebs_request__internal__on_del, self->parser.data, 0);
       
       self->parser.data = NULL;
+            
+      // some proxies or browser can't handle connections to stay alive
+      if (self->close_connection)
+      {
+        // close it
+        cape_aio_socket_close (self->aio_socket, self->aio_attached);
+      }
     }
   }
 }
@@ -592,7 +613,6 @@ static void __STDCALL qwebs_connection__internal__on_done (void* ptr, void* user
 
 void qwebs_connection_attach (QWebsConnection self, CapeAioContext aio_context)
 {
-  
   // set the callbacks
   cape_aio_socket_callback (self->aio_socket, self, qwebs_connection__internal__on_send_ready, qwebs_connection__internal__on_recv, qwebs_connection__internal__on_done);
   
