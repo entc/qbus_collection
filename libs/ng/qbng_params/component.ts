@@ -41,4 +41,11 @@ export class QbngParamsComponent implements OnInit {
   {
     this.params.push ({key : 'key_name', val : 'value'});
   }
+
+  //-----------------------------------------------------------------------------
+
+  param_rm (index: number)
+  {
+    this.params.splice (index, 1);
+  }
 }

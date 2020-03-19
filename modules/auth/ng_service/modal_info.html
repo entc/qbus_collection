@@ -8,48 +8,30 @@
   <div class="row">
     <div class="col">
 
-      <div class="card hovercard">
-         <div class="cardbar">
-         </div>
-         <div class ="cardheader">
-           <!--
-            <img alt="" src="{{item.imglink}}">
-          -->
-         </div>
-         <div class="overlay">
-            <div class="title">
-              {{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}
-            </div>
-         </div>
-         <div class="info">
-            <div class="desc">
-               <i class="fas fa-save"></i>
-            </div>
-         </div>
-         <div class="toolbar">
-           <button type="button" class="btn btn-outline-danger" (click)="logout_submit ()">
-             <i class="fas fa-sign-out-alt"></i>
-           </button>
-         </div>
-         <div class="reference">
-            test
-         </div>
+      <div class="card" style="width:200px">
+        <img class="card-img-top" src="img/gp_default.png" alt="Card image" width="150px" height="150px">
+        <div class="card-body">
+          <h4 class="card-title">{{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}</h4>
+          <p class="card-text"></p>
+          <button type="button" class="btn btn-outline-danger" (click)="logout_submit ()">
+            <i class="fas fa-sign-out-alt"></i>&nbsp;&nbsp;logout
+          </button>
+        </div>
       </div>
 
     </div>
     <div class="col">
 
-        workspace: {{ (auth_credentials | async)?.workspace }}
+      <ul class="list-group">
+        <li class="list-group-item">
+          <h4>workspace</h4>
+          {{ (auth_credentials | async)?.workspace }}
+        </li>
+        <li class="list-group-item">
 
-      <hr>
+        </li>
+      </ul>
 
-        ip:
-
-    </div>
-  </div>
-  <div class="row">
-    <div class="col">
-      <button type="button" class="btn btn-outline-danger" (click)="logout_submit ()">logout</button>
     </div>
   </div>
 </div>
