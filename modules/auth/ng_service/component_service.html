@@ -1,4 +1,4 @@
-
 <button (click)="info ()" type="button" class="btn btn-sm btn-outline-primary">
-  <i class="fa fa-user"></i>&nbsp;&nbsp;{{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}
+  <i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ (auth_credentials | async)?.workspace }}&nbsp;&nbsp;
+  /&nbsp;&nbsp;<i class="fa fa-user"></i>&nbsp;&nbsp;{{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}
 </button>

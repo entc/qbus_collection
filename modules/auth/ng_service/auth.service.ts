@@ -18,7 +18,7 @@ export class AuthService
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
-    this.auth_credentials = new BehaviorSubject<AuthCredential> ({firstname: undefined, lastname: undefined});
+    this.auth_credentials = new BehaviorSubject<AuthCredential> ({firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
 
     this.gpg ();
   }
@@ -172,13 +172,20 @@ export class AuthService
 
   gpg ()
   {
-    this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Array<AuthCredential>) => {
+    this.json_rpc ('AUTH', 'account_get', {}).subscribe((data: Array<AuthCredential>) => {
 
       this.fetch_login = false;
 
       if (data.length > 0)
       {
         var c: AuthCredential = data[0];
+
+        // decrypt the secret with our password
+        const secret = this.decrypt (c.secret, sessionStorage.getItem ('auth_pass'));
+
+        // decrypt the name
+        c.firstname = this.decrypt (c.firstname, secret);
+        c.lastname = this.decrypt (c.lastname, secret);
 
         this.auth_credentials.next (c);
       }
@@ -209,7 +216,7 @@ export class AuthService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-    this.auth_credentials.next ({firstname: undefined, lastname: undefined});
+    this.auth_credentials.next ({firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
   }
 
   //-----------------------------------------------------------------------------
@@ -235,6 +242,8 @@ class AuthCredential
 {
   firstname: string;
   lastname: string;
+  workspace: string;
+  secret: string;
 }
 
 //=============================================================================
@@ -246,7 +255,7 @@ class AuthCredential
 
   //---------------------------------------------------------------------------
 
-  constructor (public activeModal: NgbActiveModal)
+  constructor (public activeModal: NgbActiveModal, private AuthService: AuthService)
   {
   }
 

@@ -39,13 +39,7 @@
     </div>
     <div class="col">
 
-      <h2>environment</h2>
-
-        workspace:
-
-      <hr>
-
-        groups:
+        workspace: {{ (auth_credentials | async)?.workspace }}
 
       <hr>
 
