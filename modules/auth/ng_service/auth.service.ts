@@ -223,7 +223,7 @@ export class AuthService
 
   info ()
   {
-    var modalRef = this.modalService.open (AuthInfoModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", size: "lg", centered: true});
+    var modalRef = this.modalService.open (AuthInfoModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", centered: true});
 
     modalRef.result.then((result) => {
 

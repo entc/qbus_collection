@@ -1,17 +1,48 @@
-<div class="container mt-2">
 
-<h4>params</h4>
+<div class="jumbotron jumbotron-fluid">
+  <div class="container">
 
-<div *ngFor="let item of params">
+<button class="btn btn-outline-success mb-1" (click)="param_add()" type="button"><i class="fa fa-plus"></i></button>
+<div *ngFor="let item of params; let i = index">
+
+  <div class="input-group mb-1">
+    <select [(ngModel)]="item.type" class="custom-select" id="inputGroupSelect01">
+        <option selected>type...</option>
+        <option value="1">Node</option>
+        <option value="2">List</option>
+        <option value="3">String</option>
+        <option value="4">Number</option>
+        <option value="5">Float</option>
+        <option value="6">Bool</option>
+      </select>
+
+    <input class="form-control" [(ngModel)]="item.key">
+    <div class="input-group-append">
+      <button class="btn btn-outline-secondary" type="button" (click)="param_rm(i)"><i class="fa fa-trash"></i></button>
+    </div>
+  </div>
 
   <div class="input-group mb-3">
-    <input class="form-control" [(ngModel)]="item.key">
-    <input class="form-control" [(ngModel)]="item.val">
+
+  <div [ngSwitch]="item.type">
+
+    <div class="form-group" *ngSwitchCase="1">
+
+      <qbng-params name="params"></qbng-params>
+
+    </div>
+    <div class="form-group" *ngSwitchCase="3">
+
+      <input class="form-control" [(ngModel)]="item.value">
+
+    </div>
+
   </div>
 
 </div>
 
-  <button class="btn btn-outline-success" (click)="param_add()" type="button"><i class="fa fa-plus"></i></button>
+</div>
 
+</div>
 
 </div>
