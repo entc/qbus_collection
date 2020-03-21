@@ -55,6 +55,8 @@ __CAPE_LIBEX   int                cape_str_find          (const CapeString, cons
 
 __CAPE_LIBEX   int                cape_str_find_utf8     (const CapeString, const CapeString, number_t* pos_len, number_t* pos_size);
 
+__CAPE_LIBEX   int                cape_str_next          (const CapeString, char, number_t* pos);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeString         cape_str_catenate_c    (const CapeString, char c, const CapeString);

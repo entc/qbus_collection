@@ -887,8 +887,15 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 {
   int res;
 
-  // fetch the config 
+  // local objects
+  CapeUdc sites = cape_udc_cp (qbus_config_node (qbus, "sites"));
+  
   const CapeString site = qbus_config_s (qbus, "site", "public");
+  if (cape_str_not_empty (site))
+  {
+    cape_udc_add_s_cp (sites, "/", site);
+  }
+  
   const CapeString host = qbus_config_s (qbus, "host", "127.0.0.1");
 
   // this is the directory to find error pages
@@ -899,7 +906,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   CapeUdc route_list = qbus_config_node (qbus, "route_list");
   
-  QWebs webs = qwebs_new (site, host, port, threads, pages, route_list);
+  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list);
   
   CapeAioTimer timer = cape_aio_timer_new ();
 

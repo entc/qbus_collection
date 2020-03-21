@@ -18,7 +18,7 @@ struct QWebsApi_s; typedef struct QWebsApi_s* QWebsApi;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     QWebs              qwebs_new        (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list);
+__CAPE_LIBEX     QWebs              qwebs_new        (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list);
 
 __CAPE_LIBEX     void               qwebs_del        (QWebs*);
 
@@ -39,6 +39,8 @@ __CAPE_LIBEX     QWebsFiles         qwebs_files      (QWebs);
 __CAPE_LIBEX     const CapeString   qwebs_pages      (QWebs);
 
 __CAPE_LIBEX     int                qwebs_route      (QWebs, const CapeString name);
+
+__CAPE_LIBEX     const CapeString   qwebs_site       (QWebs, const char *bufdat, size_t buflen, CapeString* url);
 
 //-----------------------------------------------------------------------------
 

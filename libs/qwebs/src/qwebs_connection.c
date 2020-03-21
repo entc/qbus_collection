@@ -50,6 +50,7 @@ struct QWebsRequest_s
 
   int is_complete;
   
+  const CapeString site;
 };
 
 //-----------------------------------------------------------------------------
@@ -88,6 +89,8 @@ QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
   
   qwebs_connection_inc (self->conn);
   
+  self->site = NULL;
+  
   return self;
 }
 
@@ -120,7 +123,12 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
 {
   QWebsRequest self = parser->data;
   
-  self->url = cape_str_sub (at, length);
+  // this will re-write the url
+  // -> checks all sites for re-writing
+  self->site = qwebs_site (self->webs, at, length, &(self->url));
+  
+  printf ("URL: '%s'\n", self->url);
+  printf ("SITE: '%s'\n", self->site);
 
   if ('/' == *(self->url))
   {
@@ -132,9 +140,12 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       cape_str_replace_mv (&(self->url), &url);
       cape_str_del (&opt);
     }
-    
+
+    // create a map for all header values
+    self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+
     // split the url into its parts
-    self->url_values = cape_tokenizer_buf__noempty (at + 1, length - 1, '/');
+    self->url_values = cape_tokenizer_buf__noempty (self->url + 1, cape_str_size (self->url) - 1, '/');
 
     if (cape_list_size (self->url_values) >= 1)
     {
@@ -161,7 +172,6 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
             cape_list_node_erase (self->url_values, n);
           }
           
-          self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
           self->body_value = cape_stream_new ();
         }
       }
@@ -175,9 +185,6 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
     }
   }
 
-  printf ("URL: %s\n", self->url);
-  
-
   return 0;
 }
 
@@ -187,7 +194,7 @@ static int qwebs_request__internal__on_header_field (http_parser* parser, const 
 {
   QWebsRequest self = parser->data;
 
-  if (self->api)
+  if (self->header_values)
   {
     CapeString h = cape_str_sub (at, length);
     
@@ -203,7 +210,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
 {
   QWebsRequest self = parser->data;
   
-  if (self->api)
+  if (self->header_values)
   {
     if (NULL == self->last_header_field)
     {
@@ -212,7 +219,9 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     
     {
       CapeString h = cape_str_sub (at, length);
-      
+            
+      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
       self->last_header_field = NULL;
@@ -375,7 +384,7 @@ static void __STDCALL qwebs_request__internal__on_run (void* ptr, number_t pos)
   }
   else
   {
-    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->url);
+    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
 
     if (s)
     {
@@ -501,6 +510,17 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
+  else
+  {
+    // some proxies or browser can't handle connections to stay alive
+    if (self->close_connection)
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "close connection");
+
+      // close it
+      cape_aio_socket_close (self->aio_socket, self->aio_attached);
+    }
+  }  
 }
 
 //-----------------------------------------------------------------------------
@@ -554,7 +574,13 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
         {
           const CapeString connection_type = cape_map_node_value (n);
           
+          cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "connection type: %s", connection_type);
+          
           self->close_connection = cape_str_equal (connection_type, "close");
+        }
+        else
+        {
+          cape_log_fmt (CAPE_LL_WARN, "WEBS", "on recv", "connection type unknown");
         }
       }
 
@@ -566,7 +592,9 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       }
       else
       {
-        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->url);
+        printf ("FILE '%s'\'%s'\n", request->site, request->url);
+
+        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->site, request->url);
         if (s)
         {
           qwebs_connection_send (self, &s);
@@ -579,13 +607,6 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       //cape_queue_add (self->queue, NULL, qwebs_request__internal__on_run, qwebs_request__internal__on_del, self->parser.data, 0);
       
       self->parser.data = NULL;
-            
-      // some proxies or browser can't handle connections to stay alive
-      if (self->close_connection)
-      {
-        // close it
-        cape_aio_socket_close (self->aio_socket, self->aio_attached);
-      }
     }
   }
 }

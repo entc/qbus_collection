@@ -379,6 +379,23 @@ int cape_str_find_utf8 (const CapeString haystack, const CapeString needle, numb
 
 //-----------------------------------------------------------------------------
 
+int cape_str_next (const CapeString self, char c, number_t* p_pos)
+{
+  if (p_pos)
+  {
+    char* r = strchr (self, c);
+    if (r)
+    {
+      *p_pos = r - self;
+      return TRUE;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_uuid (void)
 {
   CapeString self = (CapeString)CAPE_ALLOC(38);

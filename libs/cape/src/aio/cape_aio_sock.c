@@ -206,6 +206,8 @@ void cape_aio_socket_close (CapeAioSocket self, CapeAioContext aio)
 {
   if (self)
   {
+    self->mask = CAPE_AIO_DONE;
+
     if (self->aioh)
     {
       cape_aio_context_mod (aio, self->aioh, self->handle, CAPE_AIO_DONE, 0);
