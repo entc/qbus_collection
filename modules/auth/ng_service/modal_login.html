@@ -1,23 +1,24 @@
 <form #userlogin = "ngForm" (ngSubmit) = "login_submit (userlogin)">
-<div class="modal-header">
-  <h4 class="modal-title" id="modal-basic-title">
-    <i class="fa fa-user"></i>&nbsp;&nbsp;login
-  </h4>
-</div>
-<div class="modal-body">
-
-  <div class="form-label-group">
-    <input type="text" id="inputEmail" class="form-control" placeholder="Email address" required autofocus ngModel name = "user">
-    <label for="inputEmail">Username</label>
+  <div class="modal-header">
+    <h4 class="modal-title" id="modal-basic-title">
+      <i class="fa fa-user"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN_MODAL' | transloco }}
+    </h4>
   </div>
+  <div class="modal-body">
 
-  <div class="form-label-group">
-    <input type="password" id="inputPassword" class="form-control" placeholder="Password" required ngModel name = "pass">
-    <label for="inputPassword">Password</label>
+    <div class="form-label-group">
+      <input type="text" id="inputEmail" class="form-control" placeholder="Email address" required autofocus ngModel name = "user">
+      <label for="inputEmail">{{ 'AUTH.USERNAME' | transloco }}</label>
+    </div>
+
+    <div class="form-label-group">
+      <input type="password" id="inputPassword" class="form-control" placeholder="Password" required ngModel name = "pass">
+      <label for="inputPassword">{{ 'AUTH.PASSWORD' | transloco }}</label>
+    </div>
+
   </div>
-
-</div>
-<div class="modal-footer">
-  <button type="submit" class="btn btn-primary">Login</button>
-</div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="login_cancel()">{{ 'MISC.CANCEL' | transloco }}</button>
+    <button type="submit" class="btn btn-primary">{{ 'AUTH.LOGIN' | transloco }}</button>
+  </div>
 </form>

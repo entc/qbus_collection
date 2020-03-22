@@ -132,20 +132,6 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
     cape_stream_append_str (s, "\"\r\n");
   }
   
-  // location #1
-  {
-    cape_stream_append_str (s, "Content-Location: /");
-    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
-    cape_stream_append_str (s, "\r\n");
-  }
-  
-  // location #2
-  {
-    cape_stream_append_str (s, "Location: /");
-    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
-    cape_stream_append_str (s, "\r\n");
-  }
-  
   // create a stream for the content
   c = cape_stream_new ();
   

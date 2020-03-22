@@ -33,9 +33,7 @@ struct QWebsRequest_s
   QWebsConnection conn;            // reference
   
   CapeString method;
-  
   CapeString url;
-  
   CapeString mime;
   
   CapeMap header_values;
@@ -49,6 +47,7 @@ struct QWebsRequest_s
   CapeString last_header_field;
 
   int is_complete;
+  int is_processed;
   
   const CapeString site;
 };
@@ -85,7 +84,9 @@ QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
   self->body_value = NULL;
   
   self->last_header_field = NULL;
+  
   self->is_complete = FALSE;
+  self->is_processed = FALSE;
   
   qwebs_connection_inc (self->conn);
   
@@ -337,6 +338,8 @@ void qwebs_request_api (QWebsRequest* p_self)
     goto exit_and_cleanup;
   }
   
+  printf ("RETURNED FROM API CALL DIRECTLY\n");
+  
   qwebs_request_send_json (p_self, NULL, err);
 
 exit_and_cleanup:
@@ -505,13 +508,15 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
   
   if (s)
   {
-    printf ("SEND BYTES: %i\n", cape_stream_size (s));
+    printf ("SEND BYTES: %li\n", cape_stream_size (s));
     
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
   else
   {
+    printf ("NO BYTES TO SEND\n");
+
     // some proxies or browser can't handle connections to stay alive
     if (self->close_connection)
     {
@@ -520,7 +525,7 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
       // close it
       cape_aio_socket_close (self->aio_socket, self->aio_attached);
     }
-  }  
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -586,9 +591,11 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
       if (request->api)
       {
-        printf ("REQUEST API\n");
+        printf ("REQUEST API ENTER\n");
 
         qwebs_request_api (&request);
+
+        printf ("REQUEST API LEFT\n");
       }
       else
       {

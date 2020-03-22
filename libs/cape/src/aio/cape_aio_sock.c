@@ -142,6 +142,7 @@ void cape_aio_socket_del (CapeAioSocket* p_self)
     }
     
     // turn off wait timeout of the socket
+    /*
     {
       struct linger sl;
       
@@ -151,6 +152,7 @@ void cape_aio_socket_del (CapeAioSocket* p_self)
       // apply linger option to kernel and socket
       setsockopt((long)self->handle, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
     }
+     */
     
     // signal that this side of the socket is not going to continue to write or read from the socket
     shutdown ((long)self->handle, SHUT_RDWR);
@@ -380,6 +382,8 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
     
   int so_err; socklen_t size = sizeof(int); 
 
+  printf ("ON EVENT\n");
+  
   // check for errors on the socket, eg connection was refused
   getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_err, &size);
 

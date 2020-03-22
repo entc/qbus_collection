@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TrloModule } from '@qbus/trlo.module';
 
 // auth services
 import { AuthService } from '@qbus/auth.service';
@@ -14,7 +15,7 @@ import { AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalCom
     AuthServiceComponent
   ],
   providers: [AuthService],
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TrloModule],
   entryComponents: [
     AuthLoginModalComponent,
     AuthInfoModalComponent,

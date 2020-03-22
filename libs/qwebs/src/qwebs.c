@@ -308,6 +308,8 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
     res = self->on_request (self->user_ptr, request, err);
   }
   
+  printf ("RETURNED FROM API CALL %i\n", res);
+  
   return res;
 }
 

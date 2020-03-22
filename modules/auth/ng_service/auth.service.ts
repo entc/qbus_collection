@@ -221,6 +221,21 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
+  login ()
+  {
+    var modalRef = this.modalService.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"});
+
+    modalRef.result.then((result) => {
+
+      this.cre (result.user, result.pass);
+
+    }, () => {
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
   info ()
   {
     var modalRef = this.modalService.open (AuthInfoModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", centered: true});
@@ -230,7 +245,6 @@ export class AuthService
       this.loo ();
 
     }, () => {
-
 
     });
   }
@@ -255,7 +269,7 @@ class AuthCredential
 
   //---------------------------------------------------------------------------
 
-  constructor (public activeModal: NgbActiveModal, private AuthService: AuthService)
+  constructor (public modal: NgbActiveModal, private AuthService: AuthService)
   {
   }
 
@@ -269,9 +283,17 @@ class AuthCredential
 
   login_submit (form: NgForm)
   {
-    this.activeModal.close (form.value);
+    this.modal.close (form.value);
     form.resetForm ();
   }
+
+  //---------------------------------------------------------------------------
+
+  login_cancel ()
+  {
+    this.modal.dismiss ();
+  }
+
 }
 
 //=============================================================================
@@ -375,5 +397,12 @@ class AuthCredential
   info ()
   {
     this.auth_service.info ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  login ()
+  {
+    this.auth_service.login ();
   }
 }
