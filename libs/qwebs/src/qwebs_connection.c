@@ -422,6 +422,7 @@ struct QWebsConnection_s
   CapeMutex mutex;
   
   int close_connection;           // closes the connection for each request
+  int active;
 };
 
 //-----------------------------------------------------------------------------
@@ -463,6 +464,7 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs)
   self->mutex = cape_mutex_new ();
   
   self->close_connection = FALSE;
+  self->active = FALSE;
   
   return self;
 }
@@ -513,7 +515,7 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
-  else
+  else if (self->active == FALSE)
   {
     printf ("NO BYTES TO SEND\n");
 
@@ -537,6 +539,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   if (NULL == self->parser.data)
   {
     self->parser.data = qwebs_request_new (self->webs, self);
+    self->active = TRUE;
   }
   
   int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
@@ -680,6 +683,7 @@ void qwebs_connection_inc (QWebsConnection self)
 void qwebs_connection_dec (QWebsConnection self)
 {
   cape_aio_socket_unref (self->aio_socket);
+  self->active = FALSE;
 }
 
 //-----------------------------------------------------------------------------

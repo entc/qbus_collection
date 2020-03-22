@@ -1,4 +1,5 @@
-import { Component, Injectable, Injector } from '@angular/core';
+import { Component, Injectable, Injector, Pipe, PipeTransform } from '@angular/core';
+import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
 
 //-----------------------------------------------------------------------------
@@ -9,7 +10,7 @@ export class TrloService
   // TODO: this must be available from everywhere
   // -> is this possible?
   // -> having a custom pipe?
-  public locale: string = 'de';
+  public locale: string = 'de-DE';
 
   constructor()
   {
@@ -56,5 +57,20 @@ export class TrloService
 
     // the global locale in the service
     this.trlo_service.updateLocale (value)
+  }
+}
+
+//=============================================================================
+
+@Pipe({name: 'trlo_locale'})
+export class TrloPipeLocale implements PipeTransform {
+
+  constructor (private trlo_service: TrloService)
+  {
+  }
+
+  transform (value: string): string {
+
+    return formatDate (value, 'short', this.trlo_service.locale);
   }
 }
