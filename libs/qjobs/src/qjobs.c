@@ -418,7 +418,7 @@ exit_and_cleanup:
 //-----------------------------------------------------------------------------
 
 /*
-CREATE TABLE `msgd_jobs` (
+CREATE TABLE `jobs_list` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
                           `wpid` int(10),
                           `gpid` int(10),

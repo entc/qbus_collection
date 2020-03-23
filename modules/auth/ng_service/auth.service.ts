@@ -18,7 +18,7 @@ export class AuthService
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
-    this.auth_credentials = new BehaviorSubject<AuthCredential> ({firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
+    this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
 
     this.gpg ();
   }
@@ -216,7 +216,7 @@ export class AuthService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-    this.auth_credentials.next ({firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
+    this.auth_credentials.next ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
   }
 
   //-----------------------------------------------------------------------------
@@ -254,6 +254,8 @@ export class AuthService
 
 class AuthCredential
 {
+  gpid: number;
+  wpid: number;
   firstname: string;
   lastname: string;
   workspace: string;

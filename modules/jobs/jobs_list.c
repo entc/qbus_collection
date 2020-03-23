@@ -87,15 +87,15 @@ int jobs_list_get (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n      (params, "wpid"        , self->wpid);
-
-    cape_udc_add_d      (values, "event_start" , NULL);
-    cape_udc_add_d      (values, "event_stop"  , NULL);
-    cape_udc_add_b      (values, "repeated"    , FALSE);
-    cape_udc_add_b      (values, "active"      , FALSE);
-    cape_udc_add_s_cp   (values, "modp"        , NULL);
-    cape_udc_add_n      (values, "ref"         , 0);
-    cape_udc_add_s_cp   (values, "data"        , NULL);
-
+    cape_udc_add_n      (params, "gpid"        , self->gpid);
+    
+    cape_udc_add_d      (values, "event_date"  , NULL);
+    cape_udc_add_n      (values, "repeats"     , 0);
+    cape_udc_add_s_cp   (values, "ref_mod"     , NULL);
+    cape_udc_add_s_cp   (values, "ref_umi"     , NULL);
+    cape_udc_add_n      (values, "ref_id1"     , 0);
+    cape_udc_add_n      (values, "ref_id2"     , 0);
+    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "jobs_list", &params, &values, err);
     if (query_results == NULL)
