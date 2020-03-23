@@ -2,7 +2,7 @@
   <h4 class="modal-title" id="modal-basic-title">
     <i class="fa fa-user"></i>&nbsp;&nbsp;{{ (auth_credentials | async)?.firstname }}&nbsp;{{ (auth_credentials | async)?.lastname }}
     <br>
-    <small>{{ 'AUTH.USER_INFO' | transloco }}</small>
+    <small>{{ 'AUTH.USER_INFO' | transloco }}&nbsp;&nbsp;<span class="badge badge-secondary">{{ (auth_credentials | async)?.gpid }}</span></small>
   </h4>
 </div>
 <div class="modal-body">
@@ -11,7 +11,7 @@
 
     <ul class="list-group">
       <li class="list-group-item">
-        <h4>{{ 'MISC.WORKSPACE' | transloco }}</h4>
+        <h4>{{ 'MISC.WORKSPACE' | transloco }}<small>&nbsp;&nbsp;<span class="badge badge-secondary">{{ (auth_credentials | async)?.wpid }}</span></small></h4>
         {{ (auth_credentials | async)?.workspace }}
       </li>
       <li class="list-group-item">

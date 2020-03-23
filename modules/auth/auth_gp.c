@@ -156,6 +156,7 @@ int auth_gp_account (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "wpid"        , self->wpid);
     cape_udc_add_n      (params, "gpid"        , gpid);
     
+    cape_udc_add_n      (values, "wpid"        , 0);
     cape_udc_add_n      (values, "gpid"        , 0);
     cape_udc_add_n      (values, "userid"      , 0);
     cape_udc_add_s_cp   (values, "title"       , NULL);
