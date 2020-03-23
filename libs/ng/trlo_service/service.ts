@@ -26,7 +26,8 @@ export class TrloService
 
 @Component({
   selector: 'trlo-service-component',
-  templateUrl: './component.html'
+  templateUrl: './component.html',
+  styleUrls: ['./component.scss']
 }) export class TrloServiceComponent {
 
   // all available languages apearing in the select

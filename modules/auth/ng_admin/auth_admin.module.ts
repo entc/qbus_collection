@@ -5,7 +5,7 @@ import { Routes, RouterModule } from '@angular/router';
 import { AuthLoginsComponent } from './auth_logins/component';
 
 const routes: Routes = [
-  { path: 'auth_login', component: AuthLoginsComponent }
+  { path: 'auth_logins', component: AuthLoginsComponent }
 ];
 
 @NgModule({
@@ -13,6 +13,6 @@ const routes: Routes = [
   imports: [CommonModule, FormsModule, RouterModule.forChild(routes)],
   exports: [RouterModule]
 })
-export class AuthRoutingModule
+export class AuthAdminModule
 {
 }
