@@ -5,6 +5,7 @@ import { Routes, RouterModule } from '@angular/router';
 import { FlowEditorComponent } from './flow-editor/flow-editor.component';
 import { FlowListComponent } from './flow-list/flow-list.component';
 import { FlowProcessComponent } from './flow-process/flow-process.component';
+import { AuthServiceModule } from '@qbus/auth_service.module';
 
 const routes: Routes = [
   { path: 'flow_editor', component: FlowEditorComponent },
@@ -14,7 +15,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [ FlowListComponent, FlowEditorComponent, FlowProcessComponent],
-  imports: [CommonModule, FormsModule, RouterModule.forChild(routes)],
+  imports: [CommonModule, FormsModule, AuthServiceModule, RouterModule.forChild(routes)],
   exports: [RouterModule]
 })
 export class FlowAdminModule

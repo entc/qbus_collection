@@ -124,6 +124,8 @@ int auth_gp_account (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthGP self = *p_self;
   
+  CapeUdc first_row;
+  
   // local vars (initialization)
   CapeUdc query_results = NULL;
   number_t gpid = 0;
@@ -171,6 +173,23 @@ int auth_gp_account (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     {
       res = cape_err_code (err);
       goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't get account info");
+    goto exit_and_cleanup;
+  }
+  
+  // add also allknown roles
+  {
+    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+    if (roles)
+    {
+      CapeUdc h = cape_udc_cp (roles);
+      cape_udc_add_name (first_row, &h, "roles");
     }
   }
   

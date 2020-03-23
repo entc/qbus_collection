@@ -1,4 +1,4 @@
-import { Component, Injectable, Directive, TemplateRef, OnInit, Injector } from '@angular/core';
+import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Injector, ElementRef, ViewContainerRef } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
@@ -18,7 +18,7 @@ export class AuthService
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
-    this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
+    this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
 
     this.gpg ();
   }
@@ -216,7 +216,7 @@ export class AuthService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-    this.auth_credentials.next ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined});
+    this.auth_credentials.next ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
   }
 
   //-----------------------------------------------------------------------------
@@ -260,6 +260,7 @@ class AuthCredential
   lastname: string;
   workspace: string;
   secret: string;
+  roles: object;
 }
 
 //=============================================================================
@@ -406,5 +407,81 @@ class AuthCredential
   login ()
   {
     this.auth_service.login ();
+  }
+}
+
+//=============================================================================
+
+@Directive({
+  selector: '[authRole]'
+})
+export class AuthRoleDirective {
+
+  private auth_credentials: AuthCredential = {wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined};
+  private permissions: Array<string>;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_service: AuthService, private element: ElementRef, private templateRef: TemplateRef<any>, private viewContainer: ViewContainerRef)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit ()
+  {
+    this.auth_service.auth_credentials.subscribe ((val: AuthCredential) => {
+      this.auth_credentials = val;
+      this.updateView();
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  @Input ()
+  set authRole (val: Array<string>)
+  {
+    this.permissions = val;
+    this.updateView ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private updateView ()
+  {
+    if (this.has_role__or__permission())
+    {
+      this.viewContainer.createEmbeddedView(this.templateRef);
+    }
+    else
+    {
+      this.viewContainer.clear();
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private has_role__or__permission (): boolean
+  {
+    if (this.permissions.length)
+    {
+      if (this.auth_credentials.roles)
+      {
+        // check if permissions are in the roles
+        for (var i in this.permissions)
+        {
+          if (this.auth_credentials.roles [this.permissions[i]] != undefined)
+          {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+    else
+    {
+      return this.auth_credentials.wpid > 0;
+    }
   }
 }
