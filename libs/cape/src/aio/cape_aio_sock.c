@@ -382,8 +382,6 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
     
   int so_err; socklen_t size = sizeof(int); 
 
-  printf ("ON EVENT\n");
-  
   // check for errors on the socket, eg connection was refused
   getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_err, &size);
 
