@@ -2,6 +2,8 @@ import { Component, OnInit, SimpleChanges } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
+import { Pipe, PipeTransform } from '@angular/core';
+import { orderBy } from 'lodash';
 
 //-----------------------------------------------------------------------------
 
@@ -47,5 +49,22 @@ export class QbngParamsComponent implements OnInit {
   param_rm (index: number)
   {
     this.params.splice (index, 1);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Pipe({ name: 'qbngSort', pure: false })
+export class QbngSortPipe implements PipeTransform
+{
+
+  //-----------------------------------------------------------------------------
+
+  transform(value: any[], direcion: string, prop?: string): any
+  {
+
+console.log('sort');
+
+    return value;
   }
 }

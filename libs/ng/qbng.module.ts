@@ -2,12 +2,12 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import { QbngParamsComponent } from './qbng_params/component';
+import { QbngParamsComponent, QbngSortPipe } from './qbng_params/component';
 
 @NgModule({
-  declarations: [QbngParamsComponent],
+  declarations: [QbngParamsComponent, QbngSortPipe],
   imports: [CommonModule, FormsModule, NgbModule],
-  exports: [QbngParamsComponent]
+  exports: [QbngParamsComponent, QbngSortPipe]
 })
 export class QbngModule
 {
