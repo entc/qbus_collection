@@ -15,6 +15,8 @@ export class AuthService
   fetch_login: boolean;
   public auth_credentials: BehaviorSubject<AuthCredential>;
 
+  private secret: string;
+
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
@@ -74,6 +76,8 @@ export class AuthService
   handle_errors<T> (http_request: Observable<T>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
+
+      console.log(this.fetch_login);
 
       if (error.status == 401 && this.fetch_login == false)
       {
@@ -154,6 +158,22 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
+  public encrypt (text: string): string
+  {
+    var secmode = { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 };
+
+    if (this.secret)
+		{
+			return CryptoJS.AES.encrypt(text, this.secret, secmode).toString();
+		}
+		else
+		{
+			throw "{encrypt} secret is empty";
+		}
+  }
+
+  //-----------------------------------------------------------------------------
+
   decrypt (encrypted_text: string, secret: string): string
   {
     var secmode = { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 };
@@ -181,11 +201,11 @@ export class AuthService
         var c: AuthCredential = data[0];
 
         // decrypt the secret with our password
-        const secret = this.decrypt (c.secret, sessionStorage.getItem ('auth_pass'));
+        this.secret = this.decrypt (c.secret, sessionStorage.getItem ('auth_pass'));
 
         // decrypt the name
-        c.firstname = this.decrypt (c.firstname, secret);
-        c.lastname = this.decrypt (c.lastname, secret);
+        c.firstname = this.decrypt (c.firstname, this.secret);
+        c.lastname = this.decrypt (c.lastname, this.secret);
 
         this.auth_credentials.next (c);
       }
@@ -227,6 +247,7 @@ export class AuthService
 
     modalRef.result.then((result) => {
 
+      this.fetch_login = true;
       this.cre (result.user, result.pass);
 
     }, () => {
