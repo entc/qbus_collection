@@ -61,7 +61,7 @@ void cape_err_clr (CapeErr self)
 
 const char* cape_err_text (CapeErr self)
 {
-  return self->text;    
+  return (NULL == self->text) ? "" : self->text;    
 }
 
 //-----------------------------------------------------------------------------
