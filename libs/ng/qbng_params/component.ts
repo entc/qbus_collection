@@ -1,4 +1,4 @@
-import { Component, OnInit, SimpleChanges } from '@angular/core';
+import { Component, OnInit, SimpleChanges, Input } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
@@ -13,7 +13,7 @@ import { orderBy } from 'lodash';
 })
 export class QbngParamsComponent implements OnInit {
 
-  public params: Array<object>;
+  @Input('params') params: Array<object>;
 
   //-----------------------------------------------------------------------------
 
@@ -54,17 +54,20 @@ export class QbngParamsComponent implements OnInit {
 
 //-----------------------------------------------------------------------------
 
-@Pipe({ name: 'qbngSort', pure: false })
-export class QbngSortPipe implements PipeTransform
-{
+@Pipe({
+  name: "qbngSort"
+})
+export class QbngSortPipe implements PipeTransform {
+  transform(items: any[], field: string, reverse: boolean = false): any[] {
+    if (!items) return [];
 
-  //-----------------------------------------------------------------------------
+    if (field) items.sort((a, b) => (a[field] > b[field] ? 1 : -1));
+    else items.sort((a, b) => (a > b ? 1 : -1));
 
-  transform(value: any[], direcion: string, prop?: string): any
-  {
+    if (reverse) items.reverse();
 
-console.log('sort');
-
-    return value;
+    return items;
   }
 }
+
+//-----------------------------------------------------------------------------
