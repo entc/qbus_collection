@@ -15,6 +15,11 @@ export class AuthLoginsComponent implements OnInit {
 
   login_items: Observable<Array<LoginItem>>;
 
+  // for sorting and pagination
+  currentPage: number;
+  filter = "name";
+  reverse: boolean = false;
+
   //-----------------------------------------------------------------------------
 
   constructor (private AuthService: AuthService)
@@ -26,6 +31,13 @@ export class AuthLoginsComponent implements OnInit {
   ngOnInit()
   {
     this.login_items = this.AuthService.json_rpc ('AUTH', 'ui_login_get', {});
+  }
+
+  //-----------------------------------------------------------------------------
+
+  sorting (value: boolean)
+  {
+    this.reverse = value;
   }
 
 }

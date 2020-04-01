@@ -1,3 +1,24 @@
+<pagination-template #p="paginationApi" (pageChange)="currentPage = $event">
+  <nav aria-label="Page navigation example" >
+    <ul class="pagination">
+      <li class="page-item" [class.disabled]="p.isFirstPage()" ><a class="page-link" *ngIf="!p.isFirstPage()" (click)="p.previous()">{{ 'EXTRAS.PREVIOUS' | transloco}}</a></li>
+      <li class="page-item" *ngFor="let page of p.pages" [class.active]="p.getCurrent() === page.value"><a class="page-link" (click)="p.setCurrent(page.value)">{{page.label}}</a></li>
+      <li class="page-item" [class.disabled]="p.isLastPage()"><a class="page-link" *ngIf="!p.isLastPage()" (click)="p.next()">{{ 'EXTRAS.NEXT' | transloco}}</a></li>
+    </ul>
+  </nav>
+</pagination-template>
+
+<div class="form-group">
+	<select class="custom-select" [(ngModel)]="filter">
+    <option value="date">date</option>
+    <option value="workplace">workplace</option>
+  </select>
+
+  <button (click)="sorting(!reverse)">order</button>
+
+</div>
+
+
     <table class="table mt-2">
       <tr>
         <th></th>
@@ -5,7 +26,7 @@
         <th>workplace</th>
         <th width="100%">info</th>
       </tr>
-      <tr *ngFor="let item of login_items | async">
+      <tr *ngFor="let item of login_items | async | qbngSort : filter : reverse | paginate: { itemsPerPage: 10, currentPage: currentPage }">
         <td>{{item.ltime}}</td>
         <td>{{item.ip}}</td>
         <td>{{item.workplace}}</td>

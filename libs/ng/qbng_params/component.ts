@@ -3,7 +3,6 @@ import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-boot
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
 import { Pipe, PipeTransform } from '@angular/core';
-import { orderBy } from 'lodash';
 
 //-----------------------------------------------------------------------------
 
@@ -26,6 +25,9 @@ export class QbngParamsComponent implements OnInit {
 
   ngOnInit()
   {
+    console.log('B');
+    console.log(this.params);
+    console.log('C');
   }
 
   //-----------------------------------------------------------------------------
