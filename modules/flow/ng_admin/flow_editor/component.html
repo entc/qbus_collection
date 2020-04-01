@@ -1,0 +1,36 @@
+  <div class="container mt-2" *authRole="['flow_admin']">
+    <button (click)="modal__workflow_add__open()" type="button" class="btn btn-success">add workflow</button>
+
+    <table class="table mt-2">
+      <tr>
+        <th></th>
+        <th width="100%">name</th>
+        <th></th>
+        <th></th>
+        <th></th>
+      </tr>
+      <tr *ngFor="let wf of workflows | async">
+        <td>{{wf.id}}</td>
+        <td>{{wf.name}} <span class="badge badge-secondary">{{wf.cnt}}</span></td>
+        <td>
+          <!--
+          <button (click)="modal__process_add (wf.id)" type="button" class="btn btn-sm btn-outline-success">
+            <span class="text-nowrap"><i class="fa fa-play"></i>&nbsp;&nbsp;start&nbsp;process</span>
+          </button>
+          -->
+        </td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary" [routerLink]="['/flow_editor', wf.id]">
+            <i class="fa fa-edit"></i>
+          </a>
+        </td>
+        <td>
+          <button (click)="modal__workflow_del__open (wf.id)" type="button" class="btn btn-sm btn-outline-danger">
+            <i class="fa fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    </table>
+
+
+</div>
