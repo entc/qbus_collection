@@ -22,6 +22,7 @@ export class FlowListComponent implements OnInit
   public step_functions = [
     {id: 3, name: "call module's method (syncron)"},
     {id: 4, name: "call module's method (asyncron)"},
+    {id: 5, name: "wait for list"},
     {id: 10, name: "split flow"},
     {id: 11, name: "start flow"},
     {id: 12, name: "switch"},
