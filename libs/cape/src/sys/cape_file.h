@@ -32,6 +32,8 @@ __CAPE_LIBEX   const CapeString   cape_fs_extension      (const CapeString);
 
 __CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeErr);
 
+__CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeErr);
+
 __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, CapeErr);
 
 //-----------------------------------------------------------------------------
