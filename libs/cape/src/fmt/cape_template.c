@@ -300,6 +300,23 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
             cape_str_del (&h);
           }
         }
+        else if (cape_datetime__date_de (&dt, text))
+        {
+          // convert into local time
+          cape_datetime_local (&dt);
+          
+          // apply format
+          {
+            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            
+            if (onText)
+            {
+              onText (ptr, h);
+            }
+            
+            cape_str_del (&h);
+          }
+        }
         else
         {
           cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
