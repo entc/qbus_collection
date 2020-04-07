@@ -949,3 +949,52 @@ int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_te
 
 //-----------------------------------------------------------------------------
 
+int cape_eval_f (const CapeString s, CapeUdc node, double* p_ret, CapeErr err)
+{
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL cape_eval__on_text (void* ptr, const char* text)
+{
+  cape_stream_append_str (ptr, text);
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeTemplate tmpl = cape_template_new ();
+  CapeStream stream = cape_stream_new ();
+  
+  res = cape_template_compile_str (tmpl, s, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_template_del (&tmpl);
+  cape_stream_del (&stream);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------

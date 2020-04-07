@@ -31,4 +31,10 @@ __CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUd
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   int            cape_eval_f                  (const CapeString s, CapeUdc node, double*, CapeErr);
+
+__CAPE_LIBEX   int            cape_eval_b                  (const CapeString s, CapeUdc node, int*, CapeErr);
+
+//-----------------------------------------------------------------------------
+
 #endif
