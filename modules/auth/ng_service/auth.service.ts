@@ -55,18 +55,22 @@ export class AuthService
 
   //---------------------------------------------------------------------------
 
-  http_crypt4 ()
+  http_crypt4 (page: string)
   {
     var user = sessionStorage.getItem ('auth_user');
     var pass = sessionStorage.getItem ('auth_pass');
     var wpid = sessionStorage.getItem ('auth_wpid');
 
+    console.log('got session storage');
+
     if (user && pass)
     {
+      console.log('use credentials = ' + page);
       return {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass, wpid)})};
     }
     else
     {
+      console.log('no credentials = ' + page);
       return {};
     }
   }
@@ -125,35 +129,35 @@ export class AuthService
 
   rest_GET<T> (path: string, params: object): Observable<T>
   {
-    return this.handle_errors<T> (this.http.get<T>('rest/' + path, this.http_crypt4()));
+    return this.handle_errors<T> (this.http.get<T>('rest/' + path, this.http_crypt4(path)));
   }
 
   //---------------------------------------------------------------------------
 
   rest_PUT<T> (path: string, params: object): Observable<T>
   {
-    return this.handle_errors<T> (this.http.put<T>('rest/' + path, JSON.stringify (params), this.http_crypt4()));
+    return this.handle_errors<T> (this.http.put<T>('rest/' + path, JSON.stringify (params), this.http_crypt4(path)));
   }
 
   //---------------------------------------------------------------------------
 
   rest_POST<T> (path: string, params: object): Observable<T>
   {
-    return this.handle_errors<T> (this.http.post<T>('rest/' + path, JSON.stringify (params), this.http_crypt4()));
+    return this.handle_errors<T> (this.http.post<T>('rest/' + path, JSON.stringify (params), this.http_crypt4(path)));
   }
 
   //---------------------------------------------------------------------------
 
   rest_PATCH<T> (path: string, params: object): Observable<T>
   {
-    return this.handle_errors<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.http_crypt4()));
+    return this.handle_errors<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.http_crypt4(path)));
   }
 
   //---------------------------------------------------------------------------
 
   json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
-    return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4()));
+    return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4(qbus_module + '/' + qbus_method)));
   }
 
   //-----------------------------------------------------------------------------
@@ -207,7 +211,11 @@ export class AuthService
         c.firstname = this.decrypt (c.firstname, this.secret);
         c.lastname = this.decrypt (c.lastname, this.secret);
 
+        console.log(c.roles);
+
         this.auth_credentials.next (c);
+
+        console.log('authentication next');
       }
 
     });
@@ -231,6 +239,8 @@ export class AuthService
 
   loo ()
   {
+    console.log ('unset authentication');
+
     sessionStorage.removeItem ('auth_user');
     sessionStorage.removeItem ('auth_pass');
     sessionStorage.removeItem ('auth_wpid');

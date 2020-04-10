@@ -26,14 +26,18 @@ export class FlowEditorComponent implements OnInit {
 
   ngOnInit()
   {
-    this.workflows = this.AuthService.json_rpc ('FLOW', 'workflow_get', {});
+    this.workflow_get ();
   }
 
   //-----------------------------------------------------------------------------
 
   workflow_get ()
   {
-    this.workflows = this.AuthService.json_rpc ('FLOW', 'workflow_get', {});
+    this.AuthService.auth_credentials.subscribe (() => {
+
+      this.workflows = this.AuthService.json_rpc ('FLOW', 'workflow_get', {});
+
+    });
   }
 
   //-----------------------------------------------------------------------------
