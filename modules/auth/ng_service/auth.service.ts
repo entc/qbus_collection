@@ -22,6 +22,7 @@ export class AuthService
     this.fetch_login = false;
     this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
 
+    this.fetch_login = true;
     this.gpg ();
   }
 
@@ -105,6 +106,9 @@ export class AuthService
       {
         var modalRef = this.modalService.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])});
 
+        this.fetch_login = false;
+
+
         modalRef.result.then((result) => {
 
           sessionStorage.setItem ('auth_wpid', String(result));
@@ -116,6 +120,13 @@ export class AuthService
 
         });
 
+        return throwError (error);
+      }
+      else if (this.fetch_login == true)
+      {
+        this.fetch_login = false;
+
+        this.loo ();
         return throwError (error);
       }
       else
@@ -198,8 +209,6 @@ export class AuthService
   {
     this.json_rpc ('AUTH', 'account_get', {}).subscribe((data: Array<AuthCredential>) => {
 
-      this.fetch_login = false;
-
       if (data.length > 0)
       {
         var c: AuthCredential = data[0];
@@ -211,11 +220,7 @@ export class AuthService
         c.firstname = this.decrypt (c.firstname, this.secret);
         c.lastname = this.decrypt (c.lastname, this.secret);
 
-        console.log(c.roles);
-
         this.auth_credentials.next (c);
-
-        console.log('authentication next');
       }
 
     });
