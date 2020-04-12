@@ -672,8 +672,9 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
     case PART_TYPE_TEXT:
     case PART_TYPE_FILE:
     {
-      cape_template_part_add (self->part, cape_template_part_new (type, cape_stream_get (self->sb), NULL));
+      const CapeString text = cape_stream_get (self->sb);
       
+      cape_template_part_add (self->part, cape_template_part_new (type, text, NULL));
       cape_stream_clr (self->sb);
       
       break;
@@ -825,7 +826,7 @@ int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, i
       {
         if (*c == '[')
         {
-          res = cape_template_compiler_part (self, PART_TYPE_FILE, err);
+          res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
           if (res)
           {
             return res;
