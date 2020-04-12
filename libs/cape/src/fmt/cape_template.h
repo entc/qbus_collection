@@ -6,6 +6,9 @@
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
 
+#define CAPE_TEMPLATE_FLAG__NONE         0x0000
+#define CAPE_TEMPLATE_FLAG__ENCRYPTED    0x0001
+
 //-----------------------------------------------------------------------------
 
 struct CapeTemplate_s; typedef struct CapeTemplate_s* CapeTemplate;
@@ -13,7 +16,7 @@ struct CapeTemplate_s; typedef struct CapeTemplate_s* CapeTemplate;
 //-----------------------------------------------------------------------------
 
 typedef int (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* text);
-typedef int (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file);
+typedef int (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file, number_t flags, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

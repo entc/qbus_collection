@@ -23,8 +23,9 @@
 
 //-----------------------------------------------------------------------------
 
-#define FORMAT_TYPE_NONE   0
-#define FORMAT_TYPE_DATE   1
+#define FORMAT_TYPE_NONE        0
+#define FORMAT_TYPE_DATE        1
+#define FORMAT_TYPE_ENCRYPTED   2
 
 //-----------------------------------------------------------------------------
 
@@ -76,37 +77,66 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
 
 void cape_template_part_checkForEval (CapeTemplatePart self, const CapeString text)
 {
-  // try to split with '='
-  
-  if (self->type == PART_TYPE_TAG)
+  switch (self->type)
   {
-    CapeString s1 = NULL;
-    CapeString s2 = NULL;
-    
-    if (cape_tokenizer_split (text, '=', &s1, &s2))
+    case PART_TYPE_TAG:
     {
-      self->text = cape_str_trim_utf8 (s1);
-      self->eval = cape_str_trim_utf8 (s2);
+      CapeString s1 = NULL;
+      CapeString s2 = NULL;
+      
+      // try to split with '='
+      if (cape_tokenizer_split (text, '=', &s1, &s2))
+      {
+        self->text = cape_str_trim_utf8 (s1);
+        self->eval = cape_str_trim_utf8 (s2);
+      }
+      else
+      {
+        if (cape_tokenizer_split (text, '|',  &s1, &s2))
+        {
+          cape_template_part_checkForFormat (self, s2);
+          self->text = cape_str_trim_utf8 (s1);
+        }
+        else
+        {
+          self->text = cape_str_trim_utf8 (text);
+        }
+      }
+      
+      cape_str_del (&s1);
+      cape_str_del (&s2);
+      
+      break;
     }
-    else
+    case PART_TYPE_FILE:
     {
+      CapeString s1 = NULL;
+      CapeString s2 = NULL;
+
       if (cape_tokenizer_split (text, '|',  &s1, &s2))
       {
-        cape_template_part_checkForFormat (self, s2);
         self->text = cape_str_trim_utf8 (s1);
+        
+        if (cape_str_equal (s2, "encrypted"))
+        {
+          self->format_type = FORMAT_TYPE_ENCRYPTED;
+        }
       }
       else
       {
         self->text = cape_str_trim_utf8 (text);
       }
+      
+      cape_str_del (&s1);
+      cape_str_del (&s2);
+
+      break;
     }
-    
-    cape_str_del (&s1);
-    cape_str_del (&s2);
-  }
-  else
-  {
-    self->text = cape_str_cp (text);
+    default:
+    {
+      self->text = cape_str_cp (text);
+      break;
+    }
   }
 }
 
@@ -392,14 +422,56 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeUdc data, CapeUdc
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, CapeUdc data, void* ptr, fct_cape_template__on_file onFile, CapeErr err)
 {
+  int res;
+  const CapeString name = part->text;
+
+  printf ("found file %s\n", name);
+
+  if (onFile == NULL)
   {
-    CapeString h = cape_json_to_s (data);
-    
-    printf ("PARAM: %s\n", h);
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
   }
   
+  CapeUdc item = cape_udc_get (data, name);
+  if (item)
+  {
+    switch (cape_udc_type (item))
+    {
+      case CAPE_UDC_STRING:
+      {
+        const CapeString text = cape_udc_s (item, NULL);
+        if (text)
+        {
+          number_t flags = CAPE_TEMPLATE_FLAG__NONE;
+          
+          if (part->format_type == FORMAT_TYPE_ENCRYPTED)
+          {
+            flags |= CAPE_TEMPLATE_FLAG__ENCRYPTED;
+          }
+          
+          res = onFile (ptr, text, flags, err);
+          goto exit_and_cleanup;
+        }
+        
+        break;
+      }
+    }
+  }
+
+  res = onFile (ptr, part->text, CAPE_TEMPLATE_FLAG__NONE, err);
+
+exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+{
   if (self->parts)
   {
     CapeListCursor* cursor = cape_list_cursor_create (self->parts, CAPE_DIRECTION_FORW);
@@ -422,9 +494,10 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
         }
         case PART_TYPE_FILE:
         {
-          if (onFile)
+          int res = cape_template_file_apply (self, part, data, ptr, onFile, err);
+          if (res)
           {
-            onFile (ptr, part->text);
+            return res;
           }
 
           break;
@@ -752,7 +825,7 @@ int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, i
       {
         if (*c == '[')
         {
-          res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
+          res = cape_template_compiler_part (self, PART_TYPE_FILE, err);
           if (res)
           {
             return res;
