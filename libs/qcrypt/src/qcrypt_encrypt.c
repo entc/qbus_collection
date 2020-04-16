@@ -102,7 +102,7 @@ void qencrypt_base64_del (QEncryptBase64* p_self)
 number_t qencrypt_base64_size (number_t size)
 {
   // this calculates the result size of the base64 encoded string
-  return ((size + 2) / 3 * 4) + 1 + 64;
+  return ((size + 2) / 3 * 4) + 4 + 64;
 }
 
 //-----------------------------------------------------------------------------
