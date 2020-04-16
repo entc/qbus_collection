@@ -64,6 +64,8 @@ void cape_stream_reserve (CapeStream self, number_t amount)
   {
     if (amount > self->size)
     {
+      printf ("STREAM ALLOC: %li\n", amount);
+      
       cape_stream_allocate (self, amount);
     }
     else
