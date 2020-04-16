@@ -102,7 +102,7 @@ void qencrypt_base64_del (QEncryptBase64* p_self)
 number_t qencrypt_base64_size (number_t size)
 {
   // following RFC 2045
-  number_t bytes_for_linebreaks = (number_t)(size / 76) + 1;
+  number_t bytes_for_linebreaks = (number_t)(size / 65) + 2;
   
   // this calculates the result size of the base64 encoded string
   return ((size + 2) / 3 * 4) + 4 + 64 + bytes_for_linebreaks;
