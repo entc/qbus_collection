@@ -202,7 +202,8 @@ int qdecrypt_aes_process (QDecryptAES self, const char* bufdat, number_t buflen,
     }
   }
   
-  cape_stream_cap (self->product, buflen + self->blocksize);
+  // extend the buffer (use 2 bytes extra to be on the safe side)
+  cape_stream_cap (self->product, buflen + self->blocksize + 2);
   
   {
     int lenLast;

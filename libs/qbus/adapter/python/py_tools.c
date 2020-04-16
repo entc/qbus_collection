@@ -21,14 +21,40 @@ PyObject* py_transform_to_pyo (CapeUdc o)
         PyObject* h = py_transform_to_pyo (item);
         PyObject* n = PyUnicode_FromString (cape_udc_name(item));
         
-        PyDict_SetItem (ret, n, h);   
+        if (h)
+        {
+          PyDict_SetItem (ret, n, h);
+          Py_DECREF (h);
+        }
         
-        Py_DECREF (h);
         Py_DECREF (n);
       }
       
       cape_udc_cursor_del (&cursor);
       
+      break;
+    }
+    case CAPE_UDC_LIST:
+    {
+      ret = PyList_New (0);
+      
+      CapeUdcCursor* cursor = cape_udc_cursor_new (o, CAPE_DIRECTION_FORW);
+      
+      while (cape_udc_cursor_next (cursor))
+      {
+        CapeUdc item = cursor->item;
+
+        PyObject* h = py_transform_to_pyo (item);
+        
+        if (h)
+        {
+          PyList_Append (ret, h);
+          Py_DECREF (h);
+        }
+      }
+      
+      cape_udc_cursor_del (&cursor);
+
       break;
     }
     case CAPE_UDC_STRING:
@@ -39,6 +65,16 @@ PyObject* py_transform_to_pyo (CapeUdc o)
     case CAPE_UDC_NUMBER:
     {
       ret = PyLong_FromLong (cape_udc_n (o, 0));
+      break;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      ret = PyFloat_FromDouble (cape_udc_f (o, .0));
+      break;
+    }
+    case CAPE_UDC_BOOL:
+    {
+      ret = PyBool_FromLong (cape_udc_b (o, FALSE));
       break;
     }
   }
@@ -158,20 +194,14 @@ CapeUdc py_transform_to_udc (PyObject* o)
   }
   else if (PyDict_Check (o))
   {
-    printf ("CONVERT FROM DICT\n");
-    
     ret = py_transform_to_udc_node (o);
   }
   else if (PyList_Check (o))
   {
-    printf ("CONVERT FROM LIST\n");
-
     ret = py_transform_to_udc_list (o);
   }
   else if (PyTuple_Check (o))
   {
-    printf ("CONVERT FROM TUPLE\n");
-
     ret = py_transform_to_udc_tuple (o);
   }
   else if (PySlice_Check (o))

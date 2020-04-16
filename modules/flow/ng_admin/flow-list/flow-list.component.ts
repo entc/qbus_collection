@@ -26,8 +26,10 @@ export class FlowListComponent implements OnInit
     {id: 10, name: "split flow"},
     {id: 11, name: "start flow"},
     {id: 12, name: "switch"},
+    {id: 13, name: "if"},
     {id: 21, name: "place message"},
-    {id: 50, name: "(variable) copy"}
+    {id: 50, name: "(variable) copy"},
+    {id: 51, name: "(variable) create node"}
   ];
 
   worksteps = new Array<IWorkstep>();

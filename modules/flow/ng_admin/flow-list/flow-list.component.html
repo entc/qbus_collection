@@ -123,6 +123,34 @@
 
             </div>
 
+            <div class="form-group" *ngSwitchCase="13">
+
+              <div class="alert alert-info" role="alert">
+                checks if a variable exists. if there is an additional params node given, it checks inside this node
+              </div>
+
+              <div class="form-group">
+                <label>variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.value_node" name="value_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>workflow ID if found</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.wfid" name="wfid">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>params node (optional)</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.params_node" name="params_node">
+                </div>
+              </div>
+
+            </div>
+
             <div class="form-group" *ngSwitchCase="50">
 
               <div class="form-group">
@@ -138,6 +166,17 @@
                 </div>
               </div>
 
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="51">
+
+              <div class="form-group">
+                <label>node name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.node_name" name="node_name">
+                </div>
+              </div>
 
             </div>
 
