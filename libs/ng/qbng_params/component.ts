@@ -1,24 +1,30 @@
-import { Component, OnInit, SimpleChanges, Input } from '@angular/core';
+import { Component, OnInit, SimpleChanges, Input, ViewChild } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
 import { Pipe, PipeTransform } from '@angular/core';
+import { JsonEditorComponent, JsonEditorOptions } from 'ang-jsoneditor';
 
 //-----------------------------------------------------------------------------
 
 @Component({
   selector: 'qbng-params',
-  templateUrl: './component.html'
+  templateUrl: './component.html',
+  styleUrls: ['./component.scss']
 })
 export class QbngParamsComponent implements OnInit {
 
-  @Input('params') params: Array<object>;
+  @Input('params') params: any;
+  @ViewChild(JsonEditorComponent, { static: true }) editor: JsonEditorComponent;
+
+  public editorOptions: JsonEditorOptions;
 
   //-----------------------------------------------------------------------------
 
   constructor()
   {
-    this.params = [];
+    this.editorOptions = new JsonEditorOptions();
+    this.editorOptions.modes = ['code', 'text', 'tree', 'view'];
   }
 
   //-----------------------------------------------------------------------------
@@ -52,6 +58,14 @@ export class QbngParamsComponent implements OnInit {
   {
     this.params.splice (index, 1);
   }
+
+  //-----------------------------------------------------------------------------
+
+  get_data (data: any)
+  {
+
+  }
+
 }
 
 //-----------------------------------------------------------------------------

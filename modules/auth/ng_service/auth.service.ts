@@ -16,6 +16,9 @@ export class AuthService
   public auth_credentials: BehaviorSubject<AuthCredential>;
 
   private secret: string;
+  private globpersons: Array<AuthGlobalPerson>;
+
+  //-----------------------------------------------------------------------------
 
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
@@ -205,6 +208,26 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
+  fetch_globalpersons ()
+  {
+    this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Array<AuthGlobalPerson>) => {
+
+      if (data.length > 0)
+      {
+        this.globpersons = [];
+
+        for (var i in data)
+        {
+          const gpid: AuthGlobalPerson = data[i];
+          this.globpersons.push ({gpid: gpid.gpid, firstname: this.decrypt (gpid.firstname, this.secret), lastname: this.decrypt (gpid.lastname, this.secret)});
+        }
+      }
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
   gpg ()
   {
     this.json_rpc ('AUTH', 'account_get', {}).subscribe((data: Array<AuthCredential>) => {
@@ -221,6 +244,8 @@ export class AuthService
         c.lastname = this.decrypt (c.lastname, this.secret);
 
         this.auth_credentials.next (c);
+
+        this.fetch_globalpersons ();
       }
 
     });
@@ -286,6 +311,28 @@ export class AuthService
   }
 
   //-----------------------------------------------------------------------------
+
+  name_gpid (gpid: number): string
+  {
+    try
+    {
+      const gpid_node = this.globpersons.find ((item: AuthGlobalPerson) => item.gpid == gpid);
+      return gpid_node.firstname + ' ' + gpid_node.lastname;
+    }
+    catch (e)
+    {
+      return "[unknown]";
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+}
+
+class AuthGlobalPerson
+{
+  gpid: number;
+  firstname: string;
+  lastname: string;
 }
 
 class AuthCredential

@@ -31,6 +31,6 @@ IF(Python3_FOUND)
   install (TARGETS qbus_adapter_python DESTINATION lib)
 
   # for docker
-  INSTALL (TARGETS qbus_adapter_python DESTINATION docker/vele/mods)
+  INSTALL (TARGETS qbus_adapter_python DESTINATION docker/dbuild/mods)
 
 ENDIF()
