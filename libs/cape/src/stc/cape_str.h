@@ -71,6 +71,8 @@ __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char c);
 
+__CAPE_LIBEX   CapeString         cape_str_sanitize_utf8 (const CapeString source);
+
 __CAPE_LIBEX   CapeString         cape_str_cp_replaced   (const CapeString source, const CapeString seek, const CapeString replace_with);
 
 //-----------------------------------------------------------------------------
@@ -91,7 +93,11 @@ __CAPE_LIBEX   void               cape_str_to_lower      (CapeString);
 
 //-----------------------------------------------------------------------------
 
+                                  /* returns the character size, invalid = 1 */
 __CAPE_LIBEX   number_t           cape_str_char__len     (unsigned char c);
+
+                                  /* returns the character size, invalid = 0 */
+__CAPE_LIBEX   number_t           cape_str_utf8__len     (unsigned char c);
 
 //-----------------------------------------------------------------------------
 

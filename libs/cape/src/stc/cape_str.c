@@ -85,6 +85,47 @@ void cape_str_del (CapeString* p_self)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_str_utf8__len (unsigned char c)
+{
+  if (0x20 <= c && c <= 0x7E)
+  {
+    // ascii
+    return 1;
+  }
+  else if ((c & 0xE0) == 0xC0)
+  {
+    // +1
+    return 2;
+  }
+  else if ((c & 0xF0) == 0xE0)
+  {
+    // +2
+    return 3;
+  }
+  else if ((c & 0xF8) == 0xF0)
+  {
+    // +3
+    return 4;
+  }
+  else if ((c & 0xFC) == 0xF8)
+  {
+    // +4
+    return 5;
+  }
+  else if ((c & 0xFE) == 0xFC)
+  {
+    // +5
+    return 6;
+  }
+  else
+  {
+    // not supported character
+    return 0;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 number_t cape_str_char__len (unsigned char c)
 {
   if (0x20 <= c && c <= 0x7E)
@@ -836,6 +877,56 @@ CapeString cape_str_trim_lr (const CapeString source, char l, char r)
 CapeString cape_str_trim_c (const CapeString source, char c)
 {
   return cape_str_trim_lr (source, c, c);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_str_sanitize_utf8 (const CapeString source)
+{
+  number_t src_len = strlen(source);
+  number_t src_pos = 0;
+  
+  char* ret_src = CAPE_ALLOC (src_len + 1);
+  
+  const char* pos = source;
+  char* ret = ret_src;
+  
+  for (src_pos = 0; src_pos < src_len;)
+  {
+    number_t char_len = cape_str_utf8__len (*pos);
+
+    
+    if (char_len)
+    {
+      src_pos += char_len;
+
+      if (src_pos > src_len)
+      {
+        // invalid utf8
+      }
+      else
+      {
+        memcpy (ret, pos, char_len);
+
+        ret += char_len;
+        pos += char_len;
+      }
+    }
+    else
+    {
+      // invalid utf8
+      pos++;
+      src_pos++;
+    }
+  }
+
+  printf ("%s\n", ret);
+
+
+  // add termination
+  *ret = 0;
+  
+  return ret_src;
 }
 
 //-----------------------------------------------------------------------------
