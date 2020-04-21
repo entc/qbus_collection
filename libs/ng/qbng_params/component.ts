@@ -3,28 +3,21 @@ import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-boot
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
 import { Pipe, PipeTransform } from '@angular/core';
-import { JsonEditorComponent, JsonEditorOptions } from 'ang-jsoneditor';
 
 //-----------------------------------------------------------------------------
 
 @Component({
   selector: 'qbng-params',
-  templateUrl: './component.html',
-  styleUrls: ['./component.scss']
+  templateUrl: './component.html'
 })
 export class QbngParamsComponent implements OnInit {
 
   @Input('params') params: any;
-  @ViewChild(JsonEditorComponent, { static: true }) editor: JsonEditorComponent;
-
-  public editorOptions: JsonEditorOptions;
 
   //-----------------------------------------------------------------------------
 
   constructor()
   {
-    this.editorOptions = new JsonEditorOptions();
-    this.editorOptions.modes = ['code', 'text', 'tree', 'view'];
   }
 
   //-----------------------------------------------------------------------------
