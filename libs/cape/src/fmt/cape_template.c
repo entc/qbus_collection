@@ -1039,6 +1039,43 @@ int __STDCALL cape_eval__on_text (void* ptr, const char* text)
 
 //-----------------------------------------------------------------------------
 
+int cape__evaluate_expression (const CapeString expression)
+{
+  int ret = FALSE;
+  
+  // local objects
+  CapeString left = NULL;
+  CapeString right = NULL;
+
+  // just implement a simple approach
+  
+  // find the '=' in the expression
+    
+  if (cape_tokenizer_split (expression, '=', &left, &right))
+  {
+    CapeString l_trimmed = cape_str_trim_utf8 (left);
+    CapeString r_trimmed = cape_str_trim_utf8 (right);
+    
+    ret = cape_str_equal (l_trimmed, r_trimmed);
+    
+    cape_str_del (&l_trimmed);
+    cape_str_del (&r_trimmed);
+  }
+  else
+  {
+    ret = cape_str_not_empty (expression);
+  }
+  
+  cape_str_del (&left);
+  cape_str_del (&right);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluate", "expression = '%s' -> %i", expression, ret);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
 {
   int res;
@@ -1059,8 +1096,8 @@ int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  
-  
+  *p_ret = cape__evaluate_expression (cape_stream_get (stream));
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
