@@ -689,7 +689,26 @@ time_t cape_datetime_n__unix (const CapeDatetime* dt)
 
 int cape_datetime__date_de (CapeDatetime* dt, const CapeString datetime_in_text)
 {
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+
   return sscanf (datetime_in_text, "%u.%u.%u", &(dt->day), &(dt->month), &(dt->year)) == 3;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+  
+  return sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
 }
 
 //-----------------------------------------------------------------------------

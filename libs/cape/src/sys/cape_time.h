@@ -111,7 +111,11 @@ __CAPE_LIBEX   int             cape_datetime__std         (CapeDatetime*, const 
 
 __CAPE_LIBEX   int             cape_datetime__str         (CapeDatetime*, const CapeString datetime_in_text);
 
+                               /* 01.01.1970 */
 __CAPE_LIBEX   int             cape_datetime__date_de     (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 1970-01-01 */
+__CAPE_LIBEX   int             cape_datetime__date_iso    (CapeDatetime*, const CapeString datetime_in_text);
 
 //-----------------------------------------------------------------------------
 
