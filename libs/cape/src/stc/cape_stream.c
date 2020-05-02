@@ -329,7 +329,7 @@ void cape_stream_append_d (CapeStream self, const CapeDatetime* val)
 {
   if (val)
   {
-    CapeString h = cape_datetime_s__std (val);
+    CapeString h = cape_datetime_s__std_msec (val);
     
     cape_stream_append_buf (self, h, cape_str_size (h));
     

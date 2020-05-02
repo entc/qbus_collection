@@ -268,8 +268,6 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
     {
       case FORMAT_TYPE_NONE:
       {
-        printf ("no format type\n");
-        
         if (self->eval)
         {
           if (cape_str_equal (self->eval, text))
@@ -293,10 +291,8 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
       {
         CapeDatetime dt;
         
-        printf ("no format type date with %s\n", text);
-        
         // convert text into dateformat
-        if (cape_datetime__str (&dt, text))
+        if (cape_datetime__str_msec (&dt, text))
         {
           // convert into local time
           cape_datetime_local (&dt);
@@ -313,7 +309,24 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
             cape_str_del (&h);
           }
         }
-        else if (cape_datetime__std (&dt, text))
+        else if (cape_datetime__str (&dt, text))
+        {
+          // convert into local time
+          cape_datetime_local (&dt);
+          
+          // apply format
+          {
+            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            
+            if (onText)
+            {
+              onText (ptr, h);
+            }
+            
+            cape_str_del (&h);
+          }
+        }
+        else if (cape_datetime__std_msec (&dt, text))
         {
           // convert into local time
           cape_datetime_local (&dt);
@@ -427,8 +440,6 @@ int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, Cape
   int res;
   const CapeString name = part->text;
 
-  printf ("found file %s\n", name);
-
   if (onFile == NULL)
   {
     res = CAPE_ERR_NONE;
@@ -509,8 +520,6 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
           CapeUdc item = cape_udc_get (data, name);
           if (item)
           {
-            printf ("found tag %s\n", name);
-            
             switch (cape_udc_type (item))
             {
               case CAPE_UDC_LIST:
@@ -532,8 +541,6 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
               }
               case CAPE_UDC_NODE:
               {
-                printf ("found tag as node %s\n", name);
-                
                 int res = cape_template_part_apply (part, item, ptr, onText, onFile, err);
                 if (res)
                 {
@@ -544,9 +551,6 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
               }
               case CAPE_UDC_STRING:
               {
-                printf ("found tag as string %s\n", name);
-                
-                
                 int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
                 if (res)
                 {
@@ -577,8 +581,6 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
               }
               case CAPE_UDC_DATETIME:
               {
-                printf ("found tag as datetime %s\n", name);
-
                 int res = cape_template_part_eval_datetime (part, data, item, ptr, onText, onFile, err);
                 if (res)
                 {
@@ -589,8 +591,6 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
               }
               default:
               {
-                printf ("found tag as default %s\n", name);
-                
                 int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
                 if (res)
                 {
@@ -1039,7 +1039,35 @@ int __STDCALL cape_eval__on_text (void* ptr, const char* text)
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression (const CapeString expression)
+int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  if (cape_str_equal (l_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (l_trimmed);
+  }
+  else
+  {
+    ret = cape_str_equal (l_trimmed, r_trimmed);
+  }
+  
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression__single (const CapeString expression)
 {
   int ret = FALSE;
   
@@ -1047,19 +1075,10 @@ int cape__evaluate_expression (const CapeString expression)
   CapeString left = NULL;
   CapeString right = NULL;
 
-  // just implement a simple approach
-  
   // find the '=' in the expression
-    
   if (cape_tokenizer_split (expression, '=', &left, &right))
   {
-    CapeString l_trimmed = cape_str_trim_utf8 (left);
-    CapeString r_trimmed = cape_str_trim_utf8 (right);
-    
-    ret = cape_str_equal (l_trimmed, r_trimmed);
-    
-    cape_str_del (&l_trimmed);
-    cape_str_del (&r_trimmed);
+    ret = cape__evaluate_expression__compare (left, right);
   }
   else
   {
@@ -1070,6 +1089,33 @@ int cape__evaluate_expression (const CapeString expression)
   cape_str_del (&right);
   
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluate", "expression = '%s' -> %i", expression, ret);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression (const CapeString expression)
+{
+  int ret = FALSE;
+  
+  CapeList logical_parts = cape_tokenizer_str (expression, "OR");
+  
+  CapeListCursor* cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+    if (ret)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+exit_and_cleanup:
+  
+  cape_list_cursor_destroy (&cursor);
+  cape_list_del (&logical_parts);
   
   return ret;
 }

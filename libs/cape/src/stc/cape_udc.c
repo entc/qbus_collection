@@ -1481,7 +1481,7 @@ void cape_udc_print (const CapeUdc self)
     {
       if (self->data)
       {
-        CapeString h = cape_datetime_s__std (self->data);
+        CapeString h = cape_datetime_s__std_msec (self->data);
         
         printf ("UDC [datetime]: %s\n", h);
         

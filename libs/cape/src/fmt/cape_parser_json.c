@@ -397,7 +397,7 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
         {
           CapeDatetime dt;
           
-          if (cape_datetime__std (&dt, buf))
+          if (cape_datetime__std_msec (&dt, buf))
           {
             if (self->onItem)
             {
