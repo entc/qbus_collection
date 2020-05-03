@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
-import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
+import { Component, OnInit, Injector } from '@angular/core';
+import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
 
 // auth service
 import { AuthService } from '@qbus/auth.service';
@@ -9,17 +10,15 @@ import { AuthService } from '@qbus/auth.service';
 
 @Component({
   selector: 'app-flow-process',
-  templateUrl: './component.html',
-  styleUrls: ['./component.scss']
+  templateUrl: './component.html'
 })
-
 export class FlowProcessComponent implements OnInit {
 
-  processes: Observable<IProcessStep[]>;
+  processes: Observable<ProcessStep[]>;
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal)
+  constructor(private AuthService: AuthService, private router: Router, private modalService: NgbModal)
   {
   }
 
@@ -39,16 +38,56 @@ export class FlowProcessComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  show_details(item: IProcessStep)
+  show_details (item: ProcessStep)
   {
-    
+    this.router.navigate(['/flow_process', item.id]);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  show_data (item: ProcessStep)
+  {
+    this.modalService.open (FlowProcessDataModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: ProcessStep, useValue: item}])}).result.then((result) => {
+
+
+    }, () => {
+
+    });
   }
 
   //-----------------------------------------------------------------------------
 }
 
-class IProcessStep
+export class ProcessStep
 {
   id: number;
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'flow-process-data-modal-component',
+  templateUrl: './modal_data.html'
+}) export class FlowProcessDataModalComponent implements OnInit {
+
+  content: string;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_service: AuthService, public modal: NgbActiveModal, private process_step: ProcessStep)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_get', {'psid': this.process_step.id}).subscribe ((data: any) => {
+
+      this.content = JSON.stringify(data.content);
+
+    });
+  }
 
 }

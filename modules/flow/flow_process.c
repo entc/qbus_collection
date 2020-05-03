@@ -573,7 +573,7 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
 
-  self->psid = cape_udc_get (qin->cdata, "psid");
+  self->psid = cape_udc_get_n (qin->cdata, "psid", 0);
   if (self->psid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_process_get} missing parameter 'psid'");
@@ -592,7 +592,7 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "id"            , self->psid);
 
     cape_udc_add_n      (values, "tdata"         , 0);
-
+    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_task_view", &params, &values, err);
     if (query_results == NULL)
@@ -618,7 +618,7 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
     
-    cape_udc_add_name (first_row, &tdata, "tdata");
+    cape_udc_add_name (first_row, &tdata, "content");
   }
   
   cape_udc_replace_mv (&(qout->cdata), &first_row);
