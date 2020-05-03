@@ -6,6 +6,7 @@ import { AuthLoginsComponent } from './auth_logins/component';
 import { NgxPaginationModule } from 'ngx-pagination';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
+import { PageToolbarModule } from '@qbus/page_toolbar.module';
 
 const routes: Routes = [
   { path: 'auth_logins', component: AuthLoginsComponent }
@@ -13,7 +14,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [AuthLoginsComponent],
-  imports: [CommonModule, FormsModule, NgxPaginationModule, TrloModule, QbngModule, RouterModule.forChild(routes)],
+  imports: [CommonModule, FormsModule, NgxPaginationModule, TrloModule, QbngModule, PageToolbarModule, RouterModule.forChild(routes)],
   exports: [RouterModule]
 })
 export class AuthAdminModule

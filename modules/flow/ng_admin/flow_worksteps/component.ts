@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Params } from '@angular/router';
-import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 // auth service
 import { AuthService } from '@qbus/auth.service';
@@ -8,12 +8,11 @@ import { AuthService } from '@qbus/auth.service';
 //-----------------------------------------------------------------------------
 
 @Component({
-  selector: 'app-flow-list',
-  templateUrl: './flow-list.component.html',
-  styleUrls: ['./flow-list.component.scss']
+  selector: 'app-flow-worksteps',
+  templateUrl: './component.html',
 })
 
-export class FlowListComponent implements OnInit
+export class FlowWorkstepsComponent implements OnInit
 {
   private wfid: number;
 

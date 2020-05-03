@@ -1,0 +1,15 @@
+@import "~jsoneditor/dist/jsoneditor.min.css";
+
+.btn-blue {
+    display: block;
+    background: #3883fa;
+    color: white;
+    text-decoration: unset;
+    padding: 5px 10px;
+    border-bottom: 1px solid #d3d3d3;
+    border-top: 1px solid #3883fa;
+    height: 25px;
+}
+.hide-block {
+    display: none;
+}

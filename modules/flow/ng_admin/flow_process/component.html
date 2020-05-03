@@ -1,0 +1,35 @@
+<page-toolbar #toolbar sorting="{'id': 'id'}"></page-toolbar>
+
+<div class="container mt-2" *authRole="[]">
+
+  <table class="table mt-2">
+    <tr>
+      <th></th>
+      <th>ID</th>
+      <th>workflow</th>
+      <th>current step</th>
+      <th></th>
+    </tr>
+    <tr *ngFor="let item of processes | async | pageToolBar : toolbar : ['id']">
+      <td>
+        <span [ngSwitch]="item.active">
+          <i *ngSwitchCase="0" class="fa fa-check"></i>
+          <i *ngSwitchCase="1" class="fa fa-pause-circle"></i>
+        </span>
+      </td>
+      <td>
+        {{item.id}}
+      </td>
+      <td>
+        {{item.wf_name}}
+      </td>
+      <td>
+        {{item.step_name}}
+      </td>
+      <td>
+        <button (click)="show_details(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eye"></i></button>
+      </td>
+    </tr>
+  </table>
+
+</div>

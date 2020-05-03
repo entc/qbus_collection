@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
+import { Observable } from 'rxjs';
 
 // auth service
 import { AuthService } from '@qbus/auth.service';
@@ -8,13 +9,13 @@ import { AuthService } from '@qbus/auth.service';
 
 @Component({
   selector: 'app-flow-process',
-  templateUrl: './flow-process.component.html',
-  styleUrls: ['./flow-process.component.scss']
+  templateUrl: './component.html',
+  styleUrls: ['./component.scss']
 })
 
 export class FlowProcessComponent implements OnInit {
 
-  processes = new Array<IProcessStep>();
+  processes: Observable<IProcessStep[]>;
 
   //-----------------------------------------------------------------------------
 
@@ -33,11 +34,14 @@ export class FlowProcessComponent implements OnInit {
 
   processes_get ()
   {
-    this.AuthService.json_rpc ('FLOW', 'process_get', {}).subscribe((data: Array<IProcessStep>) => {
+    this.processes = this.AuthService.json_rpc ('FLOW', 'process_all', {});
+  }
 
-      this.processes = data;
+  //-----------------------------------------------------------------------------
 
-    });
+  show_details(item: IProcessStep)
+  {
+    
   }
 
   //-----------------------------------------------------------------------------
@@ -45,6 +49,6 @@ export class FlowProcessComponent implements OnInit {
 
 class IProcessStep
 {
-
+  id: number;
 
 }
