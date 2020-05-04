@@ -1,6 +1,4 @@
-/* -----------------------------------------------
-* Timeline
-* --------------------------------------------- */
+
 .timeline {
     list-style: none;
     padding: 0px 0 0px;
@@ -18,16 +16,16 @@
     margin-left: -1.5px;
 }
 
-    .timeline > li {
-        margin-bottom: 15px;
-        position: relative;
-    }
+.timeline > li {
+    margin-bottom: 15px;
+    position: relative;
+}
 
-        .timeline > li:before,
-        .timeline > li:after {
-            content: " ";
-            display: table;
-        }
+.timeline > li:before,
+.timeline > li:after {
+    content: " ";
+    display: table;
+}
 
         .timeline > li:after {
             clear: both;

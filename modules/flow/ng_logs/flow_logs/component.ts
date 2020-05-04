@@ -10,14 +10,13 @@ import { AuthService } from '@qbus/auth.service';
 
 @Component({
   selector: 'flow-logs',
-  templateUrl: './component.html',
-  styleUrls: ['./component.css']
+  templateUrl: './component.html'
 })
 export class FlowLogsComponent implements OnInit
 {
   @Input('psid') psid: number;
 
-  chain_items: Observable<ChainItem[]>;
+  public chain_items: ChainItem[];
 
   //-----------------------------------------------------------------------------
 
@@ -29,7 +28,10 @@ export class FlowLogsComponent implements OnInit
 
   ngOnInit()
   {
-    this.chain_items = this.AuthService.json_rpc ('FLOW', 'chain_get', {'psid': this.psid});
+    this.AuthService.json_rpc ('FLOW', 'chain_get', {'psid': this.psid}).subscribe((data: ChainItem[]) => {
+
+      this.chain_items = data;
+    });
   }
 
   //-----------------------------------------------------------------------------
@@ -63,11 +65,12 @@ class ChainEvent
 
 @Component({
   selector: 'flow-chain',
-  templateUrl: './part_chain.html'
+  templateUrl: './part_chain.html',
+  styleUrls: ['./component.css']
 })
 export class FlowChainComponent implements OnInit
 {
-  @Input('chain') log: ChainItem;
+  @Input('logs') logs: ChainItem[];
 
   show_details: boolean;
 

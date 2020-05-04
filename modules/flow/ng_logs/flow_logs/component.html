@@ -1,5 +1,1 @@
-<ul class="timeline">
-  <li *ngFor="let item of chain_items | async">
-    <flow-chain [chain]="item"></flow-chain>
-  </li>
-</ul>
+<flow-chain [logs]="chain_items"></flow-chain>
