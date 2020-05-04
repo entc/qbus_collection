@@ -221,7 +221,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     {
       CapeString h = cape_str_sub (at, length);
             
-      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
 
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
@@ -238,6 +238,12 @@ static int qwebs_request__internal__on_body (http_parser* parser, const char* at
 {
   QWebsRequest self = parser->data;
   
+  printf ("---------------------------------------------------------------------------\n");
+
+  printf ("%s\n", at);  
+  
+  printf ("---------------------------------------------------------------------------\n");
+
   if (self->api)
   {
     cape_stream_append_buf (self->body_value, at, length);
@@ -544,7 +550,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   
   int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
   
-  printf ("BYTES PROCESSED: %i\n", bytes_processed);
+  //printf ("BYTES PROCESSED: %i\n", bytes_processed);
   
   if (self->parser.http_errno > 0)
   {
@@ -572,7 +578,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
     request->method = cape_str_cp (http_method_str (self->parser.method));
     
-    printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
+    //printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
 
     if (request->is_complete)
     {

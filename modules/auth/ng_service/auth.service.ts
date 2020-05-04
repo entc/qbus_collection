@@ -65,16 +65,12 @@ export class AuthService
     var pass = sessionStorage.getItem ('auth_pass');
     var wpid = sessionStorage.getItem ('auth_wpid');
 
-    console.log('got session storage');
-
     if (user && pass)
     {
-      console.log('use credentials = ' + page);
       return {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass, wpid)})};
     }
     else
     {
-      console.log('no credentials = ' + page);
       return {};
     }
   }
@@ -84,8 +80,6 @@ export class AuthService
   handle_errors<T> (http_request: Observable<T>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
-
-      console.log(this.fetch_login);
 
       if (error.status == 401 && this.fetch_login == false)
       {
@@ -269,8 +263,6 @@ export class AuthService
 
   loo ()
   {
-    console.log ('unset authentication');
-
     sessionStorage.removeItem ('auth_user');
     sessionStorage.removeItem ('auth_pass');
     sessionStorage.removeItem ('auth_wpid');

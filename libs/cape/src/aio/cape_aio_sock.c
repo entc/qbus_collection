@@ -687,7 +687,7 @@ struct CapeAioSocketUdp_s
   fct_cape_aio_socket_onDone on_done;
 };
 
-#define CAPE_AIO_SOCKET__UDP__RECV_BUFLEN 1024
+#define CAPE_AIO_SOCKET__UDP__RECV_BUFLEN 2000
 
 //-----------------------------------------------------------------------------
 
