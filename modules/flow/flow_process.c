@@ -687,6 +687,7 @@ int flow_process_all (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       cape_udc_add_n    (params, "wpid"          , self->wpid);
 
       // execute the query
+      // select ps.id, ps.wpid, ps.wfid, ps.active, ws.name step_name, ws.fctid, wf.name wf_name, ps.t_data, ws.p_data from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step join proc_workflows wf on wf.id = ps.wfid where sync is null;
       query_results = adbl_session_query (self->adbl_session, "flow_process_get_view", &params, &values, err);
     }
     else
