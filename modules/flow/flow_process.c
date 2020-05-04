@@ -593,6 +593,11 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 
     cape_udc_add_n      (values, "tdata"         , 0);
     
+    /*     
+     --- proc_task_view ---
+
+     select ta.id, ta.wpid, ta.wfid, pl.id logid, ta.active, ta.refid, ta.sync, pl.cnt, ta.t_data tdata, pl.vdata from proc_tasks ta left join proc_task_logs pl on pl.taid = ta.id and pl.wsid = ta.current_step;
+     */
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_task_view", &params, &values, err);
     if (query_results == NULL)
