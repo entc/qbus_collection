@@ -52,7 +52,7 @@ int main (int argc, char *argv[])
   {
     CapeDatetime dt; cape_datetime_utc__add_s (&dt, "m1");
 
-    CapeString h = cape_datetime_s__std (&dt);
+    CapeString h = cape_datetime_s__std_msec (&dt);
     
     printf ("NEXT EVENT: %s\n", h);
     

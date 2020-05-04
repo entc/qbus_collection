@@ -624,9 +624,16 @@ CapeString cape_datetime_s__fmt (const CapeDatetime* dt, const CapeString format
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_datetime_s__std (const CapeDatetime* dt)
+CapeString cape_datetime_s__std_msec (const CapeDatetime* dt)
 {
   return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02i.%03iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec, dt->msec);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime_s__std (const CapeDatetime* dt)
+{
+  return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec);
 }
 
 //-----------------------------------------------------------------------------
@@ -689,21 +696,49 @@ time_t cape_datetime_n__unix (const CapeDatetime* dt)
 
 int cape_datetime__date_de (CapeDatetime* dt, const CapeString datetime_in_text)
 {
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+
   return sscanf (datetime_in_text, "%u.%u.%u", &(dt->day), &(dt->month), &(dt->year)) == 3;
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_datetime__std (CapeDatetime* dt, const CapeString datetime_in_text)
+int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+  
+  return sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__std_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   return sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%u.%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
+int cape_datetime__str_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   return sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  dt->msec = 0;
+  
+  return sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
 }
 
 //-----------------------------------------------------------------------------

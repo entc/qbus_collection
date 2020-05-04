@@ -119,13 +119,6 @@ export class AuthService
 
         return throwError (error);
       }
-      else if (this.fetch_login == true)
-      {
-        this.fetch_login = false;
-
-        this.loo ();
-        return throwError (error);
-      }
       else
       {
         return throwError (error);

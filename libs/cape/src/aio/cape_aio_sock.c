@@ -2653,7 +2653,7 @@ void cape_aio_socket_cache_clr (CapeAioSocketCache self)
 
 int cape_aio_socket_cache_send_s (CapeAioSocketCache self, CapeStream* p_stream, CapeErr err)
 {
-  int res;
+  int res = CAPE_ERR_NONE;
   
   if (*p_stream)
   {

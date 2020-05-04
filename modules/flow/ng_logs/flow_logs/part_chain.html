@@ -1,0 +1,29 @@
+<ul class="timeline">
+  <li *ngFor="let log of logs">
+
+    <div class="timeline-badge success" *ngIf="log.state == 3">
+      <i class="fas fa-check"></i>
+    </div>
+    <div class="timeline-badge default" *ngIf="log.state == 2">
+      <i class="fas fa-pause"></i>
+    </div>
+    <div class="timeline-badge danger" *ngIf="log.state == 1">
+      <i class="fas fa-exclamation"></i>
+    </div>
+    <div class="timeline-badge warn" *ngIf="log.state == 0">
+      <i class="fas fa-question"></i>
+    </div>
+
+    <div class="timeline-panel">
+      <div class="timeline-heading">
+        <h4 class="timeline-title">{{log.name}}</h4>
+        <p><small class="text-muted">{{log.created | trlo_locale}}</small></p>
+      </div>
+      <div class="timeline-body">
+
+          <flow-chain [logs]="log.logs"></flow-chain>
+
+      </div>
+    </div>
+  </li>
+</ul>
