@@ -65,8 +65,6 @@ export class AuthService
     var pass = sessionStorage.getItem ('auth_pass');
     var wpid = sessionStorage.getItem ('auth_wpid');
 
-    console.log('got session storage');
-
     if (user && pass)
     {
       console.log('use credentials = ' + page);
@@ -84,8 +82,6 @@ export class AuthService
   handle_errors<T> (http_request: Observable<T>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
-
-      console.log(this.fetch_login);
 
       if (error.status == 401 && this.fetch_login == false)
       {
@@ -165,6 +161,17 @@ export class AuthService
   json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
     return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4(qbus_module + '/' + qbus_method)));
+  }
+
+  //---------------------------------------------------------------------------
+
+  json_rpc_blob (qbus_module: string, qbus_method: string, params: object): Observable<string>
+  {
+    var options = this.http_crypt4(qbus_module + '/' + qbus_method);
+
+    options['responseType'] = 'blob';
+
+    return this.http.post<string>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), options);
   }
 
   //-----------------------------------------------------------------------------
