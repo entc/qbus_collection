@@ -288,3 +288,52 @@ int cape_parser_line_finalize (CapeParserLine self, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
+
+void __STDCALL cape_parser_lines__lines__on_del (void* ptr)
+{
+  CapeString h = ptr; cape_str_del (&h);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL cape_parser_lines__on_line (void* ptr, const CapeString line)
+{
+  cape_list_push_back (ptr, cape_str_cp (line));
+}
+
+//-----------------------------------------------------------------------------
+
+CapeList cape_parser_lines (const char* buffer, number_t size, CapeErr err)
+{
+  int res;
+  CapeList ret = NULL;
+
+  // local objects
+  CapeList lines = cape_list_new (cape_parser_lines__lines__on_del);
+  CapeParserLine parser = cape_parser_line_new (lines, cape_parser_lines__on_line);
+  
+  res = cape_parser_line_process (parser, buffer, size, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_parser_line_finalize (parser, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // transfer ownership
+  ret = lines;
+  lines = NULL;
+  
+exit_and_cleanup:
+  
+  cape_list_del (&lines);
+  cape_parser_line_del (&parser);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------

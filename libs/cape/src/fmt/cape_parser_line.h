@@ -5,6 +5,7 @@
 #include "sys/cape_types.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_list.h"
 
 //-----------------------------------------------------------------------------
 
@@ -21,6 +22,10 @@ __CAPE_LIBEX   void              cape_parser_line_del       (CapeParserLine*);
 __CAPE_LIBEX   int               cape_parser_line_process   (CapeParserLine, const char* buffer, number_t size, CapeErr err);
 
 __CAPE_LIBEX   int               cape_parser_line_finalize  (CapeParserLine, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   CapeList          cape_parser_lines          (const char* buffer, number_t size, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
