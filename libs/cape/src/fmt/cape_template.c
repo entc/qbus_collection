@@ -236,14 +236,11 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeU
       {
         CapeDatetime* h1 = cape_datetime_cp (dt);
         
-        CapeString h = cape_datetime_s__std (h1);
+        // set the original as UTC
+        h1->is_utc = TRUE;
         
-        printf ("DATE: %s\n", h);
-
         // convert into local time
-        cape_datetime_local (h1);
-
-        
+        cape_datetime_to_local (h1);
 
         // apply format
         {
@@ -354,8 +351,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         // convert text into dateformat
         if (cape_datetime__str_msec (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+          
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -371,8 +371,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__str (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -388,8 +391,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__std_msec (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -405,8 +411,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__date_de (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
