@@ -316,6 +316,42 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, number_t value, void
 
 //-----------------------------------------------------------------------------
 
+int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  if (cape_str_equal (l_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (l_trimmed);
+  }
+  else if (cape_str_equal (l_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (l_trimmed);
+  }
+  else
+  {
+    ret = cape_str_equal (l_trimmed, r_trimmed);
+  }
+  
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   const CapeString text = cape_udc_s (item, NULL);
@@ -327,7 +363,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
       {
         if (self->eval)
         {
-          if (cape_str_equal (self->eval, text))
+          if (cape__evaluate_expression__compare (self->eval, text))
           {
             return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
           }
@@ -1137,34 +1173,6 @@ int __STDCALL cape_eval__on_text (void* ptr, const char* text)
   cape_stream_append_str (ptr, text);
   
   return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
-{
-  int ret;
-  
-  CapeString l_trimmed = cape_str_trim_utf8 (left);
-  CapeString r_trimmed = cape_str_trim_utf8 (right);
-
-  if (cape_str_equal (l_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (r_trimmed);
-  }
-  else if (cape_str_equal (r_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (l_trimmed);
-  }
-  else
-  {
-    ret = cape_str_equal (l_trimmed, r_trimmed);
-  }
-  
-  cape_str_del (&l_trimmed);
-  cape_str_del (&r_trimmed);
-  
-  return ret;
 }
 
 //-----------------------------------------------------------------------------
