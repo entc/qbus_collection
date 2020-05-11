@@ -24,8 +24,6 @@ export class AuthService
   {
     this.fetch_login = false;
     this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
-
-    this.fetch_login = true;
     this.gpg ();
   }
 
@@ -328,14 +326,7 @@ export class AuthService
   //-----------------------------------------------------------------------------
 }
 
-class AuthGlobalPerson
-{
-  gpid: number;
-  firstname: string;
-  lastname: string;
-}
-
-class AuthCredential
+export class AuthCredential
 {
   gpid: number;
   wpid: number;
@@ -344,6 +335,15 @@ class AuthCredential
   workspace: string;
   secret: string;
   roles: object;
+}
+
+//=============================================================================
+
+class AuthGlobalPerson
+{
+  gpid: number;
+  firstname: string;
+  lastname: string;
 }
 
 //=============================================================================

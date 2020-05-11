@@ -1190,7 +1190,7 @@ int cape__evaluate_expression__single (const CapeString expression)
   cape_str_del (&left);
   cape_str_del (&right);
   
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluate", "expression = '%s' -> %i", expression, ret);
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluated", "expression = '%s' -> %i", expression, ret);
   
   return ret;
 }
@@ -1201,17 +1201,25 @@ int cape__evaluate_expression (const CapeString expression)
 {
   int ret = FALSE;
   
+  // local objects
+  CapeListCursor* cursor = NULL;
   CapeList logical_parts = cape_tokenizer_str (expression, "OR");
   
-  CapeListCursor* cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
-  
-  while (cape_list_cursor_next (cursor))
+  if (cape_list_size (logical_parts))
   {
-    ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
-    if (ret)
+    cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
+    while (cape_list_cursor_next (cursor))
     {
-      goto exit_and_cleanup;
+      ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+      if (ret)
+      {
+        goto exit_and_cleanup;
+      }
     }
+  }
+  else
+  {
+    ret = cape__evaluate_expression__single (expression);
   }
   
 exit_and_cleanup:

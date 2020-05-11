@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TrloModule } from '@qbus/trlo.module';
 
 // auth services
-import { AuthService } from '@qbus/auth.service';
-import { AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent, AuthRoleDirective } from '@qbus/auth.service';
+import { AuthService, AuthCredential, AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent, AuthRoleDirective } from '@qbus/auth.service';
 
 @NgModule({
   declarations: [
