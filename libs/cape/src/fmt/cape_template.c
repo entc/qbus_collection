@@ -26,6 +26,7 @@
 #define FORMAT_TYPE_NONE        0
 #define FORMAT_TYPE_DATE        1
 #define FORMAT_TYPE_ENCRYPTED   2
+#define FORMAT_TYPE_DECIMAL     3
 
 //-----------------------------------------------------------------------------
 
@@ -61,8 +62,12 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     
     if (cape_str_equal (h, "date"))
     {
-      
       self->format_type = FORMAT_TYPE_DATE;
+      self->eval = cape_str_trim_utf8 (f2);
+    }
+    else if (cape_str_equal (h, "decimal"))
+    {
+      self->format_type = FORMAT_TYPE_DECIMAL;
       self->eval = cape_str_trim_utf8 (f2);
     }
     
@@ -215,7 +220,7 @@ void cape_template_part_add (CapeTemplatePart self, CapeTemplatePart part)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err);
+int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, number_t pos, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
@@ -231,9 +236,12 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeU
       {
         CapeDatetime* h1 = cape_datetime_cp (dt);
         
-        // convert into local time
-        cape_datetime_local (h1);
+        // set the original as UTC
+        h1->is_utc = TRUE;
         
+        // convert into local time
+        cape_datetime_to_local (h1);
+
         // apply format
         {
           CapeString h2 = cape_datetime_s__fmt (h1, self->eval);
@@ -258,10 +266,95 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeU
 
 //-----------------------------------------------------------------------------
 
+int cape_template_part_eval_decimal (CapeTemplatePart self, number_t value, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+{
+  number_t fraction = 1;
+  const CapeString devider;
+  number_t decimal = 3;
+  
+  CapeList tokens = cape_tokenizer_buf (self->eval, cape_str_size (self->eval), '%');
+  
+  if (cape_list_size (tokens) == 3)
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+    
+    cape_list_cursor_next (cursor);
+
+    fraction = strtol (cape_list_node_data (cursor->node), NULL, 10);
+
+    cape_list_cursor_next (cursor);
+
+    devider = cape_list_node_data (cursor->node);
+
+    cape_list_cursor_next (cursor);
+
+    decimal = strtol (cape_list_node_data (cursor->node), NULL, 10);
+
+    // calculate value
+    {
+      double v = (double)value / fraction;
+      
+      CapeString fmt = cape_str_fmt ("%%10.%if", decimal);
+      CapeString val = cape_str_fmt (fmt, v);
+      
+      cape_str_replace (&val, ".", devider);
+      
+      if (onText)
+      {
+        onText (ptr, val);
+      }
+
+      cape_str_del (&val);
+      cape_str_del (&fmt);
+    }
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+  
+  cape_list_del (&tokens);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  if (cape_str_equal (l_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (l_trimmed);
+  }
+  else if (cape_str_equal (l_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (l_trimmed);
+  }
+  else
+  {
+    ret = cape_str_equal (l_trimmed, r_trimmed);
+  }
+  
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   const CapeString text = cape_udc_s (item, NULL);
-  
   if (text)
   {
     switch (self->format_type)
@@ -270,9 +363,9 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
       {
         if (self->eval)
         {
-          if (cape_str_equal (self->eval, text))
+          if (cape__evaluate_expression__compare (self->eval, text))
           {
-            return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+            return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
           }
         }
         else
@@ -282,7 +375,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
             onText (ptr, text);
           }
           
-          return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+          return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
         }
         
         break;
@@ -294,8 +387,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         // convert text into dateformat
         if (cape_datetime__str_msec (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+          
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -311,8 +407,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__str (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -328,8 +427,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__std_msec (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -345,8 +447,11 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
         }
         else if (cape_datetime__date_de (&dt, text))
         {
+          // set the original as UTC
+          dt.is_utc = TRUE;
+
           // convert into local time
-          cape_datetime_local (&dt);
+          cape_datetime_to_local (&dt);
           
           // apply format
           {
@@ -365,7 +470,14 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
           cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
         }
         
-        return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+        return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
+      }
+      case FORMAT_TYPE_DECIMAL:
+      {
+        // try to convert text into a number
+        number_t value = strtol (text, NULL, 10);
+
+        return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
       }
     }
   }
@@ -377,26 +489,38 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
 
 int cape_template_part_eval_number (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
-  if (self->eval)
+  switch (self->format_type)
   {
-    number_t h = strtol (self->eval, NULL, 10);
-    
-    if (h == cape_udc_n (item, 0))
+    case FORMAT_TYPE_NONE:
     {
-      return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+      if (self->eval)
+      {
+        number_t h = strtol (self->eval, NULL, 10);
+        
+        if (h == cape_udc_n (item, 0))
+        {
+          return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
+        }
+      }
+      else
+      {
+        if (onText)
+        {
+          CapeString h = cape_str_fmt ("%li", cape_udc_n (item, 0));
+          
+          onText (ptr, h);
+          
+          cape_str_del (&h);
+          
+          return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
+        }
+      }
+      
+      break;
     }
-  }
-  else
-  {
-    if (onText)
+    case FORMAT_TYPE_DECIMAL:
     {
-      CapeString h = cape_str_fmt ("%li", cape_udc_n (item, 0));
-      
-      onText (ptr, h);
-      
-      cape_str_del (&h);
-      
-      return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+      return cape_template_part_eval_decimal (self, cape_udc_n (item, 0), ptr, onText, onFile, err);
     }
   }
   
@@ -413,7 +537,7 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeUdc data, CapeUdc
     
     if (h == cape_udc_f (item, .0))
     {
-      return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+      return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
     }
   }
   else
@@ -426,7 +550,7 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeUdc data, CapeUdc
       
       cape_str_del (&h);
       
-      return cape_template_part_apply (self, data, ptr, onText, onFile, err);
+      return cape_template_part_apply (self, data, ptr, onText, onFile, 0, err);
     }
   }
   
@@ -481,7 +605,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, number_t pos, CapeErr err)
 {
   if (self->parts)
   {
@@ -517,87 +641,101 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
         {
           const CapeString name = part->text;
           
-          CapeUdc item = cape_udc_get (data, name);
-          if (item)
+          if (cape_str_equal (name, "INDEX_1"))
           {
-            switch (cape_udc_type (item))
+            CapeString h = cape_str_n (pos + 1);
+            
+            if (onText)
             {
-              case CAPE_UDC_LIST:
+              onText (ptr, h);
+            }
+            
+            cape_str_del (&h);
+          }
+          else
+          {
+            CapeUdc item = cape_udc_get (data, name);
+            if (item)
+            {
+              switch (cape_udc_type (item))
               {
-                CapeUdcCursor* cursor_item = cape_udc_cursor_new (item, CAPE_DIRECTION_FORW);
-                
-                while (cape_udc_cursor_next (cursor_item))
+                case CAPE_UDC_LIST:
                 {
-                  int res = cape_template_part_apply (part, cursor_item->item, ptr, onText, onFile, err);
+                  CapeUdcCursor* cursor_item = cape_udc_cursor_new (item, CAPE_DIRECTION_FORW);
+                  
+                  while (cape_udc_cursor_next (cursor_item))
+                  {
+                    int res = cape_template_part_apply (part, cursor_item->item, ptr, onText, onFile, cursor_item->position, err);
+                    if (res)
+                    {
+                      return res;
+                    }
+                  }
+                  
+                  cape_udc_cursor_del (&cursor_item);
+                  
+                  break;
+                }
+                case CAPE_UDC_NODE:
+                {
+                  int res = cape_template_part_apply (part, item, ptr, onText, onFile, cursor->position, err);
                   if (res)
                   {
                     return res;
                   }
+                  
+                  break;
                 }
-                
-                cape_udc_cursor_del (&cursor_item);
-                
-                break;
-              }
-              case CAPE_UDC_NODE:
-              {
-                int res = cape_template_part_apply (part, item, ptr, onText, onFile, err);
-                if (res)
+                case CAPE_UDC_STRING:
                 {
-                  return res;
+                  int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+                  
+                  break;
                 }
-                
-                break;
-              }
-              case CAPE_UDC_STRING:
-              {
-                int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
-                if (res)
+                case CAPE_UDC_NUMBER:
                 {
-                  return res;
+                  int res = cape_template_part_eval_number (part, data, item, ptr, onText, onFile, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+                  
+                  break;
                 }
-                
-                break;
-              }
-              case CAPE_UDC_NUMBER:
-              {
-                int res = cape_template_part_eval_number (part, data, item, ptr, onText, onFile, err);
-                if (res)
+                case CAPE_UDC_FLOAT:
                 {
-                  return res;
+                  int res = cape_template_part_eval_double (part, data, item, ptr, onText, onFile, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+                  
+                  break;
                 }
-                
-                break;
-              }
-              case CAPE_UDC_FLOAT:
-              {
-                int res = cape_template_part_eval_double (part, data, item, ptr, onText, onFile, err);
-                if (res)
+                case CAPE_UDC_DATETIME:
                 {
-                  return res;
+                  int res = cape_template_part_eval_datetime (part, data, item, ptr, onText, onFile, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+                  
+                  break;
                 }
-                
-                break;
-              }
-              case CAPE_UDC_DATETIME:
-              {
-                int res = cape_template_part_eval_datetime (part, data, item, ptr, onText, onFile, err);
-                if (res)
+                default:
                 {
-                  return res;
+                  int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+                  
+                  break;
                 }
-                
-                break;
-              }
-              default:
-              {
-                int res = cape_template_part_eval_str (part, data, item, ptr, onText, onFile, err);
-                if (res)
-                {
-                  return res;
-                }
-                
-                break;
               }
             }
           }
@@ -1018,7 +1156,7 @@ int cape_template_compile_str (CapeTemplate self, const char* content, CapeErr e
 
 int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
-  return cape_template_part_apply (self->root_part, node, ptr, onText, onFile, err);
+  return cape_template_part_apply (self->root_part, node, ptr, onText, onFile, 0, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -1035,34 +1173,6 @@ int __STDCALL cape_eval__on_text (void* ptr, const char* text)
   cape_stream_append_str (ptr, text);
   
   return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
-{
-  int ret;
-  
-  CapeString l_trimmed = cape_str_trim_utf8 (left);
-  CapeString r_trimmed = cape_str_trim_utf8 (right);
-
-  if (cape_str_equal (l_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (r_trimmed);
-  }
-  else if (cape_str_equal (r_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (l_trimmed);
-  }
-  else
-  {
-    ret = cape_str_equal (l_trimmed, r_trimmed);
-  }
-  
-  cape_str_del (&l_trimmed);
-  cape_str_del (&r_trimmed);
-  
-  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -1088,7 +1198,7 @@ int cape__evaluate_expression__single (const CapeString expression)
   cape_str_del (&left);
   cape_str_del (&right);
   
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluate", "expression = '%s' -> %i", expression, ret);
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluated", "expression = '%s' -> %i", expression, ret);
   
   return ret;
 }
@@ -1099,17 +1209,25 @@ int cape__evaluate_expression (const CapeString expression)
 {
   int ret = FALSE;
   
+  // local objects
+  CapeListCursor* cursor = NULL;
   CapeList logical_parts = cape_tokenizer_str (expression, "OR");
   
-  CapeListCursor* cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
-  
-  while (cape_list_cursor_next (cursor))
+  if (cape_list_size (logical_parts))
   {
-    ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
-    if (ret)
+    cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
+    while (cape_list_cursor_next (cursor))
     {
-      goto exit_and_cleanup;
+      ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+      if (ret)
+      {
+        goto exit_and_cleanup;
+      }
     }
+  }
+  else
+  {
+    ret = cape__evaluate_expression__single (expression);
   }
   
 exit_and_cleanup:

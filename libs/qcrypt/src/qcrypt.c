@@ -140,13 +140,14 @@ int qcrypt__decrypt_row_text (const CapeString vsec, const CapeUdc row, const Ca
     if (encrypted_text && encrypted_text[0])
     {
       CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
-      
       if (decrypted)
       {
         cape_udc_add_s_mv (row, data_name, &decrypted);
       }
       else
       {
+        cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row text", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
+        
         res = cape_err_code (err);
         goto exit_and_cleanup;
       }
@@ -191,6 +192,8 @@ int qcrypt__decrypt_row_node (const CapeString vsec, const CapeUdc row, const Ca
       }
       else
       {
+        cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row node", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
+
         res = cape_err_code (err);
         goto exit_and_cleanup;
       }

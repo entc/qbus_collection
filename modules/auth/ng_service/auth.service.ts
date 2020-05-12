@@ -24,8 +24,6 @@ export class AuthService
   {
     this.fetch_login = false;
     this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
-
-    this.fetch_login = true;
     this.gpg ();
   }
 
@@ -159,6 +157,17 @@ export class AuthService
   json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
     return this.handle_errors<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.http_crypt4(qbus_module + '/' + qbus_method)));
+  }
+
+  //---------------------------------------------------------------------------
+
+  json_rpc_blob (qbus_module: string, qbus_method: string, params: object): Observable<string>
+  {
+    var options = this.http_crypt4(qbus_module + '/' + qbus_method);
+
+    options['responseType'] = 'blob';
+
+    return this.http.post<string>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), options);
   }
 
   //-----------------------------------------------------------------------------
@@ -313,14 +322,7 @@ export class AuthService
   //-----------------------------------------------------------------------------
 }
 
-class AuthGlobalPerson
-{
-  gpid: number;
-  firstname: string;
-  lastname: string;
-}
-
-class AuthCredential
+export class AuthCredential
 {
   gpid: number;
   wpid: number;
@@ -329,6 +331,15 @@ class AuthCredential
   workspace: string;
   secret: string;
   roles: object;
+}
+
+//=============================================================================
+
+class AuthGlobalPerson
+{
+  gpid: number;
+  firstname: string;
+  lastname: string;
 }
 
 //=============================================================================
