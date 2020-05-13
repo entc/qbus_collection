@@ -101,6 +101,11 @@ __CAPE_LIBEX   number_t           cape_str_utf8__len     (unsigned char c);
 
 //-----------------------------------------------------------------------------
 
+                                  /* converts wide char into utf8, returns the utf8 length */
+__CAPE_LIBEX   number_t           cape_str_wchar_utf8    (wchar_t s, char* bufdat);
+
+//-----------------------------------------------------------------------------
+
 #endif
 
 
