@@ -1228,10 +1228,22 @@ int cape__evaluate_expression (const CapeString expression)
   
   if (cape_list_size (logical_parts))
   {
+    number_t p1 = 0;
+    
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
     while (cape_list_cursor_next (cursor))
     {
-      ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+      number_t p2 = cape_list_node_data (cursor->node);
+      
+      // substract the string
+      CapeString s = cape_str_sub (expression + p1, p2);
+
+      p1 = p2;
+
+      ret = cape__evaluate_expression__single (s);
+      
+      cape_str_del (&s);
+      
       if (ret)
       {
         goto exit_and_cleanup;
