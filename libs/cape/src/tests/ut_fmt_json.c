@@ -87,6 +87,33 @@ int main (int argc, char *argv[])
     
     
   }
+
+  // parser tests
+  {
+    const CapeString text = "{\"_test:test.we{hello}\":\"09.11.1901\"}";
+    
+    CapeUdc p = cape_json_from_s (text);
+    
+    CapeString h = cape_json_to_s (p);
+    
+    printf ("PARSE2: %s\n", h);
+    
+    cape_udc_del (&p);
+  }
+  
+  CapeErr err = cape_err_new();
+  
+  {
+    CapeUdc p = cape_json_from_file ("test2.txt", err);
+
+    CapeString h = cape_json_to_s (p);
+    
+    printf ("PARSE2: %s\n", h);
+    
+    cape_udc_del (&p);
+  }
+  
+  cape_err_del (&err);
   
   return 0;
 }

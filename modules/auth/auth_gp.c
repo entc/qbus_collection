@@ -183,12 +183,6 @@ int auth_gp_account (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  {
-    CapeString h = cape_json_to_s (qin->rinfo);
-    
-    printf ("RINFO: %s\n", h);
-  }
-  
   // add also allknown roles
   {
     CapeUdc roles = cape_udc_get (qin->rinfo, "roles");

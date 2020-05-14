@@ -271,7 +271,7 @@ CapeUdc qbus_frame_get_udc (QBusFrame self)
     }
     else
     {
-      printf ("CAN'T PARSE JSON '%s'\n", self->msg_data);
+      printf ("CAN'T PARSE JSON [%lu] '%s'\n", self->msg_size, self->msg_data);
     }
   }
   
@@ -319,7 +319,9 @@ QBusM qbus_frame_qin (QBusFrame self)
         }
         else
         {
-          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "frame qin", "can't parse JSON: %s", self->msg_data);
+          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "frame qin", "can't parse JSON [%lu]", self->msg_size);
+
+          printf ("CAN'T PARSE JSON '%s'\n", self->msg_data);
         }
         
         cape_udc_del (&payload);          

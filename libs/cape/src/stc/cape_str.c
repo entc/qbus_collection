@@ -1056,3 +1056,62 @@ void cape_str_to_lower (CapeString self)
 }
 
 //-----------------------------------------------------------------------------
+
+number_t cape_str_wchar_utf8 (wchar_t wc, char* bufdat)
+{
+  if ( 0 <= wc && wc <= 0x7f )
+  {
+    bufdat[0] = wc;
+
+    return 1;
+  }
+  else if ( 0x80 <= wc && wc <= 0x7ff )
+  {
+    bufdat[0] = 0xc0 | (wc >> 6);
+    bufdat[1] = 0x80 | (wc & 0x3f);
+    
+    return 2;
+  }
+  else if ( 0x800 <= wc && wc <= 0xffff )
+  {
+    bufdat[0] = 0xe0 | (wc >> 12);
+    bufdat[1] = 0x80 | ((wc >> 6) & 0x3f);
+    bufdat[2] = 0x80 | (wc & 0x3f);
+    
+    return 3;
+  }
+  else if ( 0x10000 <= wc && wc <= 0x1fffff )
+  {
+    bufdat[0] = 0xf0 | (wc >> 18);
+    bufdat[1] = 0x80 | ((wc >> 12) & 0x3f);
+    bufdat[2] = 0x80 | ((wc >> 6) & 0x3f);
+    bufdat[3] = 0x80 | (wc & 0x3f);
+    
+    return 4;
+  }
+  else if ( 0x200000 <= wc && wc <= 0x3ffffff )
+  {
+    bufdat[0] = 0xf8 | (wc >> 24);
+    bufdat[1] = 0x80 | ((wc >> 18) & 0x3f);
+    bufdat[2] = 0x80 | ((wc >> 12) & 0x3f);
+    bufdat[3] = 0x80 | ((wc >> 6) & 0x3f);
+    bufdat[4] = 0x80 | (wc & 0x3f);
+
+    return 5;
+  }
+  else if ( 0x4000000 <= wc && wc <= 0x7fffffff )
+  {
+    bufdat[0] = 0xfc | (wc >> 30);
+    bufdat[1] = 0x80 | ((wc >> 24) & 0x3f);
+    bufdat[2] = 0x80 | ((wc >> 18) & 0x3f);
+    bufdat[3] = 0x80 | ((wc >> 12) & 0x3f);
+    bufdat[4] = 0x80 | ((wc >> 6) & 0x3f);
+    bufdat[5] = 0x80 | (wc & 0x3f);
+
+    return 6;
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
