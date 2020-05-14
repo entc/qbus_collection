@@ -224,14 +224,59 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
 
 //-----------------------------------------------------------------------------
 
+int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  if (cape_str_equal (l_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "EMPTY"))
+  {
+    ret = cape_str_empty (l_trimmed);
+  }
+  else if (cape_str_equal (l_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (r_trimmed);
+  }
+  else if (cape_str_equal (r_trimmed, "VALID"))
+  {
+    ret = cape_str_not_empty (l_trimmed);
+  }
+  else
+  {
+    ret = cape_str_equal (l_trimmed, r_trimmed);
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression: '%s' = '%s' -> %i", l_trimmed, r_trimmed, ret);
+    
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   const CapeDatetime* dt = cape_udc_d (item, NULL);
-  
   if (dt)
   {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval datetime", "evaluate %s = []", cape_udc_name (item));
+    
     switch (self->format_type)
     {
+      case FORMAT_TYPE_NONE:
+      {
+        
+
+        break;
+      }
       case FORMAT_TYPE_DATE:
       {
         CapeDatetime* h1 = cape_datetime_cp (dt);
@@ -316,47 +361,13 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, number_t value, void
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression__compare (const CapeString left, const CapeString right)
-{
-  int ret;
-  
-  CapeString l_trimmed = cape_str_trim_utf8 (left);
-  CapeString r_trimmed = cape_str_trim_utf8 (right);
-
-  if (cape_str_equal (l_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (r_trimmed);
-  }
-  else if (cape_str_equal (r_trimmed, "EMPTY"))
-  {
-    ret = cape_str_empty (l_trimmed);
-  }
-  else if (cape_str_equal (l_trimmed, "VALID"))
-  {
-    ret = cape_str_not_empty (r_trimmed);
-  }
-  else if (cape_str_equal (r_trimmed, "VALID"))
-  {
-    ret = cape_str_not_empty (l_trimmed);
-  }
-  else
-  {
-    ret = cape_str_equal (l_trimmed, r_trimmed);
-  }
-  
-  cape_str_del (&l_trimmed);
-  cape_str_del (&r_trimmed);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
 int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   const CapeString text = cape_udc_s (item, NULL);
   if (text)
   {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval str", "evaluate %s = '%s'", cape_udc_name (item), text);
+    
     switch (self->format_type)
     {
       case FORMAT_TYPE_NONE:
@@ -489,6 +500,8 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
 
 int cape_template_part_eval_number (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = []", cape_udc_name (item));
+
   switch (self->format_type)
   {
     case FORMAT_TYPE_NONE:
@@ -531,6 +544,8 @@ int cape_template_part_eval_number (CapeTemplatePart self, CapeUdc data, CapeUdc
 
 int cape_template_part_eval_double (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval double", "evaluate %s = []", cape_udc_name (item));
+
   if (self->eval)
   {
     double h = strtod (self->eval, NULL);
@@ -1197,8 +1212,6 @@ int cape__evaluate_expression__single (const CapeString expression)
   
   cape_str_del (&left);
   cape_str_del (&right);
-  
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "evaluated", "expression = '%s' -> %i", expression, ret);
   
   return ret;
 }
