@@ -1200,6 +1200,8 @@ int cape__evaluate_expression__single (const CapeString expression)
   CapeString left = NULL;
   CapeString right = NULL;
 
+  printf ("EXPR SINGLE: '%s'\n", expression);
+
   // find the '=' in the expression
   if (cape_tokenizer_split (expression, '=', &left, &right))
   {
@@ -1224,7 +1226,9 @@ int cape__evaluate_expression_or (const CapeString expression)
   
   // local objects
   CapeListCursor* cursor = NULL;
-  CapeList logical_parts = cape_tokenizer_str (expression, "OR");
+  CapeList logical_parts = cape_tokenizer_str (expression, " OR ");
+  
+  printf ("EXPR OR: '%s'\n", expression);
   
   if (cape_list_size (logical_parts))
   {
@@ -1259,8 +1263,10 @@ int cape__evaluate_expression_and (const CapeString expression)
   
   // local objects
   CapeListCursor* cursor = NULL;
-  CapeList logical_parts = cape_tokenizer_str (expression, "AND");
-  
+  CapeList logical_parts = cape_tokenizer_str (expression, " AND ");
+
+  printf ("EXPR AND: '%s'\n", expression);
+
   if (cape_list_size (logical_parts))
   {
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
