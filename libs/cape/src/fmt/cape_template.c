@@ -339,7 +339,7 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, void* 
     {
       double v = (double)value / fraction;
       
-      CapeString fmt = cape_str_fmt ("%%10.%if", decimal);
+      CapeString fmt = cape_str_fmt ("%%.%if", decimal);
       CapeString val = cape_str_fmt (fmt, v);
       
       cape_str_replace (&val, ".", devider);
