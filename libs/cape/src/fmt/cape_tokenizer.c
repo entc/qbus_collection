@@ -132,6 +132,35 @@ int cape_tokenizer_split (const CapeString source, char token, CapeString* p_lef
 
 CapeList cape_tokenizer_str (const CapeString haystack, const CapeString needle)
 {
+  CapeList ret = cape_list_new (cape_tokenizer_onDestroy);
+
+  number_t pos = 0;
+  number_t plh = 0;
+  number_t len = cape_str_size (needle);
+
+  while (cape_str_find (haystack + plh, needle, &pos))
+  {
+    CapeString h = cape_str_sub (haystack + plh, pos);
+    
+    cape_list_push_back (ret, h);
+    
+    // calculate position to continue
+    plh += pos + len;
+  }
+
+  {
+    CapeString h = cape_str_cp (haystack + plh);
+
+    cape_list_push_back (ret, h);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
+CapeList cape_tokenizer_str_pos (const CapeString haystack, const CapeString needle)
+{
   CapeList ret = cape_list_new (NULL);
 
   number_t pos = 0;
@@ -154,7 +183,7 @@ CapeList cape_tokenizer_str (const CapeString haystack, const CapeString needle)
 
 //-----------------------------------------------------------------------------------------------------------
 
-CapeList cape_tokenizer_str_utf8 (const CapeString haystack, const CapeString needle)
+CapeList cape_tokenizer_str_utf8_pos (const CapeString haystack, const CapeString needle)
 {
   CapeList ret = cape_list_new (NULL);
   

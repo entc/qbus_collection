@@ -1200,6 +1200,8 @@ int cape__evaluate_expression__single (const CapeString expression)
   CapeString left = NULL;
   CapeString right = NULL;
 
+  printf ("EXPR SINGLE: '%s'\n", expression);
+
   // find the '=' in the expression
   if (cape_tokenizer_split (expression, '=', &left, &right))
   {
@@ -1218,33 +1220,23 @@ int cape__evaluate_expression__single (const CapeString expression)
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression (const CapeString expression)
+int cape__evaluate_expression_or (const CapeString expression)
 {
   int ret = FALSE;
   
   // local objects
   CapeListCursor* cursor = NULL;
-  CapeList logical_parts = cape_tokenizer_str (expression, "OR");
+  CapeList logical_parts = cape_tokenizer_str (expression, " OR ");
+  
+  printf ("EXPR OR: '%s'\n", expression);
   
   if (cape_list_size (logical_parts))
   {
-    number_t p1 = 0;
-    
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
     while (cape_list_cursor_next (cursor))
     {
-      number_t p2 = cape_list_node_data (cursor->node);
-      
-      // substract the string
-      CapeString s = cape_str_sub (expression + p1, p2);
-
-      p1 = p2;
-
-      ret = cape__evaluate_expression__single (s);
-      
-      cape_str_del (&s);
-      
-      if (ret)
+      ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+      if (ret == TRUE)
       {
         goto exit_and_cleanup;
       }
@@ -1253,6 +1245,43 @@ int cape__evaluate_expression (const CapeString expression)
   else
   {
     ret = cape__evaluate_expression__single (expression);
+  }
+  
+exit_and_cleanup:
+  
+  cape_list_cursor_destroy (&cursor);
+  cape_list_del (&logical_parts);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression_and (const CapeString expression)
+{
+  int ret = TRUE;
+  
+  // local objects
+  CapeListCursor* cursor = NULL;
+  CapeList logical_parts = cape_tokenizer_str (expression, " AND ");
+
+  printf ("EXPR AND: '%s'\n", expression);
+
+  if (cape_list_size (logical_parts))
+  {
+    cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
+    while (cape_list_cursor_next (cursor))
+    {
+      ret = cape__evaluate_expression_or (cape_list_node_data (cursor->node));
+      if (ret == FALSE)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  else
+  {
+    ret = cape__evaluate_expression_or (expression);
   }
   
 exit_and_cleanup:
@@ -1285,7 +1314,7 @@ int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  *p_ret = cape__evaluate_expression (cape_stream_get (stream));
+  *p_ret = cape__evaluate_expression_and (cape_stream_get (stream));
 
   res = CAPE_ERR_NONE;
   
