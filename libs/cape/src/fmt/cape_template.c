@@ -311,7 +311,7 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeU
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_decimal (CapeTemplatePart self, number_t value, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_decimal (CapeTemplatePart self, double value, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   number_t fraction = 1;
   const CapeString devider;
@@ -357,6 +357,8 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, number_t value, void
   }
   
   cape_list_del (&tokens);
+  
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -486,7 +488,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeUdc data, CapeUdc it
       case FORMAT_TYPE_DECIMAL:
       {
         // try to convert text into a number
-        number_t value = strtol (text, NULL, 10);
+        double value = cape_eval_to_f (text);
 
         return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
       }
@@ -548,7 +550,7 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeUdc data, CapeUdc
 
   if (self->eval)
   {
-    double h = strtod (self->eval, NULL);
+    double h = cape_eval_to_f (self->eval);
     
     if (h == cape_udc_f (item, .0))
     {
@@ -1200,7 +1202,7 @@ int cape__evaluate_expression__single (const CapeString expression)
   CapeString left = NULL;
   CapeString right = NULL;
 
-  printf ("EXPR SINGLE: '%s'\n", expression);
+  //printf ("EXPR SINGLE: '%s'\n", expression);
 
   // find the '=' in the expression
   if (cape_tokenizer_split (expression, '=', &left, &right))
@@ -1228,7 +1230,7 @@ int cape__evaluate_expression_or (const CapeString expression)
   CapeListCursor* cursor = NULL;
   CapeList logical_parts = cape_tokenizer_str (expression, " OR ");
   
-  printf ("EXPR OR: '%s'\n", expression);
+  //printf ("EXPR OR: '%s'\n", expression);
   
   if (cape_list_size (logical_parts))
   {
@@ -1265,7 +1267,7 @@ int cape__evaluate_expression_and (const CapeString expression)
   CapeListCursor* cursor = NULL;
   CapeList logical_parts = cape_tokenizer_str (expression, " AND ");
 
-  printf ("EXPR AND: '%s'\n", expression);
+  //printf ("EXPR AND: '%s'\n", expression);
 
   if (cape_list_size (logical_parts))
   {
@@ -1324,6 +1326,75 @@ exit_and_cleanup:
   cape_stream_del (&stream);
 
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+char cape_eval_to_f__seek (const CapeString s)
+{
+  // first to to find what kind separator is used
+  number_t s_len = cape_str_size (s);
+  const char* pos;
+  
+  for (pos = s + s_len; pos > s; pos--)
+  {
+    switch (*pos)
+    {
+      case '.':
+      {
+        return '.';
+      }
+      case ',':
+      {
+        return ',';
+      }
+    }
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+double cape_eval_to_f (const CapeString s)
+{
+  double ret = .0;
+  
+  switch (cape_eval_to_f__seek (s))
+  {
+    case '.':
+    {
+      // remove all ','
+      CapeString h = cape_str_cp_replaced (s, ",", "");
+      
+      ret = strtod (h, NULL);
+      
+      cape_str_del (&h);
+      
+      break;
+    }
+    case ',':
+    {
+      // remove all '.'
+      CapeString h = cape_str_cp_replaced (s, ".", "");
+
+      cape_str_replace (&h, ",", ".");
+      
+      ret = strtod (h, NULL);
+      
+      cape_str_del (&h);
+
+      break;
+    }
+    default:
+    {
+      ret = strtol (s, NULL, 10);
+      
+      break;
+    }
+  }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
