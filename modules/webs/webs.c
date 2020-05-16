@@ -745,8 +745,26 @@ int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err
 
 static int __STDCALL qbus_webs__post__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  int res;
+  
+  if (qin->err)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
+    goto exit_and_cleanup;
+  }
 
-  return CAPE_ERR_NONE;
+  cape_log_fmt (CAPE_LL_DEBUG, "WEBS", "post on call", "returned");
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  if (cape_err_code (err))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "post on call", "got error: %s", cape_err_text (err));
+  }
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -821,7 +839,7 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
               
         msg->cdata = cape_udc_mv (&post_values);
         
-        res = qbus_send (user_ptr, module, method, msg, NULL, qbus_webs__post__on_call, err);
+        res = qbus_send (user_ptr, module, method, msg, user_ptr, qbus_webs__post__on_call, err);
         
         qbus_message_del (&msg);
       }
@@ -841,7 +859,7 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
       
     }
     
-    cape_udc_del(&post_values);    
+    cape_udc_del(&post_values);
     cape_str_del(&location);
   }
   else
