@@ -757,6 +757,8 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
   
   if (cape_str_equal (qwebs_request_method (request), "POST"))
   {
+    CapeString location = NULL;
+    
     CapeUdc post_values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     //name=sadsad&name=sadsad&name=sadasd&name=sadas&name=2312&name=sadsd&Street=sad&email=23%40asdasd&phone=213213
@@ -786,7 +788,7 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
     
     cape_list_del (&values);
     
-    const CapeString location = cape_udc_get_s (post_values, "location", NULL);
+    location = cape_str_cp( cape_udc_get_s (post_values, "location", NULL));
     
     // the body should be formatted with post values
     printf ("BODY: '%s'\n", cape_stream_get (body));
@@ -836,9 +838,11 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
       {
         qwebs_request_send_json (&h, NULL, err);
       }
+      
     }
     
-    cape_udc_del(&post_values);
+    cape_udc_del(&post_values);    
+    cape_str_del(&location);
   }
   else
   {
