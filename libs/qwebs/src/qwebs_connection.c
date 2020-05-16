@@ -324,6 +324,21 @@ void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, CapeErr
 
 //-----------------------------------------------------------------------------
 
+void qwebs_request_redirect (QWebsRequest* p_self, const CapeString url)
+{
+  QWebsRequest self = *p_self;
+  
+  // local objects
+  CapeStream s = cape_stream_new ();
+
+  qwebs_response_redirect (s, self->webs, url);
+  
+  qwebs_connection_send (self->conn, &s);
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
 void qwebs_request_api (QWebsRequest* p_self)
 {
   int res;

@@ -382,3 +382,22 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
 }
 
 //-----------------------------------------------------------------------------
+
+void qwebs_response_redirect (CapeStream s, QWebs webs, const CapeString url)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "HTTP/1.1 301 Moved Permanently\r\n");
+
+  qwebs_response__internal__identification (s);
+
+  cape_stream_append_str (s, "Location: ");
+  cape_stream_append_str (s, url);
+  cape_stream_append_str (s, "\r\n");
+
+  // DONE
+  qwebs_response__internal__content_length (s, 0);
+}
+
+//-----------------------------------------------------------------------------

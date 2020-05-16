@@ -743,6 +743,115 @@ int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err
 
 //-----------------------------------------------------------------------------
 
+static int __STDCALL qbus_webs__post__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err)
+{
+  WebsStream self = user_ptr;
+  
+  if (cape_str_equal (qwebs_request_method (request), "POST"))
+  {
+    CapeUdc post_values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    //name=sadsad&name=sadsad&name=sadasd&name=sadas&name=2312&name=sadsd&Street=sad&email=23%40asdasd&phone=213213
+    CapeStream body = qwebs_request_body (request);
+    
+    CapeList values = cape_tokenizer_buf (cape_stream_data(body), cape_stream_size(body), '&');
+    if (values)
+    {
+      CapeListCursor* cursor = cape_list_cursor_create (values, CAPE_DIRECTION_FORW);
+
+      while (cape_list_cursor_next (cursor))
+      {
+        CapeString key = NULL;
+        CapeString val = NULL;
+        
+        if (cape_tokenizer_split (cape_list_node_data(cursor->node), '=', &key, &val))
+        {
+          cape_udc_add_s_mv (post_values, key, &val);
+        }
+        
+        cape_str_del (&key);
+        cape_str_del (&val);
+      }
+      
+      cape_list_cursor_destroy (&cursor);
+    }
+    
+    cape_list_del (&values);
+    
+    const CapeString location = cape_udc_get_s (post_values, "location", NULL);
+    
+    // the body should be formatted with post values
+    printf ("BODY: '%s'\n", cape_stream_get (body));
+    
+    CapeList url_parts = qwebs_request_clist (request);
+    if (cape_list_size (url_parts))
+    {
+      const CapeString module;
+      const CapeString method;
+      
+      CapeListCursor* cursor = cape_list_cursor_create (url_parts, CAPE_DIRECTION_FORW);
+      
+      if (cape_list_cursor_next (cursor))
+      {
+        module = cape_list_node_data (cursor->node);
+      }
+
+      if (cape_list_cursor_next (cursor))
+      {
+        method = cape_list_node_data (cursor->node);
+      }
+
+      cape_list_cursor_destroy (&cursor);
+
+      {
+        int res;
+        QBusM msg = qbus_message_new (NULL, NULL);
+        
+        qbus_message_clr (msg, CAPE_UDC_UNDEFINED);
+              
+        msg->cdata = cape_udc_mv (&post_values);
+        
+        res = qbus_send (user_ptr, module, method, msg, NULL, qbus_webs__post__on_call, err);
+        
+        qbus_message_del (&msg);
+      }
+    }
+
+    {
+      QWebsRequest h = request;
+      
+      if (location)
+      {
+        qwebs_request_redirect (&h, location);
+      }
+      else
+      {
+        qwebs_request_send_json (&h, NULL, err);
+      }
+    }
+    
+    cape_udc_del(&post_values);
+  }
+  else
+  {
+    QWebsRequest h = request;
+
+    qwebs_request_send_json (&h, NULL, err);
+  }
+  
+  return CAPE_ERR_CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   // get a list of all known modules in the qbus subsystem
@@ -934,7 +1043,13 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
-  
+
+  res = qwebs_reg (webs, "post", qbus, qbus_webs__post, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   res = qwebs_attach (webs, qbus_aio (qbus), err);
   if (res)
   {
