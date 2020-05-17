@@ -1,3 +1,5 @@
+#include "webs_post.h"
+
 #include "qbus.h"
 
 // qwebs includes
@@ -210,48 +212,6 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString webs_http_parse_line (const CapeString line, const CapeString key_to_seek)
-{
-  CapeListCursor* cursor;
-  CapeList tokens;
-  CapeString ret = NULL;
-  int run = TRUE;
-  
-  // split the string into its parts
-  tokens = cape_tokenizer_buf (line, cape_str_size (line), ';');
-  
-  // run through all parts to find the one which fits the key
-  cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
-  while (run && cape_list_cursor_next (cursor))
-  {
-    CapeString token = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
-    
-    CapeString key = NULL;
-    CapeString val = NULL;
-    
-    if (cape_tokenizer_split (token, '=', &key, &val))
-    {
-      if (cape_str_equal (key_to_seek, key))
-      {
-        ret = cape_str_trim_c (val, '"');
-        run = FALSE;
-      }
-    }
-    
-    cape_str_del (&token);
-    cape_str_del (&key);
-    cape_str_del (&val);
-  }
-  
-  // cleanup
-  cape_list_cursor_destroy (&cursor);
-  cape_list_del (&tokens);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
 int webs_add_file (WebsAuth self, const char* bufdat, number_t buflen, CapeErr err)
 {
   int res;
@@ -314,7 +274,7 @@ void __STDCALL webs__mp__on_part (void* ptr, const char* bufdat, number_t buflen
 
     cape_log_fmt (CAPE_LL_TRACE, "WEBS", "multipart", "found disposition: %s", disposition);
 
-    CapeString name = webs_http_parse_line (disposition, "name");
+    CapeString name = qwebs_parse_line (disposition, "name");
     if (name)
     {
       if (cape_str_equal (name, "file"))  // content is file
@@ -354,7 +314,7 @@ void webs__check_body (WebsAuth self)
     // check mime type
     if (cape_str_begins (self->mime, "multipart"))
     {
-      CapeString boundary = webs_http_parse_line (self->mime, "boundary");
+      CapeString boundary = qwebs_parse_line (self->mime, "boundary");
       if (boundary)
       {
         QWebsMultipart mp = qwebs_multipart_new (boundary, self, webs__mp__on_part);
@@ -743,133 +703,11 @@ int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err
 
 //-----------------------------------------------------------------------------
 
-static int __STDCALL qbus_webs__post__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
-{
-  int res;
-  
-  if (qin->err)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
-    goto exit_and_cleanup;
-  }
-
-  cape_log_fmt (CAPE_LL_DEBUG, "WEBS", "post on call", "returned");
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-
-  if (cape_err_code (err))
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "post on call", "got error: %s", cape_err_text (err));
-  }
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
 int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err)
 {
-  WebsStream self = user_ptr;
+  WebsPost webs_post = webs_post_new (user_ptr, request);
   
-  if (cape_str_equal (qwebs_request_method (request), "POST"))
-  {
-    CapeString location = NULL;
-    
-    CapeUdc post_values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    //name=sadsad&name=sadsad&name=sadasd&name=sadas&name=2312&name=sadsd&Street=sad&email=23%40asdasd&phone=213213
-    CapeStream body = qwebs_request_body (request);
-    
-    CapeList values = cape_tokenizer_buf (cape_stream_data(body), cape_stream_size(body), '&');
-    if (values)
-    {
-      CapeListCursor* cursor = cape_list_cursor_create (values, CAPE_DIRECTION_FORW);
-
-      while (cape_list_cursor_next (cursor))
-      {
-        CapeString key = NULL;
-        CapeString val = NULL;
-        
-        if (cape_tokenizer_split (cape_list_node_data(cursor->node), '=', &key, &val))
-        {
-          cape_udc_add_s_mv (post_values, key, &val);
-        }
-        
-        cape_str_del (&key);
-        cape_str_del (&val);
-      }
-      
-      cape_list_cursor_destroy (&cursor);
-    }
-    
-    cape_list_del (&values);
-    
-    location = cape_str_cp( cape_udc_get_s (post_values, "location", NULL));
-    
-    // the body should be formatted with post values
-    printf ("BODY: '%s'\n", cape_stream_get (body));
-    
-    CapeList url_parts = qwebs_request_clist (request);
-    if (cape_list_size (url_parts))
-    {
-      const CapeString module;
-      const CapeString method;
-      
-      CapeListCursor* cursor = cape_list_cursor_create (url_parts, CAPE_DIRECTION_FORW);
-      
-      if (cape_list_cursor_next (cursor))
-      {
-        module = cape_list_node_data (cursor->node);
-      }
-
-      if (cape_list_cursor_next (cursor))
-      {
-        method = cape_list_node_data (cursor->node);
-      }
-
-      cape_list_cursor_destroy (&cursor);
-
-      {
-        int res;
-        QBusM msg = qbus_message_new (NULL, NULL);
-        
-        qbus_message_clr (msg, CAPE_UDC_UNDEFINED);
-              
-        msg->cdata = cape_udc_mv (&post_values);
-        
-        res = qbus_send (user_ptr, module, method, msg, user_ptr, qbus_webs__post__on_call, err);
-        
-        qbus_message_del (&msg);
-      }
-    }
-
-    {
-      QWebsRequest h = request;
-      
-      if (location)
-      {
-        qwebs_request_redirect (&h, location);
-      }
-      else
-      {
-        qwebs_request_send_json (&h, NULL, err);
-      }
-      
-    }
-    
-    cape_udc_del(&post_values);
-    cape_str_del(&location);
-  }
-  else
-  {
-    QWebsRequest h = request;
-
-    qwebs_request_send_json (&h, NULL, err);
-  }
-  
-  return CAPE_ERR_CONTINUE;
+  return webs_post_run (&webs_post, err);  
 }
 
 //-----------------------------------------------------------------------------

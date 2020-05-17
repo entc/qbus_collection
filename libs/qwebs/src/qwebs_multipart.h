@@ -23,4 +23,20 @@ __CAPE_LIBEX   void              qwebs_multipart_process  (QWebsMultipart, const
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   CapeString        qwebs_parse_line         (const CapeString line, const CapeString key_to_seek);
+
+//-----------------------------------------------------------------------------
+
+struct QWebsEncoder_s; typedef struct QWebsEncoder_s* QWebsEncoder;
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   QWebsEncoder      qwebs_encode_new         (void);
+
+__CAPE_LIBEX   void              qwebs_encode_del         (QWebsEncoder*);
+
+__CAPE_LIBEX   CapeString        qwebs_encode_run         (QWebsEncoder, const CapeString url);
+
+//-----------------------------------------------------------------------------
+
 #endif

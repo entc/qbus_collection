@@ -393,7 +393,17 @@ void qwebs_response_redirect (CapeStream s, QWebs webs, const CapeString url)
   qwebs_response__internal__identification (s);
 
   cape_stream_append_str (s, "Location: ");
-  cape_stream_append_str (s, url);
+  
+  {
+    //CapeString encoded_url = qwebs_url_encode (webs, url);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "redirect", "redirect to location = '%s'", url);
+    
+    cape_stream_append_str (s, url);
+    
+    //cape_str_del (&encoded_url);
+  }
+  
   cape_stream_append_str (s, "\r\n");
 
   // DONE

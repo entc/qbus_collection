@@ -5,9 +5,11 @@ INCLUDE_DIRECTORIES("../../libs/cape/src" "../../libs/qbus/src" "../../libs/qweb
 
 SET (QBUS_MODULES_WEBS_SOURCES
   webs.c
+  webs_post.c
 )
 
 SET (QBUS_MODULES_WEBS_HEADERS
+  webs_post.h
 )
 
 ADD_EXECUTABLE (qbus_mod_webs ${QBUS_MODULES_WEBS_SOURCES} ${QBUS_MODULES_WEBS_HEADERS})
