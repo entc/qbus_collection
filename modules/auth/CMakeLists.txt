@@ -32,6 +32,10 @@ add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 # for docker
 INSTALL (TARGETS qbus_mod_auth DESTINATION docker/auth/mods)
 INSTALL (FILES ${ENTC_LIBRARIES} DESTINATION docker/auth/lib)
+INSTALL (FILES qbus DESTINATION docker/auth/lib)
+INSTALL (FILES qcrypt DESTINATION docker/auth/lib)
+INSTALL (FILES adbl2 DESTINATION docker/auth/lib)
+INSTALL (FILES qcurl DESTINATION docker/auth/lib)
 
 # remove none used ones (needs to fix)
 INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_auth:1.0.0)")
