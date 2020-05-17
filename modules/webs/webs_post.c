@@ -107,7 +107,6 @@ void __STDCALL webs_post__parse__multipart__on_part (void* ptr, const char* bufd
       if (h1)
       {
         CapeString h2 = qwebs_decode_run (h1);
-
         cape_udc_add_s_mv (self->form_data, name, &h2);
       }
       
@@ -154,9 +153,10 @@ int webs_post__parse__list (WebsPost self, CapeErr err)
       CapeString key = NULL;
       CapeString val = NULL;
       
-      if (cape_tokenizer_split (cape_list_node_data(cursor->node), '=', &key, &val))
+      if (cape_tokenizer_split (cape_list_node_data (cursor->node), '=', &key, &val))
       {
-        cape_udc_add_s_mv (self->form_data, key, &val);
+        CapeString h2 = qwebs_decode_run (val);
+        cape_udc_add_s_mv (self->form_data, key, &h2);
       }
       
       cape_str_del (&key);
