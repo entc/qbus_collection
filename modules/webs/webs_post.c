@@ -103,10 +103,15 @@ void __STDCALL webs_post__parse__multipart__on_part (void* ptr, const char* bufd
     CapeString name = qwebs_parse_line (disposition, "name");
     if (name)
     {
-      CapeString val = cape_str_sub (bufdat, buflen);
+      CapeString h1 = cape_str_sub (bufdat, buflen);
+      if (h1)
+      {
+        CapeString h2 = qwebs_decode_run (h1);
 
-      cape_udc_add_s_mv (self->form_data, name, &val);
-
+        cape_udc_add_s_mv (self->form_data, name, &h2);
+      }
+      
+      cape_str_del (&h1);
       cape_str_del (&name);
     }
   }

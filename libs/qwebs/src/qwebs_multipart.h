@@ -37,6 +37,8 @@ __CAPE_LIBEX   void              qwebs_encode_del         (QWebsEncoder*);
 
 __CAPE_LIBEX   CapeString        qwebs_encode_run         (QWebsEncoder, const CapeString url);
 
+__CAPE_LIBEX   CapeString        qwebs_decode_run         (const CapeString s);
+
 //-----------------------------------------------------------------------------
 
 #endif
