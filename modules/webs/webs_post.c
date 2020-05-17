@@ -89,6 +89,24 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+void webs_post__parse__add (WebsPost self, const CapeString key, const CapeString val)
+{
+  CapeString h = qwebs_decode_run (val);
+
+  CapeUdc n = cape_udc_get (self->form_data, key);
+  
+  if (n)
+  {
+    cape_udc_set_s_mv (n, &h);
+  }
+  else
+  {
+    cape_udc_add_s_mv (self->form_data, key, &h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL webs_post__parse__multipart__on_part (void* ptr, const char* bufdat, number_t buflen, CapeMap part_values)
 {
   WebsPost self = ptr;
@@ -106,8 +124,7 @@ void __STDCALL webs_post__parse__multipart__on_part (void* ptr, const char* bufd
       CapeString h1 = cape_str_sub (bufdat, buflen);
       if (h1)
       {
-        CapeString h2 = qwebs_decode_run (h1);
-        cape_udc_add_s_mv (self->form_data, name, &h2);
+        webs_post__parse__add (self, name, h1);
       }
       
       cape_str_del (&h1);
@@ -155,8 +172,7 @@ int webs_post__parse__list (WebsPost self, CapeErr err)
       
       if (cape_tokenizer_split (cape_list_node_data (cursor->node), '=', &key, &val))
       {
-        CapeString h2 = qwebs_decode_run (val);
-        cape_udc_add_s_mv (self->form_data, key, &h2);
+        webs_post__parse__add (self, key, val);
       }
       
       cape_str_del (&key);
