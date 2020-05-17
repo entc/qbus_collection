@@ -545,7 +545,8 @@ CapeString qwebs_encode_run (QWebsEncoder self, const CapeString url)
 
 CapeString qwebs_decode_run (const CapeString s)
 {
-  CapeString ret = CAPE_ALLOC (cape_str_size (s));
+  // same size as the original + termination char
+  CapeString ret = CAPE_ALLOC (cape_str_size (s) + 1);
   
   static const char tbl[256] = {
       -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
