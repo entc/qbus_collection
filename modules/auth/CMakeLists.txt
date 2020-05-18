@@ -36,7 +36,6 @@ INSTALL (TARGETS cape DESTINATION docker/wspc/lib)
 INSTALL (TARGETS qcrypt DESTINATION docker/wspc/lib)
 INSTALL (TARGETS qbus DESTINATION docker/wspc/lib)
 INSTALL (TARGETS adbl2 DESTINATION docker/wspc/lib)
-INSTALL (TARGETS qcurl DESTINATION docker/wspc/lib)
 
 # remove none used ones (needs to fix)
 INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_auth:1.0.0)")
