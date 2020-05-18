@@ -9,21 +9,72 @@ int main (int argc, char *argv[])
   CapeErr err = cape_err_new ();
 
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-  
-  cape_udc_add_s_cp (values, "val1_str", "1");
-  cape_udc_add_s_cp (values, "val2_str", "2");
 
-  res = cape_eval_b ("{{val1_str}} = 1 AND {{val2_str}} = 1 OR {{val2_str}} = 2", values, &ret, err);
-  if (res)
+  cape_udc_add_s_cp (values, "val_str1", "1");
+  cape_udc_add_s_cp (values, "val_str2", "2");
+
+  cape_udc_add_s_cp (values, "val_float1", "1.1");
+  cape_udc_add_s_cp (values, "val_float2", "1,1");
+  cape_udc_add_s_cp (values, "val_float3", "1,134.32");
+  cape_udc_add_s_cp (values, "val_float4", "1.134,32");
+
   {
-    goto exit_and_cleanup;
-  }
-  
-  printf ("T1: %i\n", ret);
+    res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
 
-  
+    printf ("T1: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_float1|decimal:10%,%2}} = 0,11", values, &ret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    printf ("T2: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_float2|decimal:10%,%2}} = 0,11", values, &ret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    printf ("T2: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_float3|decimal:10%,%3}} = 113,432", values, &ret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    printf ("T2: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_float4|decimal:10%,%3}} = 113,432", values, &ret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    printf ("T2: %i\n", ret);
+  }
+
 exit_and_cleanup:
 
+  if (cape_err_code(err))
+  {
+    printf ("ERROR: %s\n", cape_err_text(err));
+  }
+  
   cape_udc_del (&values);
   
   cape_err_del (&err);

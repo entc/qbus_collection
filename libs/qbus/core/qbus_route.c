@@ -623,7 +623,7 @@ void qbus_route_on_msg_request (QBusRoute self, QBusConnection conn, QBusFrame* 
   const CapeString module = qbus_frame_get_module (frame);
   
   // check if the message was sent to us
-  if (cape_str_equal (module, self->name))
+  if (cape_str_compare (module, self->name))
   {
     qbus_route_on_msg_method (self, conn, p_frame);
   }

@@ -40,4 +40,8 @@ __CAPE_LIBEX   int            cape_eval_b                  (const CapeString s, 
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   double         cape_eval_to_f               (const CapeString s);
+
+//-----------------------------------------------------------------------------
+
 #endif

@@ -1,3 +1,5 @@
+#include "webs_post.h"
+
 #include "qbus.h"
 
 // qwebs includes
@@ -210,48 +212,6 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString webs_http_parse_line (const CapeString line, const CapeString key_to_seek)
-{
-  CapeListCursor* cursor;
-  CapeList tokens;
-  CapeString ret = NULL;
-  int run = TRUE;
-  
-  // split the string into its parts
-  tokens = cape_tokenizer_buf (line, cape_str_size (line), ';');
-  
-  // run through all parts to find the one which fits the key
-  cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
-  while (run && cape_list_cursor_next (cursor))
-  {
-    CapeString token = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
-    
-    CapeString key = NULL;
-    CapeString val = NULL;
-    
-    if (cape_tokenizer_split (token, '=', &key, &val))
-    {
-      if (cape_str_equal (key_to_seek, key))
-      {
-        ret = cape_str_trim_c (val, '"');
-        run = FALSE;
-      }
-    }
-    
-    cape_str_del (&token);
-    cape_str_del (&key);
-    cape_str_del (&val);
-  }
-  
-  // cleanup
-  cape_list_cursor_destroy (&cursor);
-  cape_list_del (&tokens);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
 int webs_add_file (WebsAuth self, const char* bufdat, number_t buflen, CapeErr err)
 {
   int res;
@@ -314,7 +274,7 @@ void __STDCALL webs__mp__on_part (void* ptr, const char* bufdat, number_t buflen
 
     cape_log_fmt (CAPE_LL_TRACE, "WEBS", "multipart", "found disposition: %s", disposition);
 
-    CapeString name = webs_http_parse_line (disposition, "name");
+    CapeString name = qwebs_parse_line (disposition, "name");
     if (name)
     {
       if (cape_str_equal (name, "file"))  // content is file
@@ -354,7 +314,7 @@ void webs__check_body (WebsAuth self)
     // check mime type
     if (cape_str_begins (self->mime, "multipart"))
     {
-      CapeString boundary = webs_http_parse_line (self->mime, "boundary");
+      CapeString boundary = qwebs_parse_line (self->mime, "boundary");
       if (boundary)
       {
         QWebsMultipart mp = qwebs_multipart_new (boundary, self, webs__mp__on_part);
@@ -743,6 +703,15 @@ int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err)
+{
+  WebsPost webs_post = webs_post_new (user_ptr, request);
+  
+  return webs_post_run (&webs_post, err);  
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   // get a list of all known modules in the qbus subsystem
@@ -934,7 +903,13 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
-  
+
+  res = qwebs_reg (webs, "post", qbus, qbus_webs__post, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   res = qwebs_attach (webs, qbus_aio (qbus), err);
   if (res)
   {

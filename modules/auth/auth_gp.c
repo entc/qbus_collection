@@ -72,10 +72,20 @@ int auth_gp_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
     if (roles)
     {
-      CapeUdc role_admin = cape_udc_get (roles, "wspc_admin");
-      if (role_admin)
       {
-        gpid = 0;
+        CapeUdc role_admin = cape_udc_get (roles, "wspc_admin");
+        if (role_admin)
+        {
+          gpid = 0;
+        }
+      }
+
+      {
+        CapeUdc role_list_read = cape_udc_get (roles, "auth_gp_ls_r");
+        if (role_list_read)
+        {
+          gpid = 0;
+        }
       }
     }
   }
