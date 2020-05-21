@@ -1,5 +1,5 @@
 
-INCLUDE_DIRECTORIES("../../libs/cape/src" "../../libs/qbus/src" "../../libs/qwebs/src" "../../libs/qcrypt/src")
+INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/qwebs/src" "../../../libs/qcrypt/src")
 
 #----------------------------------------------------------------------------------------
 
@@ -28,7 +28,7 @@ add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/p_site ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/site)
 
 # remove none used ones (needs to fix)
-INSTALL (CODE "execute_process(COMMAND docker image rm qbus_webs_ng1:1.0.0)")
+INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_webs:1.0.0)")
 
 # build the docker image
-INSTALL (CODE "execute_process(COMMAND docker build -t qbus_webs_ng1:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/DockerfileNg1 ${CMAKE_INSTALL_PREFIX})")
+INSTALL (CODE "execute_process(COMMAND docker build -t qbus_mod_webs:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
