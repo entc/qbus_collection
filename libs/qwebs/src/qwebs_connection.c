@@ -359,8 +359,6 @@ void qwebs_request_api (QWebsRequest* p_self)
     goto exit_and_cleanup;
   }
   
-  printf ("RETURNED FROM API CALL DIRECTLY\n");
-  
   qwebs_request_send_json (p_self, NULL, err);
 
 exit_and_cleanup:
@@ -531,15 +529,11 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
   
   if (s)
   {
-    printf ("SEND BYTES: %li\n", cape_stream_size (s));
-    
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
   else if (self->active == FALSE)
   {
-    printf ("NO BYTES TO SEND\n");
-
     // some proxies or browser can't handle connections to stay alive
     if (self->close_connection)
     {
@@ -556,6 +550,8 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
 static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
   QWebsConnection self = ptr;
+  
+  printf ("RECV BYTES %lu\n", buflen);
   
   if (NULL == self->parser.data)
   {
@@ -583,8 +579,6 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   
   if (http_body_is_final (&(self->parser)))
   {
-    printf ("BODY IS FINAL\n");
-
     return;
   }
 
