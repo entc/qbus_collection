@@ -240,7 +240,7 @@ static int qwebs_request__internal__on_body (http_parser* parser, const char* at
   
   printf ("---------------------------------------------------------------------------\n");
 
-  printf ("%s\n", at);  
+  printf ("%.*s\n", (int)length, at);
   
   printf ("---------------------------------------------------------------------------\n");
 
