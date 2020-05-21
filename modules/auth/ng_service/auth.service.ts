@@ -65,12 +65,10 @@ export class AuthService
 
     if (user && pass)
     {
-      console.log('use credentials = ' + page);
       return {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (user, pass, wpid)})};
     }
     else
     {
-      console.log('no credentials = ' + page);
       return {};
     }
   }
@@ -267,8 +265,6 @@ export class AuthService
 
   loo ()
   {
-    console.log ('unset authentication');
-
     sessionStorage.removeItem ('auth_user');
     sessionStorage.removeItem ('auth_pass');
     sessionStorage.removeItem ('auth_wpid');
