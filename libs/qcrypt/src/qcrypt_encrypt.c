@@ -243,14 +243,17 @@ void qencrypt_aes_del (QEncryptAES* p_self)
   
 #else
 
+    // call the cleanup to free memory
+    EVP_CIPHER_CTX_cleanup (self->ctx);
+
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 
-    EVP_CIPHER_CTX_cleanup (self->ctx);
+    // free the object struct
     CAPE_FREE (self->ctx);
     
 #else
     
-    EVP_CIPHER_CTX_cleanup (self->ctx);
+    // free the object struct
     EVP_CIPHER_CTX_free (self->ctx);
 
 #endif
