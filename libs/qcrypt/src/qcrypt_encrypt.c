@@ -249,6 +249,7 @@ void qencrypt_aes_del (QEncryptAES* p_self)
     
 #else
     
+    EVP_CIPHER_CTX_cleanup (self->ctx);
     EVP_CIPHER_CTX_free (self->ctx);
 
 #endif
