@@ -245,6 +245,7 @@ void qencrypt_aes_del (QEncryptAES* p_self)
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 
+    EVP_CIPHER_CTX_cleanup (self->ctx);
     CAPE_FREE (self->ctx);
     
 #else
