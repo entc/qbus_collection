@@ -21,6 +21,8 @@ __CAPE_LIBEX   void      qwebs_response_buf       (CapeStream s, QWebs webs, con
 
 __CAPE_LIBEX   void      qwebs_response_err       (CapeStream s, QWebs webs, CapeUdc content, const CapeString mime, CapeErr);
 
+__CAPE_LIBEX   void      qwebs_response_redirect  (CapeStream s, QWebs webs, const CapeString url);
+
 //-----------------------------------------------------------------------------
 
 #endif

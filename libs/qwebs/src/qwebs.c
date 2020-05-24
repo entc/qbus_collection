@@ -1,6 +1,7 @@
 #include "qwebs.h"
 #include "qwebs_connection.h"
 #include "qwebs_files.h"
+#include "qwebs_multipart.h"
 
 // cape includes
 #include <aio/cape_aio_sock.h>
@@ -68,6 +69,8 @@ struct QWebs_s
   QWebsFiles files;
   
   CapeUdc route_list;
+  
+  QWebsEncoder encoder;
 };
 
 //-----------------------------------------------------------------------------
@@ -144,6 +147,8 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   // -> map can be altered later to fit more needs
   qwebs__internal__convert_sites (self, sites);
   
+  self->encoder = qwebs_encode_new ();
+
   return self;
 }
 
@@ -168,6 +173,8 @@ void qwebs_del (QWebs* p_self)
     qwebs_files_del (&(self->files));
     
     cape_udc_del (&(self->route_list));
+    
+    qwebs_encode_del (&(self->encoder));
     
     CAPE_DEL (p_self, struct QWebs_s);
   }
@@ -295,6 +302,13 @@ QWebsApi qwebs_get_api (QWebs self, const CapeString name)
 QWebsFiles qwebs_files (QWebs self)
 {
   return self->files;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qwebs_url_encode (QWebs self, const CapeString url)
+{
+  return qwebs_encode_run (self->encoder, url);
 }
 
 //-----------------------------------------------------------------------------

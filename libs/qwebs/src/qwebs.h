@@ -44,6 +44,10 @@ __CAPE_LIBEX     const CapeString   qwebs_site       (QWebs, const char *bufdat,
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX     CapeString         qwebs_url_encode (QWebs, const CapeString url);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX     int                qwebs_api_call   (QWebsApi, QWebsRequest request, CapeErr err);
 
 //-----------------------------------------------------------------------------
