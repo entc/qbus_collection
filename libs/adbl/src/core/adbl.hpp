@@ -104,6 +104,13 @@ namespace adbl {
       
       return query_results;
     }
+    
+    //-----------------------------------------------------------------------------
+
+    AdblSession c_obj ()
+    {
+      return m_session;
+    }
 
     //-----------------------------------------------------------------------------
 
@@ -276,6 +283,29 @@ namespace adbl {
       return inserted_id;
     }
     
+    //-----------------------------------------------------------------------------
+    
+    number_t insert_or_update (const char* table, cape::Udc& params, cape::Udc& values)
+    {
+      number_t inserted_id = 0;
+      cape::ErrHolder errh;
+      
+      // transfer ownership
+      CapeUdc c_params = params.release ();
+      CapeUdc c_values = values.release ();
+
+      // execute database statement
+      inserted_id = adbl_trx_inorup (m_trx, table, &c_params, &c_values, errh.err);
+      if (inserted_id <= 0)
+      {
+        std::cout << errh.text() << std::endl;
+        
+        throw std::runtime_error (errh.text());
+      }
+      
+      return inserted_id;
+    }
+
     //-----------------------------------------------------------------------------
     
   protected:

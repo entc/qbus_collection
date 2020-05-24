@@ -231,7 +231,52 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qjobs__intern__event_run (QJobs self, CapeErr err)
+int qjobs__intern__event_update (QJobs self, number_t id, const CapeString next_date, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  
+  CapeDatetime dt;
+  
+  cape_datetime__add_s (self->next_event, next_date, &dt);
+  
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    cape_udc_add_n (params, "id", id);
+    cape_udc_add_d (values, "event_date", &dt);
+
+    // execute query
+    res = adbl_trx_update (adbl_trx, self->adbl_table, &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qjobs__intern__event_run (QJobs self, CapeString* p_next_run, CapeErr err)
 {
   cape_log_msg (CAPE_LL_TRACE, "QJOBS", "jobs loop", "event!");
   
@@ -242,7 +287,7 @@ int qjobs__intern__event_run (QJobs self, CapeErr err)
   
   if (self->user_fct)
   {
-    self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo);
+    *p_next_run = self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo);
   }
   
   return CAPE_ERR_NONE;
@@ -278,10 +323,21 @@ int __STDCALL qjobs__on_event (void* ptr)
     // if next_event is in the past, trigger that event
     if (cape_datetime_cmp (self->next_event, &dt) <= 0)
     {
-      res = qjobs__intern__event_run (self, err);
+      CapeString next_run = NULL;
       
-      res = qjobs__intern__event_rm (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
+      res = qjobs__intern__event_run (self, &next_run, err);
+      
+      if (next_run == NULL)
+      {
+        res = qjobs__intern__event_rm (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
+      }
+      else
+      {
+        res = qjobs__intern__event_update (self, cape_udc_get_n (self->next_list_item, "id", 0), next_run, err);
+      }
 
+      cape_str_del (&next_run);
+      
       res = qjobs__intern__fetch (self, err);
     }
   }

@@ -2,7 +2,6 @@
 #define __QBUS__HPP__H 1
 
 // STL includes
-#include <stdexcept>
 
 // cape includes
 #include <hpp/cape_stc.hpp>
@@ -65,6 +64,14 @@ namespace qbus
       m_qout->cdata = cape_udc_new (type, NULL);
       
       return cape::Udc (m_qout->cdata);
+    }
+    
+    void throw_error ()
+    {
+      if (m_qin->err)
+      {
+        throw cape::Exception (cape_err_code (m_qin->err), cape_err_text (m_qin->err));
+      }
     }
     
     void forward ()
@@ -130,13 +137,13 @@ namespace qbus
       }
     }
   };
-  
+
   //-----------------------------------------------------------------------------
 
   template <typename C> struct NewMessage
   {
     typedef void(C::* fct_next_message)(qbus::Message& msg);
-    
+
     static void send (QBus qbus, const char* module, const char* method, cape::Udc& pdata, cape::Udc& cdata, C* ptr, fct_next_message fct)
     {
       cape::ErrHolder errh;
@@ -185,9 +192,23 @@ namespace qbus
       
       res = msg.ret();
     }
+    catch (cape::Exception& e)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: %s", e.what());
+      
+      res = cape_err_set (err, e.code(), e.what());
+    }
     catch (std::runtime_error& e)
     {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: %s", e.what());
+
       res = cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+    }
+    catch (...)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: [unknown exception]");
+
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "[unknown exception]");
     }
     
     delete ctx;
@@ -195,6 +216,123 @@ namespace qbus
   }
   
   //-----------------------------------------------------------------------------
+
+  template <typename C> int __STDCALL message_send__on_message (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err);
+
+  template <typename C> struct MessageSendContext
+  {
+    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
+
+    fct_next_message fct;
+    C* ptr;
+  };
+
+  //-----------------------------------------------------------------------------
+
+  template <typename C> class MessageSend
+  {
+    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
+
+  public:
+
+    MessageSend () : m_msg (qbus_message_new (NULL, NULL))
+    {
+    }
+    
+    ~MessageSend ()
+    {
+      qbus_message_del (&m_msg);
+    }
+    
+    void set_cdata (cape::Udc& cdata)
+    {
+      if (cdata.valid() && cdata.type() == CAPE_UDC_NODE)
+      {
+        m_msg->cdata = cdata.release ();
+      }
+    }
+
+    void set_pdata (cape::Udc& pdata)
+    {
+      if (pdata.valid() && pdata.type() == CAPE_UDC_NODE)
+      {
+        m_msg->pdata = pdata.release ();
+      }
+    }
+
+    void set_clist (cape::Udc& clist)
+    {
+      if (clist.valid() && clist.type() == CAPE_UDC_LIST)
+      {
+        m_msg->clist = clist.release ();
+      }
+    }
+
+    void send (QBus qbus, const char* module, const char* method, std::unique_ptr<C>& self, fct_next_message fct)
+    {
+      cape::ErrHolder errh;
+
+      MessageSendContext<C>* ctx = new MessageSendContext<C>;
+      
+      ctx->fct = fct;
+      ctx->ptr = self.release();
+      
+      int res = qbus_send (qbus, module, method, m_msg, (void*)ctx, message_send__on_message <C>, errh.err);
+      if (res)
+      {
+        throw cape::Exception (cape_err_code (errh.err), errh.text());
+      }
+    }
+    
+  private:
+    
+    QBusM m_msg;
+    
+  };
+
+  //-----------------------------------------------------------------------------
+
+  template <typename C> int __STDCALL message_send__on_message (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+  {
+    int res;
+    MessageSendContext<C>* ctx = static_cast<MessageSendContext<C>*> (ptr);
+    
+    try
+    {
+      std::unique_ptr<C> self (static_cast<C*>(ctx->ptr));
+      
+      qbus::Message msg (qbus, qin, qout);
+      
+      // black magic to call a method
+      ctx->fct (qbus, self, msg);
+      
+      res = msg.ret();
+    }
+    catch (cape::Exception& e)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: %s", e.what());
+      
+      res = cape_err_set (err, e.code(), e.what());
+    }
+    catch (std::runtime_error& e)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: %s", e.what());
+
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+    }
+    catch (...)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on message", "catched error: [unknown exception]");
+
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "[unknown exception]");
+    }
+    
+    delete ctx;
+    return res;
+  }
+
+  //-----------------------------------------------------------------------------
+
 }
 
 #endif

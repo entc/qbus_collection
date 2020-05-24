@@ -27,7 +27,7 @@ __CAPE_LIBEX     void        qjobs_del      (QJobs*);
 
 //-----------------------------------------------------------------------------
 
-typedef void                  (__STDCALL *fct_qjobs__on_event)   (void* user_ptr, CapeUdc params, number_t wpid, number_t gpid, const CapeString rinfo_encrypted);
+typedef CapeString         (__STDCALL *fct_qjobs__on_event)   (void* user_ptr, CapeUdc params, number_t wpid, number_t gpid, const CapeString rinfo_encrypted);
 
 __CAPE_LIBEX     int         qjobs_init     (QJobs, CapeAioContext aio_ctx, number_t precision_in_ms, void* user_ptr, fct_qjobs__on_event, CapeErr);
 
