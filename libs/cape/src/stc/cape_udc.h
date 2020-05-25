@@ -144,6 +144,10 @@ __CAPE_LIBEX   CapeUdc              cape_udc_ext_first        (CapeUdc);
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   void                 cape_udc_put_n            (CapeUdc, const CapeString name, number_t val);
+
+//-----------------------------------------------------------------------------
+
 typedef struct
 {
   
