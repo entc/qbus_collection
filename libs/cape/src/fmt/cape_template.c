@@ -262,6 +262,80 @@ int cape__evaluate_expression__compare (const CapeString left, const CapeString 
 
 //-----------------------------------------------------------------------------
 
+int cape__evaluate_expression__greater_than (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  char* l_res = NULL;
+  char* r_res = NULL;
+
+  // try to convert into double
+  double l_d = strtod (l_trimmed, &l_res);
+  double r_d = strtod (r_trimmed, &r_res);
+
+  if (l_res && r_res)
+  {
+    // do a mathematical comparison
+    ret = l_d > r_d;
+    
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [double]: %f > %f -> %i,   [orignal]: '%s' > '%s'", l_d, r_d, ret, l_trimmed, r_trimmed);
+  }
+  else
+  {
+    // do a textual comparision
+    ret = cape_str_compare_c (l_trimmed, r_trimmed) > 0;
+  
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [text]: '%s' > '%s' -> %i", l_trimmed, r_trimmed, ret);
+  }
+      
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression__smaller_than (const CapeString left, const CapeString right)
+{
+  int ret;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  char* l_res = NULL;
+  char* r_res = NULL;
+
+  // try to convert into double
+  double l_d = strtod (l_trimmed, &l_res);
+  double r_d = strtod (r_trimmed, &r_res);
+
+  if (l_res && r_res)
+  {
+    // do a mathematical comparison
+    ret = l_d < r_d;
+    
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [double]: %f < %f -> %i,   [orignal]: '%s' < '%s'", l_d, r_d, ret, l_trimmed, r_trimmed);
+  }
+  else
+  {
+    // do a textual comparision
+    ret = cape_str_compare_c (l_trimmed, r_trimmed) < 0;
+  
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [text]: '%s' < '%s' -> %i", l_trimmed, r_trimmed, ret);
+  }
+      
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc data, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
   const CapeDatetime* dt = cape_udc_d (item, NULL);
@@ -1208,6 +1282,14 @@ int cape__evaluate_expression__single (const CapeString expression)
   if (cape_tokenizer_split (expression, '=', &left, &right))
   {
     ret = cape__evaluate_expression__compare (left, right);
+  }
+  else if (cape_tokenizer_split (expression, '>', &left, &right))
+  {
+    ret = cape__evaluate_expression__greater_than (left, right);
+  }
+  else if (cape_tokenizer_split (expression, '<', &left, &right))
+  {
+    ret = cape__evaluate_expression__smaller_than (left, right);
   }
   else
   {
