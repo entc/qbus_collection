@@ -19,7 +19,7 @@ INSTALL (TARGETS qbus_mod_webs DESTINATION modules)
 
 # for docker
 INSTALL (TARGETS qbus_mod_webs DESTINATION docker/webs/mods)
-INSTALL (TARGETS qwebs DESTINATION docker/webs/lib)
+#INSTALL (TARGETS qwebs DESTINATION docker/webs/lib)
 #INSTALL (TARGETS qcrypt DESTINATION docker/webs/lib)
 
 # set some symlinks for direct starting
