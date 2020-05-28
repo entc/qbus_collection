@@ -2,6 +2,8 @@
 #define __QBUS__HPP__H 1
 
 // STL includes
+#include <stdexcept>
+#include <memory>
 
 // cape includes
 #include <hpp/cape_stc.hpp>
@@ -9,7 +11,6 @@
 
 // qbus include
 #include <qbus.h>
-#include <stdexcept>
 
 namespace qbus
 {
