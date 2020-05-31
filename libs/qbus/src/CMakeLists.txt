@@ -9,6 +9,7 @@ set(WSRV_SOURCES
 
 set(WSRV_HEADERS
   qbus.h
+  qbus.hpp
 )
 
 add_library             (qbus SHARED ${WSRV_SOURCES} ${WSRV_HEADERS})

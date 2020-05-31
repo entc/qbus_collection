@@ -414,7 +414,7 @@ void  cape_datetime__remove_s (CapeDatetime* input,  const CapeString delta, Cap
 //-----------------------------------------------------------------------------
 // append a certain time period defined in delta string format ( D2:h2:m2:s2:u2 ) and save it in result datetime
 // Function doesn't change the time zone, so take care to use same time zone for input and result (e.g. both UTC)
-void  cape_datetime__add_s (CapeDatetime* input,  const CapeString delta, CapeDatetime* result)
+void  cape_datetime__add_s (const CapeDatetime* input,  const CapeString delta, CapeDatetime* result)
 {
 #if defined __WINDOWS_OS
   

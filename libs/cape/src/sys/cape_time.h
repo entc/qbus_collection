@@ -68,7 +68,7 @@ __CAPE_LIBEX   void            cape_datetime__remove_s   (CapeDatetime* input,  
 
                                // append a certain time period defined in delta string format and save it in result datetime
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
-__CAPE_LIBEX   void            cape_datetime__add_s   (CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
+__CAPE_LIBEX   void            cape_datetime__add_s   (const CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
 
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
 
