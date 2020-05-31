@@ -73,6 +73,8 @@ __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_sanitize_utf8 (const CapeString source);
 
+__CAPE_LIBEX   CapeString         cape_str_to_word       (const CapeString source);
+
 __CAPE_LIBEX   CapeString         cape_str_cp_replaced   (const CapeString source, const CapeString seek, const CapeString replace_with);
 
 //-----------------------------------------------------------------------------
