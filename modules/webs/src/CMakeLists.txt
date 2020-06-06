@@ -5,10 +5,12 @@ INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../
 
 SET (QBUS_MODULES_WEBS_SOURCES
   webs.c
+  webs_json.c
   webs_post.c
 )
 
 SET (QBUS_MODULES_WEBS_HEADERS
+  webs_json.h
   webs_post.h
 )
 
