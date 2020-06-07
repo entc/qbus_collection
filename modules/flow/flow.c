@@ -368,13 +368,13 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: psid
   qbus_register (qbus, "process_rm"          , ctx, qbus_flow__process__rm, NULL, err);
 
-  // get details of the current process
-  //   args: psid
-  qbus_register (qbus, "process_get"         , ctx, qbus_flow__process__get, NULL, err);
-
   // get all active processes
   //   args:
   qbus_register (qbus, "process_all"         , ctx, qbus_flow__process__all, NULL, err);
+
+  // get details of the current process
+  //   args: psid
+  qbus_register (qbus, "process_get"         , ctx, qbus_flow__process__get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 
