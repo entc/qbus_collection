@@ -327,7 +327,7 @@ int adbl_trx_commit (AdblTrx* p_self, CapeErr err)
     
     if (self->in_trx)
     {
-      cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx commit", "COMMIT TRANSACTION");
+      //cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx commit", "COMMIT TRANSACTION");
       
       res = adbl_pool_trx_commit (self->pool, self->pool_node, err);
     }
@@ -352,7 +352,7 @@ int adbl_trx_rollback (AdblTrx* p_self, CapeErr err)
     
     if (self->in_trx)
     {
-      cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx rollback", "ROLLBACK TRANSACTION");
+      cape_log_msg (CAPE_LL_WARN, "ADBL", "trx rollback", "ROLLBACK TRANSACTION");
       
       res = adbl_pool_trx_rollback (self->pool, self->pool_node, err);
     }
@@ -378,7 +378,7 @@ int adbl_trx_start (AdblTrx self, CapeErr err)
   {
     int res;
 
-    cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx start", "START TRANSACTION");
+    //cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx start", "START TRANSACTION");
     
     res = adbl_pool_trx_begin (self->pool, self->pool_node, err);
     if (res)

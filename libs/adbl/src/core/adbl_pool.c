@@ -134,8 +134,6 @@ void adbl_pool_rel (AdblPool self, CapeListNode n)
 {
   AdblPoolItem* item = cape_list_node_data (n);
   
-  printf ("RELEASE CONNECTION\n");
-  
   cape_mutex_lock (self->mutex);
   
   item->used = FALSE;

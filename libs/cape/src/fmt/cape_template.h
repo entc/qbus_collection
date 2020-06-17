@@ -32,6 +32,8 @@ __CAPE_LIBEX   int            cape_template_compile_str    (CapeTemplate, const 
 
 __CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, CapeErr);
 
+__CAPE_LIBEX   CapeString     cape_template_run            (const CapeString s, CapeUdc node, CapeErr);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int            cape_eval_f                  (const CapeString s, CapeUdc node, double*, CapeErr);

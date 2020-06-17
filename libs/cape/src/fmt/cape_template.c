@@ -20,6 +20,7 @@
 #define PART_TYPE_TAG    3
 #define PART_TYPE_NODE   4
 #define PART_TYPE_CR     5
+#define PART_TYPE_MOD    6
 
 //-----------------------------------------------------------------------------
 
@@ -40,6 +41,8 @@ struct CapeTemplatePart_s
   CapeString text;
   
   CapeString eval;
+  
+  CapeString modn;
   
   CapeList parts;
   
@@ -85,6 +88,7 @@ void cape_template_part_checkForEval (CapeTemplatePart self, const CapeString te
   switch (self->type)
   {
     case PART_TYPE_TAG:
+    case PART_TYPE_MOD:
     {
       CapeString s1 = NULL;
       CapeString s2 = NULL;
@@ -95,19 +99,16 @@ void cape_template_part_checkForEval (CapeTemplatePart self, const CapeString te
         self->text = cape_str_trim_utf8 (s1);
         self->eval = cape_str_trim_utf8 (s2);
       }
+      else if (cape_tokenizer_split (text, '|',  &s1, &s2))
+      {
+        cape_template_part_checkForFormat (self, s2);
+        self->text = cape_str_trim_utf8 (s1);
+      }
       else
       {
-        if (cape_tokenizer_split (text, '|',  &s1, &s2))
-        {
-          cape_template_part_checkForFormat (self, s2);
-          self->text = cape_str_trim_utf8 (s1);
-        }
-        else
-        {
-          self->text = cape_str_trim_utf8 (text);
-        }
+        self->text = cape_str_trim_utf8 (text);
       }
-      
+
       cape_str_del (&s1);
       cape_str_del (&s2);
       
@@ -155,6 +156,7 @@ CapeTemplatePart cape_template_part_new (int type, const CapeString raw_text, Ca
   
   self->text = NULL;
   self->eval = NULL;
+  self->modn = NULL;
   
   // set no format
   self->format_type = FORMAT_TYPE_NONE;
@@ -696,6 +698,92 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+double cape_template_math (const CapeString formular, CapeUdc data)
+{
+  double ret = .0;
+  
+  CapeString le = NULL;
+  CapeString re = NULL;
+  
+  if (cape_tokenizer_split (formular, '-', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, data);
+    double rv = cape_template_math (rh, data);
+
+    ret = lv - rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else
+  {
+    CapeUdc item = cape_udc_get (data, formular);
+    if (item)
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString h = cape_udc_s (item, NULL);
+          
+          if (NULL == h)
+          {
+            ret = strtod (h, NULL);
+          }
+
+          break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+          ret = cape_udc_n (item, 0);
+          break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+          ret = cape_udc_f (item, .0);
+          break;
+        }
+      }
+    }
+    else
+    {
+      ret = strtod (formular, NULL);
+    }
+  }
+    
+  cape_str_del (&le);
+  cape_str_del (&re);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_mod_apply__math (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+{
+  double value = cape_template_math (self->text, data);
+  
+  switch (self->format_type)
+  {
+    case FORMAT_TYPE_NONE:
+    {
+
+      break;
+    }
+    case FORMAT_TYPE_DECIMAL:
+    {
+      return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
+    }
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, number_t pos, CapeErr err)
 {
   if (self->parts)
@@ -724,6 +812,24 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
           if (res)
           {
             return res;
+          }
+
+          break;
+        }
+        case PART_TYPE_MOD:
+        {
+          // check all modules by name
+          if (cape_str_equal (part->modn + 1, "math"))
+          {
+            int res = cape_template_mod_apply__math (part, data, ptr, onText, onFile, err);
+            if (res)
+            {
+              return res;
+            }
+          }
+          else
+          {
+            // add more here
           }
 
           break;
@@ -894,6 +1000,82 @@ void cape_template_compiler_del (EcTemplateCompiler* p_self)
 
 //-----------------------------------------------------------------------------
 
+void cape_template_compiler_module__parse (const CapeString buf, CapeString* p_name, CapeString* p_cont, CapeString *p_fomt)
+{
+  number_t size = cape_str_size (buf);
+  
+  const char* c = buf;
+  int i;
+  number_t state = 0;
+
+  // local objects
+  CapeStream s = cape_stream_new ();
+
+  for (i = 0; i < size; i++, c++)
+  {
+    switch (state)
+    {
+      case 0:
+      {
+        if (*c == '{')
+        {
+          *p_name = cape_str_sub (buf, i);
+          state = 1;
+        }
+
+        break;
+      }
+      case 1:
+      {
+        if (*c == '}')
+        {
+          goto exit_and_cleanup;
+        }
+        else
+        {
+          cape_stream_append_c (s, *c);
+        }
+
+        break;
+      }
+    }
+  }
+  
+exit_and_cleanup:
+  
+  *p_fomt = cape_str_sub (c, size - i);
+  *p_cont = cape_stream_to_str (&s);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_template_compiler_module (EcTemplateCompiler self, const CapeString raw_name)
+{
+  // local objects
+  CapeString name = NULL;
+  CapeString cont = NULL;
+  CapeString fomt = NULL;
+  
+  cape_template_compiler_module__parse (raw_name, &name, &cont, &fomt);
+
+  {
+    CapeTemplatePart tmplpart = cape_template_part_new (PART_TYPE_MOD, fomt, self->part);
+
+    cape_str_replace_mv (&(tmplpart->text), &cont);
+    cape_str_replace_mv (&(tmplpart->modn), &name);
+
+    cape_template_part_add (self->part, tmplpart);
+  }
+
+exit_and_cleanup:
+  
+  cape_str_del (&name);
+  cape_str_del (&cont);
+  cape_str_del (&fomt);
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
 {
   switch (type)
@@ -911,7 +1093,6 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
     case PART_TYPE_TAG:
     {
       const CapeString name = cape_stream_get (self->sb);
-      
       switch (name[0])
       {
         case '#':
@@ -939,6 +1120,12 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
               self->part = parent_part;
             }
           }
+          
+          break;
+        }
+        case '$':   // extra modules
+        {
+          cape_template_compiler_module (self, name);
           
           break;
         }
@@ -1047,6 +1234,7 @@ int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, i
         {
           self->state = 2;
           cape_stream_append_c (self->sb, '}');
+          cape_stream_append_c (self->sb, *c);
         }
 
         break;
@@ -1476,6 +1664,39 @@ double cape_eval_to_f (const CapeString s)
     }
   }
   
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_template_run (const CapeString s, CapeUdc node, CapeErr err)
+{
+  CapeString ret = NULL;
+  int res;
+  
+  // local objects
+  CapeTemplate tmpl = cape_template_new ();
+  CapeStream stream = cape_stream_new ();
+  
+  res = cape_template_compile_str (tmpl, s, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  ret = cape_stream_to_str (&stream);
+  
+exit_and_cleanup:
+
+  cape_template_del (&tmpl);
+  cape_stream_del (&stream);
+
   return ret;
 }
 

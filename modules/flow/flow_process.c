@@ -805,6 +805,9 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
    */
   
+  // add psid
+  cape_udc_add_n (first_row, "psid", self->psid);
+  
   cape_udc_replace_mv (&(qout->cdata), &first_row);
   res = CAPE_ERR_NONE;
   

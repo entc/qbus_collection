@@ -178,14 +178,14 @@ int adbl_pvd_connect (AdblPvdSession self, CapeErr err)
   reconnect = FALSE;
   mysql_options (self->mysql, MYSQL_OPT_RECONNECT, &reconnect);
   
-  // set propper read timeout
-  timeout = 1;
+  // set propper read timeout in seconds
+  timeout = 3;
   mysql_options (self->mysql, MYSQL_OPT_READ_TIMEOUT, &timeout);
   
   cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [opts]: ", "timeout read:  %is", timeout);
   
-  // set propper write timeout
-  timeout = 1;
+  // set propper write timeout in seconds
+  timeout = 3;
   mysql_options (self->mysql, MYSQL_OPT_WRITE_TIMEOUT, &timeout);
   
   cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [opts]: ", "timeout write: %is", timeout);
@@ -202,12 +202,14 @@ int adbl_pvd_connect (AdblPvdSession self, CapeErr err)
     const CapeString pass = cape_udc_get_s (self->cp, "pass", "admin");
     number_t port = cape_udc_get_n (self->cp, "port", 3306);
     
+    /*
     cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [host]: ", "'%s'", host);
     cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [port]: ", "'%i'", port);
     cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [user]: ", "'%s'", user);
     cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [pass]: ", "'%s'", pass);
     cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [dbas]: ", "'%s'", self->schema);
-
+     */
+     
     // connect
     if (mysql_real_connect (self->mysql, host, user, pass, self->schema, port, 0, CLIENT_MULTI_RESULTS) != self->mysql)
     {

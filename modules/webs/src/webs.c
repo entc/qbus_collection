@@ -364,6 +364,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
     goto exit_and_cleanup;
   }
   
+  /*
   res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);
   if (res)
   {
@@ -375,6 +376,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
+   */
 
   // --------- RESTAPI callbacks -----------------------------
   

@@ -68,6 +68,26 @@ int main (int argc, char *argv[])
     printf ("T2: %i\n", ret);
   }
 
+  {
+    CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (n, "val", 123);
+    
+    CapeString h = cape_template_run ("{{$math{val - 0.2}|decimal:1%,%2}}", n, err);
+
+    if (h)
+    {
+      printf ("MATH: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+
+    cape_str_del (&h);
+    cape_udc_del (&n);
+  }
+
 exit_and_cleanup:
 
   if (cape_err_code(err))
