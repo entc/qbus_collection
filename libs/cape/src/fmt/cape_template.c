@@ -178,7 +178,8 @@ void cape_template_part_del (CapeTemplatePart* p_self)
   
   cape_str_del (&(self->text));
   cape_str_del (&(self->eval));
-  
+  cape_str_del (&(self->modn));
+
   if (self->parts)
   {
     cape_list_del (&(self->parts));
