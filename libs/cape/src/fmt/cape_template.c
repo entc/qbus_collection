@@ -737,8 +737,6 @@ double cape_template_math (const CapeString formular, CapeUdc data)
     CapeUdc item = cape_udc_get (data, formular);
     if (item)
     {
-      printf ("MATH: found item = %s\n", cape_udc_name(item));
-      
       switch (cape_udc_type (item))
       {
         case CAPE_UDC_STRING:
@@ -746,7 +744,7 @@ double cape_template_math (const CapeString formular, CapeUdc data)
           const CapeString h = cape_udc_s (item, NULL);
           if (h)
           {
-            ret = strtod (h, NULL);
+            ret = cape_eval_to_f (h);
           }
 
           break;
@@ -765,7 +763,7 @@ double cape_template_math (const CapeString formular, CapeUdc data)
     }
     else
     {
-      ret = strtod (formular, NULL);
+      ret = cape_eval_to_f (formular);
     }
   }
     
