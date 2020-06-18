@@ -819,18 +819,21 @@ int cape_template_part_apply (CapeTemplatePart self, CapeUdc data, void* ptr, fc
         }
         case PART_TYPE_MOD:
         {
-          // check all modules by name
-          if (cape_str_equal (part->modn + 1, "math"))
+          if (cape_str_not_empty (part->modn))
           {
-            int res = cape_template_mod_apply__math (part, data, ptr, onText, onFile, err);
-            if (res)
+            // check all modules by name
+            if (cape_str_equal (part->modn + 1, "math"))
             {
-              return res;
+              int res = cape_template_mod_apply__math (part, data, ptr, onText, onFile, err);
+              if (res)
+              {
+                return res;
+              }
             }
-          }
-          else
-          {
-            // add more here
+            else
+            {
+              // add more here
+            }
           }
 
           break;
