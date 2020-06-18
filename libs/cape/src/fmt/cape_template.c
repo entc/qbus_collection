@@ -706,7 +706,20 @@ double cape_template_math (const CapeString formular, CapeUdc data)
   CapeString le = NULL;
   CapeString re = NULL;
   
-  if (cape_tokenizer_split (formular, '-', &le, &re))
+  if (cape_tokenizer_split (formular, '+', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, data);
+    double rv = cape_template_math (rh, data);
+
+    ret = lv + rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else if (cape_tokenizer_split (formular, '-', &le, &re))
   {
     CapeString lh = cape_str_trim_utf8 (le);
     CapeString rh = cape_str_trim_utf8 (re);
@@ -724,13 +737,14 @@ double cape_template_math (const CapeString formular, CapeUdc data)
     CapeUdc item = cape_udc_get (data, formular);
     if (item)
     {
+      printf ("MATH: found item = %s\n", cape_udc_name(item));
+      
       switch (cape_udc_type (item))
       {
         case CAPE_UDC_STRING:
         {
           const CapeString h = cape_udc_s (item, NULL);
-          
-          if (NULL == h)
+          if (h)
           {
             ret = strtod (h, NULL);
           }
