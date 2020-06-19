@@ -504,6 +504,111 @@ int flow_run_step__switch (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
+{
+  int res;
+  FlowRunStep self = *p_self;
+  FlowRunDbw dbw = *p_dbw;
+
+  CapeUdc value_node = NULL;
+  number_t wfid = 0;
+  
+  res = flow_run_dbw_xdata__if (dbw, &value_node, &wfid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  if (value_node)
+  {
+    number_t syncid;
+
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " IF            | found                            |");
+
+    // create sync object
+    syncid = flow_run_dbw_sync__add (dbw, 1, err);
+    if (syncid == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    // transfer owership of dbw to self objects
+    self->dbw = dbw;
+    *p_dbw = NULL;
+
+    // set state halt to commit all changes so far
+    flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
+
+    FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
+
+    // create a new process task
+    res = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // transfer ownership for queuing
+    res = flow_run_dbw_set (&dbw_cloned, TRUE, FLOW_ACTION__PRIM, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    res = CAPE_ERR_CONTINUE;
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "if add", " IF            | not found -> continue            |");
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "if add", "---------------+----------------------------------+");
+
+    res = CAPE_ERR_NONE;
+  }
+  
+exit_and_cleanup:
+
+  if (cape_err_code (err))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "FLOW", "if add", " ERROR         | %s", cape_err_text (err));
+    cape_log_fmt (CAPE_LL_ERROR, "FLOW", "if add", "---------------+----------------------------------+");
+  }
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_step__if (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
+{
+  FlowRunStep self = *p_self;
+
+  // get the current state of the step
+  switch (flow_run_dbw_state_get (*p_dbw))
+  {
+    case FLOW_STATE__NONE:
+    {
+      // get the syncronization counter
+      number_t syncnt = flow_run_dbw_synct_get (*p_dbw);
+
+      //if (syncnt == -1)
+      {
+        cape_log_msg (CAPE_LL_DEBUG, "FLOW", "run step", "---------------+----------------------------------+");
+        cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "taskflow", "            if | create tasks                     |");
+        cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "taskflow", "---------------+----------------------------------+");
+
+        return flow_run_step__if__add (p_self, p_dbw, err);
+      }
+      
+      break;
+    }
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_step__place_message (FlowRunStep* p_self, CapeErr err)
 {
 
@@ -566,6 +671,11 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
       res = flow_run_step__method__async (p_self, p_dbw, err);
       break;
     }
+    case 5:    // wait
+    {
+      
+      break;
+    }
     case 10:   // split into several taskflows, sync at the end and continue this taskflow
     {
       res = flow_run_step__method__split (p_self, p_dbw, err);
@@ -579,6 +689,11 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     case 12:   // switch
     {
       res = flow_run_step__switch (p_self, p_dbw, err);
+      break;
+    }
+    case 13:   // if
+    {
+      res = flow_run_step__if (p_self, p_dbw, err);
       break;
     }
     case 21:   // place a message on the desktop

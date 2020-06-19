@@ -74,6 +74,9 @@ __CAPE_LOCAL   int          flow_run_dbw_xdata__split      (FlowRunDbw, CapeUdc*
                             /* retrieve all data for a switch */
 __CAPE_LOCAL   int          flow_run_dbw_xdata__switch     (FlowRunDbw, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err);
 
+                            /* retrieve all data from an if */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__if         (FlowRunDbw, CapeUdc* p_value_node, number_t* p_wfid, CapeErr err);
+
                             /* check pdata if the logs shall be merged into params */
 __CAPE_LOCAL   void         flow_run_dbw_pdata__logs_merge (FlowRunDbw, CapeUdc params);
 

@@ -1616,6 +1616,66 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_run_dbw_xdata__if (FlowRunDbw self, CapeUdc* p_value_node, number_t* p_wfid, CapeErr err)
+{
+  int res;
+
+  const CapeString variable_node_name = NULL;
+  const CapeString params_node_name = NULL;
+  
+  CapeUdc seek_node = NULL;
+
+  // to be on the safe side
+  *p_value_node = NULL;
+  *p_wfid = 0;
+
+  if (self->pdata)
+  {
+    variable_node_name = cape_udc_get_s (self->pdata, "value_node", NULL);
+    *p_wfid = cape_udc_get_n (self->pdata, "wfid", 0);
+
+    // optional
+    params_node_name = cape_udc_get_s (self->pdata, "params_node", NULL);
+  }
+
+  if (*p_wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'wfid' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  if (variable_node_name == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'value_node' is empty or missing");
+    goto exit_and_cleanup;
+  }
+
+  if (params_node_name)
+  {
+    if (self->tdata)
+    {
+      seek_node = cape_udc_get (self->tdata, params_node_name);
+    }
+  }
+  else
+  {
+    seek_node = self->tdata;
+  }
+
+  if (seek_node)
+  {
+    *p_value_node = cape_udc_get (seek_node, variable_node_name);
+  }
+  
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 void flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params)
 {
   int add_logs = FALSE;
