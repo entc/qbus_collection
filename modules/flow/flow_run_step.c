@@ -617,13 +617,6 @@ int flow_run_step__place_message (FlowRunStep* p_self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_step__var_copy (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
-{
-  return flow_run_dbw_xdata__var_copy (*p_dbw, err);
-}
-
-//-----------------------------------------------------------------------------
-
 int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, CapeUdc params, CapeErr err)
 {
   int res;
@@ -701,9 +694,14 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
       res = flow_run_step__place_message (p_self, err);
       break;
     }
-    case 50:   // copy a variable in TDATA to another variable with a different name
+    case 50:   // (variable) copy
     {
-      res = flow_run_step__var_copy (p_self, p_dbw, err);
+      res = flow_run_dbw_xdata__var_copy (*p_dbw, err);
+      break;
+    }
+    case 51:   // (variable) create node
+    {
+      res = flow_run_dbw_xdata__create_node (*p_dbw, err);
       break;
     }
     default:

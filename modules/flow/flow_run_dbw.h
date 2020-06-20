@@ -66,31 +66,34 @@ __CAPE_LOCAL   int          flow_run_dbw_next              (FlowRunDbw, CapeErr 
 // data manipulators
 
                             /* retrieve QBUS info for continue */
-__CAPE_LOCAL   int          flow_run_dbw_pdata__qbus       (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* params, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_pdata__qbus         (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* params, CapeErr err);
 
                             /* retrieve a list with all splits */
-__CAPE_LOCAL   int          flow_run_dbw_xdata__split      (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_xdata__split        (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeErr err);
 
                             /* retrieve all data for a switch */
-__CAPE_LOCAL   int          flow_run_dbw_xdata__switch     (FlowRunDbw, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_xdata__switch       (FlowRunDbw, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err);
 
                             /* retrieve all data from an if */
-__CAPE_LOCAL   int          flow_run_dbw_xdata__if         (FlowRunDbw, CapeUdc* p_value_node, number_t* p_wfid, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_xdata__if           (FlowRunDbw, CapeUdc* p_value_node, number_t* p_wfid, CapeErr err);
 
                             /* check pdata if the logs shall be merged into params */
-__CAPE_LOCAL   void         flow_run_dbw_pdata__logs_merge (FlowRunDbw, CapeUdc params);
+__CAPE_LOCAL   void         flow_run_dbw_pdata__logs_merge   (FlowRunDbw, CapeUdc params);
 
                             /* merge content of TDATA to params */
-__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_in   (FlowRunDbw, CapeUdc params);
+__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_in     (FlowRunDbw, CapeUdc params);
 
                             /* merge content of params to TDATA */
-__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_to   (FlowRunDbw, CapeUdc* params);
+__CAPE_LOCAL   void         flow_run_dbw_tdata__merge_to     (FlowRunDbw, CapeUdc* params);
 
                             /* copy variable in TDATA */
-__CAPE_LOCAL   int          flow_run_dbw_xdata__var_copy   (FlowRunDbw, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_xdata__var_copy     (FlowRunDbw, CapeErr err);
+
+                            /* craete a new node in TDATA */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__create_node  (FlowRunDbw, CapeErr err);
 
                             /* add an vdata event */
-__CAPE_LOCAL   void         flow_run_dbw__event_add        (FlowRunDbw, number_t err_code, const CapeString err_text, number_t vaid, number_t stype);
+__CAPE_LOCAL   void         flow_run_dbw__event_add          (FlowRunDbw, number_t err_code, const CapeString err_text, number_t vaid, number_t stype);
 
 //-----------------------------------------------------------------------------
 // sync tools
