@@ -666,7 +666,8 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     }
     case 5:    // wait
     {
-      
+      res = CAPE_ERR_NONE;
+
       break;
     }
     case 10:   // split into several taskflows, sync at the end and continue this taskflow
