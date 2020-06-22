@@ -277,7 +277,8 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
     case FLOW_STATE__HALT:
     {
       const CapeString uuid;
-      const CapeString code;
+      CapeString code = NULL;
+      CapeUdc code_node;
       
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "          wait | continue                         |");
@@ -297,9 +298,30 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
       }
 
       // optional
-      code = cape_udc_get_s (params, "code", NULL);
+      code_node = cape_udc_get (params, "code");
+      
+      if (code_node) switch (cape_udc_type (code_node))
+      {
+        case CAPE_UDC_STRING:
+        {
+          code = cape_str_cp (cape_udc_s (code_node, NULL));
+          break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+          code = cape_str_n (cape_udc_n (code_node, 0));
+          break;
+        }
+      }
       
       res = flow_run_dbw_wait__check_item (*p_dbw, uuid, code, err);
+      
+      cape_str_del (&code);
+      break;
+    }
+    default:
+    {
+      res = CAPE_ERR_CONTINUE;
       break;
     }
   }

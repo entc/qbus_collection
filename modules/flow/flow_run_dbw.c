@@ -2139,6 +2139,8 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
       {
         if (!cape_str_equal (code_item, code))
         {
+          cape_log_fmt (CAPE_LL_ERROR, "FLOW", "check item", "code missmatch: '%s' <> '%s'", code_item, code);
+          
           res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "code missmatch");
           goto exit_and_cleanup;
         }
