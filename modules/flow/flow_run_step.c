@@ -258,6 +258,59 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc params, CapeErr err)
+{
+  int res;
+
+  // get the current state of the step
+  switch (flow_run_dbw_state_get (*p_dbw))
+  {
+    case FLOW_STATE__NONE:
+    {
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "          wait | initialize                       |");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
+
+      res = flow_run_dbw_wait__init (*p_dbw, err);
+      break;
+    }
+    case FLOW_STATE__HALT:
+    {
+      const CapeString uuid;
+      const CapeString code;
+      
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "          wait | continue                         |");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
+
+      if (NULL == params)
+      {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'params' is missing");
+        goto exit_and_cleanup;
+      }
+      
+      uuid = cape_udc_get_s (params, "uuid", NULL);
+      if (NULL == uuid)
+      {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'params' is missing");
+        goto exit_and_cleanup;
+      }
+
+      // optional
+      code = cape_udc_get_s (params, "code", NULL);
+      
+      res = flow_run_dbw_wait__check_item (*p_dbw, uuid, code, err);
+      break;
+    }
+  }
+  
+exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 {
   int res;
@@ -666,8 +719,7 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     }
     case 5:    // wait
     {
-      res = CAPE_ERR_NONE;
-
+      res = flow_run_step__method__wait (p_self, p_dbw, params, err);
       break;
     }
     case 10:   // split into several taskflows, sync at the end and continue this taskflow

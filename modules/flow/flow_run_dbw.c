@@ -6,6 +6,7 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
 #include <stc/cape_list.h>
+#include <fmt/cape_tokenizer.h>
 
 //-----------------------------------------------------------------------------
 
@@ -1899,6 +1900,291 @@ exit_and_cleanup:
   cape_udc_cursor_del (&cursor);
   
   cape_udc_del (&node_create);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc flow_run_dbw__retrieve_var (CapeUdc node, const CapeString name)
+{
+  // try to split the name into its parts separated by the '.' character
+  CapeList name_parts = cape_tokenizer_buf (name, cape_str_size (name), '.');
+  
+  CapeUdc current_node = node;
+  
+  CapeListCursor* cursor = cape_list_cursor_create (name_parts, CAPE_DIRECTION_FORW);
+  
+  while (current_node && cape_list_cursor_next (cursor))
+  {
+    const CapeString part_name = cape_list_node_data (cursor->node);
+    
+    current_node = cape_udc_get (current_node, part_name);
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+  cape_list_del (&name_parts);
+  
+  return current_node;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  const CapeString waitlist_node_name = NULL;
+  const CapeString code_node_name = NULL;
+  
+  CapeUdc waitlist_node = NULL;
+  CapeUdc code_node = NULL;
+  
+  // local objects
+  CapeUdcCursor* cursor = NULL;
+  CapeUdc values = NULL;
+
+  if (self->pdata)
+  {
+    waitlist_node_name = cape_udc_get_s (self->pdata, "waitlist_node", NULL);
+    
+    // optional
+    code_node_name = cape_udc_get_s (self->pdata, "code_node", NULL);
+  }
+  
+  if (waitlist_node_name == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'waitlist_node' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  // check for the list in t_data
+  if (self->tdata)
+  {
+    {
+      CapeString h = cape_json_to_s (self->tdata);
+      
+      printf ("TDATA: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+    
+    waitlist_node = cape_udc_get (self->tdata, waitlist_node_name);
+    
+    if (code_node_name)
+    {
+      // optional
+      code_node = flow_run_dbw__retrieve_var (self->tdata, code_node_name);
+    }
+  }
+  
+  if (waitlist_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't find the list defined by 'waitlist_node'");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeString h = cape_json_to_s (waitlist_node);
+    
+    printf ("WAITLIST: %s\n", h);
+    
+    cape_str_del (&h);
+  }
+
+  cursor = cape_udc_cursor_new (waitlist_node, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    number_t id;
+    
+    values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (values, "psid"          , self->psid);
+    cape_udc_add_n      (values, "status"        , 0);
+
+    switch (cape_udc_type (cursor->item))
+    {
+      case CAPE_UDC_STRING:
+      {
+        const CapeString uuid = cape_udc_s (cursor->item, NULL);
+        if (uuid == NULL)
+        {
+          res = cape_err_set (err, CAPE_ERR_RUNTIME, "item of 'waitlist_node' has no uuid entry");
+          goto exit_and_cleanup;
+        }
+
+        cape_udc_add_s_cp (values, "uuid", uuid);
+        break;
+      }
+      case CAPE_UDC_NODE:
+      {
+        const CapeString uuid = cape_udc_get_s (cursor->item, "uuid", NULL);
+        if (uuid == NULL)
+        {
+          res = cape_err_set (err, CAPE_ERR_RUNTIME, "item of 'waitlist_node' has no uuid entry");
+          goto exit_and_cleanup;
+        }
+
+        cape_udc_add_s_cp (values, "uuid", uuid);
+        break;
+      }
+      default:
+      {
+        res = cape_err_set (err, CAPE_ERR_RUNTIME, "type of 'waitlist_node' is not supported");
+        goto exit_and_cleanup;
+
+        break;
+      }
+    }
+    
+    if (code_node)
+    {
+      switch (cape_udc_type (code_node))
+      {
+        case CAPE_UDC_NUMBER:
+        {
+          // create a string from the number
+          CapeString code = cape_str_n (cape_udc_n (code_node, 0));
+          cape_udc_add_s_mv (values, "code", &code);
+          
+          break;
+        }
+        case CAPE_UDC_STRING:
+        {
+          const CapeString code = cape_udc_s (code_node, NULL);
+          if (code)
+          {
+            cape_udc_add_s_cp (values, "code", code);
+          }
+
+          break;
+        }
+      }
+    }
+    
+    // execute the query
+    id = adbl_trx_insert (self->trx, "flow_wait_items", &values, err);
+    if (0 == id)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // always halt the process
+  res = CAPE_ERR_CONTINUE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&values);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const CapeString code, CapeErr err)
+{
+  int res;
+  
+  number_t missing_waits = 0;
+  number_t itemid = 0;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"          , self->psid);
+
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "status"        , 0);
+    cape_udc_add_s_cp   (values, "uuid"          , NULL);
+    cape_udc_add_s_cp   (values, "code"          , NULL);
+
+    // execute the query
+    query_results = adbl_trx_query (self->trx, "flow_wait_items", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow wait", "wait items for process = %i and psid = %i", cape_udc_size (query_results), self->psid);
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    const CapeString uuid_item = cape_udc_get_s (cursor->item, "uuid", NULL);
+    const CapeString code_item = cape_udc_get_s (cursor->item, "code", NULL);
+    
+    number_t status = cape_udc_get_n (cursor->item, "status", 0);
+    
+    if (cape_str_equal (uuid_item, uuid))
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow wait", "match uuid = '%s'", uuid);
+
+      if (status)
+      {
+        res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "already set");
+        goto exit_and_cleanup;
+      }
+
+      if (code_item)
+      {
+        if (!cape_str_equal (code_item, code))
+        {
+          res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "code missmatch");
+          goto exit_and_cleanup;
+        }
+      }
+
+      missing_waits++;
+      itemid = cape_udc_get_n (cursor->item, "id", 0);
+    }
+    else
+    {
+      if (status == 0)
+      {
+        // is still missing
+        missing_waits++;
+      }
+    }
+  }
+  
+  if (itemid)
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , itemid);
+    cape_udc_add_n      (values, "status"        , 1);
+
+    // update status
+    res = adbl_trx_update (self->trx, "flow_wait_items", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow wait", "set new status");
+    missing_waits--;
+  }
+
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow wait", "wait items = %i", missing_waits);
+
+  // set the final result
+  res = missing_waits == 0 ? CAPE_ERR_NONE : CAPE_ERR_CONTINUE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
   return res;
 }
 

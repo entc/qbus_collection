@@ -95,6 +95,12 @@ __CAPE_LOCAL   int          flow_run_dbw_xdata__create_node  (FlowRunDbw, CapeEr
                             /* add an vdata event */
 __CAPE_LOCAL   void         flow_run_dbw__event_add          (FlowRunDbw, number_t err_code, const CapeString err_text, number_t vaid, number_t stype);
 
+                            /* create all wait items */
+__CAPE_LOCAL   int          flow_run_dbw_wait__init          (FlowRunDbw, CapeErr err);
+
+                            /* check for a wait item */
+__CAPE_LOCAL   int          flow_run_dbw_wait__check_item    (FlowRunDbw, const CapeString uuid, const CapeString code, CapeErr err);
+
 //-----------------------------------------------------------------------------
 // sync tools
 
