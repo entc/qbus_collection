@@ -62,13 +62,17 @@ __CAPE_LIBEX   void            cape_datetime_to_local     (CapeDatetime*);
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime_utc__add_s   (CapeDatetime*, const CapeString delta);
 
+                               // substract a certain time period to the current datetime in string format
+                               /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
+__CAPE_LIBEX   void            cape_datetime_utc__sub_s   (CapeDatetime*, const CapeString delta);
+
                                // reduce input datetine from a certain time period defined in delta string format and save it in result datetime
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
-__CAPE_LIBEX   void            cape_datetime__remove_s   (CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
+__CAPE_LIBEX   void            cape_datetime__remove_s    (const CapeDatetime*, const CapeString delta, CapeDatetime* result);
 
                                // append a certain time period defined in delta string format and save it in result datetime
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
-__CAPE_LIBEX   void            cape_datetime__add_s   (const CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
+__CAPE_LIBEX   void            cape_datetime__add_s       (const CapeDatetime*, const CapeString delta, CapeDatetime* result);
 
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
 

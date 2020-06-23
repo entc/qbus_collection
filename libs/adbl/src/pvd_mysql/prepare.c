@@ -385,7 +385,7 @@ int adbl_prepare_execute (AdblPrepare self, AdblPvdSession session, CapeErr err)
 
 int adbl_prepare_prepare (AdblPrepare self, AdblPvdSession session, CapeStream stream, CapeErr err)
 {
-  // cape_log_msg (CAPE_LL_TRACE, "ADBL", "mysql **SQL**", cape_stream_get (stream));    
+  //cape_log_msg (CAPE_LL_TRACE, "ADBL", "mysql **SQL**", cape_stream_get (stream));    
 
   // execute
   if (mysql_stmt_prepare (self->stmt, cape_stream_get (stream), cape_stream_size (stream)) != 0)
@@ -586,7 +586,7 @@ number_t adbl_prepare_append_constraints__node (CapeStream stream, int ansi, con
         adbl_prepare_append_constraints__param (stream, ansi, param_name, table);
         cape_stream_append_str (stream, " > ?" );
         
-        ret = 1;            
+        ret = 1;
       }
       
       break;
