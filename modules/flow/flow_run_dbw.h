@@ -54,7 +54,7 @@ __CAPE_LOCAL   CapeUdc      flow_run_dbw_rinfo_get         (FlowRunDbw);
 // process manipulators
 
                             /* create entries in the database for the new process */
-__CAPE_LOCAL   int          flow_run_dbw_init              (FlowRunDbw, number_t wfid, number_t syncid, int add_psid, CapeErr err);
+__CAPE_LOCAL   number_t     flow_run_dbw_init              (FlowRunDbw, number_t wfid, number_t syncid, int add_psid, CapeErr err);
 
                             /* set a new state and ends the current processing step */
 __CAPE_LOCAL   void         flow_run_dbw_state_set         (FlowRunDbw, number_t state, CapeErr result_err);

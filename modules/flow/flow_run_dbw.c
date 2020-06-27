@@ -361,7 +361,7 @@ int flow_run_dbw_init__save (FlowRunDbw self, AdblTrx trx, number_t wfid, CapeEr
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int add_psid, CapeErr err)
+number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int add_psid, CapeErr err)
 {
   int res;
   
@@ -430,7 +430,7 @@ int flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int add_
 exit_and_cleanup:
   
   adbl_trx_rollback (&(self->trx), err);
-  return res;
+  return self->psid;
 }
 
 //-----------------------------------------------------------------------------

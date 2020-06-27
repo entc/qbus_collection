@@ -369,6 +369,7 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
   cursor = cape_udc_cursor_new (list, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
+    number_t psid;
     FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
 
     {
@@ -378,9 +379,10 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
     }
         
     // create a new process task
-    res = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (res)
+    psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
+    if (0 == psid)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
     
@@ -516,9 +518,11 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
 
     // create a new process task
-    res = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (res)
+    // create a new process task
+    number_t psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
+    if (0 == psid)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
     
@@ -597,6 +601,7 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
   if (value_node)
   {
     number_t syncid;
+    number_t psid;
 
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " IF            | found                            |");
 
@@ -618,9 +623,11 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
     FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
 
     // create a new process task
-    res = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (res)
+    // create a new process task
+    psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
+    if (0 == psid)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
     

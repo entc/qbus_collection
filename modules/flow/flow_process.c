@@ -114,13 +114,15 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
   if (NULL == qin->pdata)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
     goto exit_and_cleanup;
   }
+  */
   
-  self->refid = cape_udc_get_n (qin->pdata, "refid", 0);
+  self->refid = cape_udc_get_n (qin->cdata, "refid", 0);
   if (self->refid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'refid' is empty or missing");
@@ -150,9 +152,10 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  res = flow_run_dbw_init (flow_run_dbw, self->wfid, self->syncid, TRUE, err);
-  if (res)
+  self->psid = flow_run_dbw_init (flow_run_dbw, self->wfid, self->syncid, TRUE, err);
+  if (0 == self->psid)
   {
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
@@ -188,7 +191,8 @@ int flow_process_set (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  self->psid = cape_udc_get_n (qin->cdata, "psid", 0);
+  // support both version
+  self->psid = cape_udc_get_n (qin->cdata, "psid", cape_udc_get_n (qin->cdata, "taid", 0));
   if (self->psid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_process_set} missing parameter 'psid'");
