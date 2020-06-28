@@ -1745,8 +1745,13 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
 {
   if (self->tdata)
   {
-    // merge params
-    cape_udc_merge_mv (self->tdata, p_params);
+    if (*p_params)
+    {
+      // merge params
+      cape_udc_merge_mv (*p_params, &(self->tdata));
+
+      cape_udc_replace_mv (&(self->tdata), p_params);
+    }
   }
   else
   {
