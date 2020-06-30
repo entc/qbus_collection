@@ -30,6 +30,9 @@ __CAPE_LIBEX   CapeListNode       adbl_pool_add              (AdblPool, void* se
                                   /* release a connection */
 __CAPE_LIBEX   void               adbl_pool_rel              (AdblPool, CapeListNode);
 
+                                  /* get the current size */
+__CAPE_LIBEX   number_t           adbl_pool_size             (AdblPool);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                adbl_pool_trx_begin        (AdblPool, CapeListNode, CapeErr err);

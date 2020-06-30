@@ -132,7 +132,11 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "          call | %s : %s                      |", module, method);
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
 
-  flow_run_dbw_pdata__logs_merge (dbw, params);
+  res = flow_run_dbw_pdata__logs_merge (dbw, params, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
   
   flow_run_dbw_tdata__merge_in (dbw, params);
   
@@ -225,8 +229,12 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "|          call | %s : %s                      |", module, method);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "+---------------+----------------------------------+");
 
-  flow_run_dbw_pdata__logs_merge (dbw, params);
-  
+  res = flow_run_dbw_pdata__logs_merge (dbw, params, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   flow_run_dbw_tdata__merge_in (dbw, params);
 
   // call

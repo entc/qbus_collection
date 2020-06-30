@@ -143,8 +143,6 @@ struct FlowRunDbw_s
   AdblSession adbl_session;    // reference
   CapeQueue queue;             // reference
   
-  AdblTrx trx;
-  
   CapeString remote;
   CapeUdc rinfo;
   
@@ -188,7 +186,6 @@ FlowRunDbw flow_run_dbw_new (QBus qbus, AdblSession adbl_session, CapeQueue queu
   self->adbl_session = adbl_session;
   self->queue = queue;
   
-  self->trx = NULL;
   self->remote = cape_str_cp (remote);
   self->rinfo = cape_udc_cp (rinfo);
   self->refid = refid;
@@ -233,8 +230,6 @@ void flow_run_dbw_del (FlowRunDbw* p_self)
     cape_str_del (&(self->remote));
     cape_udc_del (&(self->rinfo));
     
-    adbl_trx_rollback (&(self->trx), NULL);
-    
     cape_udc_del (&(self->tdata));
     cape_udc_del (&(self->pdata));
     cape_udc_del (&(self->vdata));
@@ -253,7 +248,6 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
   self->adbl_session = rhs->adbl_session;
   self->queue = rhs->queue;
   
-  self->trx = NULL;
   self->remote = cape_str_cp (rhs->remote);
   self->rinfo = cape_udc_cp (rhs->rinfo);
   self->refid = rhs->refid;
@@ -287,7 +281,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__tdata_update (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__tdata_update (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res;
   
@@ -295,7 +289,7 @@ int flow_run_dbw__tdata_update (FlowRunDbw self, CapeErr err)
   {
     if (self->tdata)
     {
-      res = flow_data_set (self->trx, self->tdata_id, self->tdata, err);
+      res = flow_data_set (trx, self->tdata_id, self->tdata, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -303,7 +297,7 @@ int flow_run_dbw__tdata_update (FlowRunDbw self, CapeErr err)
     }
     else
     {
-      res = flow_data_rm (self->trx, self->tdata_id, err);
+      res = flow_data_rm (trx, self->tdata_id, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -316,7 +310,7 @@ int flow_run_dbw__tdata_update (FlowRunDbw self, CapeErr err)
   {
     if (self->tdata)
     {
-      self->tdata_id = flow_data_add (self->trx, self->tdata, err);
+      self->tdata_id = flow_data_add (trx, self->tdata, err);
       if (0 == self->tdata_id)
       {
         res = cape_err_code (err);
@@ -365,17 +359,20 @@ number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int
 {
   int res;
   
+  // local objects
+  AdblTrx trx = NULL;
+  
   self->syncid = syncid;
   
-  self->trx = adbl_trx_new (self->adbl_session, err);
-  if (NULL == self->trx)
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
   // create a new data entry if there is content
-  self->tdata_id = flow_data_add (self->trx, self->tdata, err);
+  self->tdata_id = flow_data_add (trx, self->tdata, err);
   if (cape_err_code (err))
   {
     res = cape_err_code (err);
@@ -383,7 +380,7 @@ number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int
   }
   
   // create a new taskflow
-  res = flow_run_dbw_init__save (self, self->trx, wfid, err);
+  res = flow_run_dbw_init__save (self, trx, wfid, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -415,7 +412,7 @@ number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int
     cape_udc_add_n (self->tdata, "psid_root", self->psid);
   }
 
-  res = flow_run_dbw__tdata_update (self, err);
+  res = flow_run_dbw__tdata_update (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -425,11 +422,11 @@ number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", " P R O C E S S   C R E A T E D                      [%4i]", wfid);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
   
-  adbl_trx_commit (&(self->trx), err);
+  adbl_trx_commit (&(trx), err);
 
 exit_and_cleanup:
   
-  adbl_trx_rollback (&(self->trx), err);
+  adbl_trx_rollback (&(trx), err);
   return self->psid;
 }
 
@@ -497,7 +494,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_logs__update (FlowRunDbw self, number_t logref, CapeErr err)
+int flow_run_dbw_logs__update (FlowRunDbw self, AdblTrx trx, number_t logref, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   number_t gpid = 0;
@@ -537,7 +534,7 @@ int flow_run_dbw_logs__update (FlowRunDbw self, number_t logref, CapeErr err)
     }
 
     // execute the query
-    res = adbl_trx_update (self->trx, "proc_task_logs", &params, &values, err);
+    res = adbl_trx_update (trx, "proc_task_logs", &params, &values, err);
   }
   
   return res;
@@ -545,7 +542,7 @@ int flow_run_dbw_logs__update (FlowRunDbw self, number_t logref, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_logs__initialize (FlowRunDbw self, CapeErr err)
+int flow_run_dbw_logs__initialize (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   number_t gpid = 0;
@@ -575,7 +572,7 @@ int flow_run_dbw_logs__initialize (FlowRunDbw self, CapeErr err)
     }
 
     // execute the query
-    self->logid = adbl_trx_insert (self->trx, "proc_task_logs", &values, err);
+    self->logid = adbl_trx_insert (trx, "proc_task_logs", &values, err);
     if (0 == self->logid)
     {
       res = cape_err_code (err);
@@ -584,7 +581,7 @@ int flow_run_dbw_logs__initialize (FlowRunDbw self, CapeErr err)
   else  // update
   {
     // update gpid
-    res = flow_run_dbw_logs__update (self, 0, err);
+    res = flow_run_dbw_logs__update (self, trx, 0, err);
   }
   
   return res;
@@ -592,7 +589,7 @@ int flow_run_dbw_logs__initialize (FlowRunDbw self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__next_load (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res;
   
@@ -617,7 +614,7 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     cape_udc_add_n      (values, "t_data"        , 0);
 
     // execute the query
-    query_results = adbl_trx_query (self->trx, "proc_next_workstep_view", &params, &values, err);
+    query_results = adbl_trx_query (trx, "proc_next_workstep_view", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
@@ -731,7 +728,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__vdata_update (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__vdata_update (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res;
   
@@ -739,7 +736,7 @@ int flow_run_dbw__vdata_update (FlowRunDbw self, CapeErr err)
   {
     if (self->vdata)
     {
-      res = flow_data_set (self->trx, self->vdata_id, self->vdata, err);
+      res = flow_data_set (trx, self->vdata_id, self->vdata, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -747,7 +744,7 @@ int flow_run_dbw__vdata_update (FlowRunDbw self, CapeErr err)
     }
     else
     {
-      res = flow_data_rm (self->trx, self->vdata_id, err);
+      res = flow_data_rm (trx, self->vdata_id, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -760,7 +757,7 @@ int flow_run_dbw__vdata_update (FlowRunDbw self, CapeErr err)
   {
     if (self->vdata)
     {
-      self->vdata_id = flow_data_add (self->trx, self->vdata, err);
+      self->vdata_id = flow_data_add (trx, self->vdata, err);
       if (0 == self->vdata_id)
       {
         res = cape_err_code (err);
@@ -778,25 +775,25 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__current_task_save (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__current_task_save (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res;
   
   // update tdata
-  res = flow_run_dbw__tdata_update (self, err);
+  res = flow_run_dbw__tdata_update (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
   // update vdata
-  res = flow_run_dbw__vdata_update (self, err);
+  res = flow_run_dbw__vdata_update (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
-  res = flow_run_dbw_logs__update (self, 0, err);
+  res = flow_run_dbw_logs__update (self, trx, 0, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -814,7 +811,7 @@ int flow_run_dbw__current_task_save (FlowRunDbw self, CapeErr err)
     }
     
     // execute the query
-    res = adbl_trx_update (self->trx, "proc_tasks", &params, &values, err);
+    res = adbl_trx_update (trx, "proc_tasks", &params, &values, err);
   }
   
 exit_and_cleanup:
@@ -900,8 +897,11 @@ void flow_run_dbw__event_add (FlowRunDbw self, number_t err_code, const CapeStri
 void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err)
 {
   int res;
+  
+  // local objects
   CapeErr err = cape_err_new ();
-
+  AdblTrx trx = NULL;
+  
   // set the new state
   self->state = state;
   
@@ -917,24 +917,31 @@ void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err
     flow_run_dbw__event_add (self, cape_err_code (result_err), cape_err_text (result_err), 0, 0);
   }
   
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
   // save all variables to the database
-  res = flow_run_dbw__current_task_save (self, err);
+  res = flow_run_dbw__current_task_save (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  // commit all changes
-  adbl_trx_commit (&(self->trx), err);
+  
+  adbl_trx_commit (&trx, err);
 
 exit_and_cleanup:
   
+  adbl_trx_rollback (&trx, err);
   cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_update (FlowRunDbw self, CapeErr err)
+int flow_run_dbw_update (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -943,12 +950,12 @@ int flow_run_dbw_update (FlowRunDbw self, CapeErr err)
   cape_udc_add_n      (values, "current_step"  , self->wsid);
 
   // execute the query
-  return adbl_trx_update (self->trx, "proc_tasks", &params, &values, err);
+  return adbl_trx_update (trx, "proc_tasks", &params, &values, err);
 }
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__task_deactivate (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__task_deactivate (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -957,7 +964,7 @@ int flow_run_dbw__task_deactivate (FlowRunDbw self, CapeErr err)
   cape_udc_add_n      (values, "active"        , 0);
 
   // execute the query
-  return adbl_trx_update (self->trx, "proc_tasks", &params, &values, err);
+  return adbl_trx_update (trx, "proc_tasks", &params, &values, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -1134,7 +1141,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
+int flow_run_dbw_done (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res;
   
@@ -1143,7 +1150,7 @@ int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
 
   // set the task as done
-  res = flow_run_dbw__task_deactivate (self, err);
+  res = flow_run_dbw__task_deactivate (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1151,15 +1158,12 @@ int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
   
   if (self->syncid)
   {
-    res = flow_run_dbw_sync__merge_tdata (self->trx, self->syncid, self->tdata, err);
+    res = flow_run_dbw_sync__merge_tdata (trx, self->syncid, self->tdata, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
   }
-  
-  // commit all
-  adbl_trx_commit (&(self->trx), err);
   
   if (self->syncid)
   {
@@ -1193,49 +1197,79 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
+int flow_run_dbw__state__init (FlowRunDbw self, CapeErr err)
 {
   int res;
-  FlowRunDbw self = ptr;
-
-  CapeErr err = cape_err_new ();
- 
-  self->trx = adbl_trx_new (self->adbl_session, err);
-  if (NULL == self->trx)
+  
+  // local objects
+  AdblTrx trx = NULL;
+  
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
   
-  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step, wpid = %i, psid = %i", self->wpid, self->psid);
+  // load initial data sets
+  res = flow_run_dbw__next_load (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got initial processing step, wsid = %i", self->wsid);
+
+  if (0 == self->wsid)
+  {
+    res = flow_run_dbw_done (self, trx, err);
+    
+    // special case
+    if (res == CAPE_ERR_EOF)
+    {
+      adbl_trx_commit (&trx, err);
+      res = CAPE_ERR_NONE;
+    }
+    
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_run_dbw_update (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // write or update the log entry
+  res = flow_run_dbw_logs__initialize (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__continue (FlowRunDbw self, CapeErr err)
+{
+  int res;
 
   switch (self->state)
   {
     case FLOW_STATE__INIT:
     {
-      // load initial data sets
-      res = flow_run_dbw__next_load (self, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [INIT], wpid = %i, psid = %i", self->wpid, self->psid);
 
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got initial processing step, wsid = %i", self->wsid);
-
-      if (0 == self->wsid)
-      {
-        res = flow_run_dbw_done (self, err);
-        goto exit_and_cleanup;
-      }
-      
-      res = flow_run_dbw_update (self, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-
-      // write or update the log entry
-      res = flow_run_dbw_logs__initialize (self, err);
+      res = flow_run_dbw__state__init (self, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -1245,6 +1279,8 @@ static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
     }
     case FLOW_STATE__NONE:
     {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [NONE], wpid = %i, psid = %i", self->wpid, self->psid);
+
       // load all variables from the current state of the database
       res = flow_run_dbw__current_task_load (self, err);
       if (res)
@@ -1258,6 +1294,8 @@ static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
     }
     case FLOW_STATE__DONE:
     {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [DONE], wpid = %i, psid = %i", self->wpid, self->psid);
+
       res = flow_run_dbw_next (self, err);
       if (res)
       {
@@ -1266,6 +1304,36 @@ static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
       
       break;
     }
+    case FLOW_STATE__HALT:
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [HALT], wpid = %i, psid = %i", self->wpid, self->psid);
+
+      break;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
+{
+  int res;
+  FlowRunDbw self = ptr;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+
+  // load the current step
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
   }
   
   while (TRUE)
@@ -1352,23 +1420,26 @@ int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
 {
   int res;
   
+  // local objects
+  AdblTrx trx = NULL;
+  
   // reset some values
   self->logid = 0;
   
-  // start a new transaction for the next step
-  self->trx = adbl_trx_new (self->adbl_session, err);
-  if (NULL == self->trx)
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-  
-  res = flow_run_dbw__next_load (self, err);
+
+  res = flow_run_dbw__next_load (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  
+    
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", "got next processing step, wsid = %i", self->wsid);
   
   if (self->wsid)
@@ -1378,14 +1449,14 @@ int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run next", "------------------------------------------------------------");
 
     // update
-    res = flow_run_dbw_update (self, err);
+    res = flow_run_dbw_update (self, trx, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
     
     // write or update the log entry
-    res = flow_run_dbw_logs__initialize (self, err);
+    res = flow_run_dbw_logs__initialize (self, trx, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -1393,11 +1464,14 @@ int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
   }
   else
   {
-    res = flow_run_dbw_done (self, err);
+    res = flow_run_dbw_done (self, trx, err);
   }
+
+  adbl_trx_commit (&trx, err);
   
 exit_and_cleanup:
   
+  adbl_trx_rollback (&trx, err);
   return res;
 }
 
@@ -1691,9 +1765,21 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params)
+int flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params, CapeErr err)
 {
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
   int add_logs = FALSE;
+
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
   
   if (self->pdata)
   {
@@ -1712,7 +1798,7 @@ void flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params)
     
     CapeUdc logs = cape_udc_new (CAPE_UDC_LIST, NULL);
     
-    int res = flow_chain_get__fetch (self->trx, self->psid, logs, err);
+    int res = flow_chain_get__fetch (trx, self->psid, logs, err);
     if (res)
     {
       cape_log_fmt (CAPE_LL_ERROR, "FLOW", "logs merge", "can't fetch logs: %s", cape_err_text (err));
@@ -1726,6 +1812,14 @@ void flow_run_dbw_pdata__logs_merge (FlowRunDbw self, CapeUdc params)
       
     cape_err_del (&err);
   }
+  
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -1938,6 +2032,9 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
 {
   int res;
   
+  // local objects
+  AdblTrx trx = NULL;
+
   const CapeString waitlist_node_name = NULL;
   const CapeString code_node_name = NULL;
   
@@ -1995,9 +2092,17 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
     
     cape_str_del (&h);
   }
+  
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
 
   cursor = cape_udc_cursor_new (waitlist_node, CAPE_DIRECTION_FORW);
-  
+
   while (cape_udc_cursor_next (cursor))
   {
     number_t id;
@@ -2068,7 +2173,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
     }
     
     // execute the query
-    id = adbl_trx_insert (self->trx, "flow_wait_items", &values, err);
+    id = adbl_trx_insert (trx, "flow_wait_items", &values, err);
     if (0 == id)
     {
       res = cape_err_code (err);
@@ -2078,9 +2183,12 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
   
   // always halt the process
   res = CAPE_ERR_CONTINUE;
+  adbl_trx_commit (&trx, err);
   
 exit_and_cleanup:
-  
+
+  adbl_trx_rollback (&trx, err);
+
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&values);
   return res;
@@ -2092,6 +2200,9 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
 {
   int res;
   
+  // local objects
+  AdblTrx trx = NULL;
+
   number_t missing_waits = 0;
   number_t itemid = 0;
   
@@ -2111,7 +2222,7 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
     cape_udc_add_s_cp   (values, "code"          , NULL);
 
     // execute the query
-    query_results = adbl_trx_query (self->trx, "flow_wait_items", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "flow_wait_items", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
@@ -2164,6 +2275,14 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
     }
   }
   
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
   if (itemid)
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -2173,7 +2292,7 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
     cape_udc_add_n      (values, "status"        , 1);
 
     // update status
-    res = adbl_trx_update (self->trx, "flow_wait_items", &params, &values, err);
+    res = adbl_trx_update (trx, "flow_wait_items", &params, &values, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -2185,11 +2304,16 @@ int flow_run_dbw_wait__check_item (FlowRunDbw self, const CapeString uuid, const
 
   cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow wait", "wait items = %i", missing_waits);
 
+  // commit everything
+  adbl_trx_commit (&trx, err);
+
   // set the final result
   res = missing_waits == 0 ? CAPE_ERR_NONE : CAPE_ERR_CONTINUE;
   
 exit_and_cleanup:
-  
+
+  adbl_trx_rollback (&trx, err);
+
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&query_results);
   return res;
@@ -2199,6 +2323,16 @@ exit_and_cleanup:
 
 number_t flow_run_dbw_sync__add (FlowRunDbw self, number_t cnt, CapeErr err)
 {
+  // local objects
+  AdblTrx trx = NULL;
+
+  // start transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    goto exit_and_cleanup;
+  }
+
   {
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
 
@@ -2206,11 +2340,17 @@ number_t flow_run_dbw_sync__add (FlowRunDbw self, number_t cnt, CapeErr err)
     cape_udc_add_n (values, "cnt"       , cnt);
 
     // execute the query
-    self->syncmy = adbl_trx_insert (self->trx, "proc_task_sync", &values, err);
+    self->syncmy = adbl_trx_insert (trx, "proc_task_sync", &values, err);
   }
 
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "flow run", "sync object created: %i", self->syncmy);
 
+  // commit everything
+  adbl_trx_commit (&trx, err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
   return self->syncmy;
 }
 

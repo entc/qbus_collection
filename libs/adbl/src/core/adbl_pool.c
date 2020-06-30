@@ -143,6 +143,21 @@ void adbl_pool_rel (AdblPool self, CapeListNode n)
 
 //-----------------------------------------------------------------------------
 
+number_t adbl_pool_size (AdblPool self)
+{
+  number_t ret = 0;
+  
+  cape_mutex_lock (self->mutex);
+  
+  ret = cape_list_size (self->connections);
+  
+  cape_mutex_unlock (self->mutex);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int adbl_pool_trx_begin (AdblPool self, CapeListNode n, CapeErr err)
 {
   AdblPoolItem* item = cape_list_node_data (n);

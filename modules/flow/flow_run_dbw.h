@@ -78,7 +78,7 @@ __CAPE_LOCAL   int          flow_run_dbw_xdata__switch       (FlowRunDbw, CapeSt
 __CAPE_LOCAL   int          flow_run_dbw_xdata__if           (FlowRunDbw, CapeUdc* p_value_node, number_t* p_wfid, CapeErr err);
 
                             /* check pdata if the logs shall be merged into params */
-__CAPE_LOCAL   void         flow_run_dbw_pdata__logs_merge   (FlowRunDbw, CapeUdc params);
+__CAPE_LOCAL   int          flow_run_dbw_pdata__logs_merge   (FlowRunDbw, CapeUdc params, CapeErr err);
 
                             /* merge content of TDATA to params */
 __CAPE_LOCAL   void         flow_run_dbw_tdata__merge_in     (FlowRunDbw, CapeUdc params);

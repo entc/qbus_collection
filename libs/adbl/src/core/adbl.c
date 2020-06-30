@@ -300,6 +300,8 @@ AdblTrx adbl_trx_new  (AdblSession session, CapeErr err)
     }
     
     pool_node = adbl_pool_add (session->pool, pvd_handle);
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "ADBL", "trx new", "created new connection, current connections %i", adbl_pool_size (session->pool));
   }
   
   {
