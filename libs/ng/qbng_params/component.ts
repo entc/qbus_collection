@@ -1,4 +1,4 @@
-import { Component, OnInit, SimpleChanges, Input, ViewChild } from '@angular/core';
+import { Component, EventEmitter, OnInit, SimpleChanges, Input, Output, ViewChild } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
@@ -12,7 +12,8 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class QbngParamsComponent implements OnInit {
 
-  @Input('params') params: any;
+  @Input('data') data_const: any;
+  @Output('data') data_change = new EventEmitter();
 
   //-----------------------------------------------------------------------------
 
@@ -24,39 +25,53 @@ export class QbngParamsComponent implements OnInit {
 
   ngOnInit()
   {
-    console.log('B');
-    console.log(this.params);
-    console.log('C');
-  }
-
-  //-----------------------------------------------------------------------------
-
-  ngOnChanges (changes: SimpleChanges)
-  {
-
-    console.log(changes);
-
-  }
-
-  //-----------------------------------------------------------------------------
-
-  param_add()
-  {
-    this.params.push ({key : 'key_name', val : 'value'});
-  }
-
-  //-----------------------------------------------------------------------------
-
-  param_rm (index: number)
-  {
-    this.params.splice (index, 1);
-  }
-
-  //-----------------------------------------------------------------------------
-
-  get_data (data: any)
-  {
-
   }
 
 }
+
+//-----------------------------------------------------------------------------
+
+/*
+@Component({
+  selector: 'qbng-params',
+  template:
+  `
+  <a (click)="selectEvents.emit( node )" class="label">
+    {{ node.label }}
+  </a>
+
+  <div *ngIf="node.children.length" class="children">
+
+    <ng-template ngFor let-child [ngForOf]="node.children">
+
+      <my-tree-node
+        [node]="child"
+        [selectedNode]="selectedNode"
+        (select)="selectEvents.emit( $event )">
+      </my-tree-node>
+
+    </ng-template>
+
+  </div>
+
+  `
+})
+export class QbngParamsNodeComponent implements OnInit {
+
+  @Input('data') data_const: any;
+  @Output('data') data_change = new EventEmitter();
+
+  //-----------------------------------------------------------------------------
+
+  constructor()
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+}
+*/

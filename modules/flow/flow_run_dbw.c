@@ -2182,7 +2182,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
   }
   
   // always halt the process
-  res = CAPE_ERR_CONTINUE;
+  res = cape_udc_size (waitlist_node) == 0 ? CAPE_ERR_NONE : CAPE_ERR_CONTINUE;
   adbl_trx_commit (&trx, err);
   
 exit_and_cleanup:
