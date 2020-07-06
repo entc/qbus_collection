@@ -1839,6 +1839,72 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
 {
   if (self->tdata)
   {
+    CapeUdc params = *p_params;
+    if (params)
+    {
+      CapeUdcCursor* cursor = cape_udc_cursor_new (self->tdata, CAPE_DIRECTION_FORW);
+      
+      while (cape_udc_cursor_next (cursor))
+      {
+        CapeUdc h2 = cape_udc_get (params, cape_udc_name (cursor->item));
+        if (h2 == NULL)
+        {
+          CapeUdc h1 = cape_udc_cursor_ext (self->tdata, cursor);
+          cape_udc_add (params, &h1);
+        }
+      }
+      
+      cape_udc_cursor_del (&cursor);
+      
+      cape_udc_replace_mv (&(self->tdata), p_params);
+    }
+  }
+  else
+  {
+    self->tdata = cape_udc_mv (p_params);
+  }
+
+  // ecudc_merge (&(din->cdata), &(self->tdata));
+
+  /*
+ void ecudc_merge (EcUdc* dest, EcUdc* part)
+ {
+  if (*part)
+  {
+    if (*dest == NULL)
+    {
+      *dest = *part;
+      *part = NULL;
+    }
+    else
+    {
+      // merge params
+      void* cursor = NULL;
+      EcUdc item;
+      
+      for (item = ecudc_cursor_e (*part, &cursor); item; item = ecudc_cursor_e (*part, &cursor))
+      {
+        // try to avoid conflicts
+        EcUdc hnode = ecudc_node (*dest, ecudc_name(item));
+        if (hnode == NULL)
+        {
+          ecudc_add (*dest, &item);
+        }
+        else
+        {
+          ecudc_destroy(EC_ALLOC, &item);
+        }
+      }
+      
+      ecudc_destroy(EC_ALLOC, part);
+    }
+  }
+   */
+
+  
+  /*
+  if (self->tdata)
+  {
     if (*p_params)
     {
       // merge params
@@ -1851,6 +1917,7 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
   {
     self->tdata = cape_udc_mv (p_params);
   }
+   */
 }
 
 //-----------------------------------------------------------------------------
