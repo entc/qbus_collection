@@ -43,6 +43,12 @@ struct CapeAioHandle_s
   // callback method for any kind of event
   fct_cape_aio_onEvent on_event;
   
+#if defined __BSD_OS
+
+  int option;
+  
+#endif
+  
 #if defined __LINUX_OS
   
   // epoll don't commit the file descriptor :-(
@@ -58,12 +64,18 @@ CapeAioHandle cape_aio_handle_new (int hflags, void* ptr, fct_cape_aio_onEvent o
 {
   CapeAioHandle self = CAPE_NEW (struct CapeAioHandle_s);
   
+#if defined __BSD_OS
+
+  self->option = 0;
+  
+#endif
+
 #if defined __LINUX_OS
 
   self->handle = NULL;   // will be set later
 
 #endif
-
+  
   self->ptr = ptr;
   
   self->on_event = on_event;
@@ -332,7 +344,7 @@ exit_and_unlock:
 
 //-----------------------------------------------------------------------------
 
-int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, int hflags, int flags, int option)
+int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, int hflags, int flags)
 {
   int filter_cnt = 0;
   
@@ -361,7 +373,7 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
     
     if (hflags & CAPE_AIO_READ)
     {
-      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_READ, flags, 0, option, aioh);
+      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_READ, flags, 0, aioh->option, aioh);
       i++;
 
       //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "set filter to READ");
@@ -369,7 +381,7 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
       
     if (hflags & CAPE_AIO_WRITE)
     {
-      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_WRITE, flags, 0, option, aioh);
+      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_WRITE, flags, 0, aioh->option, aioh);
       i++;
 
       //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "set filter to WRITE");
@@ -377,7 +389,7 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
 
     if (hflags & CAPE_AIO_TIMER)
     {
-      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_TIMER, flags, 0, option, aioh);
+      EV_SET (&(kevs[i]), (number_t)handle, EVFILT_TIMER, flags, 0, aioh->option, aioh);
 
       //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "set filter to TIMER");
     }
@@ -407,21 +419,29 @@ int cape_aio_set_kevent (CapeAioContext self, CapeAioHandle aioh, void* handle, 
 
 int cape_aio_add_event (CapeAioContext self, CapeAioHandle aioh, void* handle, number_t option)
 {
-  return cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT, option);
+  // important to set the option
+  // -> this value is needed for updating later
+  aioh->option = option;
+  
+  return cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_aio_delete_event (CapeAioContext self, CapeAioHandle aioh, void* handle)
 {
-  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_DELETE, 0);
+  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_DELETE);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_aio_update_event (CapeAioContext self, CapeAioHandle aioh, void* handle, number_t option)
 {
-  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT, option);
+  // important to set the option
+  // -> this value is needed for updating later
+  aioh->option = option;
+
+  cape_aio_set_kevent (self, aioh, handle, aioh->hflags, EV_ADD | EV_ENABLE | EV_ONESHOT);
 }
 
 //-----------------------------------------------------------------------------
@@ -568,7 +588,7 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
           hobj->hflags = hflags_result;
         }
         
-        cape_aio_update_event (self, hobj, (void*)event.ident, event.data);
+        cape_aio_update_event (self, hobj, (void*)event.ident, hobj->option);
       }
     }
     else
