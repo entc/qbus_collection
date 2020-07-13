@@ -378,7 +378,16 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
   }
   
   // transfer the clist
-  cape_udc_replace_mv (&(qin->clist), &(self->clist));
+  if (self->clist)
+  {
+    CapeString h = cape_json_to_s (self->clist);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "add CLIST: %s", h);
+    
+    cape_udc_replace_mv (&(qin->clist), &(self->clist));
+    
+    cape_str_del (&h);
+  }
 
   // transfer the files
   cape_udc_replace_mv (&(qin->files), &(self->files));
@@ -592,8 +601,20 @@ int webs_json_run (WebsJson* p_self, CapeErr err)
           token = cape_str_cp (cape_list_node_data (cursor->node));
         }
       }
-    }
+      else
+      {
+        self->clist = cape_udc_new (CAPE_UDC_LIST, NULL);
 
+        cape_udc_add_s_cp (self->clist, NULL, cape_list_node_data (cursor->node));
+
+        // check for clist entries
+        while (cape_list_cursor_next (cursor))
+        {
+          cape_udc_add_s_cp (self->clist, NULL, cape_list_node_data (cursor->node));
+        }
+      }
+    }
+    
     cape_list_cursor_destroy (&cursor);
     
     self->module = cape_str_cp (module);

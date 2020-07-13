@@ -22,7 +22,32 @@ namespace qbus
     
   public:
     
-    Message (QBus qbus, QBusM qin, QBusM qout) : m_qbus (qbus), m_qin (qin), m_qout (qout), m_cdata_in (qin->cdata), m_pdata_in (qin->pdata), m_ret (CAPE_ERR_NONE) {}
+    Message (QBus qbus, QBusM qin, QBusM qout)
+    : m_qbus (qbus)
+    , m_qin (qin)
+    , m_qout (qout)
+    , m_cdata_in (qin->cdata)
+    , m_pdata_in (qin->pdata)
+    , m_ret (CAPE_ERR_NONE)
+    {
+    }
+    
+    ~Message ()
+    {
+      if (m_qout)
+      {
+        if (m_out_cdata.valid())
+        {
+          std::cout << m_out_cdata << std::endl;
+          
+          m_qout->cdata = m_out_cdata.release();
+        }
+        else
+        {
+          m_qout->cdata = NULL;
+        }
+      }
+    }
     
     void set_continue (cape::Udc& content)
     {
@@ -55,16 +80,30 @@ namespace qbus
 
     cape::Udc& pdata () { return m_pdata_in; }
     
-    cape::Udc output (int type)
+    cape::Udc& odata_owned (int type)
     {
       if (m_qout == NULL)
       {
         throw std::runtime_error ("output can't be set");
       }
       
-      m_qout->cdata = cape_udc_new (type, NULL);
+      m_out_cdata.reset (cape::Udc (type));
+      return m_out_cdata;
+    }
+    
+    cape::Udc output (int type)
+    {
+      if (m_qout == NULL)
+      {
+        throw std::runtime_error ("output can't be set");
+      }
+
+      m_out_cdata.reset (cape::Udc (type));
+
+      cape::Udc h;
+      h.reset_as_reference (m_out_cdata);
       
-      return cape::Udc (m_qout->cdata);
+      return h;
     }
     
     void throw_error ()
@@ -98,6 +137,8 @@ namespace qbus
     cape::Udc m_pdata_in;
     
     int m_ret;
+    
+    cape::Udc m_out_cdata;
     
   };
   

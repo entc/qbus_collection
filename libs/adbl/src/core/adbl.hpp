@@ -69,14 +69,15 @@ namespace adbl {
       
       // transfer ownership
       CapeUdc c_values = values.release ();
-      
+            
       // execute the query
-      cape::Udc query_results (adbl_session_query (m_session, table, NULL, &c_values, errh.err));
-      if (query_results.empty())
+      CapeUdc h = adbl_session_query (m_session, table, NULL, &c_values, errh.err);
+      if (h == NULL)
       {
         throw std::runtime_error (errh.text());
       }
       
+      cape::Udc query_results (&h);
       return query_results;
     }
     
@@ -96,12 +97,14 @@ namespace adbl {
       CapeUdc c_values = values.release ();
       
       // execute the query
-      cape::Udc query_results (adbl_session_query (m_session, table, &c_params, &c_values, errh.err));
-      if (query_results.empty())
+      // execute the query
+      CapeUdc h = adbl_session_query (m_session, table, &c_params, &c_values, errh.err);
+      if (h == NULL)
       {
         throw std::runtime_error (errh.text());
       }
-      
+
+      cape::Udc query_results (&h);
       return query_results;
     }
     
@@ -199,13 +202,14 @@ namespace adbl {
       // transfer ownership
       CapeUdc c_values = values.release ();
       
-      // execute the query
-      cape::Udc query_results (adbl_trx_query (m_trx, table, NULL, &c_values, errh.err));
-      if (query_results.empty())
+      CapeUdc h = adbl_trx_query (m_trx, table, NULL, &c_values, errh.err);
+      if (h == NULL)
       {
         throw std::runtime_error (errh.text());
       }
-      
+
+      // execute the query
+      cape::Udc query_results (&h);
       return query_results;
     }
     
@@ -219,13 +223,14 @@ namespace adbl {
       CapeUdc c_params = params.release ();
       CapeUdc c_values = values.release ();
       
-      // execute the query
-      cape::Udc query_results (adbl_trx_query (m_trx, table, &c_params, &c_values, errh.err));
-      if (query_results.empty())
+      CapeUdc h = adbl_trx_query (m_trx, table, &c_params, &c_values, errh.err);
+      if (h == NULL)
       {
         throw std::runtime_error (errh.text());
       }
-      
+
+      // execute the query
+      cape::Udc query_results (&h);
       return query_results;
     }
     
@@ -303,6 +308,65 @@ namespace adbl {
         throw std::runtime_error (errh.text());
       }
       
+      return inserted_id;
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    number_t insert_or_update__noautoinc (const char* table, cape::Udc& params, cape::Udc& values, const char* column_id)
+    {
+      number_t inserted_id;
+      cape::ErrHolder errh;
+
+      {
+        // clone
+        CapeUdc c_params = params.clone ();
+        CapeUdc c_values = values.clone ();
+        
+        // for sure set the column id
+        cape_udc_put_n (c_values, column_id, 0);
+        
+        // execute the query
+        cape::Udc query_results (adbl_trx_query (m_trx, table, &c_params, &c_values, errh.err));
+        if (query_results.empty())
+        {
+          throw std::runtime_error (errh.text());
+        }
+        
+        cape::Udc first_row = query_results.first();
+        if (first_row.valid())
+        {
+          inserted_id = first_row[column_id];
+          
+          // transfer ownership
+          CapeUdc c_params_upd = params.release ();
+          CapeUdc c_values_upd = values.release ();
+
+          // execute database statement
+          if (adbl_trx_update (m_trx, table, &c_params_upd, &c_values_upd, errh.err))
+          {
+            throw std::runtime_error (errh.text());
+          }
+        }
+        else
+        {
+          // transfer ownership
+          CapeUdc c_values_ins = values.release ();
+          CapeUdc c_params_ins = params.release ();
+
+          cape_udc_merge_mv (c_values_ins, &c_params_ins);
+          
+          // execute database statement
+          inserted_id = adbl_trx_insert (m_trx, table, &c_values_ins, errh.err);
+          if (inserted_id <= 0)
+          {
+            std::cout << errh.text() << std::endl;
+            
+            throw std::runtime_error (errh.text());
+          }
+        }
+      }
+           
       return inserted_id;
     }
 
