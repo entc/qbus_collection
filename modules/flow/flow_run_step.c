@@ -283,6 +283,7 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
       break;
     }
     case FLOW_STATE__HALT:
+    case FLOW_STATE__ERROR:
     {
       const CapeString uuid;
       CapeString code = NULL;

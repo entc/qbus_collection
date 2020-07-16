@@ -1391,6 +1391,7 @@ exit_and_cleanup:
 
 int flow_run_dbw_set (FlowRunDbw* p_self, int initial, number_t action, CapeUdc* p_params, CapeErr err)
 {
+  int res;
   FlowRunDbw self = *p_self;
 
   if (initial)
@@ -1408,10 +1409,34 @@ int flow_run_dbw_set (FlowRunDbw* p_self, int initial, number_t action, CapeUdc*
     cape_udc_del (&(self->params));
   }
   
+  // TODO: analyse the set params
+  // return a negative result if something doesn't fit
+  // load the current step
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  FlowRunStep run_step = flow_run_step_new (self->qbus);
+  
+  // transfer ownership and business logic to step class
+  res = flow_run_step_set (&run_step, &self, action, self->params, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  
+  
   cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
   *p_self = NULL;
 
-  return CAPE_ERR_NONE;
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
