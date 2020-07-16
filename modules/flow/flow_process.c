@@ -160,7 +160,7 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
 
   // forward business logic to this class
-  res = flow_run_dbw_set (&flow_run_dbw, TRUE, FLOW_ACTION__PRIM, NULL, err);
+  res = flow_run_dbw_start (&flow_run_dbw, FLOW_ACTION__PRIM, NULL, err);
 
   qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   cape_udc_add_n (qout->cdata, FLOW_CDATA__PSID, self->psid);
@@ -206,7 +206,7 @@ int flow_process_set (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc params = cape_udc_ext (qin->cdata, "params");
     
     // forward business logic to this class
-    res = flow_run_dbw_set (&flow_run_dbw, FALSE, cape_udc_get_n (qin->cdata, "action", FLOW_ACTION__SET), &params, err);
+    res = flow_run_dbw_set (&flow_run_dbw, cape_udc_get_n (qin->cdata, "action", FLOW_ACTION__SET), &params, err);
   }
     
 exit_and_cleanup:

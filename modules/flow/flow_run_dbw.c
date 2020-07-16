@@ -969,7 +969,7 @@ int flow_run_dbw__task_deactivate (FlowRunDbw self, AdblTrx trx, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_continue (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__continue_parent_process (FlowRunDbw self, CapeErr err)
 {
   int res;
   
@@ -1010,7 +1010,7 @@ int flow_run_dbw_continue (FlowRunDbw self, CapeErr err)
   {
     FlowRunDbw dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, psid, self->remote, self->rinfo, self->refid);
     
-    res = flow_run_dbw_set (&dbw, FALSE, FLOW_STATE__NONE, NULL, err);
+    res = flow_run_dbw_continue (&dbw, FLOW_STATE__NONE, NULL, err);
   }
   
 exit_and_cleanup:
@@ -1180,7 +1180,7 @@ int flow_run_dbw_done (FlowRunDbw self, AdblTrx trx, CapeErr err)
     
     if ((cape_err_code (err) == CAPE_ERR_NONE) && (cnt == 0))
     {
-      res = flow_run_dbw_continue (self, err);
+      res = flow_run_dbw__continue_parent_process (self, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -1259,189 +1259,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__continue (FlowRunDbw self, CapeErr err)
-{
-  int res;
-
-  switch (self->state)
-  {
-    case FLOW_STATE__INIT:
-    {
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [INIT], wpid = %i, psid = %i", self->wpid, self->psid);
-
-      res = flow_run_dbw__state__init (self, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-
-      break;
-    }
-    case FLOW_STATE__NONE:
-    {
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [NONE], wpid = %i, psid = %i", self->wpid, self->psid);
-
-      // load all variables from the current state of the database
-      res = flow_run_dbw__current_task_load (self, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-      
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got current processing step, wsid = %i", self->wsid);
-
-      break;
-    }
-    case FLOW_STATE__DONE:
-    {
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [DONE], wpid = %i, psid = %i", self->wpid, self->psid);
-
-      res = flow_run_dbw_next (self, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-      
-      break;
-    }
-    case FLOW_STATE__HALT:
-    {
-      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [HALT], wpid = %i, psid = %i", self->wpid, self->psid);
-
-      break;
-    }
-  }
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
-{
-  int res;
-  FlowRunDbw self = ptr;
-
-  // local objects
-  CapeErr err = cape_err_new ();
-
-  // load the current step
-  res = flow_run_dbw__continue (self, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  while (TRUE)
-  {
-    FlowRunStep run_step = flow_run_step_new (self->qbus);
-
-    // transfer ownership and business logic to step class
-    res = flow_run_step_set (&run_step, &self, action, self->params, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    // clear the input params
-    cape_udc_del (&(self->params));
-    
-    cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
-    
-    flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
-    
-    res = flow_run_dbw_next (self, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-  }
-
-exit_and_cleanup:
-  
-  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "queue worker", "end of loop");
-  
-  if (res && self)
-  {
-    if (res == CAPE_ERR_EOF)
-    {
-      // do nothing here
-    }
-    else if (res == CAPE_ERR_CONTINUE)
-    {
-      flow_run_dbw_state_set (self, FLOW_STATE__HALT, NULL);
-    }
-    else
-    {
-      flow_run_dbw_state_set (self, FLOW_STATE__ERROR, err);
-    }
-  }
-
-  // cleanup
-  flow_run_dbw_del (&self);
-  
-  cape_err_del (&err);
-}
-
-//-----------------------------------------------------------------------------
-
-int flow_run_dbw_set (FlowRunDbw* p_self, int initial, number_t action, CapeUdc* p_params, CapeErr err)
-{
-  int res;
-  FlowRunDbw self = *p_self;
-
-  if (initial)
-  {
-    self->state = FLOW_STATE__INIT;
-  }
-  
-  // take over the input params
-  if (p_params)
-  {
-    cape_udc_replace_mv (&(self->params), p_params);
-  }
-  else
-  {
-    cape_udc_del (&(self->params));
-  }
-  
-  // TODO: analyse the set params
-  // return a negative result if something doesn't fit
-  // load the current step
-  res = flow_run_dbw__continue (self, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  FlowRunStep run_step = flow_run_step_new (self->qbus);
-  
-  // transfer ownership and business logic to step class
-  res = flow_run_step_set (&run_step, &self, action, self->params, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  
-  
-  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
-  *p_self = NULL;
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__next (FlowRunDbw self, CapeErr err)
 {
   int res;
   
@@ -1497,6 +1315,307 @@ int flow_run_dbw_next (FlowRunDbw self, CapeErr err)
 exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__continue (FlowRunDbw self, CapeErr err)
+{
+  int res;
+
+  switch (self->state)
+  {
+    case FLOW_STATE__INIT:
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [INIT], wpid = %i, psid = %i", self->wpid, self->psid);
+
+      res = flow_run_dbw__state__init (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      break;
+    }
+    case FLOW_STATE__NONE:
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [NONE], wpid = %i, psid = %i", self->wpid, self->psid);
+
+      // load all variables from the current state of the database
+      res = flow_run_dbw__current_task_load (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "got current processing step, wsid = %i", self->wsid);
+
+      break;
+    }
+    case FLOW_STATE__DONE:
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [DONE], wpid = %i, psid = %i", self->wpid, self->psid);
+
+      res = flow_run_dbw__next (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      break;
+    }
+    case FLOW_STATE__HALT:
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run set", "processing step [HALT], wpid = %i, psid = %i", self->wpid, self->psid);
+
+      break;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__run_step (FlowRunDbw* p_self, number_t action, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+  
+  FlowRunStep run_step = flow_run_step_new (self->qbus);
+
+  // TODO: make &self to self
+  // transfer ownership and business logic to step class
+  res = flow_run_step_set (&run_step, p_self, action, self->params, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // clear the input params
+  cape_udc_del (&(self->params));
+  
+  cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
+  
+  flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  self = *p_self;
+
+  if (res && self)
+  {
+    if (res == CAPE_ERR_EOF)
+    {
+      // do nothing here
+    }
+    else if (res == CAPE_ERR_CONTINUE)
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__HALT, NULL);
+    }
+    else
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__ERROR, err);
+    }
+  }
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
+{
+  int res;
+  FlowRunDbw self = ptr;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  while (TRUE)
+  {
+    res = flow_run_dbw__run_step (&self, action, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+     
+    res = flow_run_dbw__next (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+exit_and_cleanup:
+  
+  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "queue worker", "end of loop");
+  
+  /*
+  if (res && self)
+  {
+    if (res == CAPE_ERR_EOF)
+    {
+      // do nothing here
+    }
+    else if (res == CAPE_ERR_CONTINUE)
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__HALT, NULL);
+    }
+    else
+    {
+      flow_run_dbw_state_set (self, FLOW_STATE__ERROR, err);
+    }
+  }
+   */
+
+  // cleanup
+  flow_run_dbw_del (&self);
+  
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_start (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+
+  // explicit set the initialize state
+  self->state = FLOW_STATE__INIT;
+  
+  // take over the input params
+  if (p_params)
+  {
+    cape_udc_replace_mv (&(self->params), p_params);
+  }
+  else
+  {
+    cape_udc_del (&(self->params));
+  }
+
+  // load the current step
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  *p_self = NULL;
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  // cleanup
+  flow_run_dbw_del (p_self);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_continue (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+
+  // take over the input params
+  if (p_params)
+  {
+    cape_udc_replace_mv (&(self->params), p_params);
+  }
+  else
+  {
+    cape_udc_del (&(self->params));
+  }
+  
+  // load the current step
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  *p_self = NULL;
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  // cleanup
+  flow_run_dbw_del (p_self);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+
+  // take over the input params
+  if (p_params)
+  {
+    cape_udc_replace_mv (&(self->params), p_params);
+  }
+  else
+  {
+    cape_udc_del (&(self->params));
+  }
+  
+  // this shall load all current states from the database
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // run the next step
+  res = flow_run_dbw__run_step (p_self, action, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_run_dbw__next (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // continue in background process
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  
+  // transfer ownership to background process
+  *p_self = NULL;
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  // its normal that the process might be ended
+  if (res == CAPE_ERR_EOF)
+  {
+    res = CAPE_ERR_NONE;
+    cape_err_clr (err);
+  }
+
+  // cleanup
+  flow_run_dbw_del (p_self);
+
   return res;
 }
 

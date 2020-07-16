@@ -10,22 +10,31 @@
 
 //=============================================================================
 
+                                  /* constructs a path from 2 paths given using the system separator */
 __CAPE_LIBEX   CapeString         cape_fs_path_merge     (const char* path1, const char* path2);
 
+                                  /* constructs a path from 3 paths given using the system separator */
 __CAPE_LIBEX   CapeString         cape_fs_path_merge_3   (const char* path1, const char* path2, const char* path3);
 
+                                  /* constructs the current path gathering from the system.
+                                   -> if a filepath is given it will be appended to the current path */
 __CAPE_LIBEX   CapeString         cape_fs_path_current   (const char* filepath);
 
+                                  /* constructs a path weather it is absolute or relative always to an absolute path.
+                                   -> if filepath is NULL the current path will be returned */
 __CAPE_LIBEX   CapeString         cape_fs_path_absolute  (const char* filepath);
 
+                                  /* resolves a path using the system functions */
 __CAPE_LIBEX   CapeString         cape_fs_path_resolve   (const char* filepath, CapeErr);
 
 //-----------------------------------------------------------------------------
 
-// splits a filepath into path and filename, returns the filename, sets the path if not NULL
-// returns always absolute paths
+                                  /* splits the filepath into path and filename parts,
+                                   -> returns the filename, sets the content of p_path if not NULL
+                                   -> returns always absolute paths */
 __CAPE_LIBEX   const CapeString   cape_fs_split          (const char* filepath, CapeString* p_path);
 
+                                  /* returns the extension of a filename given */
 __CAPE_LIBEX   const CapeString   cape_fs_extension      (const CapeString);
 
 //-----------------------------------------------------------------------------

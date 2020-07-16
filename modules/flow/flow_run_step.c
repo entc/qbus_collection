@@ -96,7 +96,7 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
   flow_run_dbw_state_set (self->dbw, FLOW_STATE__DONE, NULL);
 
   // transfer ownership for queuing
-  res = flow_run_dbw_set (&(self->dbw), FALSE, FLOW_ACTION__PRIM, NULL, err);
+  res = flow_run_dbw_continue (&(self->dbw), FLOW_ACTION__PRIM, NULL, err);
 
 exit_and_cleanup:
   
@@ -396,7 +396,7 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
     }
     
     // transfer ownership for queuing
-    res = flow_run_dbw_set (&dbw_cloned, TRUE, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -536,7 +536,7 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     }
     
     // transfer ownership for queuing
-    res = flow_run_dbw_set (&dbw_cloned, TRUE, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -641,7 +641,7 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
     }
     
     // transfer ownership for queuing
-    res = flow_run_dbw_set (&dbw_cloned, TRUE, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
