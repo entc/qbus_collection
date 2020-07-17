@@ -31,10 +31,10 @@ INCLUDE_DIRECTORIES("." "../../cape/src" ${CRYPT_INCLUDES})
 add_library             (qcrypt SHARED ${QCRYPT_CORE_SOURCES} ${QCRYPT_CORE_HEADERS})
 target_link_libraries   (qcrypt cape ${CRYPT_LIBRARIES})
 
-install (TARGETS qcrypt DESTINATION lib)
+#install (TARGETS qcrypt DESTINATION lib)
 
 # for docker
-INSTALL (TARGETS qcrypt DESTINATION docker/qore/lib)
+#INSTALL (TARGETS qcrypt DESTINATION docker/qore/lib)
 
 #----------------------------------------------------------------------------------
 

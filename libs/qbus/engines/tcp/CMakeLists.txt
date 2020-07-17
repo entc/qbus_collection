@@ -11,6 +11,17 @@ set(ENGINE_TCP_HEADERS
   engine_tcp.h
 )
 
+#----------------------------------------------------------------------------------
+
+#add_library             (qbus_engine_tcp SHARED ${ENGINE_TCP_SOURCES} ${ENGINE_TCP_HEADERS})
 add_library             (qbus_engine_tcp STATIC ${ENGINE_TCP_SOURCES} ${ENGINE_TCP_HEADERS})
+
 target_link_libraries   (qbus_engine_tcp qbus_core cape)
 set_target_properties   (qbus_engine_tcp PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
+
+#INSTALL (TARGETS qbus_engine_tcp DESTINATION lib)
+
+# for docker
+#INSTALL (TARGETS qbus_engine_tcp DESTINATION docker/qore/lib)
+
+#----------------------------------------------------------------------------------
