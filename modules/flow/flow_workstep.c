@@ -168,6 +168,12 @@ int flow_workstep__intern__fetch_prev_succ (FlowWorkstep self, number_t* p_prev,
 {
   int res;
   
+  // return values
+  number_t prev = 0;
+  number_t succ = 0;
+  number_t pr_prev = 0;
+  number_t sc_succ = 0;
+  
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc first_row;
@@ -204,17 +210,23 @@ int flow_workstep__intern__fetch_prev_succ (FlowWorkstep self, number_t* p_prev,
   }
   
   // get the values
-  *p_prev = cape_udc_get_n (first_row, "ws_prev", 0);
-  *p_succ = cape_udc_get_n (first_row, "ws_succ", 0);
+  prev = cape_udc_get_n (first_row, "ws_prev", 0);
+  succ = cape_udc_get_n (first_row, "ws_succ", 0);
 
   // get the values
-  *p_pr_prev = cape_udc_get_n (first_row, "pr_prev", 0);
-  *p_sc_succ = cape_udc_get_n (first_row, "sc_succ", 0);
+  pr_prev = cape_udc_get_n (first_row, "pr_prev", 0);
+  sc_succ = cape_udc_get_n (first_row, "sc_succ", 0);
   
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
-  
+
+  // set the values
+  *p_prev = prev;
+  *p_succ = succ;
+  *p_pr_prev = pr_prev;
+  *p_sc_succ = sc_succ;
+
   cape_udc_del (&query_results);  
   return res;
 }

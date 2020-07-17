@@ -1,0 +1,16 @@
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-trash"></i>&nbsp;&nbsp;delete workflow
+  </h4>
+</div>
+<div class="modal-body">
+
+  <div class="alert alert-danger" role="alert">
+    this will delete the entire workflow and all its worksteps
+  </div>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">Cancel</button>
+  <button type="button" class="btn btn-danger" (click)="modal.close()">Delete</button>
+</div>

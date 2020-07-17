@@ -1074,6 +1074,36 @@ CapeUdc cape_udc_get_list (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_put_n (CapeUdc self, const CapeString name, number_t val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_n (h, val);
+  }
+  else
+  {
+    cape_udc_add_n (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_b (CapeUdc self, const CapeString name, int val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_b (h, val);
+  }
+  else
+  {
+    cape_udc_add_b (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_udc_get_first (CapeUdc self)
 {
   switch (self->type)
@@ -1481,7 +1511,7 @@ void cape_udc_print (const CapeUdc self)
     {
       if (self->data)
       {
-        CapeString h = cape_datetime_s__std (self->data);
+        CapeString h = cape_datetime_s__std_msec (self->data);
         
         printf ("UDC [datetime]: %s\n", h);
         

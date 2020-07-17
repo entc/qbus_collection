@@ -5,4 +5,4 @@ COPY docker/webs .
 WORKDIR /mods
 
 CMD ["/mods/qbus_mod_webs"]
-#CMD ["valgrind", "--leak-check=yes", "/mods/qbus_mod_tmpl"]
+#CMD ["valgrind", "--leak-check=yes", "/mods/qbus_mod_webs"]

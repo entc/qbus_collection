@@ -55,6 +55,8 @@ __CAPE_LIBEX   int                cape_str_find          (const CapeString, cons
 
 __CAPE_LIBEX   int                cape_str_find_utf8     (const CapeString, const CapeString, number_t* pos_len, number_t* pos_size);
 
+__CAPE_LIBEX   int                cape_str_next          (const CapeString, char, number_t* pos);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeString         cape_str_catenate_c    (const CapeString, char c, const CapeString);
@@ -68,6 +70,10 @@ __CAPE_LIBEX   CapeString         cape_str_trim_utf8     (const CapeString);
 __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char l, char r);
 
 __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char c);
+
+__CAPE_LIBEX   CapeString         cape_str_sanitize_utf8 (const CapeString source);
+
+__CAPE_LIBEX   CapeString         cape_str_to_word       (const CapeString source);
 
 __CAPE_LIBEX   CapeString         cape_str_cp_replaced   (const CapeString source, const CapeString seek, const CapeString replace_with);
 
@@ -89,7 +95,16 @@ __CAPE_LIBEX   void               cape_str_to_lower      (CapeString);
 
 //-----------------------------------------------------------------------------
 
+                                  /* returns the character size, invalid = 1 */
 __CAPE_LIBEX   number_t           cape_str_char__len     (unsigned char c);
+
+                                  /* returns the character size, invalid = 0 */
+__CAPE_LIBEX   number_t           cape_str_utf8__len     (unsigned char c);
+
+//-----------------------------------------------------------------------------
+
+                                  /* converts wide char into utf8, returns the utf8 length */
+__CAPE_LIBEX   number_t           cape_str_wchar_utf8    (wchar_t s, char* bufdat);
 
 //-----------------------------------------------------------------------------
 

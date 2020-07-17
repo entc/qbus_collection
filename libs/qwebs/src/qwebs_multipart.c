@@ -7,6 +7,9 @@
 #include <fmt/cape_tokenizer.h>
 #include <sys/cape_log.h>
 
+// c includes
+#include <ctype.h>
+
 //-----------------------------------------------------------------------------
 
 struct QWebsMultipart_s
@@ -427,3 +430,166 @@ void qwebs_multipart_process (QWebsMultipart self, const char* bufdat, number_t 
 }
 
 //-----------------------------------------------------------------------------
+
+CapeString qwebs_parse_line (const CapeString line, const CapeString key_to_seek)
+{
+  CapeListCursor* cursor;
+  CapeList tokens;
+  CapeString ret = NULL;
+  int run = TRUE;
+  
+  // split the string into its parts
+  tokens = cape_tokenizer_buf (line, cape_str_size (line), ';');
+  
+  // run through all parts to find the one which fits the key
+  cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+  while (run && cape_list_cursor_next (cursor))
+  {
+    CapeString token = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
+    
+    CapeString key = NULL;
+    CapeString val = NULL;
+    
+    if (cape_tokenizer_split (token, '=', &key, &val))
+    {
+      if (cape_str_equal (key_to_seek, key))
+      {
+        ret = cape_str_trim_c (val, '"');
+        run = FALSE;
+      }
+    }
+    
+    cape_str_del (&token);
+    cape_str_del (&key);
+    cape_str_del (&val);
+  }
+  
+  // cleanup
+  cape_list_cursor_destroy (&cursor);
+  cape_list_del (&tokens);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+struct QWebsEncoder_s
+{
+  //char rfc3986[256];
+  char html5[256];
+};
+
+//-----------------------------------------------------------------------------
+
+QWebsEncoder qwebs_encode_new (void)
+{
+  QWebsEncoder self = CAPE_NEW (struct QWebsEncoder_s);
+  
+  {
+    int i;
+    for (i = 0; i < 256; i++)
+    {
+      //self->rfc3986[i] = isalnum (i) || i == '~' || i == '-' || i == '.' || i == '_' ? i : 0;
+      self->html5[i] = isalnum (i) || i == '*' || i == '-' || i == '.' || i == '_' ? i : (i == ' ') ? '+' : 0;
+    }
+  }
+
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_encode_del (QWebsEncoder* p_self)
+{
+  if (*p_self)
+  {
+    CAPE_DEL (p_self, struct QWebsEncoder_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qwebs_encode_run (QWebsEncoder self, const CapeString url)
+{
+  CapeStream stream = cape_stream_new ();
+  
+  const char* s = url;
+  
+  for (; *s; s++)
+  {
+    int bytes_written = 0;
+    
+    if (self->html5[*s])
+    {
+      cape_stream_cap (stream, 1);
+      
+      bytes_written = sprintf (cape_stream_pos (stream), "%c", self->html5[*s]);
+    }
+    else
+    {
+      cape_stream_cap (stream, 4);
+
+      bytes_written = sprintf (cape_stream_pos (stream), "%%%02X", *s);
+    }
+    
+    if (bytes_written > 0)
+    {
+      cape_stream_set (stream, bytes_written);
+    }
+  }
+
+  return cape_stream_to_str (&stream);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qwebs_decode_run (const CapeString s)
+{
+  // same size as the original + termination char
+  CapeString ret = CAPE_ALLOC (cape_str_size (s) + 1);
+  
+  static const char tbl[256] = {
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+       0, 1, 2, 3, 4, 5, 6, 7,  8, 9,-1,-1,-1,-1,-1,-1,
+      -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,10,11,12,13,14,15,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+      -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1
+  };
+  
+  char c, v1, v2, *beg = ret;
+
+  while ((c = *s++) != '\0')
+  {
+    if (c == '%')
+    {
+      if((v1 = tbl[(unsigned char)*s++]) < 0 || (v2 = tbl[(unsigned char)*s++]) < 0)
+      {
+        // error
+        *beg = '\0';
+        return ret;
+      }
+      
+      c = (v1 << 4) | v2;
+    }
+
+    *beg++ = c;
+  }
+
+  *beg = '\0';
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+

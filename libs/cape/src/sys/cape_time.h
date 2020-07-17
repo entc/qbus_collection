@@ -62,13 +62,17 @@ __CAPE_LIBEX   void            cape_datetime_to_local     (CapeDatetime*);
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime_utc__add_s   (CapeDatetime*, const CapeString delta);
 
+                               // substract a certain time period to the current datetime in string format
+                               /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
+__CAPE_LIBEX   void            cape_datetime_utc__sub_s   (CapeDatetime*, const CapeString delta);
+
                                // reduce input datetine from a certain time period defined in delta string format and save it in result datetime
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
-__CAPE_LIBEX   void            cape_datetime__remove_s   (CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
+__CAPE_LIBEX   void            cape_datetime__remove_s    (const CapeDatetime*, const CapeString delta, CapeDatetime* result);
 
                                // append a certain time period defined in delta string format and save it in result datetime
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
-__CAPE_LIBEX   void            cape_datetime__add_s   (CapeDatetime* input,  const CapeString delta, CapeDatetime* result);
+__CAPE_LIBEX   void            cape_datetime__add_s       (const CapeDatetime*, const CapeString delta, CapeDatetime* result);
 
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
 
@@ -77,13 +81,13 @@ __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, 
                                /* generic method -> use the format for transformation */
 __CAPE_LIBEX   CapeString      cape_datetime_s__fmt       (const CapeDatetime*, const CapeString format);
 
-                               /* 2013-10-21T13:28:06Z */
-__CAPE_LIBEX   CapeString      cape_datetime_s__std_s     (const CapeDatetime*);   // RFC 3339
+                               /* 2013-10-21T13:28:06.419Z */
+__CAPE_LIBEX   CapeString      cape_datetime_s__std_msec  (const CapeDatetime*);   // RFC 3339
 
-                              /* 2013-10-21T13:28:06.419Z */
+                               /* 2013-10-21T13:28:06Z */
 __CAPE_LIBEX   CapeString      cape_datetime_s__std       (const CapeDatetime*);   // RFC 3339
 
-                                /* 2019-09-01 12:08:21 */
+                               /* 2019-09-01 12:08:21 */
 __CAPE_LIBEX   CapeString      cape_datetime_s__str       (const CapeDatetime*);   // ISO format
 
                                /* 20190918-12:07:55.992 */
@@ -107,9 +111,20 @@ __CAPE_LIBEX   time_t          cape_datetime_n__unix      (const CapeDatetime*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int             cape_datetime__std         (CapeDatetime*, const CapeString datetime_in_text);
+                               /* 1970-01-01T13:28:06.419Z */
+__CAPE_LIBEX   int             cape_datetime__std_msec    (CapeDatetime*, const CapeString datetime_in_text);
 
+                               /* 2019-09-01 12:08:21.231 */
+__CAPE_LIBEX   int             cape_datetime__str_msec    (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 2019-09-01 12:08:21 */
 __CAPE_LIBEX   int             cape_datetime__str         (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 01.01.1970 */
+__CAPE_LIBEX   int             cape_datetime__date_de     (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 1970-01-01 */
+__CAPE_LIBEX   int             cape_datetime__date_iso    (CapeDatetime*, const CapeString datetime_in_text);
 
 //-----------------------------------------------------------------------------
 

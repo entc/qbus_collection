@@ -1,0 +1,39 @@
+<div class="row mt-2">
+  <div class="col-sm-12 col-md-6 col-lg-4 order-sm-2 order-md-2">
+
+    <div class="input-group mb-2">
+    	<select class="custom-select" [(ngModel)]="sort_name">
+        <option *ngFor="let item of sort_keys" [value]="sort_vals[item]">{{item}}</option>
+      </select>
+      <div class="input-group-append">
+        <button (click)="sort_reverse = !sort_reverse" class="btn btn-outline-secondary btn-sm" type="button">
+    			<span *ngIf="sort_reverse"><i class="fa fa-long-arrow-alt-down"></i></span>
+    			<span *ngIf="!sort_reverse"><i class="fa fa-long-arrow-alt-up"></i></span>
+    		</button>
+      </div>
+    </div>
+
+  </div>
+  <div class="col-sm-12 col-md-6 col-lg-4 order-sm-1 order-md-3">
+
+    <div class="input-group mb-2">
+      <input type="text" class="form-control" placeholder="filter" aria-label="filter" aria-describedby="button-addon2" [(ngModel)]="search">
+      <div class="input-group-append">
+        <button class="btn btn-outline-secondary btn-sm" type="button" (click)="reset_search()">X</button>
+      </div>
+    </div>
+
+  </div>
+  <div class="col-sm-12 col-md-12 col-lg-4 order-sm-3 order-md-1">
+
+    <pagination-template #p="paginationApi" (pageChange)="currentPage = $event">
+      <nav aria-label="Page navigation example" >
+        <ul class="pagination">
+          <li class="page-item" *ngFor="let page of p.pages" [class.active]="p.getCurrent() === page.value"><a class="page-link" (click)="p.setCurrent(page.value)">{{page.label}}</a></li>
+        </ul>
+      </nav>
+    </pagination-template>
+
+  </div>
+
+</div>

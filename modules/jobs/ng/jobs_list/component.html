@@ -1,0 +1,24 @@
+<div class="container mt-2" *authRole="['jobs_admin']">
+
+  <button (click)="jobs_add__modal_open ()" type="button" class="btn btn-success">schedule a job</button>
+
+  <table class="table mt-2">
+    <tr>
+      <th>start</th>
+      <th>stop</th>
+      <th></th>
+      <th></th>
+    </tr>
+    <tr *ngFor="let item of job_list | async">
+      <td>{{item.event_start}}</td>
+      <td>
+      <td>{{item.event_stop}}</td>
+      <td>
+      <td>{{item.active}}</td>
+      <td>
+      <td>{{item.repeated}}</td>
+      <td>
+    </tr>
+  </table>
+
+</div>

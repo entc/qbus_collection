@@ -79,5 +79,47 @@ int main (int argc, char *argv[])
     cape_udc_del (&m);
   }
   
+  // parser tests
+  {
+    const CapeString text = "{\"self\":\"https:\\/\\/rest.spryngsms.com\\/v1\\/messages\\/9009f688-fe85-43cb-9233-759b8a066b5a\"}";
+    
+    CapeUdc h = cape_json_from_s (text);
+    
+   
+    cape_udc_del (&h);
+  }
+
+  // parser tests
+  {
+    const CapeString text = "{\"_test:test.we{hello}\":\"09.11.1901\"}";
+    
+    CapeUdc p = cape_json_from_s (text);
+    
+    CapeString h = cape_json_to_s (p);
+    
+    printf ("PARSE2: %s\n", h);
+
+    cape_str_del (&h);
+    
+    cape_udc_del (&p);
+  }
+  
+  CapeErr err = cape_err_new();
+  
+  {
+    CapeUdc p = cape_json_from_file ("test2.txt", err);
+
+    if(p)
+    {
+      CapeString h = cape_json_to_s (p);
+      
+      printf ("PARSE2: %s\n", h);
+      
+      cape_udc_del (&p);
+    }
+  }
+  
+  cape_err_del (&err);
+  
   return 0;
 }

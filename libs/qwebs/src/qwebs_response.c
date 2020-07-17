@@ -132,20 +132,6 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
     cape_stream_append_str (s, "\"\r\n");
   }
   
-  // location #1
-  {
-    cape_stream_append_str (s, "Content-Location: /");
-    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
-    cape_stream_append_str (s, "\r\n");
-  }
-  
-  // location #2
-  {
-    cape_stream_append_str (s, "Location: /");
-    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
-    cape_stream_append_str (s, "\r\n");
-  }
-  
   // create a stream for the content
   c = cape_stream_new ();
   
@@ -238,6 +224,31 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
   }
 
   qwebs_response__internal__content (s, webs, content);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
+
+  qwebs_response__internal__identification (s);
+  
+  // mime type for JSON
+  {
+    cape_stream_append_str (s, "Content-Type: ");
+    cape_stream_append_str (s, "text/plain");
+    cape_stream_append_str (s, "\r\n");
+  }
+  
+  CapeString data_url = "data:image/jpeg;base64,";
+  
+  qwebs_response__internal__content_length (s, cape_str_size (data_url) + cape_str_size (buf));
+  cape_stream_append_str (s, data_url);
+  cape_stream_append_str (s, buf);
 }
 
 //-----------------------------------------------------------------------------
@@ -368,6 +379,35 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
     
     qwebs_response__internal__content_length (s, 0);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_redirect (CapeStream s, QWebs webs, const CapeString url)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "HTTP/1.1 301 Moved Permanently\r\n");
+
+  qwebs_response__internal__identification (s);
+
+  cape_stream_append_str (s, "Location: ");
+  
+  {
+    //CapeString encoded_url = qwebs_url_encode (webs, url);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "redirect", "redirect to location = '%s'", url);
+    
+    cape_stream_append_str (s, url);
+    
+    //cape_str_del (&encoded_url);
+  }
+  
+  cape_stream_append_str (s, "\r\n");
+
+  // DONE
+  qwebs_response__internal__content_length (s, 0);
 }
 
 //-----------------------------------------------------------------------------

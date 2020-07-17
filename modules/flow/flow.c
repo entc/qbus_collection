@@ -236,6 +236,19 @@ static int __STDCALL qbus_flow__process__get (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__process__all (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_all (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__run__add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -354,6 +367,10 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // stops the current process step and triggers the failover processing
   //   args: psid
   qbus_register (qbus, "process_rm"          , ctx, qbus_flow__process__rm, NULL, err);
+
+  // get all active processes
+  //   args:
+  qbus_register (qbus, "process_all"         , ctx, qbus_flow__process__all, NULL, err);
 
   // get details of the current process
   //   args: psid

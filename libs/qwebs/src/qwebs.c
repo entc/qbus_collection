@@ -1,12 +1,14 @@
 #include "qwebs.h"
 #include "qwebs_connection.h"
 #include "qwebs_files.h"
+#include "qwebs_multipart.h"
 
 // cape includes
 #include <aio/cape_aio_sock.h>
 #include <sys/cape_socket.h>
 #include <stc/cape_map.h>
 #include <sys/cape_queue.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -50,6 +52,8 @@ struct QWebs_s
 {
   CapeMap request_apis;
   
+  CapeMap sites;
+  
   CapeString host;
   
   number_t port;
@@ -65,6 +69,8 @@ struct QWebs_s
   QWebsFiles files;
   
   CapeUdc route_list;
+  
+  QWebsEncoder encoder;
 };
 
 //-----------------------------------------------------------------------------
@@ -81,7 +87,41 @@ static void __STDCALL qwebs__intern__on_api_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-QWebs qwebs_new (const CapeString site, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list)
+static void __STDCALL qwebs__intern__on_sites_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    CapeString h = val; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs__internal__convert_sites (QWebs self, CapeUdc sites)
+{
+  CapeUdcCursor* cursor = cape_udc_cursor_new (sites, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    const CapeString site = cape_udc_s (cursor->item, NULL);
+    const CapeString name = cape_udc_name (cursor->item);
+    
+    if (site && name)
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "init", "set site '%s' = %s", name, site);
+      
+      cape_map_insert (self->sites, cape_str_cp (name), cape_str_cp (site));
+    }
+  }
+  
+  cape_udc_cursor_del (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list)
 {
   QWebs self = CAPE_NEW (struct QWebs_s);
   
@@ -97,10 +137,18 @@ QWebs qwebs_new (const CapeString site, const CapeString host, number_t port, nu
   
   self->queue = cape_queue_new ();
   
-  self->files = qwebs_files_new (site, self);
+  self->files = qwebs_files_new (self);
   
   self->route_list = cape_udc_cp (route_list);
   
+  self->sites = cape_map_new (NULL, qwebs__intern__on_sites_del, NULL);
+
+  // convert site into a map
+  // -> map can be altered later to fit more needs
+  qwebs__internal__convert_sites (self, sites);
+  
+  self->encoder = qwebs_encode_new ();
+
   return self;
 }
 
@@ -113,7 +161,8 @@ void qwebs_del (QWebs* p_self)
     QWebs self = *p_self;
     
     cape_map_del (&(self->request_apis));
-    
+    cape_map_del (&(self->sites));
+
     cape_str_del (&(self->host));    
     cape_str_del (&(self->pages));
     
@@ -124,6 +173,8 @@ void qwebs_del (QWebs* p_self)
     qwebs_files_del (&(self->files));
     
     cape_udc_del (&(self->route_list));
+    
+    qwebs_encode_del (&(self->encoder));
     
     CAPE_DEL (p_self, struct QWebs_s);
   }
@@ -158,6 +209,8 @@ static void __STDCALL qwebs__intern__on_connect (void* user_ptr, void* handle, c
   
   // for each connection we create a connection object
   QWebsConnection connection = qwebs_connection_new (handle, self->queue, self);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on connect", "new connection from %s", remote_host);
   
   // attach the connection to the AIO subsytem
   qwebs_connection_attach (connection, self->aio_attached);
@@ -253,6 +306,13 @@ QWebsFiles qwebs_files (QWebs self)
 
 //-----------------------------------------------------------------------------
 
+CapeString qwebs_url_encode (QWebs self, const CapeString url)
+{
+  return qwebs_encode_run (self->encoder, url);
+}
+
+//-----------------------------------------------------------------------------
+
 int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
@@ -262,7 +322,74 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
     res = self->on_request (self->user_ptr, request, err);
   }
   
+  printf ("RETURNED FROM API CALL %i\n", res);
+  
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs__intern__get_site (QWebs self, const CapeString part)
+{
+  printf ("SEEK SITE = '%s'\n", part);
+  
+  CapeMapNode n = cape_map_find (self->sites, part);
+  if (n)
+  {
+    return cape_map_node_value (n);
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_site (QWebs self, const char *bufdat, size_t buflen, CapeString* p_url)
+{
+  const CapeString ret;
+  
+  // local objects
+  CapeString url = cape_str_sub (bufdat, buflen);
+  
+  if ('/' == *url)
+  {
+    number_t pos;
+    if (cape_str_next (url + 1, '/', &pos))
+    {
+      CapeString h = cape_str_sub (url, pos + 1);
+      
+      ret = qwebs__intern__get_site (self, h);
+      
+      cape_str_del (&h);
+      
+      if (ret)
+      {
+        *p_url = cape_str_sub (url + pos + 1, cape_str_size (url) - pos - 1);
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      ret = qwebs__intern__get_site (self, url);
+      if (ret)
+      {
+        // this means the whole url is a site
+        // -> re-write to /
+        *p_url = cape_str_cp ("/");
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  ret = qwebs__intern__get_site (self, "/");
+  *p_url = cape_str_mv (&url);
+  
+exit_and_cleanup:
+  
+  cape_str_del (&url);
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

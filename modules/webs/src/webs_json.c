@@ -1,31 +1,29 @@
-#include "qbus.h"
+#include "webs_json.h"
+
+// cape includes
+#include <fmt/cape_json.h>
+#include <sys/cape_log.h>
+#include <fmt/cape_tokenizer.h>
+#include <sys/cape_file.h>
 
 // qwebs includes
-#include "qwebs.h"
 #include "qwebs_connection.h"
 #include "qwebs_multipart.h"
 
 // qcrypt includes
 #include <qcrypt.h>
 
-// cape includes
-#include <aio/cape_aio_ctx.h>
-#include <sys/cape_err.h>
-#include <sys/cape_log.h>
-#include <sys/cape_file.h>
-#include <fmt/cape_tokenizer.h>
-#include <fmt/cape_json.h>
-
 //-----------------------------------------------------------------------------
 
-struct WebsAuth_s
+struct WebsJson_s
 {
   QBus qbus;
-  QWebsRequest request;
   
+  QWebsRequest request;
+
   CapeString module;
   CapeString method;
-
+  
   // the data for QBUS
   CapeUdc clist;
   CapeUdc cdata;
@@ -35,35 +33,11 @@ struct WebsAuth_s
   
   // extra features
   CapeString extra_token;
-
+  
   // shortcuts from the header values
   const CapeString mime;
   const CapeString auth;
-  
-}; typedef struct WebsAuth_s* WebsAuth;
-
-//-----------------------------------------------------------------------------
-
-void webs_del (WebsAuth* p_self)
-{
-  if (*p_self)
-  {
-    WebsAuth self = *p_self;
-    
-    cape_str_del (&(self->module));
-    cape_str_del (&(self->method));
-    
-    cape_udc_del (&(self->cdata));
-    cape_udc_del (&(self->clist));
-    cape_udc_del (&(self->files));
-    
-    cape_list_del (&(self->files_to_delete));
-    
-    cape_str_del (&(self->extra_token));
-
-    CAPE_DEL (p_self, struct WebsAuth_s);
-  }
-}
+};
 
 //-----------------------------------------------------------------------------
 
@@ -78,10 +52,67 @@ static void __STDCALL webs__files__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
+WebsJson webs_json_new (QBus qbus, QWebsRequest request)
+{
+  WebsJson self = CAPE_NEW (struct WebsJson_s);
+
+  self->qbus = qbus;
+  self->request = request;
+
+  self->module = NULL;
+  self->method = NULL;
+  
+  self->clist = NULL;
+  self->cdata = NULL;
+  self->files = NULL;
+  
+  self->files_to_delete = cape_list_new (webs__files__on_del);
+  self->extra_token = NULL;
+  
+  self->mime = NULL;
+  self->auth = NULL;
+  
+  return self;
+}
+
+//---------------------------------------------------------------------------
+
+void webs_json_del (WebsJson* p_self)
+{
+  if (*p_self)
+  {
+    WebsJson self = *p_self;
+    
+    cape_str_del (&(self->module));
+    cape_str_del (&(self->method));
+
+    cape_udc_del (&(self->cdata));
+    cape_udc_del (&(self->clist));
+    cape_udc_del (&(self->files));
+    
+    cape_list_del (&(self->files_to_delete));
+    
+    cape_str_del (&(self->extra_token));
+
+    if (self->request)
+    {
+      CapeErr err = cape_err_new ();
+      
+      qwebs_request_send_json (&(self->request), NULL, err);
+      
+      cape_err_del (&err);
+    }
+    
+    CAPE_DEL (p_self, struct WebsJson_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 static int __STDCALL qbus_webs__file__on_vsec (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
-  WebsAuth self = ptr;
+  WebsJson self = ptr;
 
   CapeString vsec = NULL;
   
@@ -107,14 +138,14 @@ static int __STDCALL qbus_webs__file__on_vsec (QBus qbus, void* ptr, QBusM qin, 
   cape_udc_add_s_mv (self->cdata, "vsec", &vsec);
   
   qwebs_request_send_file (&(self->request), self->cdata, err);
-  webs_del (&self);
+  webs_json_del (&self);
 
   return CAPE_ERR_NONE;
 
 exit_and_cleanup:
 
   qwebs_request_send_json (&(self->request), qin->cdata, err);
-  webs_del (&self);
+  webs_json_del (&self);
 
   return CAPE_ERR_NONE;
 }
@@ -123,7 +154,7 @@ exit_and_cleanup:
 
 static int __STDCALL qbus_webs__auth__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  WebsAuth self = ptr;
+  WebsJson self = ptr;
   
   if (qin->err)
   {
@@ -168,76 +199,34 @@ static int __STDCALL qbus_webs__auth__on_call (QBus qbus, void* ptr, QBusM qin, 
     }
   }
 
-  webs_del (&self);
+  webs_json_del (&self);
   return CAPE_UDC_NODE;
   
 exit_and_cleanup:
 
   if (cape_err_code (err))
   {
-    cape_log_msg (CAPE_LL_ERROR, "WEBS", "on auth", cape_err_text (err));
+    cape_log_msg (CAPE_LL_ERROR, "WEBS", "on call", cape_err_text (err));
   }
   
   if (qin->cdata)
   {
     CapeString h = cape_json_to_s (qin->cdata);
     
-    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on auth", "having payload = %s", h);
+    cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on call", "having payload = %s", h);
     
     cape_str_del (&h);
   }
   
   qwebs_request_send_json (&(self->request), qin->cdata, err);
-  webs_del (&self);
+  webs_json_del (&self);
   
   return CAPE_UDC_NODE;
 }
 
 //-----------------------------------------------------------------------------
 
-CapeString webs_http_parse_line (const CapeString line, const CapeString key_to_seek)
-{
-  CapeListCursor* cursor;
-  CapeList tokens;
-  CapeString ret = NULL;
-  int run = TRUE;
-  
-  // split the string into its parts
-  tokens = cape_tokenizer_buf (line, cape_str_size (line), ';');
-  
-  // run through all parts to find the one which fits the key
-  cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
-  while (run && cape_list_cursor_next (cursor))
-  {
-    CapeString token = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
-    
-    CapeString key = NULL;
-    CapeString val = NULL;
-    
-    if (cape_tokenizer_split (token, '=', &key, &val))
-    {
-      if (cape_str_equal (key_to_seek, key))
-      {
-        ret = cape_str_trim_c (val, '"');
-        run = FALSE;
-      }
-    }
-    
-    cape_str_del (&token);
-    cape_str_del (&key);
-    cape_str_del (&val);
-  }
-  
-  // cleanup
-  cape_list_cursor_destroy (&cursor);
-  cape_list_del (&tokens);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-int webs_add_file (WebsAuth self, const char* bufdat, number_t buflen, CapeErr err)
+int webs_add_file (WebsJson self, const char* bufdat, number_t buflen, CapeErr err)
 {
   int res;
   
@@ -276,7 +265,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void webs_add_param (WebsAuth self, const CapeString key, CapeString* p_val)
+void webs_add_param (WebsJson self, const CapeString key, CapeString* p_val)
 {
   if (self->cdata == NULL)
   {
@@ -290,7 +279,7 @@ void webs_add_param (WebsAuth self, const CapeString key, CapeString* p_val)
 
 void __STDCALL webs__mp__on_part (void* ptr, const char* bufdat, number_t buflen, CapeMap part_values)
 {
-  WebsAuth self = ptr;
+  WebsJson self = ptr;
   
   CapeMapNode n = cape_map_find (part_values, "CONTENT-DISPOSITION");
   if (n)
@@ -299,7 +288,7 @@ void __STDCALL webs__mp__on_part (void* ptr, const char* bufdat, number_t buflen
 
     cape_log_fmt (CAPE_LL_TRACE, "WEBS", "multipart", "found disposition: %s", disposition);
 
-    CapeString name = webs_http_parse_line (disposition, "name");
+    CapeString name = qwebs_parse_line (disposition, "name");
     if (name)
     {
       if (cape_str_equal (name, "file"))  // content is file
@@ -327,7 +316,7 @@ void __STDCALL webs__mp__on_part (void* ptr, const char* bufdat, number_t buflen
 
 //-----------------------------------------------------------------------------
 
-void webs__check_body (WebsAuth self)
+void webs__check_body (WebsJson self)
 {
   // get the body as stream from the incoming request
   CapeStream body = qwebs_request_body (self->request);
@@ -339,7 +328,7 @@ void webs__check_body (WebsAuth self)
     // check mime type
     if (cape_str_begins (self->mime, "multipart"))
     {
-      CapeString boundary = webs_http_parse_line (self->mime, "boundary");
+      CapeString boundary = qwebs_parse_line (self->mime, "boundary");
       if (boundary)
       {
         QWebsMultipart mp = qwebs_multipart_new (boundary, self, webs__mp__on_part);
@@ -363,9 +352,9 @@ void webs__check_body (WebsAuth self)
 
 //-----------------------------------------------------------------------------
 
-int webs_auth_call (WebsAuth* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
+int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
 {
-  WebsAuth self = *p_self;
+  WebsJson self = *p_self;
 
   cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "got info, continue with module = %s, method = %s", self->module, self->method);
 
@@ -389,7 +378,16 @@ int webs_auth_call (WebsAuth* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
   }
   
   // transfer the clist
-  cape_udc_replace_mv (&(qin->clist), &(self->clist));
+  if (self->clist)
+  {
+    CapeString h = cape_json_to_s (self->clist);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "add CLIST: %s", h);
+    
+    cape_udc_replace_mv (&(qin->clist), &(self->clist));
+    
+    cape_str_del (&h);
+  }
 
   // transfer the files
   cape_udc_replace_mv (&(qin->files), &(self->files));
@@ -401,7 +399,7 @@ int webs_auth_call (WebsAuth* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
 
 static int __STDCALL qbus_webs__auth__on_ui (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  WebsAuth self = ptr;
+  WebsJson self = ptr;
 
   if (qin->err)
   {
@@ -430,14 +428,14 @@ exit_and_cleanup:
   }
 
   qwebs_request_send_json (&(self->request), qin->cdata, err);
-  webs_del (&self);
+  webs_json_del (&self);
   
   return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
 
-int webs__check_header (WebsAuth self, CapeErr err)
+int webs__check_header (WebsJson self, CapeErr err)
 {
   int res;
   CapeMap header_values = qwebs_request_headers (self->request);
@@ -469,10 +467,10 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int webs_run (WebsAuth* p_self, CapeErr err)
+int webs_json_run_gen (WebsJson* p_self, CapeErr err)
 {
   int res;
-  WebsAuth self = *p_self;
+  WebsJson self = *p_self;
   
   res = webs__check_header (self, err);
   if (res)
@@ -560,22 +558,26 @@ exit_and_cleanup:
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "webs run", "got error: %s", cape_err_text(err));
   }
 
-  // done
-  qwebs_request_send_json (&(self->request), NULL, err);
-  webs_del (&self);
+  webs_json_del (p_self);
   
   return CAPE_ERR_CONTINUE;
 }
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qbus_webs__json (void* user_ptr, QWebsRequest request, CapeErr err)
+int webs_json_run (WebsJson* p_self, CapeErr err)
 {
-  CapeList clist = qwebs_request_clist (request);
+  int res;
+  WebsJson self = *p_self;
+
+  CapeList clist = qwebs_request_clist (self->request);
+  
   if (cape_list_size (clist) >= 2)
   {
     const CapeString module;
     const CapeString method;
+    
+    CapeString token = NULL;
     
     CapeListCursor* cursor = cape_list_cursor_create (clist, CAPE_DIRECTION_FORW);
     
@@ -589,183 +591,59 @@ int __STDCALL qbus_webs__json (void* user_ptr, QWebsRequest request, CapeErr err
       method = cape_list_node_data (cursor->node);
     }
 
+    if (cape_list_cursor_next (cursor))
+    {
+      const CapeString special = cape_list_node_data (cursor->node);
+      if (cape_str_equal (special, "__T"))
+      {
+        if (cape_list_cursor_next (cursor))
+        {
+          token = cape_str_cp (cape_list_node_data (cursor->node));
+        }
+      }
+      else
+      {
+        self->clist = cape_udc_new (CAPE_UDC_LIST, NULL);
+
+        cape_udc_add_s_cp (self->clist, NULL, cape_list_node_data (cursor->node));
+
+        // check for clist entries
+        while (cape_list_cursor_next (cursor))
+        {
+          cape_udc_add_s_cp (self->clist, NULL, cape_list_node_data (cursor->node));
+        }
+      }
+    }
+    
     cape_list_cursor_destroy (&cursor);
     
-    WebsAuth webs_auth = CAPE_NEW (struct WebsAuth_s);
+    self->module = cape_str_cp (module);
+    cape_str_to_upper (self->module);
     
-    webs_auth->module = cape_str_cp (module);
-    cape_str_to_upper (webs_auth->module);
+    self->method = cape_str_cp (method);
     
-    webs_auth->method = cape_str_cp (method);
-    
-    webs_auth->mime = NULL;
-    webs_auth->auth = NULL;
-    
-    webs_auth->qbus = user_ptr;
-    webs_auth->request = request;
-    
-    webs_auth->clist = NULL;
-    webs_auth->cdata = NULL;
-    webs_auth->files = NULL;
-    
-    webs_auth->files_to_delete = cape_list_new (webs__files__on_del);
-    webs_auth->extra_token = NULL;
-    
+    cape_str_replace_mv (&(self->extra_token), &token);
+
     // check for authentication
-    return webs_run (&webs_auth, err);
+    return webs_json_run_gen (p_self, err);
   }
+
+  webs_json_del (p_self);
 
   return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qbus_webs__rest (void* user_ptr, QWebsRequest request, CapeErr err)
+void webs_json_set (WebsJson self, const CapeString module, const CapeString method, CapeUdc* p_clist, CapeString* p_token)
 {
-  CapeList url_parts = qwebs_request_clist (request);
-  if (cape_list_size (url_parts) >= 1)
-  {
-    const CapeString module;
-    const CapeString method;
-    
-    CapeUdc clist;
-    CapeString token = NULL;
-    
-    CapeListCursor* cursor = cape_list_cursor_create (url_parts, CAPE_DIRECTION_FORW);
-    
-    if (cape_list_cursor_next (cursor))
-    {
-      module = cape_list_node_data (cursor->node);
-    }
-    
-    method = qwebs_request_method (request);
-    
-    // check for token
-    {
-      const CapeString special = NULL;
-      CapeListCursor c2;
-      
-      // clone cursor
-      c2.direction = cursor->direction;
-      c2.node = cursor->node;
-      c2.position = cursor->position;
-      
-      if (cape_list_cursor_next (&c2))
-      {
-        special = cape_list_node_data (c2.node);
-        
-        if (cape_str_equal (special, "__T"))
-        {
-          cape_list_cursor_next (cursor);
-          
-          // do we have a token?
-          if (cape_list_cursor_next (&c2))
-          {
-            cape_list_cursor_next (cursor);
-            
-            token = cape_str_cp (cape_list_node_data (c2.node));
-          }
-        }
-      }
-    }
-    
-    clist = cape_udc_new (CAPE_UDC_LIST, NULL);
-    
-    while (cape_list_cursor_next (cursor))
-    {
-      cape_udc_add_s_cp (clist, NULL, cape_list_node_data (cursor->node));
-    }
-    
-    cape_list_cursor_destroy (&cursor);
-    
-    WebsAuth webs_auth = CAPE_NEW (struct WebsAuth_s);
-    
-    webs_auth->module = cape_str_cp (module);
-    cape_str_to_upper (webs_auth->module);
-    
-    webs_auth->method = cape_str_cp (method);
-    
-    webs_auth->qbus = user_ptr;
-    webs_auth->request = request;
-    
-    webs_auth->clist = clist;
-    webs_auth->cdata = NULL;
-    webs_auth->files = NULL;
+  cape_str_replace_cp (&(self->module), module);
+  cape_str_to_upper (self->module);
 
-    webs_auth->files_to_delete = cape_list_new (webs__files__on_del);
-    webs_auth->extra_token = token;
-
-    // check for authentication
-    return webs_run (&webs_auth, err);
-  }
+  cape_str_replace_cp (&(self->method), method);
+  cape_udc_replace_mv (&(self->clist), p_clist);
   
-  return CAPE_ERR_NONE;
+  cape_str_replace_mv (&(self->extra_token), p_token);
 }
 
-//-------------------------------------------------------------------------------------
-
-static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
-{
-  int res;
-
-  // fetch the config 
-  const CapeString site = qbus_config_s (qbus, "site", "public");
-  const CapeString host = qbus_config_s (qbus, "host", "127.0.0.1");
-
-  // this is the directory to find error pages
-  const CapeString pages = qbus_config_s (qbus, "pages", "pages");
-  
-  number_t port = qbus_config_n (qbus, "port", 8082);
-  number_t threads = qbus_config_n (qbus, "threads", 4);
-  
-  CapeUdc route_list = qbus_config_node (qbus, "route_list");
-  
-  QWebs webs = qwebs_new (site, host, port, threads, pages, route_list);
-  
-  res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  res = qwebs_reg (webs, "rest", qbus, qbus_webs__rest, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  res = qwebs_attach (webs, qbus_aio (qbus), err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  *p_ptr = webs;
-  
-  return CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  return cape_err_code (err);
-}
-
-//-------------------------------------------------------------------------------------
-
-static int __STDCALL qbus_webs_done (QBus qbus, void* ptr, CapeErr err)
-{
-  QWebs webs = ptr;
-  
-  qwebs_del (&webs);
-  
-  return CAPE_ERR_NONE;
-}
-
-//-------------------------------------------------------------------------------------
-
-int main (int argc, char *argv[])
-{
-  qbus_instance ("WEBS", NULL, qbus_webs_init, qbus_webs_done, argc, argv);
-  return 0;
-}
-
-//-------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------

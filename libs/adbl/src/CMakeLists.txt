@@ -11,6 +11,8 @@ SET(ADBL_CORE_SOURCES
 
 SET(ADBL_CORE_HEADERS
   core/adbl.h
+  core/adbl_pool.h
+  core/adbl.hpp
 )
 
 #----------------------------------------------------------------------------------

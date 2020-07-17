@@ -19,7 +19,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   QDecryptAES dec = NULL;
   
   // buffers
-  char* buffer = CAPE_ALLOC (1024);
+  char* buffer = CAPE_ALLOC (10000);
   CapeStream outb = cape_stream_new ();
 
   res = cape_fh_open (fh, O_RDONLY, err);
@@ -33,7 +33,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   
   while (TRUE)
   {
-    number_t bytes_read = cape_fh_read_buf (fh, buffer, 1024);
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, 10000);
     if (bytes_read > 0)
     {
       res = qdecrypt_aes_process (dec, buffer, bytes_read, err);

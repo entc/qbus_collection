@@ -1,8 +1,6 @@
 #ifndef __JOBS__LIST__H
 #define __JOBS__LIST__H 1
 
-#include "jobs_sched.h"
-
 // qbus includes
 #include <qbus.h>
 
@@ -14,13 +12,16 @@
 #include <sys/cape_types.h>
 #include <sys/cape_queue.h>
 
+// qjobs includes
+#include <qjobs.h>
+
 //-----------------------------------------------------------------------------
 
 struct JobsList_s; typedef struct JobsList_s* JobsList;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   JobsList    jobs_list_new          (QBus, AdblSession adbl_session, JobsScheduler scheduler);
+__CAPE_LIBEX   JobsList    jobs_list_new          (QBus, AdblSession adbl_session, QJobs jobs);
 
 __CAPE_LIBEX   void        jobs_list_del          (JobsList*);
 

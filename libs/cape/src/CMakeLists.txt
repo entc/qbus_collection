@@ -52,6 +52,8 @@ SET(CAPE_SYS_SOURCES
   sys/cape_exec.c
   sys/cape_time.c
   sys/cape_queue.c
+  sys/cape_lock.c
+  sys/cape_btrace.c
 )
 
 SET(CAPE_SYS_HEADERS
@@ -66,6 +68,8 @@ SET(CAPE_SYS_HEADERS
   sys/cape_exec.h
   sys/cape_time.h
   sys/cape_queue.h
+  sys/cape_lock.h
+  sys/cape_btrace.h
 )
 
 #----------------------------------------------------------------------------------

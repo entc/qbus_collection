@@ -135,6 +135,12 @@ AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
     goto exit;
   }
 
+  pvd.pvd_atomic_or = cape_dl_funct (hlib, "adbl_pvd_atomic_or", err);
+  if (pvd.pvd_atomic_or == NULL)
+  {
+    goto exit;
+  }
+
   {
     AdblCtx self = CAPE_NEW(struct AdblCtx_s);
     
@@ -259,6 +265,13 @@ number_t adbl_session_atomic_inc (AdblSession self, const char* table, CapeUdc* 
   return self->pvd->pvd_atomic_inc (self->session, table, p_params, atomic_value, err);
 }
 
+//-----------------------------------------------------------------------------
+
+number_t adbl_session_atomic_or (AdblSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, number_t or_val, CapeErr err)
+{
+  return self->pvd->pvd_atomic_or (self->session, table, p_params, atomic_value, or_val, err);
+}
+
 //=============================================================================
 
 struct AdblTrx_s
@@ -287,6 +300,8 @@ AdblTrx adbl_trx_new  (AdblSession session, CapeErr err)
     }
     
     pool_node = adbl_pool_add (session->pool, pvd_handle);
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "ADBL", "trx new", "created new connection, current connections %i", adbl_pool_size (session->pool));
   }
   
   {
@@ -314,7 +329,7 @@ int adbl_trx_commit (AdblTrx* p_self, CapeErr err)
     
     if (self->in_trx)
     {
-      cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx commit", "COMMIT TRANSACTION");
+      //cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx commit", "COMMIT TRANSACTION");
       
       res = adbl_pool_trx_commit (self->pool, self->pool_node, err);
     }
@@ -339,7 +354,7 @@ int adbl_trx_rollback (AdblTrx* p_self, CapeErr err)
     
     if (self->in_trx)
     {
-      cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx rollback", "ROLLBACK TRANSACTION");
+      cape_log_msg (CAPE_LL_WARN, "ADBL", "trx rollback", "ROLLBACK TRANSACTION");
       
       res = adbl_pool_trx_rollback (self->pool, self->pool_node, err);
     }
@@ -365,7 +380,7 @@ int adbl_trx_start (AdblTrx self, CapeErr err)
   {
     int res;
 
-    cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx start", "START TRANSACTION");
+    //cape_log_msg (CAPE_LL_TRACE, "ADBL", "trx start", "START TRANSACTION");
     
     res = adbl_pool_trx_begin (self->pool, self->pool_node, err);
     if (res)

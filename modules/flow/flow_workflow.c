@@ -297,6 +297,7 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_node  (values, "pdata"       );
     
     // execute the query
+    // select `ws`.`id` AS `id`,`ws`.`wfid` AS `wfid`,`ws`.`sqtid` AS `sqtid`,`ws`.`name` AS `name`,`ws`.`prev` AS `prev`,`ws`.`fctid` AS `fctid`,`pd`.`content` AS `pdata` from (`proc_worksteps` `ws` left join `proc_data` `pd` on(`pd`.`id` = `ws`.`p_data`))
     query_results = adbl_session_query (self->adbl_session, "flow_proc_worksteps_view", &params, &values, err);
     if (query_results == NULL)
     {
@@ -327,6 +328,7 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n     (values, "cnt"         , 0);
     
     // execute the query
+    // select `wf`.`id` AS `id`,`wf`.`name` AS `name`,(select count(`ws`.`id`) from `proc_worksteps` `ws` where `ws`.`wfid` = `wf`.`id`) AS `cnt` from `proc_workflows` `wf`
     query_results = adbl_session_query (self->adbl_session, "flow_workflows_view", NULL, &values, err);
     if (query_results == NULL)
     {

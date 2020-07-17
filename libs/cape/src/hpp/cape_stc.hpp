@@ -495,6 +495,18 @@ namespace cape
     
     //-----------------------------------------------------------------------------
     
+    void add (const char* name, CapeString* p_value)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+      
+      cape_udc_add_s_mv (m_obj, name, p_value); 
+    }
+    
+    //-----------------------------------------------------------------------------
+    
     template <typename S, typename T> void add (S const &name, T const &val)
     {
       if (m_obj == NULL)
@@ -595,6 +607,32 @@ namespace cape
       m_owned = rhs.m_owned;
       
       return *this;
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void reset_as_reference (const Udc& rhs)
+    {
+      m_obj = rhs.m_obj;
+      m_owned = false;
+    }
+    
+    //-----------------------------------------------------------------------------
+
+    void reset (Udc&& rhs)
+    {
+      if (rhs.m_owned)
+      {
+        // the other object ownes it -> transfer ownership
+        cape_udc_replace_mv (&m_obj, &(rhs.m_obj));
+      }
+      else
+      {
+        // copy the reference
+        m_obj = rhs.m_obj;
+      }
+      
+      m_owned = rhs.m_owned;
     }
     
     //-----------------------------------------------------------------------------
@@ -718,6 +756,30 @@ namespace cape
       return h == NULL ? Udc () : Udc (&h);
     }
     
+    //-----------------------------------------------------------------------------
+
+    template <typename S, typename T> void put (const S& name, T const& value)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+
+      UdcTransType<T>::put (m_obj, StringTrans<S>::c_str(name), value);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> void put (const char* name, T const& value)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+
+      UdcTransType<T>::put (m_obj, name, value);
+    }
+
     //-----------------------------------------------------------------------------
     
     const CapeUdc obj () const
@@ -927,6 +989,7 @@ namespace cape
     static void add_cp (CapeUdc obj, const char* name, const bool& value) { cape_udc_add_b (obj, name, value ? TRUE : FALSE); }
     static void add_mv (CapeUdc obj, const char* name, bool& value) { cape_udc_add_b (obj, name, value ? TRUE : FALSE); }
     static bool as (CapeUdc obj, bool dv = false) { return cape_udc_b (obj, dv ? TRUE : FALSE) == TRUE ? true : false; }
+    static void put (CapeUdc obj, const char* name, const bool& value) { cape_udc_put_b (obj, name, value ? TRUE : FALSE); }
   };
   
   template <> struct UdcTransType<std::string>

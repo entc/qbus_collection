@@ -195,7 +195,13 @@ int flow_chain_get__fetch (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err
     cape_udc_add_n      (values, "gpid"          , 0);
     cape_udc_add_s_cp   (values, "owner"         , NULL);
     cape_udc_add_n      (values, "refid"         , 0);
-    
+
+    /*
+    --- proc_task_logs_view ---
+
+    select tl.id, tl.taid, tl.created, tl.wsid, tl.state, tl.cnt, name, fctid, ts.id syncid, ts.cnt syncnt, (select group_concat(ta.id) from proc_tasks ta where ta.sync = ts.id) tas, pd.id vdataid, pd.content vdata, tl.gpid, tl.owner, tl.refid from proc_task_logs tl join proc_worksteps ws on ws.id = tl.wsid left join proc_task_sync ts on ts.id = tl.sync left join proc_data pd on pd.id = tl.vdata;
+
+     */
     // execute the query
     query_results = adbl_trx_query (trx, "proc_task_logs_view", &params, &values, err);
     if (query_results == NULL)

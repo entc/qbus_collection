@@ -114,13 +114,15 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
   if (NULL == qin->pdata)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
     goto exit_and_cleanup;
   }
+  */
   
-  self->refid = cape_udc_get_n (qin->pdata, "refid", 0);
+  self->refid = cape_udc_get_n (qin->cdata, "refid", 0);
   if (self->refid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'refid' is empty or missing");
@@ -150,14 +152,15 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  res = flow_run_dbw_init (flow_run_dbw, self->wfid, self->syncid, TRUE, err);
-  if (res)
+  self->psid = flow_run_dbw_init (flow_run_dbw, self->wfid, self->syncid, TRUE, err);
+  if (0 == self->psid)
   {
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
   // forward business logic to this class
-  res = flow_run_dbw_set (&flow_run_dbw, TRUE, FLOW_ACTION__PRIM, NULL, err);
+  res = flow_run_dbw_start (&flow_run_dbw, FLOW_ACTION__PRIM, NULL, err);
 
   qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   cape_udc_add_n (qout->cdata, FLOW_CDATA__PSID, self->psid);
@@ -188,7 +191,8 @@ int flow_process_set (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  self->psid = cape_udc_get_n (qin->cdata, "psid", 0);
+  // support both version
+  self->psid = cape_udc_get_n (qin->cdata, "psid", cape_udc_get_n (qin->cdata, "taid", 0));
   if (self->psid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_process_set} missing parameter 'psid'");
@@ -202,7 +206,7 @@ int flow_process_set (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc params = cape_udc_ext (qin->cdata, "params");
     
     // forward business logic to this class
-    res = flow_run_dbw_set (&flow_run_dbw, FALSE, cape_udc_get_n (qin->cdata, "action", FLOW_ACTION__SET), &params, err);
+    res = flow_run_dbw_set (&flow_run_dbw, cape_udc_get_n (qin->cdata, "action", FLOW_ACTION__SET), &params, err);
   }
     
 exit_and_cleanup:
@@ -539,7 +543,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+int flow_process_all (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   FlowProcess self = *p_self;
@@ -548,32 +552,143 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   // local objects
   CapeUdc query_results = NULL;
-  CapeUdc first_row = NULL;
-  CapeUdc tdata = NULL;
 
   res = flow_process__intern__qin_check (self, qin, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
+  
+  // check role
+  {
+    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+    if (roles == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+      goto exit_and_cleanup;
+    }
+    
+    CapeUdc fa_role = cape_udc_get (roles, "flow_wp_fa_r");
+    if (fa_role)
+    {
+      self->wpid = 0;
+    }
+  }
 
-  self->psid = cape_udc_get_n (qin->cdata, FLOW_CDATA__PSID, 0);
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "wfid"          , 0);
+    cape_udc_add_n      (values, "active"        , 0);
+    cape_udc_add_s_cp   (values, "step_name"     , NULL);
+    cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_s_cp   (values, "wf_name"       , NULL);
+    cape_udc_add_n      (values, "t_data"        , 0);
+    cape_udc_add_n      (values, "p_data"        , 0);
+
+    if (self->wpid)
+    {
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+      cape_udc_add_n    (params, "wpid"          , self->wpid);
+
+      // execute the query
+      // select ps.id, ps.wpid, ps.wfid, ps.active, ws.name step_name, ws.fctid, wf.name wf_name, ps.t_data, ws.p_data from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step join proc_workflows wf on wf.id = ps.wfid where sync is null;
+      query_results = adbl_session_query (self->adbl_session, "flow_process_get_view", &params, &values, err);
+    }
+    else
+    {
+      // execute the query
+      query_results = adbl_session_query (self->adbl_session, "flow_process_get_view", NULL, &values, err);
+    }
+
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  CapeString remote = NULL;
+  
+  CapeUdc tdata_node = NULL;
+  CapeUdc vdata_node = NULL;
+
+  CapeUdc tdata = NULL;
+  CapeUdc vdata = NULL;
+  
+  res = flow_process__intern__qin_check (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // check role
+  {
+    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+    if (roles == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+      goto exit_and_cleanup;
+    }
+    
+    CapeUdc fa_role = cape_udc_get (roles, "flow_wp_fa_r");
+    if (fa_role)
+    {
+      self->wpid = 0;
+    }
+  }
+
+  // support both versions
+  self->psid = cape_udc_get_n (qin->cdata, "psid", cape_udc_get_n (qin->cdata, "taid", 0));
   if (self->psid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_process_get} missing parameter 'psid'");
     goto exit_and_cleanup;
   }
   
+  // get the remote address
+  remote = cape_str_cp (cape_udc_get_s (qin->rinfo, "remote", NULL));
+
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "process get", "fetch info from process psid = %i, remote = %s", self->psid, remote);
+  
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "wpid"          , self->wpid);
     cape_udc_add_n      (params, "id"            , self->psid);
 
-    cape_udc_add_n      (values, "tdata"         , 0);
+    if (self->wpid)
+    {
+      cape_udc_add_n    (params, "wpid"          , self->wpid);
+    }
 
-    // execute the query
+    cape_udc_add_n      (values, "active"        , 0);
+    cape_udc_add_n      (values, "wfid"          , 0);
+    cape_udc_add_n      (values, "tdata"         , 0);
+    cape_udc_add_n      (values, "vdata"         , 0);
+
     query_results = adbl_session_query (self->adbl_session, "proc_task_view", &params, &values, err);
     if (query_results == NULL)
     {
@@ -587,19 +702,115 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
     goto exit_and_cleanup;
   }
-  
-  tdataid = cape_udc_get_n (first_row, "tdata", 0);
-  if (tdataid)
+
   {
-    tdata = flow_data_get (self->adbl_session, tdataid, err);
-    if (NULL == tdata)
+    number_t active = cape_udc_get_n (first_row, "active", 0);
+    if (active == 0)
     {
-      res = cape_err_code (err);
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "task is not active anymore");
       goto exit_and_cleanup;
     }
-    
-    cape_udc_add_name (first_row, &tdata, "tdata");
   }
+  
+  {
+    tdata_node = cape_udc_ext (first_row, "tdata");
+    if (tdata_node)
+    {
+      number_t tdataid = cape_udc_n (tdata_node, 0);
+      if (tdataid)
+      {
+        tdata = flow_data_get (self->adbl_session, tdataid, err);
+        if (NULL == tdata)
+        {
+          res = cape_err_code (err);
+          goto exit_and_cleanup;
+        }
+        
+        cape_udc_add_name (first_row, &tdata, "tdata");
+      }
+    }
+  }
+
+  {
+    vdata_node = cape_udc_ext (first_row, "vdata");
+    if (vdata_node)
+    {
+      number_t vdataid = cape_udc_n (vdata_node, 0);
+      if (vdataid)
+      {
+        vdata = flow_data_get (self->adbl_session, vdataid, err);
+        if (NULL == vdata)
+        {
+          res = cape_err_code (err);
+          goto exit_and_cleanup;
+        }
+        
+        cape_udc_add_name (first_row, &vdata, "vdata");
+      }
+    }
+  }
+
+  /*
+  
+  {
+    
+    if (vdata == NULL)
+    {
+      vdata = ecudc_create (EC_ALLOC, ENTC_UDC_NODE, "vdata");
+    }
+    
+    // check for the counter
+    {
+      EcUdc access_nodes = ecudc_node (vdata, "access");
+      
+      if (access_nodes == NULL)
+      {
+        EcUdc h = ecudc_create(EC_ALLOC, ENTC_UDC_LIST, "access");
+        
+        access_nodes = h;
+        
+        ecudc_add (vdata, &h);
+      }
+      
+      // add a new access token
+      {
+        EcUdc access_token = ecudc_create (EC_ALLOC, ENTC_UDC_NODE, NULL);
+        
+        {
+          EcString h = ectime_current_utc_datetime ();
+          
+          ecudc_add_asS_o (EC_ALLOC, access_token, "timestamp", &h);
+        }
+        
+        ecudc_add_asString (EC_ALLOC, access_token, "remote", remote);
+        
+        ecudc_add (access_nodes, &access_token);
+      }
+    }
+    
+    if (vdataid)
+    {
+      proc_taskflow_data_update (self->adbo, self->mutex, vdataid, vdata, "proc_taskflow_task");
+    }
+    else
+    {
+      number_t dataid = proc_taskflow_data_create (self->adbo, self->mutex, vdata);
+      
+      proc_taskflow_logs_update (self->adbo, self->mutex, ecudc_get_asNumber (item, "logid", 0), dataid, 0, 0);
+    }
+    
+    ecudc_destroy (EC_ALLOC, &vdata);
+    
+    // transfer ownership
+    dout->cdata = item;
+    item = NULL;
+    
+    dout->ctype = Q6OUTPUT_OBJECT;
+  }
+   */
+  
+  // add psid
+  cape_udc_add_n (first_row, "psid", self->psid);
   
   cape_udc_replace_mv (&(qout->cdata), &first_row);
   res = CAPE_ERR_NONE;
@@ -608,8 +819,15 @@ exit_and_cleanup:
   
   cape_udc_del (&query_results);
   cape_udc_del (&first_row);
+  
+  cape_udc_del (&tdata_node);
+  
   cape_udc_del (&tdata);
-
+  cape_udc_del (&vdata);
+  
+  cape_str_del (&remote);
+  
+  // cleanup
   flow_process_del (p_self);
   return res;
 }

@@ -1,0 +1,281 @@
+
+<ng-template #modal_workstep_add let-modal>
+  <form #workstep_add = "ngForm" (ngSubmit) = "modal.close(workstep_add.value)">
+  <div class="modal-header">
+    <h4 class="modal-title" id="modal-basic-title">
+      <i class="fa fa-tasks"></i>&nbsp;&nbsp;add step
+    </h4>
+  </div>
+  <div class="modal-body">
+
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-6">
+          <h3 class="pull-right">function</h3>
+          <div class="form-group">
+            <label>name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.name" name="step_name" required>
+              <div class="invalid-feedback">please enter a name for this step</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>select function</label>
+            <select class="form-control" [(ngModel)]="modal_step_content.fctid" name="step_fctid">
+              <option *ngFor="let fct of step_functions" [value]="fct.id">{{fct.name}}</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <h3 class="pull-right">content</h3>
+
+          <div [ngSwitch]="modal_step_content.fctid">
+            <!-- the same view can be shown in more than one case -->
+            <div class="form-group" *ngSwitchCase="3">
+
+              <div class="form-group">
+                <label>module</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.module" name="module">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>method</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.method" name="method">
+                </div>
+              </div>
+
+
+            </div>
+            <div class="form-group" *ngSwitchCase="4">
+
+              <div class="form-group">
+                <label>module</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.module" name="module">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>method</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.method" name="method">
+                </div>
+              </div>
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="5">
+
+              <div class="alert alert-info" role="alert">
+                this step waits until a set was sent to each variable within the wait list node. a code can be specified for security reasons.
+              </div>
+
+              <div class="form-group">
+                <label>wait list node</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.waitlist_node" name="waitlist_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>code variable (optional)</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.code_node" name="code_node">
+                </div>
+              </div>
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="10">
+
+              <div class="form-group">
+                <label>name of the list node</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.list_node" name="list_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>name of the refid node</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.refid_node" name="refid_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>workflow id</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.wfid" name="wfid">
+                </div>
+              </div>
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="12">
+
+              <div class="form-group">
+                <label>value node</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.value_node" name="value_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>name of the refid node</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.refid_node" name="refid_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>switch</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.switch" name="switch">
+                </div>
+              </div>
+
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="13">
+
+              <div class="alert alert-info" role="alert">
+                checks if a variable exists. if there is an additional params node given, it checks inside this node
+              </div>
+
+              <div class="form-group">
+                <label>variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.value_node" name="value_node">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>workflow ID if found</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.wfid" name="wfid">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>params node (optional)</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.params_node" name="params_node">
+                </div>
+              </div>
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="50">
+
+              <div class="form-group">
+                <label>variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.var_name" name="var_name">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>new variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.new_name" name="new_name">
+                </div>
+              </div>
+
+
+            </div>
+
+            <div class="form-group" *ngSwitchCase="51">
+
+              <div class="form-group">
+                <label>node name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.node_name" name="node_name">
+                </div>
+              </div>
+
+            </div>
+
+            <div class="form-group" *ngSwitchDefault>
+
+              <div class="alert alert-danger" role="alert">
+                please select a function
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">Cancel</button>
+    <button type="submit" class="btn btn-outline-success">Save</button>
+  </div>
+  </form>
+</ng-template>
+
+<!-- ============================================================================================================ -->
+
+<ng-template #modal_workstep_del let-modal>
+  <div class="modal-header">
+    <h4 class="modal-title" id="modal-basic-title">
+      <i class="fa fa-trash"></i>&nbsp;&nbsp;delete workstep
+    </h4>
+  </div>
+  <div class="modal-body">
+
+    <div class="alert alert-danger" role="alert">
+      this will delete the workstep
+    </div>
+
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">Cancel</button>
+    <button type="button" class="btn btn-danger" (click)="modal.close()">Delete</button>
+  </div>
+</ng-template>
+
+<!-- ============================================================================================================ -->
+
+<div class="container mt-2">
+
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">workflow editor</li>
+      <li class="breadcrumb-item active" aria-current="page"><a [routerLink]="['/flow_editor']">workflow list</a></li>
+    </ol>
+  </nav>
+
+  <button (click)="modal__workstep_add__open(modal_workstep_add, undefined)" type="button" class="btn btn-success">add step</button>
+
+  <table class="table mt-2">
+    <tr>
+      <th></th>
+      <th width="100%">name</th>
+      <th></th>
+      <th></th>
+    </tr>
+    <tr *ngFor="let ws of worksteps">
+      <td>
+        <button (click)="workstep_mv (ws, -1)" type="button" class="btn btn-sm btn-outline-dark mb-1">
+          <i class="fa fa-arrow-up"></i>
+        </button><br>
+        <button (click)="workstep_mv (ws, +1)" type="button" class="btn btn-sm btn-outline-dark">
+          <i class="fa fa-arrow-down"></i>
+        </button>
+      </td>
+      <td>
+        {{ws.name}}<br>
+        <small>{{function_name_get(ws.fctid)}}</small>
+      </td>
+      <td>
+        <button (click)="modal__workstep_add__open (modal_workstep_add, ws)" type="button" class="btn btn-outline-primary">
+          <i class="fa fa-edit"></i>
+        </button>
+      </td>
+      <td>
+        <button (click)="modal__workstep_del__open (modal_workstep_del, ws)" type="button" class="btn btn-outline-danger">
+          <i class="fa fa-trash"></i>
+        </button>
+      </td>
+    </tr>
+  </table>
+
+</div>

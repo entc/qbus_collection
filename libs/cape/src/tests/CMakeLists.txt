@@ -21,6 +21,9 @@ target_link_libraries   (ut_hpp_stc cape)
 add_executable          (ut_aio_socket_udp ut_aio_socket_udp.c)
 target_link_libraries   (ut_aio_socket_udp cape)
 
+add_executable          (ut_aio_timer ut_aio_timer.c)
+target_link_libraries   (ut_aio_timer cape)
+
 add_executable          (ut_aio_socket_icmp ut_aio_socket_icmp.c)
 target_link_libraries   (ut_aio_socket_icmp cape)
 
@@ -29,3 +32,6 @@ target_link_libraries   (ut_sys_time cape)
 
 add_executable          (ut_sys_queue ut_sys_queue.c)
 target_link_libraries   (ut_sys_queue cape)
+
+add_executable          (ut_fmt_template ut_fmt_template.c)
+target_link_libraries   (ut_fmt_template cape)

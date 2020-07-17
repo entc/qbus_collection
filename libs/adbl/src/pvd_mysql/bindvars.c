@@ -157,10 +157,9 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         MYSQL_BIND* bind = &(self->binds[self->pos]);
         
         const CapeDatetime* cape_dt = cape_udc_d (item, NULL);
-        
         if (cape_dt)
         {
-          MYSQL_TIME* dt = CAPE_NEW(MYSQL_TIME);
+          MYSQL_TIME* dt = CAPE_NEW (MYSQL_TIME);
           
           dt->year = cape_dt->year;
           dt->month = cape_dt->month;
@@ -172,6 +171,9 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
           
           //dt->second_part = cape_dt->msec * 1000;
           dt->second_part = cape_dt->usec;
+          
+          dt->neg = FALSE;
+          dt->time_type = MYSQL_TIMESTAMP_DATETIME;
           
           bind->buffer_type = MYSQL_TYPE_DATETIME;
           bind->buffer = dt;

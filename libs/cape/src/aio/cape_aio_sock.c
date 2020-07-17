@@ -142,6 +142,7 @@ void cape_aio_socket_del (CapeAioSocket* p_self)
     }
     
     // turn off wait timeout of the socket
+    /*
     {
       struct linger sl;
       
@@ -151,6 +152,7 @@ void cape_aio_socket_del (CapeAioSocket* p_self)
       // apply linger option to kernel and socket
       setsockopt((long)self->handle, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
     }
+     */
     
     // signal that this side of the socket is not going to continue to write or read from the socket
     shutdown ((long)self->handle, SHUT_RDWR);
@@ -206,6 +208,8 @@ void cape_aio_socket_close (CapeAioSocket self, CapeAioContext aio)
 {
   if (self)
   {
+    self->mask = CAPE_AIO_DONE;
+
     if (self->aioh)
     {
       cape_aio_context_mod (aio, self->aioh, self->handle, CAPE_AIO_DONE, 0);
@@ -683,7 +687,7 @@ struct CapeAioSocketUdp_s
   fct_cape_aio_socket_onDone on_done;
 };
 
-#define CAPE_AIO_SOCKET__UDP__RECV_BUFLEN 1024
+#define CAPE_AIO_SOCKET__UDP__RECV_BUFLEN 2000
 
 //-----------------------------------------------------------------------------
 
@@ -2649,7 +2653,7 @@ void cape_aio_socket_cache_clr (CapeAioSocketCache self)
 
 int cape_aio_socket_cache_send_s (CapeAioSocketCache self, CapeStream* p_stream, CapeErr err)
 {
-  int res;
+  int res = CAPE_ERR_NONE;
   
   if (*p_stream)
   {

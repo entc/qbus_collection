@@ -2,6 +2,7 @@
 
 #include "auth_ui.h"
 #include "auth_gp.h"
+#include "auth_vault.h"
 #include "auth_tokens.h"
 
 #include <adbl.h>
@@ -15,6 +16,8 @@
 struct AuthContext_s
 {
   AuthTokens tokens;
+  
+  AuthVault vault;
   
   AdblCtx adbl_ctx;
   
@@ -108,6 +111,19 @@ static int __STDCALL qbus_auth__gp_get (QBus qbus, void* ptr, QBusM qin, QBusM q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth__account_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session);
+  
+  // run the command
+  return auth_gp_account (&auth_gp, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_token_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -131,6 +147,24 @@ static int __STDCALL qbus_auth_token_del (QBus qbus, void* ptr, QBusM qin, QBusM
   AuthContext ctx = ptr;
 
   return auth_tokens_rm (ctx->tokens, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_vault_open (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+
+  return auth_vault_set (ctx->vault, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_vault_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  return auth_vault_get (ctx->vault, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -160,6 +194,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   ctx->adbl_ctx = adbl_ctx;
   ctx->adbl_session = adbl_session;
   
+  ctx->vault = auth_vault_new ();
   ctx->tokens = auth_tokens_new (ctx->adbl_session);
   
   *p_ptr = ctx;
@@ -183,13 +218,27 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "getUI"                , ctx, qbus_auth_ui_get, NULL, err);
   qbus_register (qbus, "changeCredentials"    , ctx, qbus_auth_ui_set, NULL, err);
 
+  // -------- callback methods --------------------------------------------
+
   // all global person functions
   qbus_register (qbus, "globperson_get"       , ctx, qbus_auth__gp_get, NULL, err);
+
+  // get the user account info
+  //   -> global person info
+  //   -> account info (workspace)
+  //   -> secret (encrypted)
+  qbus_register (qbus, "account_get"          , ctx, qbus_auth__account_get, NULL, err);
   
+  // -------- callback methods --------------------------------------------
+
   // all token functions
   qbus_register (qbus, "newToken"             , ctx, qbus_auth_token_add, NULL, err);
   qbus_register (qbus, "getTokenContent"      , ctx, qbus_auth_token_get, NULL, err);
   qbus_register (qbus, "invalidateToken"      , ctx, qbus_auth_token_del, NULL, err);
+
+  // all vault functions
+  qbus_register (qbus, "vault_set"            , ctx, qbus_auth_vault_open, NULL, err);
+  qbus_register (qbus, "getVaultSecret"       , ctx, qbus_auth_vault_get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 
@@ -220,6 +269,7 @@ static int __STDCALL qbus_auth_done (QBus qbus, void* ptr, CapeErr err)
   
   if (ctx)
   {
+    auth_vault_del (&(ctx->vault));
     auth_tokens_del (&(ctx->tokens));
     
     adbl_session_close (&(ctx->adbl_session));

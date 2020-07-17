@@ -1,0 +1,21 @@
+<page-toolbar #toolbar sorting="{'date': 'ltime', 'workplace': 'workplace'}"></page-toolbar>
+
+<table class="table mt-2">
+  <tr>
+    <th></th>
+    <th>ip</th>
+    <th>workplace</th>
+    <th width="100%">info</th>
+  </tr>
+  <tr *ngFor="let item of login_items | async | pageToolBar : toolbar : ['workplace', 'ip']">
+    <td>{{item.ltime}}</td>
+    <td>{{item.ip}}</td>
+    <td>{{item.workplace}}</td>
+    <td>
+      <div *ngIf="item.info; else elseBlock">
+        {{item.info.appVersion}}
+      </div>
+      <ng-template #elseBlock>no info</ng-template>
+    </td>
+  </tr>
+</table>

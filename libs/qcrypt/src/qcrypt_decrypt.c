@@ -103,12 +103,17 @@ void qdecrypt_aes_del (QDecryptAES* p_self)
   
 #else
 
+    // call the cleanup to free memory
+    EVP_CIPHER_CTX_cleanup (self->ctx);
+
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 
+    // free the object struct
     CAPE_FREE (self->ctx);
     
 #else
     
+    // free the object struct
     EVP_CIPHER_CTX_free (self->ctx);
 
 #endif
@@ -202,7 +207,8 @@ int qdecrypt_aes_process (QDecryptAES self, const char* bufdat, number_t buflen,
     }
   }
   
-  cape_stream_cap (self->product, buflen + self->blocksize);
+  // extend the buffer (use 2 bytes extra to be on the safe side)
+  cape_stream_cap (self->product, buflen + self->blocksize + 2);
   
   {
     int lenLast;

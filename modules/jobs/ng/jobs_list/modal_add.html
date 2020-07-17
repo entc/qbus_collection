@@ -1,0 +1,53 @@
+<form #userlogin = "ngForm" (ngSubmit) = "add_submit (userlogin)">
+
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-calendar-plus"></i>&nbsp;&nbsp;add a job event
+  </h4>
+</div>
+<div class="modal-body">
+
+  <div class="row">
+
+    <div class="col-8">
+
+      <div class="input-group mb-3">
+        <input class="form-control" placeholder="yyyy-mm-dd" [(ngModel)]="start_date" name="start_date" [displayMonths]="2" [navigation]="navigation" [outsideDays]="outsideDays" [showWeekNumbers]="showWeekNumbers" ngbDatepicker #d="ngbDatepicker">
+        <div class="input-group-append">
+          <button class="btn btn-outline-secondary" (click)="d.toggle()" type="button"><i class="fa fa-calendar"></i></button>
+        </div>
+      </div>
+
+      <ngb-timepicker [(ngModel)]="start_time" [seconds]="seconds" name="start_time"></ngb-timepicker>
+
+    </div>
+    <div class="col-4">
+
+      <div class="form-group">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="gridCheck">
+          <label class="form-check-label" for="gridCheck">
+            infinite
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="exampleFormControlInput1">repeats</label>
+        <input type="text" class="form-control" id="exampleFormControlInput1" placeholder="-1">
+      </div>
+
+    </div>
+  </div>
+
+  <hr>
+
+  <qbng-params name="params"></qbng-params>
+
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" (click)="modal.dismiss()">cancel</button>
+  <button type="submit" class="btn btn-success">add this job</button>
+</div>
+</form>

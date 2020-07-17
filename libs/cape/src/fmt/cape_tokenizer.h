@@ -17,18 +17,21 @@ __CAPE_LIBEX   CapeList           cape_tokenizer_buf__noempty  (const char* buff
                                   /* returns TRUE / FALSE if successfull */
 __CAPE_LIBEX   int                cape_tokenizer_split         (const CapeString source, char token, CapeString* p_left, CapeString* p_right);
 
+                                  /* returns a list of CapeString's */
+__CAPE_LIBEX   CapeList           cape_tokenizer_str           (const CapeString haystack, const CapeString needle);
+
 //-----------------------------------------------------------------------------
 
                                   /* returns a list with number_t values of the position
                                      -> WARNING: utf8 characters are not considered
                                                  positions are related to chars only
                                    */
-__CAPE_LIBEX   CapeList           cape_tokenizer_str           (const CapeString haystack, const CapeString needle);
+__CAPE_LIBEX   CapeList           cape_tokenizer_str_pos       (const CapeString haystack, const CapeString needle);
 
                                   /* returns a list with number_t values
                                       -> use this to get utf8 char positions
                                    */
-__CAPE_LIBEX   CapeList           cape_tokenizer_str_utf8      (const CapeString haystack, const CapeString needle);
+__CAPE_LIBEX   CapeList           cape_tokenizer_str_utf8_pos  (const CapeString haystack, const CapeString needle);
 
 //-----------------------------------------------------------------------------
 

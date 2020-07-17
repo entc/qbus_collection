@@ -207,15 +207,23 @@ void cape_parser_json_push (CapeParserJson self, int type, int state)
 
 //-----------------------------------------------------------------------------
 
-void cape_parser_json_pop (CapeParserJson self)
+int cape_parser_json_pop (CapeParserJson self, CapeErr err)
 {
   // transfer all element values to the content element
   {
     CapeParserJsonItem element = cape_list_pop_back (self->stack);
     
-    cape_parser_json_item_setObject (self->valElement, &(element->obj), element->type);
-    
-    cape_parser_json_stack_onDel (element);
+    if (element == NULL)
+    {
+      // it must be an error
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "syntax error");
+    }
+    else
+    {
+      cape_parser_json_item_setObject (self->valElement, &(element->obj), element->type);
+      
+      cape_parser_json_stack_onDel (element);
+    }
   }
   
   // fetch last element
@@ -232,6 +240,8 @@ void cape_parser_json_pop (CapeParserJson self)
       self->keyElement = NULL;
     }
   }
+  
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -387,7 +397,7 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
         {
           CapeDatetime dt;
           
-          if (cape_datetime__std (&dt, buf))
+          if (cape_datetime__std_msec (&dt, buf))
           {
             if (self->onItem)
             {
@@ -583,6 +593,8 @@ int cape_parser_json_item (CapeParserJson self, int type)
 
 int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t size, CapeErr err)
 {
+  int res;
+  
   const char* c = buffer;
   number_t i;
   
@@ -613,6 +625,16 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
+            
+            break;
+          }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
             
             break;
           }
@@ -650,6 +672,16 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
             
             break;
           }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
+            
+            break;
+          }
           default:
           {
             return cape_err_set (err, CAPE_ERR_PARSER, "unexpected state in '['");
@@ -664,7 +696,11 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
         {
           case JPARSER_STATE_NODE_RUN:
           {
-            cape_parser_json_pop (self);
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
             
             if (self->keyElement)
             {
@@ -675,8 +711,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           }
           case JPARSER_STATE_KEY_BEG:
           {
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -688,8 +728,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_UNDEFINED);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -701,8 +745,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NUMBER);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -714,8 +762,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -726,6 +778,16 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
+            
+            break;
+          }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
             
             break;
           }
@@ -742,8 +804,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
         {
           case JPARSER_STATE_LIST_RUN:
           {
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -755,8 +821,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_UNDEFINED);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -768,8 +838,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NUMBER);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -781,8 +855,12 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           {
             state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT);
             
-            cape_parser_json_pop (self);
-            
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
             if (self->keyElement)
             {
               state = JPARSER_STATE_VAL_BEG;
@@ -793,6 +871,16 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
+            
+            break;
+          }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
             
             break;
           }
@@ -969,6 +1057,17 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
             
             break;
           }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
+            
+            break;
+          }
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
@@ -977,7 +1076,7 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           }
           default:
           {
-            return cape_err_set (err, CAPE_ERR_PARSER, "unexpected state in ':'");
+            return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state in ':' = %i, key = %s", state, cape_stream_get (self->keyElement->stream));
           }
         }
         break;

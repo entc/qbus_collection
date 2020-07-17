@@ -25,6 +25,7 @@
 #include "fmt/cape_args.h"
 #include "fmt/cape_json.h"
 #include "fmt/cape_tokenizer.h"
+#include "sys/cape_btrace.h"
 
 // engines
 #include "../engines/tcp/engine_tcp.h"
@@ -745,6 +746,12 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   printf ("         88o8                                  \n");
   printf ("\n");
 
+  res = cape_btrace_activate (err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
   // load config
   qbus_config_load (qbus);
   

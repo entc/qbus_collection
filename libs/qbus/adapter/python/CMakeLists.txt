@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.4)
 
+SET(CMAKE_SKIP_RPATH TRUE)
+
 find_package (Python3 COMPONENTS Interpreter Development QUIET)
 
 IF(Python3_FOUND)
@@ -22,17 +24,13 @@ IF(Python3_FOUND)
     py_qbus.h
   )
 
-  #----------------------------------------------------------------------------------
-
   add_library             (qbus_adapter_python SHARED ${ADAPTER_PYTHON_SOURCES} ${ADAPTER_PYTHON_HEADERS})
   target_link_libraries   (qbus_adapter_python cape qbus ${Python3_LIBRARIES})
   set_target_properties   (qbus_adapter_python PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
-  INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
+ #INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
 
   # for docker
-  #INSTALL (TARGETS qbus_adapter_python DESTINATION docker/qore/lib)
-
-  #----------------------------------------------------------------------------------
+#INSTALL (TARGETS qbus_adapter_python DESTINATION docker/dbuild/mods)
 
 ENDIF()

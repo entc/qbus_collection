@@ -1,0 +1,16 @@
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-building"></i>&nbsp;&nbsp;workspaces for this user
+  </h4>
+</div>
+<div class="modal-body">
+  <div class="list-group list-group-flush">
+    <button type="button" class="list-group-item list-group-item-action" *ngFor="let wp of workspaces" (click)="select_workspace (wp.wpid)">
+      {{wp.workspace}}
+    </button>
+  </div>
+</div>
+<div class="modal-footer">
+  <small>please select one of the workspaces above</small>
+  <button type="button" class="btn btn-outline-secondary" (click)="select_cancel ()">{{ 'MISC.CANCEL' | transloco }}</button>
+</div>
