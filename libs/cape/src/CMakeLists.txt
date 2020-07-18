@@ -128,7 +128,7 @@ set_target_properties   (cape PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 #install (TARGETS cape DESTINATION lib)
 
 # for docker
-#INSTALL (TARGETS cape DESTINATION docker/qore/lib)
+INSTALL (TARGETS cape DESTINATION docker/qore/lib)
 #INSTALL (FILES ${DLL_LIBRARIES} DESTINATION docker/qore/lib)
 #INSTALL (FILES ${PTHREAD_LIBRARIES} DESTINATION docker/qore/lib)
 
