@@ -30,6 +30,8 @@ TARGET_LINK_LIBRARIES(qbus_mod_flow qbus qflow adbl2)
 
 # for docker
 INSTALL (TARGETS qbus_mod_flow DESTINATION docker/flow/mods)
+INSTALL (TARGETS cape DESTINATION docker/flow/lib)
+INSTALL (TARGETS adbl2 DESTINATION docker/flow/lib)
 INSTALL (TARGETS qflow DESTINATION docker/flow/lib)
 
 # set some symlinks for direct starting
