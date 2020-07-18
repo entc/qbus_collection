@@ -19,15 +19,9 @@ set(CORE_HEADERS
 
 #----------------------------------------------------------------------------------
 
-#add_library             (qbus_core SHARED ${CORE_SOURCES} ${CORE_HEADERS})
 add_library             (qbus_core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 target_link_libraries   (qbus_core cape)
 set_target_properties   (qbus_core PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
-
-#install (TARGETS qbus_core DESTINATION lib)
-
-# for docker
-#INSTALL (TARGETS qbus_core DESTINATION docker/qore/lib)
 
 #----------------------------------------------------------------------------------
 
