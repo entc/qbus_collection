@@ -15,8 +15,12 @@ import { AuthService } from '@qbus/auth.service';
 export class FlowLogsComponent implements OnInit
 {
   @Input('psid') psid: number;
+  @Input('tag') tag: string;
 
   public chain_items: ChainItem[];
+  public filter: boolean;
+
+  private data: ChainItem[];
 
   //-----------------------------------------------------------------------------
 
@@ -28,14 +32,81 @@ export class FlowLogsComponent implements OnInit
 
   ngOnInit()
   {
+    this.filter = true;
+    this.fetch ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  grab_items (data: ChainItem[])
+  {
+    for (var i in data)
+    {
+      const item: ChainItem = data[i];
+
+      if (item.tag == this.tag)
+      {
+        const item_chain = Object.assign(item);
+
+        if (item_chain.logs)
+        {
+          item_chain.logs = undefined;
+        }
+
+        this.chain_items.push (item_chain);
+      }
+
+      if (item.logs)
+      {
+        this.grab_items (item.logs);
+      }
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  apply_data ()
+  {
+    if (this.filter)
+    {
+      this.chain_items = [];
+      this.grab_items (this.data);
+    }
+    else
+    {
+      this.chain_items = this.data;
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  fetch ()
+  {
     this.AuthService.json_rpc ('FLOW', 'chain_get', {'psid': this.psid}).subscribe((data: ChainItem[]) => {
 
-      this.chain_items = data;
+      this.data = data;
+      this.apply_data ();
+
     });
   }
 
   //-----------------------------------------------------------------------------
 
+  filter_acivate ()
+  {
+    this.filter = true;
+    this.apply_data ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  filter_deactivate ()
+  {
+    this.filter = false;
+    this.apply_data ();
+  }
+
+  //-----------------------------------------------------------------------------
 }
 
 class ChainItem
@@ -47,6 +118,7 @@ class ChainItem
   logs: ChainItem[];
   fctid: number;
   party: string;
+  tag: string;
 
   vdata: VDataItem;
 }

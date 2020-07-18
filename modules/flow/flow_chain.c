@@ -188,6 +188,7 @@ int flow_chain_get__fetch (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err
     cape_udc_add_n      (values, "cnt"           , 0);
     cape_udc_add_s_cp   (values, "name"          , NULL);
     cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_s_cp   (values, "tag"           , NULL);
     cape_udc_add_n      (values, "syncid"        , 0);
     cape_udc_add_n      (values, "syncnt"        , 0);
     cape_udc_add_n      (values, "vdataid"       , 0);
