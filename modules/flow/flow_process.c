@@ -751,63 +751,15 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
 
   /*
-  
+  res = flow_run_dbw_logs__update (self, trx, err);
+  if (res)
   {
-    
-    if (vdata == NULL)
-    {
-      vdata = ecudc_create (EC_ALLOC, ENTC_UDC_NODE, "vdata");
-    }
-    
-    // check for the counter
-    {
-      EcUdc access_nodes = ecudc_node (vdata, "access");
-      
-      if (access_nodes == NULL)
-      {
-        EcUdc h = ecudc_create(EC_ALLOC, ENTC_UDC_LIST, "access");
-        
-        access_nodes = h;
-        
-        ecudc_add (vdata, &h);
-      }
-      
-      // add a new access token
-      {
-        EcUdc access_token = ecudc_create (EC_ALLOC, ENTC_UDC_NODE, NULL);
-        
-        {
-          EcString h = ectime_current_utc_datetime ();
-          
-          ecudc_add_asS_o (EC_ALLOC, access_token, "timestamp", &h);
-        }
-        
-        ecudc_add_asString (EC_ALLOC, access_token, "remote", remote);
-        
-        ecudc_add (access_nodes, &access_token);
-      }
-    }
-    
-    if (vdataid)
-    {
-      proc_taskflow_data_update (self->adbo, self->mutex, vdataid, vdata, "proc_taskflow_task");
-    }
-    else
-    {
-      number_t dataid = proc_taskflow_data_create (self->adbo, self->mutex, vdata);
-      
-      proc_taskflow_logs_update (self->adbo, self->mutex, ecudc_get_asNumber (item, "logid", 0), dataid, 0, 0);
-    }
-    
-    ecudc_destroy (EC_ALLOC, &vdata);
-    
-    // transfer ownership
-    dout->cdata = item;
-    item = NULL;
-    
-    dout->ctype = Q6OUTPUT_OBJECT;
+    goto exit_and_cleanup;
   }
-   */
+  */
+
+  
+
   
   // add psid
   cape_udc_add_n (first_row, "psid", self->psid);

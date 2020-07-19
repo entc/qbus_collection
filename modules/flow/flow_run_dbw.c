@@ -170,8 +170,8 @@ struct FlowRunDbw_s
   number_t vdata_id;
   CapeUdc vdata;
   
-  number_t logid;              // log id
   number_t state;
+  number_t logtype;
   
   CapeUdc params;
 };
@@ -211,7 +211,7 @@ FlowRunDbw flow_run_dbw_new (QBus qbus, AdblSession adbl_session, CapeQueue queu
   self->vdata_id = 0;
   self->vdata = NULL;
   
-  self->logid = 0;
+  self->logtype = 0;
   self->state = 0;
   
   self->params = NULL;
@@ -273,7 +273,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
   self->vdata_id = 0;
   self->vdata = NULL;
   
-  self->logid = 0;
+  self->logtype = 0;
   self->state = 0;
   
   return self;
@@ -494,7 +494,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_logs__update (FlowRunDbw self, AdblTrx trx, number_t logref, CapeErr err)
+int flow_run_dbw_logs__update (FlowRunDbw self, AdblTrx trx, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   number_t gpid = 0;
@@ -504,86 +504,16 @@ int flow_run_dbw_logs__update (FlowRunDbw self, AdblTrx trx, number_t logref, Ca
     gpid = cape_udc_get_n (self->tdata, "gpid", 0);
   }
 
-  if (self->logid)
+  switch (self->logtype)
   {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_n      (params, "id"            , self->logid);
-
-    cape_udc_add_n (values, "state", self->state);
-
-    if (self->vdata_id)
+    case 1:   // log everything
     {
-      cape_udc_add_n (values, "vdata", self->vdata_id);
-    }
-    
-    if (self->syncmy)
-    {
-      cape_udc_add_n (values, "sync", self->syncmy);
-    }
-    
-    if (gpid)
-    {
-      cape_udc_add_n (values, "gpid", gpid);
-    }
-    
-    if (logref)
-    {
-      cape_udc_add_n (values, "refid", logref);
-    }
-
-    // execute the query
-    res = adbl_trx_update (trx, "proc_task_logs", &params, &values, err);
-  }
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int flow_run_dbw_logs__initialize (FlowRunDbw self, AdblTrx trx, CapeErr err)
-{
-  int res = CAPE_ERR_NONE;
-  number_t gpid = 0;
-  
-  if (self->tdata)
-  {
-    gpid = cape_udc_get_n (self->tdata, "gpid", 0);
-  }
-  
-  if (self->logid == 0)   // insert
-  {
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_n      (values, "taid"          , self->psid);
-    cape_udc_add_n      (values, "wsid"          , self->wsid);
-
-    cape_udc_add_n      (values, "state"         , FLOW_STATE__NONE);
-    
-    {
-      CapeDatetime dt; cape_datetime_utc (&dt);
-      cape_udc_add_d (values, "created", &dt);
-    }
-    
-    if (gpid)
-    {
-      cape_udc_add_n (values, "gpid", gpid);
-    }
-
-    // execute the query
-    self->logid = adbl_trx_insert (trx, "proc_task_logs", &values, err);
-    if (0 == self->logid)
-    {
-      res = cape_err_code (err);
+      
+      
+      break;
     }
   }
-  else  // update
-  {
-    // update gpid
-    res = flow_run_dbw_logs__update (self, trx, 0, err);
-  }
-  
+    
   return res;
 }
 
@@ -609,10 +539,15 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
 
     cape_udc_add_n      (values, "fctid"         , 0);
     cape_udc_add_n      (values, "refid"         , 0);
+    cape_udc_add_n      (values, "log"           , 0);
 
     cape_udc_add_n      (values, "p_data"        , 0);
     cape_udc_add_n      (values, "t_data"        , 0);
 
+    /*
+    select ws.id, ws.sqtid, ta.id taid, ta.wpid, ta.refid, ta.current_step, ws.name, ws.fctid, ws.log, ws.p_data, ta.t_data from proc_tasks ta join proc_worksteps ws on ws.wfid = ta.wfid and (ws.prev = ta.current_step or (ws.prev IS NULL and ta.current_step IS NULL));
+     */
+    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_next_workstep_view", &params, &values, err);
     if (query_results == NULL)
@@ -631,11 +566,11 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     
     self->fctid = cape_udc_get_n (first_row, "fctid", 0);
     self->refid = cape_udc_get_n (first_row, "refid", 0);
+    self->logtype = cape_udc_get_n (first_row, "log", 0);
     
     self->pdata_id = cape_udc_get_n (first_row, "p_data", 0);
     self->tdata_id = cape_udc_get_n (first_row, "t_data", 0);
 
-    self->logid = 0;
     self->state = FLOW_STATE__NONE;
 
     self->vdata_id = 0;
@@ -676,6 +611,7 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
     cape_udc_add_n      (values, "sqtid"         , 0);
 
     cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_n      (values, "log"           , 0);
     cape_udc_add_n      (values, "refid"         , 0);
     cape_udc_add_n      (values, "sync"          , 0);
     cape_udc_add_n      (values, "sync_cnt"      , 0);
@@ -687,6 +623,10 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
     cape_udc_add_n      (values, "state"         , 0);
     cape_udc_add_n      (values, "vdata"         , 0);
 
+    /*
+     select ws.id, ws.sqtid, ta.id taid, ta.wpid, ws.wfid, ta.active, ta.refid, ta.sync, ts.cnt sync_cnt, ta.current_step, ws.name, ws.fctid, ws.log, ws.p_data, ta.t_data, tl.id logid, tl.state, tl.cnt, tl.vdata from proc_tasks ta join proc_worksteps ws on ws.id = ta.current_step left join proc_task_sync ts on ts.taid = ta.id left join proc_task_logs tl on tl.taid = ta.id and tl.wsid = ws.id order by taid desc;
+     */
+    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_current_workstep_view", &params, &values, err);
     if (query_results == NULL)
@@ -707,6 +647,7 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
   self->sqid = cape_udc_get_n (first_row, "sqtid", 0);
   
   self->fctid = cape_udc_get_n (first_row, "fctid", 0);
+  self->logtype = cape_udc_get_n (first_row, "log", 0);
   self->refid = cape_udc_get_n (first_row, "refid", 0);
   self->syncid = cape_udc_get_n (first_row, "sync", 0);
   self->syncnt = cape_udc_get_n (first_row, "sync_cnt", -1);
@@ -715,7 +656,6 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
   self->pdata_id = cape_udc_get_n (first_row, "p_data", 0);
   self->tdata_id = cape_udc_get_n (first_row, "t_data", 0);
   
-  self->logid = cape_udc_get_n (first_row, "logid", 0);
   self->state = cape_udc_get_n (first_row, "state", 0);
   self->vdata_id = cape_udc_get_n (first_row, "vdata", 0);
 
@@ -793,7 +733,7 @@ int flow_run_dbw__current_task_save (FlowRunDbw self, AdblTrx trx, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = flow_run_dbw_logs__update (self, trx, 0, err);
+  res = flow_run_dbw_logs__update (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -970,7 +910,7 @@ int flow_run_dbw_update (FlowRunDbw self, CapeErr err)
   }
   
   // write or update the log entry
-  res = flow_run_dbw_logs__initialize (self, trx, err);
+  res = flow_run_dbw_logs__update (self, trx, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1316,9 +1256,6 @@ exit_and_cleanup:
 int flow_run_dbw__next (FlowRunDbw self, CapeErr err)
 {
   int res;
-  
-  // reset some values
-  self->logid = 0;
   
   res = flow_run_dbw__next_load (self, err);
   if (res)
