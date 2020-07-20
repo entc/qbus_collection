@@ -442,6 +442,8 @@ struct QWebsConnection_s
   
   int close_connection;           // closes the connection for each request
   int active;
+  
+  CapeString remote;
 };
 
 //-----------------------------------------------------------------------------
@@ -453,7 +455,7 @@ static void __STDCALL qwebs_connection__cache__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs)
+QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs, const CapeString remote)
 {
   QWebsConnection self = CAPE_NEW (struct QWebsConnection_s);
   
@@ -485,6 +487,8 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs)
   self->close_connection = FALSE;
   self->active = FALSE;
   
+  self->remote = cape_str_cp (remote);
+  
   return self;
 }
 
@@ -498,6 +502,8 @@ void qwebs_connection_del (QWebsConnection* p_self)
     
     cape_list_del (&(self->send_cache));
     cape_mutex_del (&(self->mutex));
+    
+    cape_str_del (&(self->remote));
     
     CAPE_DEL (p_self, struct QWebsConnection_s);
   }
@@ -699,6 +705,31 @@ void qwebs_connection_dec (QWebsConnection self)
 {
   cape_aio_socket_unref (self->aio_socket);
   self->active = FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qwebs_request_remote (QWebsRequest self)
+{
+  CapeString remote = NULL;
+  
+  // if we have no real ip address
+  if (cape_str_equal (self->conn->remote, "0.0.0.0"))
+  {
+    // check for proxy forward
+    CapeMapNode n = cape_map_find (self->header_values, "X-Forwarded-For");
+    if (n)
+    {
+      remote = cape_str_cp ((CapeString)cape_map_node_value (n));
+    }
+  }
+  
+  if (remote == NULL)
+  {
+    remote = cape_str_cp (self->conn->remote);
+  }
+
+  return remote;
 }
 
 //-----------------------------------------------------------------------------

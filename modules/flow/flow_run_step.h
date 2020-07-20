@@ -21,6 +21,8 @@
 #define FLOW_STATE__DONE              3
 #define FLOW_STATE__ABORTED           4
 #define FLOW_STATE__INIT              5
+#define FLOW_STATE__SET               6
+#define FLOW_STATE__GET               7
 
 //-----------------------------------------------------------------------------
 

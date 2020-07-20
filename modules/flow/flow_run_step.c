@@ -195,7 +195,7 @@ int flow_run_step__method__syncron (FlowRunStep* p_self, FlowRunDbw* p_dbw, Cape
         const CapeString cb_log = cape_udc_get_s (params, "cb_log", NULL);
         if (cb_log)
         {
-          flow_run_dbw__event_add (*p_dbw, CAPE_ERR_NONE, cb_log, 0, 0);
+          //flow_run_dbw__event_add (*p_dbw, CAPE_ERR_NONE, cb_log, 0, 0);
         }
       }
       

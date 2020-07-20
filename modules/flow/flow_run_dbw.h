@@ -123,5 +123,12 @@ __CAPE_LOCAL   int          flow_data_rm                   (AdblTrx trx, number_
 __CAPE_LOCAL   int          flow_data_set                  (AdblTrx trx, number_t dataid, CapeUdc content, CapeErr err);
 
 //-----------------------------------------------------------------------------
+// log tools
+
+__CAPE_LOCAL   int          flow_log_add_trx               (AdblTrx trx, number_t psid, number_t wsid, number_t log_type, number_t log_state, CapeUdc data, const CapeString vsec, CapeErr err);
+
+__CAPE_LOCAL   int          flow_log_add                   (AdblSession adbl_session, number_t psid, number_t wsid, number_t log_type, number_t log_state, CapeUdc data, const CapeString vsec, CapeErr err);
+
+//-----------------------------------------------------------------------------
 
 #endif

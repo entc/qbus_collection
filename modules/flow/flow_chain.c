@@ -1,10 +1,13 @@
 #include "flow_chain.h"
 #include "flow_run_dbw.h"
+#include "flow_run_step.h"
+#include "flow_process.h"
 
 // cape includes
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
 #include <stc/cape_list.h>
+#include <stc/cape_map.h>
 
 //-----------------------------------------------------------------------------
 
@@ -82,25 +85,32 @@ int flow_chain__intern__qin_check (FlowChain self, QBusM qin, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc flow_chain_get__next__fetch (AdblTrx trx, number_t syncid, CapeErr err)
+CapeUdc flow_chain_get__next__fetch (AdblTrx trx, number_t psid, number_t wsid, CapeErr err)
 {
   CapeUdc ret = NULL;
   
   // local objects
   CapeUdc query_results = NULL;
   
-  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "chain get", "{fetch} get log of task, syncid = %i", syncid);
+  //cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "chain get", "{fetch} get log of task, syncid = %i", syncid);
 
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "sync"          , syncid);
+    cape_udc_add_n      (params, "taid"          , psid);
+    cape_udc_add_n      (params, "wsid"          , wsid);
 
-    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "psid_client"   , 0);
+    
+    /*
+     flow_process_sync_view
+     
+     select taid, wsid, ps.id psid_client from proc_task_sync ts left join proc_tasks ps on ps.sync = ts.id;
+     */
     
     // execute the query
-    query_results = adbl_trx_query (trx, "proc_tasks", &params, &values, err);
+    query_results = adbl_trx_query (trx, "flow_process_sync_view", &params, &values, err);
     if (query_results == NULL)
     {
       goto exit_and_cleanup;
@@ -116,7 +126,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_chain_get__next (AdblTrx trx, CapeUdc item, CapeUdc logs, CapeErr err)
+int flow_chain_get__next (AdblTrx trx, CapeUdc item, CapeUdc logs, number_t psid, number_t wsid, CapeErr err)
 {
   int res;
   
@@ -124,13 +134,7 @@ int flow_chain_get__next (AdblTrx trx, CapeUdc item, CapeUdc logs, CapeErr err)
   CapeUdc items = NULL;
   CapeUdcCursor* cursor = NULL;
   
-  number_t syncid = cape_udc_get_n (item, "syncid", 0);
-  if (syncid == 0)
-  {
-    return CAPE_ERR_NONE;
-  }
-  
-  items = flow_chain_get__next__fetch (trx, syncid, err);
+  items = flow_chain_get__next__fetch (trx, psid, wsid, err);
   if (NULL == items)
   {
     res = cape_err_code (err);
@@ -141,10 +145,10 @@ int flow_chain_get__next (AdblTrx trx, CapeUdc item, CapeUdc logs, CapeErr err)
   cursor = cape_udc_cursor_new (items, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
-    number_t psid = cape_udc_get_n (cursor->item, "id", 0);
+    number_t psid = cape_udc_get_n (cursor->item, "psid_client", 0);
     if (psid)
     {
-      res = flow_chain_get__fetch (trx, psid, logs, err);
+      res = flow_chain_get__run (trx, psid, logs, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -165,106 +169,323 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_chain_get__fetch (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err)
+struct FlowChainItem_s
+{
+  CapeUdc item;
+  CapeUdc states;
+  
+}; typedef struct FlowChainItem_s* FlowChainItem;
+
+//-----------------------------------------------------------------------------
+
+void flow_chain_item__apply (FlowChainItem self, CapeUdc item)
+{
+  CapeUdc log_entry = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  {
+    CapeUdc h = cape_udc_ext (item, "pot");
+    if (h)
+    {
+      cape_udc_add (log_entry, &h);
+    }
+  }
+  {
+    CapeUdc h = cape_udc_ext (item, "state");
+    if (h)
+    {
+      cape_udc_add (log_entry, &h);
+    }
+  }
+  {
+    CapeUdc h = cape_udc_ext (item, "data");
+    if (h)
+    {
+      cape_udc_add (log_entry, &h);
+    }
+  }
+  
+  if (cape_udc_size (log_entry))
+  {
+    cape_udc_add (self->states, &log_entry);
+  }
+  else
+  {
+    cape_udc_del (&log_entry);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_item__prev (FlowChainItem self, number_t* p_prev)
+{
+  number_t prev = *p_prev;
+  
+  if (cape_udc_get_n (self->item, "prev", 0) == prev)
+  {
+    *p_prev = cape_udc_get_n (self->item, "wsid", 0);
+    
+    // avoid double checkings
+    return *p_prev != prev;
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc flow_chain_item__lot (FlowChainItem self, int* p_passed, number_t wsid)
+{
+  number_t state;
+  
+  cape_udc_add_name (self->item, &(self->states), "states");
+  
+  CapeUdc h1 = cape_udc_ext (self->item, "current_state");
+  CapeUdc h2 = cape_udc_ext (self->item, "current_step");
+
+  if (h2)
+  {
+    // correct states
+    number_t current_step = cape_udc_n (h2, 0);
+    
+    if (current_step == wsid)
+    {
+      *p_passed = FALSE;
+      
+      if (h1)
+      {
+        state = cape_udc_n (h1, FLOW_STATE__INIT);
+      }
+      else
+      {
+        state = FLOW_STATE__INIT;
+      }
+    }
+    else
+    {
+      if (*p_passed)
+      {
+        state = FLOW_STATE__DONE;
+      }
+      else
+      {
+        state = FLOW_STATE__NONE;
+      }
+    }
+  }
+  
+  cape_udc_add_n (self->item, "state", state);
+  
+  cape_udc_del (&h1);
+  cape_udc_del (&h2);
+
+  return cape_udc_mv (&(self->item));
+}
+
+//-----------------------------------------------------------------------------
+
+FlowChainItem flow_chain_item__new (CapeUdc* p_item)
+{
+  FlowChainItem self = CAPE_NEW (struct FlowChainItem_s);
+
+  self->item = cape_udc_mv (p_item);
+  self->states = cape_udc_new (CAPE_UDC_LIST, NULL);
+  
+  flow_chain_item__apply (self, self->item);
+
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_get__tol__prev (CapeMap logs_map, CapeUdc logs, number_t* p_prev, int* p_passed)
+{
+  int ret = FALSE;
+  CapeMapCursor* cursor = cape_map_cursor_create (logs_map, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    FlowChainItem fci = cape_map_node_value (cursor->node);
+
+    if (flow_chain_item__prev (fci, p_prev))
+    {
+      CapeUdc h = flow_chain_item__lot (fci, p_passed, *p_prev);
+
+      cape_udc_add (logs, &h);
+      
+      // continue with next round
+      ret = TRUE;
+      goto exit_and_cleanup;
+    }
+  }
+  
+exit_and_cleanup:
+
+  cape_map_cursor_destroy (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_chain_get__tol (CapeMap logs_map, CapeUdc logs)
+{
+  number_t prev = 0;
+  int passed = TRUE;
+  
+  while (flow_chain_get__tol__prev (logs_map, logs, &prev, &passed));
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_get__fetch (AdblTrx trx, number_t psid, CapeMap logs_map, CapeErr err)
 {
   int res;
   
   // local objects
   CapeUdc query_results = NULL;
   CapeUdcCursor* cursor = NULL;
-  
-  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "chain get", "{fetch} get log of process, psid = %i", psid);
 
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "taid"          , psid);
+    cape_udc_add_n      (params, "psid"          , psid);
+    cape_udc_add_n      (params, "sqtid"         , FLOW_SQTID__DEFAULT);
 
-    cape_udc_add_n      (values, "taid"          , 0);
-    cape_udc_add_d      (values, "created"       , NULL);
     cape_udc_add_n      (values, "wsid"          , 0);
-    cape_udc_add_n      (values, "state"         , 0);
-    cape_udc_add_n      (values, "cnt"           , 0);
+    cape_udc_add_n      (values, "wfid"          , 0);
     cape_udc_add_s_cp   (values, "name"          , NULL);
     cape_udc_add_n      (values, "fctid"         , 0);
+    cape_udc_add_n      (values, "prev"          , 0);
     cape_udc_add_s_cp   (values, "tag"           , NULL);
+    cape_udc_add_n      (values, "log"           , 0);
+
+    cape_udc_add_n      (values, "current_step"  , 0);
+    cape_udc_add_n      (values, "current_state" , 0);
+
+    cape_udc_add_d      (values, "pot"           , NULL);
+    cape_udc_add_n      (values, "state"         , 0);
+    cape_udc_add_node   (values, "data"          );
+
     cape_udc_add_n      (values, "syncid"        , 0);
-    cape_udc_add_n      (values, "syncnt"        , 0);
-    cape_udc_add_n      (values, "vdataid"       , 0);
-    cape_udc_add_s_cp   (values, "vdata"         , 0);
-    cape_udc_add_n      (values, "gpid"          , 0);
-    cape_udc_add_s_cp   (values, "owner"         , NULL);
-    cape_udc_add_n      (values, "refid"         , 0);
 
     /*
-    --- proc_task_logs_view ---
-
-    select tl.id, tl.taid, tl.created, tl.wsid, tl.state, tl.cnt, name, fctid, ts.id syncid, ts.cnt syncnt, (select group_concat(ta.id) from proc_tasks ta where ta.sync = ts.id) tas, pd.id vdataid, pd.content vdata, tl.gpid, tl.owner, tl.refid from proc_task_logs tl join proc_worksteps ws on ws.id = tl.wsid left join proc_task_sync ts on ts.id = tl.sync left join proc_data pd on pd.id = tl.vdata;
-
+     flow_chain_view
+     
+     select ps.id psid, ws.id wsid, ws.sqtid, ws.wfid, ws.prev, ws.name, ws.fctid, ws.tag, ws.log, ps.current_step, ps.current_state, fl.pot, fl.state, fl.data, ps.sync syncid from proc_tasks ps join proc_worksteps ws on ws.wfid = ps.wfid left join flow_log fl on fl.psid = ps.id and fl.wsid = ws.id left join proc_task_sync ts on ts.id = ps.sync;
      */
+
     // execute the query
-    query_results = adbl_trx_query (trx, "proc_task_logs_view", &params, &values, err);
+    query_results = adbl_trx_query (trx, "flow_chain_view", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }
-  
+
+  // collect all items to group them by wsid
   cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
-    // create a new sublist of logs
-    CapeUdc logs_the_next_level = cape_udc_new (CAPE_UDC_LIST, "logs");
-
-    res = flow_chain_get__next (trx, cursor->item, logs_the_next_level, err);
+    // get the step id
+    number_t wsid = cape_udc_get_n (cursor->item, "wsid", 0);
     
-    // convert vdata
+    CapeMapNode n = cape_map_find (logs_map, (void*)wsid);
+    if (n)
     {
-      CapeUdc vdata_node = cape_udc_ext (cursor->item, "vdata");
-      if (vdata_node)
-      {
-        // convert to node
-        CapeUdc vdata = cape_json_from_s (cape_udc_s (vdata_node, NULL));
-        if (vdata)
-        {
-          cape_udc_add_name (cursor->item, &vdata, "vdata");
-        }
-        
-        cape_udc_del (&vdata_node);
-      }
-    }
-    
-    if (res)
-    {
-      cape_udc_del (&logs_the_next_level);
-      goto exit_and_cleanup;
-    }
-    
-    if (cape_udc_size (logs_the_next_level))
-    {
-      cape_udc_add (cursor->item, &logs_the_next_level);
+      FlowChainItem fci = cape_map_node_value (n);
+      
+      flow_chain_item__apply (fci, cursor->item);
     }
     else
     {
-      cape_udc_del (&logs_the_next_level);
-    }
-
-    // add this to logs
-    {
       CapeUdc h = cape_udc_cursor_ext (query_results, cursor);
-      cape_udc_add (logs, &h);
+      
+      FlowChainItem fci = flow_chain_item__new (&h);
+      
+      cape_map_insert (logs_map, (void*)wsid, fci);
     }
   }
 
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
-
+  
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&query_results);
 
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_get__sub_logs (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdcCursor* cursor = cape_udc_cursor_new (logs, CAPE_DIRECTION_FORW);
+  CapeUdc logs_the_next_level = NULL;
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    number_t wsid = cape_udc_get_n (cursor->item, "wsid", 0);
+    if (wsid)
+    {
+      // create a new sublist of logs
+      logs_the_next_level = cape_udc_new (CAPE_UDC_LIST, "logs");
+
+      res = flow_chain_get__next (trx, cursor->item, logs_the_next_level, psid, wsid, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      if (cape_udc_size (logs_the_next_level))
+      {
+        cape_udc_add (cursor->item, &logs_the_next_level);
+      }
+      else
+      {
+        cape_udc_del (&logs_the_next_level);
+      }
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&logs_the_next_level);
+  cape_udc_cursor_del (&cursor);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_get__run (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeMap logs_map = cape_map_new (cape_map__compare__n, NULL, NULL);
+  
+  // fetch items from the database
+  res = flow_chain_get__fetch (trx, psid, logs_map, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // construct the items of the logs
+  flow_chain_get__tol (logs_map, logs);
+  
+  // add the recursive log structure
+  res = flow_chain_get__sub_logs (trx, psid, logs, err);
+  
+exit_and_cleanup:
+  
+  cape_map_del (&logs_map);
   return res;
 }
 
@@ -296,7 +517,7 @@ int flow_chain_get (FlowChain* p_self, QBusM qin, QBusM qout, CapeErr err)
   logs = cape_udc_new (CAPE_UDC_LIST, NULL);
   
   // start with the initial fetching
-  res = flow_chain_get__fetch (trx, self->psid, logs, err);
+  res = flow_chain_get__run (trx, self->psid, logs, err);
   if (res)
   {
     goto exit_and_cleanup;

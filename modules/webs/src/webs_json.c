@@ -365,6 +365,20 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
   // transfer the cdata
   cape_udc_replace_mv (&(qin->cdata), &(self->cdata));
 
+  if (qin->rinfo == NULL)
+  {
+    qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+  
+  // remote
+  {
+    CapeString remote = qwebs_request_remote (self->request);
+    if (remote)
+    {
+      cape_udc_add_s_mv (qin->rinfo, "remote", &remote);
+    }
+  }
+  
   if (p_cdata)
   {
     if (qin->cdata)

@@ -393,6 +393,7 @@ int adbl_prepare_prepare (AdblPrepare self, AdblPvdSession session, CapeStream s
     unsigned int error_code = mysql_stmt_errno (self->stmt);
     
     cape_log_fmt (CAPE_LL_ERROR, "ADBL", "prepare", "error seen: %i", error_code);    
+    cape_log_fmt (CAPE_LL_ERROR, "ADBL", "prepare", "sql statement: %s", cape_stream_get (stream));
 
     // try to figure out if the error was serious
     int res = adbl_check_error (session, error_code, err);

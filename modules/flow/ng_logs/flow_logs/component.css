@@ -54,7 +54,7 @@
 
             .timeline > li > .timeline-panel:before {
                 position: absolute;
-                top: 26px;
+                top: 6px;
                 right: -5px;
                 display: inline-block;
                 border-top: 15px solid transparent;
@@ -66,7 +66,7 @@
 
             .timeline > li > .timeline-panel:after {
                 position: absolute;
-                top: 27px;
+                top: 7px;
                 right: -4px;
                 display: inline-block;
                 border-top: 14px solid transparent;
@@ -84,7 +84,7 @@
             font-size: 0.6em;
             text-align: center;
             position: absolute;
-            top: 26px;
+            top: 6px;
             left: 10%;
             margin-left: -10px;
             background-color: #999999;
@@ -136,6 +136,7 @@
 .timeline-title {
     margin-top: 0;
     color: inherit;
+    font-size: 1em;
 }
 
 .timeline-body > p,
@@ -161,7 +162,7 @@
     ul.timeline > li > .timeline-badge {
         left: -2px;
         margin-left: 0;
-        top: 30px;
+        top: 10px;
     }
 
     ul.timeline > li > .timeline-panel {

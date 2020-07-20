@@ -17,12 +17,25 @@
     <div class="timeline-panel">
       <div class="timeline-heading">
         <h4 class="timeline-title">{{log.name}}</h4>
-        <p><small class="text-muted">{{log.created | trlo_locale}}</small></p>
+
+        <div *ngFor="let item of log.states">
+
+          <div *ngIf="item.state == 6">
+            <small class="text-muted"><i class="fas fa-check-circle"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}</small>
+          </div>
+          <div *ngIf="item.state == 7">
+            <small class="text-muted"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data['remote']}}</small>
+          </div>
+
+        </div>
+
       </div>
-      <div class="timeline-body">
+      <div class="mt-4" *ngIf="log.logs">
+        <div class="timeline-body mt-2">
 
           <flow-chain [logs]="log.logs"></flow-chain>
 
+        </div>
       </div>
     </div>
   </li>

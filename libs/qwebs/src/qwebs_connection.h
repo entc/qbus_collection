@@ -17,7 +17,7 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     QWebsConnection    qwebs_connection_new      (void* handle, CapeQueue, QWebs);
+__CAPE_LIBEX     QWebsConnection    qwebs_connection_new      (void* handle, CapeQueue, QWebs, const CapeString remote);
 
 __CAPE_LIBEX     void               qwebs_connection_del      (QWebsConnection*);
 
@@ -40,6 +40,8 @@ __CAPE_LIBEX     CapeMap            qwebs_request_headers     (QWebsRequest);
 __CAPE_LIBEX     CapeStream         qwebs_request_body        (QWebsRequest);
 
 __CAPE_LIBEX     const CapeString   qwebs_request_method      (QWebsRequest);
+
+__CAPE_LIBEX     CapeString         qwebs_request_remote      (QWebsRequest);
 
 //-----------------------------------------------------------------------------
 

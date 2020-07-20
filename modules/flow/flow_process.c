@@ -1,5 +1,6 @@
 #include "flow_process.h"
 #include "flow_run_dbw.h"
+#include "flow_run_step.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -631,12 +632,14 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
   CapeString remote = NULL;
+  CapeUdc data = NULL;
+  CapeUdc client = NULL;
+  
+  number_t logtype = 0;
+  number_t wsid = 0;
   
   CapeUdc tdata_node = NULL;
-  CapeUdc vdata_node = NULL;
-
   CapeUdc tdata = NULL;
-  CapeUdc vdata = NULL;
   
   res = flow_process__intern__qin_check (self, qin, err);
   if (res)
@@ -668,6 +671,9 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
+  // get info about the used device
+  client = cape_udc_ext (qin->cdata, "client");
+  
   // get the remote address
   remote = cape_str_cp (cape_udc_get_s (qin->rinfo, "remote", NULL));
 
@@ -687,9 +693,10 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "active"        , 0);
     cape_udc_add_n      (values, "wfid"          , 0);
     cape_udc_add_n      (values, "tdata"         , 0);
-    cape_udc_add_n      (values, "vdata"         , 0);
+    cape_udc_add_n      (values, "wsid"          , 0);
+    cape_udc_add_n      (values, "log"           , 0);
 
-    query_results = adbl_session_query (self->adbl_session, "proc_task_view", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "flow_process_view", &params, &values, err);
     if (query_results == NULL)
     {
       goto exit_and_cleanup;
@@ -698,6 +705,15 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   first_row = cape_udc_ext_first (query_results);
   if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
+    goto exit_and_cleanup;
+  }
+
+  logtype = cape_udc_get_n (first_row, "log", 0);
+
+  wsid = cape_udc_get_n (first_row, "wsid", 0);
+  if (wsid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
     goto exit_and_cleanup;
@@ -730,36 +746,24 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       }
     }
   }
-
+  
+  data = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  if (remote)
   {
-    vdata_node = cape_udc_ext (first_row, "vdata");
-    if (vdata_node)
-    {
-      number_t vdataid = cape_udc_n (vdata_node, 0);
-      if (vdataid)
-      {
-        vdata = flow_data_get (self->adbl_session, vdataid, err);
-        if (NULL == vdata)
-        {
-          res = cape_err_code (err);
-          goto exit_and_cleanup;
-        }
-        
-        cape_udc_add_name (first_row, &vdata, "vdata");
-      }
-    }
+    cape_udc_add_s_cp (data, "remote", remote);
+  }
+  
+  if (client)
+  {
+    cape_udc_add (data, &client);
   }
 
-  /*
-  res = flow_run_dbw_logs__update (self, trx, err);
+  res = flow_log_add (self->adbl_session, self->psid, wsid, logtype, FLOW_STATE__GET, data, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  */
-
-  
-
   
   // add psid
   cape_udc_add_n (first_row, "psid", self->psid);
@@ -773,12 +777,12 @@ exit_and_cleanup:
   cape_udc_del (&first_row);
   
   cape_udc_del (&tdata_node);
-  
   cape_udc_del (&tdata);
-  cape_udc_del (&vdata);
   
   cape_str_del (&remote);
-  
+  cape_udc_del (&data);
+  cape_udc_del (&client);
+
   // cleanup
   flow_process_del (p_self);
   return res;

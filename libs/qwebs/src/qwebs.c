@@ -208,7 +208,7 @@ static void __STDCALL qwebs__intern__on_connect (void* user_ptr, void* handle, c
   QWebs self = user_ptr;
   
   // for each connection we create a connection object
-  QWebsConnection connection = qwebs_connection_new (handle, self->queue, self);
+  QWebsConnection connection = qwebs_connection_new (handle, self->queue, self, remote_host);
   
   cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on connect", "new connection from %s", remote_host);
   

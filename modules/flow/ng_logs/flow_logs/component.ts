@@ -111,22 +111,19 @@ export class FlowLogsComponent implements OnInit
 
 class ChainItem
 {
-  state: number;
   name: string;
-  created: string;
-  dataset_name: string;
   logs: ChainItem[];
   fctid: number;
-  party: string;
   tag: string;
 
-  vdata: VDataItem;
+  states: ChainItemStatus[];
 }
 
-class VDataItem
+class ChainItemStatus
 {
-  events: ChainEvent[];
-  access: ChainEvent[];
+  data: object;
+  pot: string;
+  state: number;
 }
 
 class ChainEvent
