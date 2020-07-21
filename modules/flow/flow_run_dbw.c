@@ -1445,6 +1445,16 @@ int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, Ca
     goto exit_and_cleanup;
   }
   
+  if (self->state == FLOW_STATE__HALT)
+  {
+    // this is OK
+  }
+  else
+  {
+    // workaround
+    self->state = FLOW_STATE__HALT;
+  }
+  
   // run the next step
   res = flow_run_dbw__run_step (p_self, action, err);
   if (res)
