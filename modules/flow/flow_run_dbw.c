@@ -1408,16 +1408,6 @@ int flow_run_dbw_continue (FlowRunDbw* p_self, number_t action, CapeUdc* p_param
     goto exit_and_cleanup;
   }
 
-  if (self->state == FLOW_STATE__HALT)
-  {
-    // this is OK
-  }
-  else
-  {
-    // workaround
-    self->state = FLOW_STATE__HALT;
-  }
-
   cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
   *p_self = NULL;
 
