@@ -871,7 +871,7 @@ int flow_run_dbw__continue_parent_process (FlowRunDbw self, CapeErr err)
     // create a new process chain
     FlowRunDbw dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, psid, self->remote, self->rinfo, self->refid);
     
-    res = flow_run_dbw_continue (&dbw, FLOW_STATE__NONE, NULL, err);
+    res = flow_run_dbw_continue (&dbw, FLOW_STATE__HALT, NULL, err);
   }
   
 exit_and_cleanup:
@@ -1406,6 +1406,16 @@ int flow_run_dbw_continue (FlowRunDbw* p_self, number_t action, CapeUdc* p_param
   if (res)
   {
     goto exit_and_cleanup;
+  }
+
+  if (self->state == FLOW_STATE__HALT)
+  {
+    // this is OK
+  }
+  else
+  {
+    // workaround
+    self->state = FLOW_STATE__HALT;
   }
 
   cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
