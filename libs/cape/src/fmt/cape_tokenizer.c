@@ -130,6 +130,13 @@ int cape_tokenizer_split (const CapeString source, char token, CapeString* p_lef
 
 //-----------------------------------------------------------------------------------------------------------
 
+int cape_tokenizer_split_last (const CapeString source, char token, CapeString* p_left, CapeString* p_right)
+{
+  
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
 CapeList cape_tokenizer_str (const CapeString haystack, const CapeString needle)
 {
   CapeList ret = cape_list_new (cape_tokenizer_onDestroy);

@@ -128,8 +128,8 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   // -> checks all sites for re-writing
   self->site = qwebs_site (self->webs, at, length, &(self->url));
   
-  printf ("URL: '%s'\n", self->url);
-  printf ("SITE: '%s'\n", self->site);
+  //printf ("URL: '%s'\n", self->url);
+  //printf ("SITE: '%s'\n", self->site);
 
   if ('/' == *(self->url))
   {
@@ -221,7 +221,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     {
       CapeString h = cape_str_sub (at, length);
             
-      printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
 
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
@@ -238,11 +238,9 @@ static int qwebs_request__internal__on_body (http_parser* parser, const char* at
 {
   QWebsRequest self = parser->data;
   
-  printf ("---------------------------------------------------------------------------\n");
-
-  printf ("%.*s\n", (int)length, at);
-  
-  printf ("---------------------------------------------------------------------------\n");
+  //printf ("---------------------------------------------------------------------------\n");
+  //printf ("%.*s\n", (int)length, at);
+  //printf ("---------------------------------------------------------------------------\n");
 
   if (self->api)
   {
@@ -557,7 +555,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 {
   QWebsConnection self = ptr;
   
-  printf ("RECV BYTES %lu\n", buflen);
+  //printf ("RECV BYTES %lu\n", buflen);
   
   if (NULL == self->parser.data)
   {
@@ -615,15 +613,11 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
       if (request->api)
       {
-        printf ("REQUEST API ENTER\n");
-
         qwebs_request_api (&request);
-
-        printf ("REQUEST API LEFT\n");
       }
       else
       {
-        printf ("FILE '%s'\'%s'\n", request->site, request->url);
+        //printf ("FILE '%s'\'%s'\n", request->site, request->url);
 
         CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->site, request->url);
         if (s)

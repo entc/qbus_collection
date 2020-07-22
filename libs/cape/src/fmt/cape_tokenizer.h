@@ -17,6 +17,9 @@ __CAPE_LIBEX   CapeList           cape_tokenizer_buf__noempty  (const char* buff
                                   /* returns TRUE / FALSE if successfull */
 __CAPE_LIBEX   int                cape_tokenizer_split         (const CapeString source, char token, CapeString* p_left, CapeString* p_right);
 
+                                  /* returns TRUE / FALSE if successfull */
+__CAPE_LIBEX   int                cape_tokenizer_split_last    (const CapeString source, char token, CapeString* p_left, CapeString* p_right);
+
                                   /* returns a list of CapeString's */
 __CAPE_LIBEX   CapeList           cape_tokenizer_str           (const CapeString haystack, const CapeString needle);
 

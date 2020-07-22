@@ -799,6 +799,11 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
       res = flow_run_dbw_xdata__create_node (*p_dbw, err);
       break;
     }
+    case 52:   // (variable) move
+    {
+      res = flow_run_dbw_xdata__var_move (*p_dbw, err);
+      break;
+    }
     default:
     {
       cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run step", "step with fctid = %i is not implemented", flow_run_dbw_fctid_get (*p_dbw));

@@ -94,6 +94,9 @@ __CAPE_LOCAL   void         flow_run_dbw_tdata__merge_to     (FlowRunDbw, CapeUd
                             /* copy variable in TDATA */
 __CAPE_LOCAL   int          flow_run_dbw_xdata__var_copy     (FlowRunDbw, CapeErr err);
 
+                            /* copy variable in TDATA */
+__CAPE_LOCAL   int          flow_run_dbw_xdata__var_move     (FlowRunDbw, CapeErr err);
+
                             /* craete a new node in TDATA */
 __CAPE_LOCAL   int          flow_run_dbw_xdata__create_node  (FlowRunDbw, CapeErr err);
 

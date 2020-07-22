@@ -1891,6 +1891,37 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc flow_run_dbw__retrieve_var (CapeUdc node, const CapeString name)
+{
+  // try to split the name into its parts separated by the '.' character
+  CapeList name_parts = cape_tokenizer_buf (name, cape_str_size (name), '.');
+  
+  CapeUdc current_node = node;
+  
+  CapeListCursor* cursor = cape_list_cursor_create (name_parts, CAPE_DIRECTION_FORW);
+  
+  while (current_node && cape_list_cursor_next (cursor))
+  {
+    const CapeString part_name = cape_list_node_data (cursor->node);
+    
+    current_node = cape_udc_get (current_node, part_name);
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+  cape_list_del (&name_parts);
+  
+  return current_node;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__udc_path__split (const CapeString var_name, CapeString* p_node, CapeString* p_var)
+{
+  return cape_tokenizer_split_last (var_name, '.', p_node, p_var);  
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_dbw_xdata__var_copy (FlowRunDbw self, CapeErr err)
 {
   int res;
@@ -1946,6 +1977,107 @@ int flow_run_dbw_xdata__var_copy (FlowRunDbw self, CapeErr err)
 exit_and_cleanup:
   
   cape_udc_del (&var_copy);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_xdata__var_move (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  const CapeString var_name;
+  const CapeString new_name;
+  
+  CapeUdc var_node_node;
+  CapeUdc var_node_name;
+  CapeUdc new_node_node;
+  CapeUdc new_node_name;
+  
+  // local objects
+  CapeString var_name_node = NULL;
+  CapeString var_name_name = NULL;
+  CapeString new_name_node = NULL;
+  CapeString new_name_name = NULL;
+  
+  if (NULL == self->pdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "pdata is empty");
+    goto exit_and_cleanup;
+  }
+  
+  if (NULL == self->tdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "tdata is empty");
+    goto exit_and_cleanup;
+  }
+  
+  var_name = cape_udc_get_s (self->pdata, "var_name", NULL);
+  if (NULL == var_name)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'var_name' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  new_name = cape_udc_get_s (self->pdata, "new_name", NULL);
+  if (NULL == new_name)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'new_name' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  if (flow_run_dbw__udc_path__split (var_name, &var_name_node, &var_name_name))
+  {
+    // convert from name into node
+    var_node_node = flow_run_dbw__retrieve_var (self->tdata, var_name_node);
+    if (var_node_node == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "variable can't be found");
+      goto exit_and_cleanup;
+    }
+    
+    // convert from name into node
+    var_node_name = cape_udc_ext (var_node_node, var_name_name);
+  }
+  else
+  {
+    // convert from name into node
+    var_node_name = cape_udc_ext (self->tdata, var_name);
+  }
+
+  if (var_node_name == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "variable can't be found");
+    goto exit_and_cleanup;
+  }
+  
+  if (flow_run_dbw__udc_path__split (new_name, &new_name_node, &new_name_name))
+  {
+    new_node_node = flow_run_dbw__retrieve_var (self->tdata, new_name_node);
+    
+    // TODO: consideration to create the missing node
+    if (new_node_node == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "destination can't be found");
+      goto exit_and_cleanup;
+    }
+
+    cape_udc_add_name (new_node_node, &var_node_name, new_name_name);
+  }
+  else
+  {
+    cape_udc_add_name (self->tdata, &var_node_name, new_name);
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&var_name_node);
+  cape_str_del (&var_name_name);
+  cape_str_del (&new_name_node);
+  cape_str_del (&new_name_name);
+  
   return res;
 }
 
@@ -2036,30 +2168,6 @@ exit_and_cleanup:
   
   cape_udc_del (&node_create);
   return res;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeUdc flow_run_dbw__retrieve_var (CapeUdc node, const CapeString name)
-{
-  // try to split the name into its parts separated by the '.' character
-  CapeList name_parts = cape_tokenizer_buf (name, cape_str_size (name), '.');
-  
-  CapeUdc current_node = node;
-  
-  CapeListCursor* cursor = cape_list_cursor_create (name_parts, CAPE_DIRECTION_FORW);
-  
-  while (current_node && cape_list_cursor_next (cursor))
-  {
-    const CapeString part_name = cape_list_node_data (cursor->node);
-    
-    current_node = cape_udc_get (current_node, part_name);
-  }
-  
-  cape_list_cursor_destroy (&cursor);
-  cape_list_del (&name_parts);
-  
-  return current_node;
 }
 
 //-----------------------------------------------------------------------------
