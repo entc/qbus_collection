@@ -190,6 +190,28 @@
 
             </div>
 
+            <div class="form-group" *ngSwitchCase="52">
+
+              <div class="alert alert-info" role="alert">
+                moves a variable to a new destination and name
+              </div>
+
+              <div class="form-group">
+                <label>variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.var_name" name="var_name">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>new variable name</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.new_name" name="new_name">
+                </div>
+              </div>
+
+
+            </div>
+
             <div class="form-group" *ngSwitchDefault>
 
               <div class="alert alert-danger" role="alert">

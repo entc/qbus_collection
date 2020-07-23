@@ -132,7 +132,24 @@ int cape_tokenizer_split (const CapeString source, char token, CapeString* p_lef
 
 int cape_tokenizer_split_last (const CapeString source, char token, CapeString* p_left, CapeString* p_right)
 {
-  
+  if (source == NULL)
+  {
+    return FALSE;
+  }
+  {
+    const char * pos = strrchr (source, token);
+    if (pos != NULL)
+    {
+      CapeString h = cape_str_sub (source, pos - source);
+      
+      cape_str_replace_mv (p_left, &h);
+      cape_str_replace_cp (p_right, pos + 1);
+      
+      return TRUE;
+    }
+    
+    return FALSE;
+  }
 }
 
 //-----------------------------------------------------------------------------------------------------------

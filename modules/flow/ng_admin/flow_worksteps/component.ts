@@ -28,7 +28,8 @@ export class FlowWorkstepsComponent implements OnInit
     {id: 13, name: "if"},
     {id: 21, name: "place message"},
     {id: 50, name: "(variable) copy"},
-    {id: 51, name: "(variable) create node"}
+    {id: 51, name: "(variable) create node"},
+    {id: 52, name: "(variable) move"}
   ];
 
   worksteps = new Array<IWorkstep>();
