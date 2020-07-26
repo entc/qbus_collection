@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 2.4)
 
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("../../cape/src" "../core" ".")
+INCLUDE_DIRECTORIES("../../cape/src" "core" ".")
+
+SUBDIRS(core)
+SUBDIRS(adapter/java)
+SUBDIRS(adapter/python)
+SUBDIRS(engines/tcp)
 
 set(WSRV_SOURCES
   qbus.c
@@ -20,9 +25,12 @@ set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 INSTALL (TARGETS qbus DESTINATION lib)
 
-# for docker
-INSTALL (DIRECTORY DESTINATION docker/qore/bin)
-INSTALL (TARGETS qbus DESTINATION docker/qore/lib)
+#----------------------------------------------------------------------------------
 
+# for local install
+INSTALL (TARGETS qbus DESTINATION lib)
+
+# for docker install
+INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ DESTINATION ${CMAKE_BINARY_DIR}/docker/libs/qbus/src)
 
 #----------------------------------------------------------------------------------

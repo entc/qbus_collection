@@ -38,7 +38,7 @@ if (NOT MYSQL_FOUND)
     else ()
     
     find_library (MYSQL_LIBRARY_01 mariadbclient 
-      HINTS "/opt/local/lib/mariadb/mysql/" "/usr/lib/" "C:\\Program Files\\MariaDB 10.4\\lib"
+      HINTS "/opt/local/lib/mariadb/mysql/" "/usr/lib/" "C:\\Program Files\\MariaDB 10.4\\lib" "/usr/lib/x86_64-linux-gnu"
     )
 
     endif ()
