@@ -28,18 +28,6 @@ INCLUDE_DIRECTORIES("." "../../cape/src"  "../../qcrypt/src")
 add_library             (qwebs SHARED ${QWEBS_CORE_SOURCES} ${QWEBS_CORE_HEADERS})
 target_link_libraries   (qwebs qcrypt cape)
 
-#install (TARGETS qwebs DESTINATION lib)
-
-# for docker
-#INSTALL (TARGETS qwebs DESTINATION docker/qore/lib)
+install (TARGETS qwebs DESTINATION lib)
 
 #----------------------------------------------------------------------------------
-
-# for docker
-# create image qore
-
-# remove none used ones (needs to fix)
-#INSTALL(CODE "execute_process(COMMAND docker image rm qore:1.0.0)")
-
-# build the docker image
-#INSTALL(CODE "execute_process(COMMAND docker build -t qore:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")

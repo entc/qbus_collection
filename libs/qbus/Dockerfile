@@ -8,5 +8,7 @@ RUN apt-get update && apt-get install -y \
   libsqlite3-dev \
   libpcre3-dev \
   libcurl4-openssl-dev \
+  libssl-dev \
+  uuid-dev \
   && rm -rf /var/lib/apt/lists/*
 
