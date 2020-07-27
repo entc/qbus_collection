@@ -84,7 +84,7 @@ void __attribute__ ((constructor)) library_init (void)
   
   cape_log_fmt (CAPE_LL_DEBUG, "ADBL", "load library", "MYSQL INIT: Version (%i.%02i.%02i)", major, release, sub);
   
-  if ((major == 5) && (release == 5) && (sub == 33))
+  if ((major == 5) && (release == 5) && (sub == 33 || sub == 62))
   {
     //    -> mariadb version 5.5.33 - 1.161 - x86_64
     // TODO: mysql_library_init -> this hangs in libclient    
