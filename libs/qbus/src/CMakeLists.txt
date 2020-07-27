@@ -30,7 +30,4 @@ INSTALL (TARGETS qbus DESTINATION lib)
 # for local install
 INSTALL (TARGETS qbus DESTINATION lib)
 
-# for docker install
-INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ DESTINATION ${CMAKE_BINARY_DIR}/docker/libs/qbus/src)
-
 #----------------------------------------------------------------------------------

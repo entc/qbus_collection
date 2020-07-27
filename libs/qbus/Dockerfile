@@ -12,3 +12,4 @@ RUN apt-get update && apt-get install -y \
   uuid-dev \
   && rm -rf /var/lib/apt/lists/*
 
+ADD . /opt/modules/

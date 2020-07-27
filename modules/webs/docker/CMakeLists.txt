@@ -18,9 +18,9 @@ endif ()
 
 SET(CMAKE_INSTALL_PREFIX /opt/)
 
-SUBDIRS(libs/cape/src)
-SUBDIRS(libs/qbus/src)
-SUBDIRS(libs/qcrypt/src)
-SUBDIRS(libs/qwebs/src)
+SUBDIRS(qbus_collection/libs/cape/src)
+SUBDIRS(qbus_collection/libs/qbus/src)
+SUBDIRS(qbus_collection/libs/qcrypt/src)
+SUBDIRS(qbus_collection/libs/qwebs/src)
 
-SUBDIRS(modules/webs/src)
+SUBDIRS(qbus_collection/modules/webs/src)
