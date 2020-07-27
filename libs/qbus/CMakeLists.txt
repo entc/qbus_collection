@@ -8,7 +8,7 @@ SUBDIRS(app)
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/libs/qbus/)
 
 # copy into tmp folder all files needed
-SET(QORE_CONFIG_PATH ${PROJECT_SOURCE_DIR}/config/$ENV{QORE_CONFIG_PATH})
+SET(QORE_CONFIG_PATH ${PROJECT_SOURCE_DIR}/etc/$ENV{QORE_CONFIG_PATH})
 
 # remove none used ones (needs to fix)
 INSTALL(CODE "execute_process(COMMAND docker image rm qore/qbus:jessie)")

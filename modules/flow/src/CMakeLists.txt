@@ -1,7 +1,5 @@
 INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core" "../../../libs/qflow/src")
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
-
 #----------------------------------------------------------------------------------------
 
 SET (QBUS_MODULES_FLOW_SOURCES
@@ -27,12 +25,6 @@ SET (QBUS_MODULES_FLOW_HEADERS
 
 ADD_EXECUTABLE (qbus_mod_flow ${QBUS_MODULES_FLOW_SOURCES} ${QBUS_MODULES_FLOW_HEADERS})
 TARGET_LINK_LIBRARIES(qbus_mod_flow qbus qflow adbl2)
-
-# for docker
-#INSTALL (TARGETS qbus_mod_flow DESTINATION docker/flow/mods)
-#INSTALL (TARGETS cape DESTINATION docker/flow/lib)
-#INSTALL (TARGETS adbl2 DESTINATION docker/flow/lib)
-#INSTALL (TARGETS qflow DESTINATION docker/flow/lib)
 
 # set some symlinks for direct starting
 add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/flow.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/flow.json)

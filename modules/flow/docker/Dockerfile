@@ -11,5 +11,7 @@ RUN apt-get update && apt-get install -y \
   
 COPY --from=0 /opt .
 
+WORKDIR /modules
+
 ENTRYPOINT ["/modules/qbus_mod_flow"]
 CMD ["-d", "socket:127.0.0.1:33340"]
