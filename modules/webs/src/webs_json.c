@@ -356,7 +356,7 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
 {
   WebsJson self = *p_self;
 
-  cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "got info, continue with module = %s, method = %s", self->module, self->method);
+  //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "got info, continue with module = %s, method = %s", self->module, self->method);
 
   webs__check_body (self);
   
@@ -394,13 +394,7 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
   // transfer the clist
   if (self->clist)
   {
-    CapeString h = cape_json_to_s (self->clist);
-    
-    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "add CLIST: %s", h);
-    
     cape_udc_replace_mv (&(qin->clist), &(self->clist));
-    
-    cape_str_del (&h);
   }
 
   // transfer the files
@@ -492,7 +486,7 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "rest request with module = %s, method = %s", self->module, self->method);
+  //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "rest request with module = %s, method = %s", self->module, self->method);
 
   if (self->auth)
   {

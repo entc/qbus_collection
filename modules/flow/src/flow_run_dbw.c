@@ -556,7 +556,12 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    // there is the option do run this with an admin role (self->wpid == 0)
+    if (self->wpid)
+    {
+      cape_udc_add_n      (params, "wpid"          , self->wpid);
+    }
+    
     cape_udc_add_n      (params, "taid"          , self->psid);
 
     cape_udc_add_n      (values, "id"            , 0);
@@ -664,66 +669,6 @@ const CapeString flow_run_dbw_state_str (number_t state)
 
 //-----------------------------------------------------------------------------
 
-void flow_run_dbw__event_add (FlowRunDbw self, number_t err_code, const CapeString err_text, number_t vaid, number_t stype)
-{
-  /*
-  if (self->vdata == NULL)
-  {
-    self->vdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    if (self->remote)
-    {
-      cape_udc_add_s_cp (self->vdata, "remote", self->remote);
-    }
-  }
-  
-  // get the event list
-  {
-    CapeUdc events = cape_udc_ext (self->vdata, "events");
-    
-    if (events == NULL)
-    {
-      events = cape_udc_new (CAPE_UDC_LIST, "events");
-    }
-    
-    // add events
-    {
-      CapeUdc event = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      cape_udc_add_n (event, "err_code", err_code);
-      
-      if (err_text)
-      {
-        cape_udc_add_s_cp (event, "err_text", err_text);
-      }
-      
-      if (vaid)
-      {
-        cape_udc_add_n (event, "vaid", vaid);
-      }
-      
-      if (stype)
-      {
-        cape_udc_add_n (event, "stype", stype);
-      }
-      
-      // timestamp
-      {
-        CapeDatetime dt; cape_datetime_utc (&dt);
-
-        cape_udc_add_d (event, "timestamp", &dt);
-      }
-      
-      cape_udc_add (events, &event);
-    }
-    
-    cape_udc_add (self->vdata, &events);
-  }
-   */
-}
-
-//-----------------------------------------------------------------------------
-
 void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err)
 {
   int res;
@@ -744,7 +689,20 @@ void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err
 
     cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run dbw", "set state to error = %s", cape_err_text (result_err));
 
-    flow_run_dbw__event_add (self, cape_err_code (result_err), cape_err_text (result_err), 0, 0);
+    CapeUdc error_node = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (error_node, "err_code", cape_err_code (result_err));
+    cape_udc_add_s_cp (error_node, "err_text", cape_err_text (result_err));
+    
+    // add a special log entry, that this step was successfully set from outside
+    res = flow_log_add (self->adbl_session, self->psid, self->wsid, 1, FLOW_STATE__ERROR, error_node, NULL, err);
+
+    cape_udc_del (&error_node);
+    
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
   trx = adbl_trx_new (self->adbl_session, err);

@@ -108,6 +108,8 @@ int main (int argc, char *argv[])
       printf ("ERR %s\n", cape_err_text(err));
     }
 
+    cape_str_del (&h);
+    
     cape_udc_del (&n1);
     cape_udc_del (&n2);
   }

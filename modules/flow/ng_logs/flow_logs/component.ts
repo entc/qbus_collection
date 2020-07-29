@@ -1,6 +1,6 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, Injector } from '@angular/core';
 import { ActivatedRoute, Params } from '@angular/router';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 
 // auth service
@@ -111,6 +111,7 @@ export class FlowLogsComponent implements OnInit
 
 class ChainItem
 {
+  psid: number;
   name: string;
   logs: ChainItem[];
   fctid: number;
@@ -145,7 +146,7 @@ export class FlowChainComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private auth_service: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
   {
   }
 
@@ -157,5 +158,78 @@ export class FlowChainComponent implements OnInit
   }
 
   //-----------------------------------------------------------------------------
+
+  open_process_modal (item: ChainItem)
+  {
+    var details: FlowDetails = new FlowDetails;
+
+    details.psid = item.psid;
+
+    this.modalService.open (FlowLogDetailsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: FlowDetails, useValue: details}])}).result.then((result) => {
+
+
+    }, () => {
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  rerun_step (item: ChainItem)
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_set', {'psid': item.psid}).subscribe(() => {
+
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+}
+
+//=============================================================================
+
+export class FlowDetails
+{
+  psid: number;
+}
+
+export class FlowDetailsItem
+{
+  current_state: number;
+  current_step: number;
+  sync_pa_id: number;
+  sync_pa_cnt: number;
+  sync_pa_wsid: number;
+  sync_ci_id: number;
+  sync_ci_cnt: number;
+  sync_ci_wsid: number;
+}
+
+@Component({
+  selector: 'flow-logs-details-modal-component',
+  templateUrl: './modal_details.html'
+}) export class FlowLogDetailsModalComponent implements OnInit {
+
+  public data: FlowDetailsItem;
+  private psid: number;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_service: AuthService, public modal: NgbActiveModal, private details: FlowDetails)
+  {
+    this.psid = details.psid;
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_details', {'psid': this.psid}).subscribe((data: FlowDetailsItem) => {
+
+      this.data = data;
+
+    });
+  }
 
 }

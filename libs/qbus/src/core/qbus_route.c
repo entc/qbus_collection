@@ -980,7 +980,7 @@ void qbus_route_conn_request (QBusRoute self, QBusConnection const conn, const c
 
     if (cont && msg->chain_key)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "add chainkey '%s' for continue", msg->chain_key);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "add chainkey '%s' for continue", msg->chain_key);
       
       qbus_method_continue (qmeth, &(msg->chain_key), &(msg->sender), &(msg->rinfo));
     }
@@ -1053,7 +1053,7 @@ void qbus_route_request__local_chains (QBusRoute self, QBusM msg, void* ptr, fct
 
   CapeString h = cape_str_uuid();
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "add chainkey '%s' for continue", h);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "add chainkey '%s' for continue", h);
   
   qbus_method_continue (qmeth, &(msg->chain_key), &(msg->sender), &(msg->rinfo));
   

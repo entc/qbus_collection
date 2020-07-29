@@ -26,6 +26,21 @@
           <div *ngIf="item.state == 7">
             <small class="text-muted"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data['remote']}}</small>
           </div>
+          <div *ngIf="item.state == 1">
+            <small class="text-muted"><i class="fas fa-exclamation"></i>
+              &nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;
+              <span *ngIf="item.data">
+                {{item.data['err_text']}}
+              </span>
+            </small>
+          </div>
+
+        </div>
+        <div *ngIf="log.state == 2 || log.state == 1">
+
+          <hr>
+          <button (click)="open_process_modal (log)" class="btn btn-outline-primary btn-sm mr-2">details</button>
+          <button (click)="rerun_step (log)" class="btn btn-outline-primary btn-sm mr-2">rerun step</button>
 
         </div>
 
