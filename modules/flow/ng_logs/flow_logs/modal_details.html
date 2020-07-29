@@ -1,0 +1,39 @@
+<div class="modal-header">
+  <h4 class="modal-title" id="modal-basic-title">
+    <i class="fa fa-info"></i>&nbsp;&nbsp;{{ 'FLOW.PROCESSDETAILS' | transloco }}
+  </h4>
+</div>
+<div class="modal-body">
+
+  <ul class="list-group">
+    <li class="list-group-item">state:
+
+      <div class="form-group">
+          <input type="text" class="form-control" ngModal="data.current_state">
+      </div>
+
+    </li>
+    <li class="list-group-item">step: {{data.current_step}}</li>
+    <li class="list-group-item">parent sync id: {{data.sync_pa_id}}</li>
+    <li class="list-group-item">parent sync counter: {{data.sync_pa_cnt}}</li>
+    <li class="list-group-item">parent sync wsid: {{data.sync_pa_wsid}}</li>
+    <li class="list-group-item">child sync id: {{data.sync_ci_id}}</li>
+    <li class="list-group-item">child sync counter: {{data.sync_ci_cnt}}</li>
+    <li class="list-group-item">child sync wsid: {{data.sync_ci_wsid}}</li>
+  </ul>
+
+  <hr>
+
+  <div class="form-group">
+      <label for="PData">pdata</label>
+      <textarea class="form-control" id="PData" rows="2">{{data.pdata_text}}</textarea>
+  </div>
+  <div class="form-group">
+      <label for="TData">tdata</label>
+      <textarea class="form-control" id="TData" rows="10">{{data.tdata_text}}</textarea>
+  </div>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+</div>

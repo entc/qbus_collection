@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Injector } from '@angular/core';
+import { Component, OnInit, Input, Output, Injector, EventEmitter } from '@angular/core';
 import { ActivatedRoute, Params } from '@angular/router';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
@@ -141,6 +141,7 @@ class ChainEvent
 export class FlowChainComponent implements OnInit
 {
   @Input('logs') logs: ChainItem[];
+  @Output ('refresh') refresh = new EventEmitter<boolean>();
 
   show_details: boolean;
 
@@ -179,8 +180,18 @@ export class FlowChainComponent implements OnInit
   {
     this.auth_service.json_rpc ('FLOW', 'process_set', {'psid': item.psid}).subscribe(() => {
 
+      this.refresh.emit (true);
+      console.log('set step done');
 
     });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  refresh_apply ()
+  {
+    this.refresh.emit (true);
+    console.log('set step done (emit)');
   }
 
   //-----------------------------------------------------------------------------
@@ -204,6 +215,12 @@ export class FlowDetailsItem
   sync_ci_id: number;
   sync_ci_cnt: number;
   sync_ci_wsid: number;
+
+  tdata: object;
+  pdata: object;
+
+  tdata_text: string;
+  pdata_text: string;
 }
 
 @Component({
@@ -228,7 +245,8 @@ export class FlowDetailsItem
     this.auth_service.json_rpc ('FLOW', 'process_details', {'psid': this.psid}).subscribe((data: FlowDetailsItem) => {
 
       this.data = data;
-
+      this.data.tdata_text = JSON.stringify(this.data.tdata);
+      this.data.pdata_text = JSON.stringify(this.data.pdata);
     });
   }
 
