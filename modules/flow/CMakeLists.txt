@@ -8,7 +8,7 @@ SUBDIRS(src)
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/modules/flow/src)
 
 # for docker install
-INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/)
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/flow/)
 
 # remove none used ones (needs to fix)
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/flow:jessie)")

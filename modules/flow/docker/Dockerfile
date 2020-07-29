@@ -1,7 +1,7 @@
 FROM qore/qbus:jessie
 
 COPY docker /qore
-RUN mkdir /build && cd /build && cmake ../qore && make install
+RUN mkdir /build && cd /build && cmake ../qore/flow && make install
 
 FROM bitnami/minideb:jessie
 
