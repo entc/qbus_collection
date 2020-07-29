@@ -23,6 +23,8 @@ struct FlowProcess_s
   number_t syncid;             // process sync id
   
   number_t tdata_id;           // container to store all variables of the flow process
+  
+  CapeUdc tmp_data;
 };
 
 //-----------------------------------------------------------------------------
@@ -44,6 +46,7 @@ FlowProcess flow_process_new (QBus qbus, AdblSession adbl_session, CapeQueue que
   self->syncid = 0;
   
   self->tdata_id = 0;
+  self->tmp_data = NULL;
   
   return self;
 }
@@ -56,6 +59,7 @@ void flow_process_del (FlowProcess* p_self)
   {
     FlowProcess self = *p_self;
     
+    cape_udc_del (&(self->tmp_data));
     
     CAPE_DEL (p_self, struct FlowProcess_s);
   }
@@ -817,6 +821,8 @@ int flow_process_details (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr er
   int res;
   FlowProcess self = *p_self;
 
+  number_t wpid;
+  
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
@@ -854,8 +860,8 @@ int flow_process_details (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr er
     cape_udc_add_n      (values, "sync_ci_cnt"    , 0);
     cape_udc_add_n      (values, "sync_ci_wsid"   , 0);
 
-    cape_udc_add_s_cp   (values, "tdata"          , NULL);
-    cape_udc_add_s_cp   (values, "pdata"          , NULL);
+    cape_udc_add_node   (values, "tdata"          );
+    cape_udc_add_node   (values, "pdata"          );
     
     /*
      flow_process_details_view
@@ -877,7 +883,14 @@ int flow_process_details (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr er
     goto exit_and_cleanup;
   }
   
-  
+  /*
+  wpid = cape_udc_get_n (first_row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "{flow_process_get} data set has no 'wpid'");
+    goto exit_and_cleanup;
+  }
+  */
   
   cape_udc_replace_mv (&(qout->cdata), &first_row);
   res = CAPE_ERR_NONE;
