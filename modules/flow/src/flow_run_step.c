@@ -439,9 +439,22 @@ int flow_run_step__method__split (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
       
       break;
     }
+    case FLOW_STATE__HALT:
+    case FLOW_STATE__ERROR:
+    {
+      // get the syncronization counter
+      number_t syncnt = flow_run_dbw_synct_get (*p_dbw);
+
+      if (syncnt == 0)
+      {
+        return CAPE_ERR_NONE;
+      }
+      
+      break;
+    }
   }
   
-  return CAPE_ERR_NONE;
+  return CAPE_ERR_CONTINUE;
 }
 
 //-----------------------------------------------------------------------------
