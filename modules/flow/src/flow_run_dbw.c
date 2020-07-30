@@ -490,7 +490,11 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    if (self->wpid)
+    {
+      cape_udc_add_n      (params, "wpid"          , self->wpid);
+    }
+    
     cape_udc_add_n      (params, "taid"          , self->psid);
 
     cape_udc_add_n      (values, "id"            , 0);
