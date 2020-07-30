@@ -13,3 +13,6 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 ADD . /opt/modules/
+
+RUN ls /opt/modules/
+RUN cat /opt/modules/adbl_default.json
