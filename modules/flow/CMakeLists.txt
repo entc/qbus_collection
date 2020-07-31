@@ -1,46 +1,17 @@
-INCLUDE_DIRECTORIES("../../libs/cape/src" "../../libs/qbus/src" "../../libs/adbl/src/core" "../../libs/qflow/src")
+cmake_minimum_required(VERSION 2.4)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+SUBDIRS(src)
 
-#----------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------
 
-SET (QBUS_MODULES_FLOW_SOURCES
-  "flow.c"
-  "flow_workflow.c"
-  "flow_workstep.c"
-  "flow_process.c"
-  "flow_chain.c"
-  "flow_run_dbw.c"
-  "flow_run_step.c"
-  "flow_run.c"
-)
+# for docker install
+INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/modules/flow/src)
 
-SET (QBUS_MODULES_FLOW_HEADERS
-  "flow_workflow.h"
-  "flow_workstep.h"
-  "flow_process.h"
-  "flow_chain.h"
-  "flow_run_dbw.h"
-  "flow_run_step.h"
-  "flow_run.h"
-)
-
-ADD_EXECUTABLE (qbus_mod_flow ${QBUS_MODULES_FLOW_SOURCES} ${QBUS_MODULES_FLOW_HEADERS})
-TARGET_LINK_LIBRARIES(qbus_mod_flow qbus qflow adbl2)
-
-# for docker
-INSTALL (TARGETS qbus_mod_flow DESTINATION docker/flow/mods)
-INSTALL (TARGETS cape DESTINATION docker/flow/lib)
-INSTALL (TARGETS adbl2 DESTINATION docker/flow/lib)
-INSTALL (TARGETS qflow DESTINATION docker/flow/lib)
-
-# set some symlinks for direct starting
-add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/flow.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/flow.json)
-add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/adbl_default.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl_default.json)
-add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
+# for docker install
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/flow/)
 
 # remove none used ones (needs to fix)
-INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_flow:1.0.0)")
+INSTALL(CODE "execute_process(COMMAND docker image rm qmod/flow:jessie)")
 
 # build the docker image
-INSTALL (CODE "execute_process(COMMAND docker build -t qbus_mod_flow:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
+INSTALL(CODE "execute_process(COMMAND docker build -t qmod/flow:jessie -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile ${CMAKE_BINARY_DIR})")

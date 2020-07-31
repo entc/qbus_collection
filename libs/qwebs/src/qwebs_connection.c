@@ -601,7 +601,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
         {
           const CapeString connection_type = cape_map_node_value (n);
           
-          cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "connection type: %s", connection_type);
+          //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "connection type: %s", connection_type);
           
           self->close_connection = cape_str_equal (connection_type, "close");
         }

@@ -236,6 +236,19 @@ static int __STDCALL qbus_flow__process__get (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__process__details (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_details (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__process__all (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -375,6 +388,10 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get details of the current process
   //   args: psid
   qbus_register (qbus, "process_get"         , ctx, qbus_flow__process__get, NULL, err);
+
+  // get analytic details of a process
+  //   args: psid
+  qbus_register (qbus, "process_details"     , ctx, qbus_flow__process__details, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

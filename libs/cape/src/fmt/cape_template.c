@@ -1492,13 +1492,20 @@ int cape_template_compile_str (CapeTemplate self, const char* content, CapeErr e
 
 int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
 {
+  int res;
+  
   // a list to store all nodes in top down order
   CapeList node_stack = cape_list_new (NULL);
 
   // first entry
   cape_list_push_back (node_stack, node);
   
-  return cape_template_part_apply (self->root_part, node_stack, ptr, onText, onFile, 0, err);
+  res = cape_template_part_apply (self->root_part, node_stack, ptr, onText, onFile, 0, err);
+
+  // cleanup
+  cape_list_del (&node_stack);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------

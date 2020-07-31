@@ -46,6 +46,8 @@ __CAPE_LIBEX   int            flow_process_get         (FlowProcess*, QBusM qin,
 
 __CAPE_LIBEX   int            flow_process_all         (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_process_details     (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

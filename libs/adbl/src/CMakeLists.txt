@@ -23,10 +23,8 @@ add_library             (adbl2 SHARED ${ADBL_CORE_SOURCES} ${ADBL_CORE_HEADERS})
 target_link_libraries   (adbl2 cape)
 set_target_properties   (adbl2 PROPERTIES VERSION 2.0.1 SOVERSION 2.0.1)
 
-#install (TARGETS adbl2 DESTINATION lib)
-
-# for docker
-#INSTALL (TARGETS adbl2 DESTINATION docker/qore/lib)
+# for local install
+INSTALL (TARGETS adbl2 DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 

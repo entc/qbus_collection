@@ -16,4 +16,7 @@ INCLUDE_DIRECTORIES("." "../../cape/src" "../../adbl/src/core" "../../qcrypt/src
 add_library             (qjobs SHARED ${QFLOW_CORE_SOURCES} ${QFLOW_CORE_HEADERS})
 target_link_libraries   (qjobs cape adbl2 qcrypt)
 
+# for local install
+INSTALL (TARGETS qjobs DESTINATION lib)
+
 #----------------------------------------------------------------------------------

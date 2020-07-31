@@ -145,10 +145,10 @@ int flow_chain_get__next (AdblTrx trx, CapeUdc item, CapeUdc logs, number_t psid
   cursor = cape_udc_cursor_new (items, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
-    number_t psid = cape_udc_get_n (cursor->item, "psid_client", 0);
-    if (psid)
+    number_t psid_client = cape_udc_get_n (cursor->item, "psid_client", 0);
+    if (psid_client)
     {
-      res = flow_chain_get__run (trx, psid, logs, err);
+      res = flow_chain_get__run (trx, psid_client, logs, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -400,6 +400,8 @@ int flow_chain_get__fetch (AdblTrx trx, number_t psid, CapeMap logs_map, CapeErr
     else
     {
       CapeUdc h = cape_udc_cursor_ext (query_results, cursor);
+      
+      cape_udc_add_n (h, "psid", psid);
       
       FlowChainItem fci = flow_chain_item__new (&h);
       

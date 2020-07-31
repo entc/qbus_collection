@@ -6,13 +6,13 @@ import { Routes, RouterModule } from '@angular/router';
 import { AuthServiceModule } from '@qbus/auth_service.module';
 import { TrloModule } from '@qbus/trlo.module';
 
-import { FlowLogsComponent, FlowChainComponent } from './flow_logs/component';
+import { FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent } from './flow_logs/component';
 
 @NgModule({
-  declarations: [ FlowLogsComponent, FlowChainComponent ],
+  declarations: [ FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent ],
   imports: [CommonModule, FormsModule, TrloModule, AuthServiceModule],
   exports: [RouterModule, FlowLogsComponent],
-  entryComponents: []
+  entryComponents: [FlowLogDetailsModalComponent]
 })
 export class FlowLogsModule
 {

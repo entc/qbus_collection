@@ -21,11 +21,26 @@
         <div *ngFor="let item of log.states">
 
           <div *ngIf="item.state == 6">
-            <small class="text-muted"><i class="fas fa-check-circle"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}</small>
+            <span class="badge badge-success"><i class="fas fa-check-circle"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}</span>
           </div>
           <div *ngIf="item.state == 7">
-            <small class="text-muted"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data['remote']}}</small>
+            <span class="badge badge-light"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data['remote']}}</span>
           </div>
+          <div *ngIf="item.state == 1">
+            <span class="badge badge-danger"><i class="fas fa-exclamation"></i>
+              &nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;
+              <span *ngIf="item.data">
+                {{item.data['err_text']}}
+              </span>
+            </span>
+          </div>
+
+        </div>
+        <div *ngIf="log.state == 2 || log.state == 1">
+
+          <hr>
+          <button (click)="open_process_modal (log)" class="btn btn-outline-primary btn-sm mr-2">{{ 'FLOW.STEPDETAILS' | transloco }}</button>
+          <button (click)="rerun_step (log)" class="btn btn-outline-primary btn-sm mr-2">{{ 'FLOW.RERUNSTEP' | transloco }}</button>
 
         </div>
 
@@ -33,7 +48,7 @@
       <div class="mt-4" *ngIf="log.logs">
         <div class="timeline-body mt-2">
 
-          <flow-chain [logs]="log.logs"></flow-chain>
+          <flow-chain [logs]="log.logs" (refresh)="refresh_apply()"></flow-chain>
 
         </div>
       </div>

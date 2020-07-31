@@ -322,8 +322,6 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
     res = self->on_request (self->user_ptr, request, err);
   }
   
-  printf ("RETURNED FROM API CALL %i\n", res);
-  
   return res;
 }
 
@@ -331,8 +329,6 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
 
 const CapeString qwebs__intern__get_site (QWebs self, const CapeString part)
 {
-  printf ("SEEK SITE = '%s'\n", part);
-  
   CapeMapNode n = cape_map_find (self->sites, part);
   if (n)
   {

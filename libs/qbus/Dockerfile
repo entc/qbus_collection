@@ -1,6 +1,18 @@
-FROM base/sys:1.0.0
+FROM bitnami/minideb:jessie
 
-# specify the port number the container should expose
-ADD docker/qore .
+RUN apt-get update && apt-get install -y \
+  cmake \
+  gcc \
+  g++ \
+  libmysqlclient-dev \
+  libsqlite3-dev \
+  libpcre3-dev \
+  libcurl4-openssl-dev \
+  libssl-dev \
+  uuid-dev \
+  && rm -rf /var/lib/apt/lists/*
 
-ENV LD_LIBRARY_PATH /lib:${LD_LIBRARY_PATH}
+ADD . /opt/modules/
+
+RUN ls /opt/modules/
+RUN cat /opt/modules/adbl_default.json

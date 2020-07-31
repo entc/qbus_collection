@@ -30,13 +30,8 @@ endif()
   ADD_LIBRARY(adbl2_mysql SHARED ${CORE_SOURCES} ${CORE_HEADERS})
   TARGET_LINK_LIBRARIES( adbl2_mysql adbl2 cape ${MYSQL_LIBRARIES} ${ZLIB_LIBRARIES})
 
-  #INSTALL (TARGETS adbl2_mysql DESTINATION adbl)
+  INSTALL (TARGETS adbl2_mysql DESTINATION modules/adbl)
   
-  # for docker
-  #INSTALL (TARGETS adbl2_mysql DESTINATION docker/qore/mods/adbl)
-  #INSTALL (TARGETS adbl2_mysql DESTINATION docker/qore/lib)
-  #INSTALL (FILES ${MYSQL_LIBRARIES} DESTINATION docker/qore/lib)
-
   # set for later
   SET (ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 
