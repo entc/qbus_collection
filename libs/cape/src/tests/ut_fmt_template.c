@@ -87,6 +87,30 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
     cape_udc_del (&n);
   }
+  
+  {
+    CapeUdc n1 = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc n2 = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    cape_udc_add_n (n1, "data1", 1);
+    cape_udc_add_n (n2, "data2", 2);
+
+    cape_udc_add_name (n1, &n2, "sub");
+    
+    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, err);
+
+    if (h)
+    {
+      printf ("SUB: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+
+    cape_udc_del (&n1);
+    cape_udc_del (&n2);
+  }
 
 exit_and_cleanup:
 
