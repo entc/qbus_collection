@@ -131,6 +131,9 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   //printf ("URL: '%s'\n", self->url);
   //printf ("SITE: '%s'\n", self->site);
 
+  // create a map for all header values
+  self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+
   if ('/' == *(self->url))
   {
     CapeString url = NULL;
@@ -141,9 +144,6 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       cape_str_replace_mv (&(self->url), &url);
       cape_str_del (&opt);
     }
-
-    // create a map for all header values
-    self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
 
     // split the url into its parts
     self->url_values = cape_tokenizer_buf__noempty (self->url + 1, cape_str_size (self->url) - 1, '/');
@@ -595,6 +595,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 
     if (request->is_complete)
     {
+      
       {
         CapeMapNode n = cape_map_find (request->header_values, "Connection");
         if (n)
