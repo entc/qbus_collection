@@ -41,6 +41,12 @@ __CAPE_LIBEX   int                cape_str_not_empty     (const CapeString);    
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   number_t           cape_str_to_n          (const CapeString);
+
+__CAPE_LIBEX   double             cape_str_to_f          (const CapeString);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   int                cape_str_equal         (const CapeString, const CapeString);          // case sensitive
 
 __CAPE_LIBEX   int                cape_str_compare       (const CapeString, const CapeString);          // no case sensitive

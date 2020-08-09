@@ -267,6 +267,82 @@ int cape_str_not_empty (const CapeString s)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_str_to_n (const CapeString s)
+{
+  return strtol (s, NULL, 10);
+}
+
+//-----------------------------------------------------------------------------
+
+char cape_str_to_f__seek (const CapeString s)
+{
+  // first to to find what kind separator is used
+  number_t s_len = cape_str_size (s);
+  const char* pos;
+  
+  for (pos = s + s_len; pos > s; pos--)
+  {
+    switch (*pos)
+    {
+      case '.':
+      {
+        return '.';
+      }
+      case ',':
+      {
+        return ',';
+      }
+    }
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+double cape_str_to_f (const CapeString s)
+{
+  double ret = .0;
+  
+  switch (cape_str_to_f__seek (s))
+  {
+    case '.':
+    {
+      // remove all ','
+      CapeString h = cape_str_cp_replaced (s, ",", "");
+      
+      ret = strtod (h, NULL);
+      
+      cape_str_del (&h);
+      
+      break;
+    }
+    case ',':
+    {
+      // remove all '.'
+      CapeString h = cape_str_cp_replaced (s, ".", "");
+      
+      cape_str_replace (&h, ",", ".");
+      
+      ret = strtod (h, NULL);
+      
+      cape_str_del (&h);
+      
+      break;
+    }
+    default:
+    {
+      ret = strtol (s, NULL, 10);
+      
+      break;
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_str_equal (const CapeString s1, const CapeString s2)
 {
   if ((NULL == s1) || (NULL == s2))

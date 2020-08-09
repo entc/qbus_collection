@@ -564,7 +564,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
       case FORMAT_TYPE_DECIMAL:
       {
         // try to convert text into a number
-        double value = cape_eval_to_f (text);
+        double value = cape_str_to_f (text);
 
         return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
       }
@@ -626,7 +626,7 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, 
 
   if (self->eval)
   {
-    double h = cape_eval_to_f (self->eval);
+    double h = cape_str_to_f (self->eval);
     
     if (h == cape_udc_f (item, .0))
     {
@@ -773,7 +773,7 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
           const CapeString h = cape_udc_s (item, NULL);
           if (h)
           {
-            ret = cape_eval_to_f (h);
+            ret = cape_str_to_f (h);
           }
 
           break;
@@ -792,7 +792,7 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
     }
     else
     {
-      ret = cape_eval_to_f (formular);
+      ret = cape_str_to_f (formular);
     }
   }
     
@@ -1666,75 +1666,6 @@ exit_and_cleanup:
   cape_stream_del (&stream);
 
   return res;
-}
-
-//-----------------------------------------------------------------------------
-
-char cape_eval_to_f__seek (const CapeString s)
-{
-  // first to to find what kind separator is used
-  number_t s_len = cape_str_size (s);
-  const char* pos;
-  
-  for (pos = s + s_len; pos > s; pos--)
-  {
-    switch (*pos)
-    {
-      case '.':
-      {
-        return '.';
-      }
-      case ',':
-      {
-        return ',';
-      }
-    }
-  }
-  
-  return 0;
-}
-
-//-----------------------------------------------------------------------------
-
-double cape_eval_to_f (const CapeString s)
-{
-  double ret = .0;
-  
-  switch (cape_eval_to_f__seek (s))
-  {
-    case '.':
-    {
-      // remove all ','
-      CapeString h = cape_str_cp_replaced (s, ",", "");
-      
-      ret = strtod (h, NULL);
-      
-      cape_str_del (&h);
-      
-      break;
-    }
-    case ',':
-    {
-      // remove all '.'
-      CapeString h = cape_str_cp_replaced (s, ".", "");
-
-      cape_str_replace (&h, ",", ".");
-      
-      ret = strtod (h, NULL);
-      
-      cape_str_del (&h);
-
-      break;
-    }
-    default:
-    {
-      ret = strtol (s, NULL, 10);
-      
-      break;
-    }
-  }
-  
-  return ret;
 }
 
 //-----------------------------------------------------------------------------
