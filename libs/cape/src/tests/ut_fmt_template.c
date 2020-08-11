@@ -3,6 +3,17 @@
 // c includes
 #include <stdio.h>
 
+//-----------------------------------------------------------------------------
+
+static char* __STDCALL main__on_pipe (const char* name, const char* pipe, const char* value)
+{
+  printf ("ON PIPE: name = '%s', pipe = '%s', value = '%s'\n", pipe, value);
+  
+  return cape_str_cp ("13");
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res, ret;
@@ -19,7 +30,7 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (values, "val_float4", "1.134,32");
 
   {
-    res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, err);
+    res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -29,7 +40,7 @@ int main (int argc, char *argv[])
   }
 
   {
-    res = cape_eval_b ("{{val_float1|decimal:10%,%2}} = 0,11", values, &ret, err);
+    res = cape_eval_b ("{{val_float1|decimal:10%,%2}} = 0,11", values, &ret, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -39,41 +50,52 @@ int main (int argc, char *argv[])
   }
 
   {
-    res = cape_eval_b ("{{val_float2|decimal:10%,%2}} = 0,11", values, &ret, err);
+    res = cape_eval_b ("{{val_float2|decimal:10%,%2}} = 0,11", values, &ret, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
 
-    printf ("T2: %i\n", ret);
+    printf ("T3: %i\n", ret);
   }
 
   {
-    res = cape_eval_b ("{{val_float3|decimal:10%,%3}} = 113,432", values, &ret, err);
+    res = cape_eval_b ("{{val_float3|decimal:10%,%3}} = 113,432", values, &ret, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
 
-    printf ("T2: %i\n", ret);
+    printf ("T4: %i\n", ret);
   }
 
   {
-    res = cape_eval_b ("{{val_float4|decimal:10%,%3}} = 113,432", values, &ret, err);
+    res = cape_eval_b ("{{val_float4|decimal:10%,%3}} = 113,432", values, &ret, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
 
-    printf ("T2: %i\n", ret);
+    printf ("T5: %i\n", ret);
   }
 
+  // user parsing
+  {
+    res = cape_eval_b ("{{val_float4|pipe_test:xyz}} = 13", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T6: %i\n", ret);
+  }
+  
   {
     CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n (n, "val", 123);
     
-    CapeString h = cape_template_run ("{{$math{val - 0.2}|decimal:1%,%2}}", n, err);
+    CapeString h = cape_template_run ("{{$math{val - 0.2}|decimal:1%,%2}}", n, NULL, err);
 
     if (h)
     {
@@ -97,7 +119,7 @@ int main (int argc, char *argv[])
 
     cape_udc_add_name (n1, &n2, "sub");
     
-    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, err);
+    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, NULL, err);
 
     if (h)
     {

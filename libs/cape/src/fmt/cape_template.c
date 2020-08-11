@@ -28,6 +28,20 @@
 #define FORMAT_TYPE_DATE        1
 #define FORMAT_TYPE_ENCRYPTED   2
 #define FORMAT_TYPE_DECIMAL     3
+#define FORMAT_TYPE_PIPE        4
+
+//-----------------------------------------------------------------------------
+
+struct CapeTemplateCB_s
+{
+  void* ptr;
+  
+  // references to callback functions
+  fct_cape_template__on_text on_text;
+  fct_cape_template__on_file on_file;
+  fct_cape_template__on_pipe on_pipe;
+  
+}; typedef struct CapeTemplateCB_s* CapeTemplateCB;
 
 //-----------------------------------------------------------------------------
 
@@ -71,6 +85,12 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     {
       self->format_type = FORMAT_TYPE_DECIMAL;
       self->eval = cape_str_trim_utf8 (f2);
+    }
+    else if (cape_str_begins (h, "pipe_"))
+    {
+      self->format_type = FORMAT_TYPE_PIPE;
+      self->eval = cape_str_trim_utf8 (f2);
+      self->modn = cape_str_trim_utf8 (f1);
     }
     
     cape_str_del (&h);
@@ -222,7 +242,7 @@ void cape_template_part_add (CapeTemplatePart self, CapeTemplatePart part)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, number_t pos, CapeErr err);
+int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
@@ -338,7 +358,7 @@ int cape__evaluate_expression__smaller_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
   const CapeDatetime* dt = cape_udc_d (item, NULL);
   if (dt)
@@ -367,9 +387,9 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, void*
         {
           CapeString h2 = cape_datetime_s__fmt (h1, self->eval);
           
-          if (onText)
+          if (cb->on_text)
           {
-            onText (ptr, h2);
+            cb->on_text (cb->ptr, h2);
           }
           
           cape_str_del (&h2);
@@ -387,7 +407,7 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, void*
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_decimal (CapeTemplatePart self, double value, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTemplateCB cb, CapeErr err)
 {
   number_t fraction = 1;
   const CapeString devider;
@@ -420,9 +440,9 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, void* 
       
       cape_str_replace (&val, ".", devider);
       
-      if (onText)
+      if (cb->on_text)
       {
-        onText (ptr, val);
+        cb->on_text (cb->ptr, val);
       }
 
       cape_str_del (&val);
@@ -439,7 +459,7 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, void* 
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
   const CapeString text = cape_udc_s (item, NULL);
   if (text)
@@ -454,17 +474,17 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
         {
           if (cape__evaluate_expression__compare (self->eval, text))
           {
-            return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+            return cape_template_part_apply (self, node_stack, cb, 0, err);
           }
         }
         else
         {
-          if (onText)
+          if (cb->on_text)
           {
-            onText (ptr, text);
+            cb->on_text (cb->ptr, text);
           }
           
-          return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
         }
         
         break;
@@ -486,9 +506,9 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt (&dt, self->eval);
             
-            if (onText)
+            if (cb->on_text)
             {
-              onText (ptr, h);
+              cb->on_text (cb->ptr, h);
             }
             
             cape_str_del (&h);
@@ -506,9 +526,9 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt (&dt, self->eval);
             
-            if (onText)
+            if (cb->on_text)
             {
-              onText (ptr, h);
+              cb->on_text (cb->ptr, h);
             }
             
             cape_str_del (&h);
@@ -526,9 +546,9 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt (&dt, self->eval);
             
-            if (onText)
+            if (cb->on_text)
             {
-              onText (ptr, h);
+              cb->on_text (cb->ptr, h);
             }
             
             cape_str_del (&h);
@@ -546,9 +566,9 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt (&dt, self->eval);
             
-            if (onText)
+            if (cb->on_text)
             {
-              onText (ptr, h);
+              cb->on_text (cb->ptr, h);
             }
             
             cape_str_del (&h);
@@ -559,14 +579,39 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
         }
         
-        return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+        return cape_template_part_apply (self, node_stack, cb, 0, err);
+      }
+      case FORMAT_TYPE_PIPE:
+      {
+        if (cb->on_pipe)
+        {
+          CapeString h = cb->on_pipe (self->modn, self->eval, text);
+          if (h)
+          {
+            if (cb->on_text)
+            {
+              cb->on_text (cb->ptr, h);
+            }
+            
+            cape_str_del (&h);
+          }
+        }
+        else
+        {
+          if (cb->on_text)
+          {
+            cb->on_text (cb->ptr, text);
+          }
+        }
+        
+        return cape_template_part_apply (self, node_stack, cb, 0, err);
       }
       case FORMAT_TYPE_DECIMAL:
       {
         // try to convert text into a number
         double value = cape_str_to_f (text);
 
-        return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
+        return cape_template_part_eval_decimal (self, value, cb, err);
       }
     }
   }
@@ -576,7 +621,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = []", cape_udc_name (item));
 
@@ -590,20 +635,20 @@ int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, 
         
         if (h == cape_udc_n (item, 0))
         {
-          return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
         }
       }
       else
       {
-        if (onText)
+        if (cb->on_text)
         {
           CapeString h = cape_str_fmt ("%li", cape_udc_n (item, 0));
           
-          onText (ptr, h);
+          cb->on_text (cb->ptr, h);
           
           cape_str_del (&h);
           
-          return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
         }
       }
       
@@ -611,7 +656,7 @@ int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, 
     }
     case FORMAT_TYPE_DECIMAL:
     {
-      return cape_template_part_eval_decimal (self, cape_udc_n (item, 0), ptr, onText, onFile, err);
+      return cape_template_part_eval_decimal (self, cape_udc_n (item, 0), cb, err);
     }
   }
   
@@ -620,7 +665,7 @@ int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, 
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, CapeUdc item, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval double", "evaluate %s = []", cape_udc_name (item));
 
@@ -630,20 +675,20 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, 
     
     if (h == cape_udc_f (item, .0))
     {
-      return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+      return cape_template_part_apply (self, node_stack, cb, 0, err);
     }
   }
   else
   {
-    if (onText)
+    if (cb->on_text)
     {
       CapeString h = cape_str_f (cape_udc_f (item, .0));
       
-      onText (ptr, h);
+      cb->on_text (cb->ptr, h);
       
       cape_str_del (&h);
       
-      return cape_template_part_apply (self, node_stack, ptr, onText, onFile, 0, err);
+      return cape_template_part_apply (self, node_stack, cb, 0, err);
     }
   }
   
@@ -682,12 +727,12 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, CapeList node_stack, void* ptr, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, CapeList node_stack, CapeTemplateCB cb, CapeErr err)
 {
   int res;
   const CapeString name = part->text;
 
-  if (onFile == NULL)
+  if (cb->on_file == NULL)
   {
     res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
@@ -710,7 +755,7 @@ int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, Cape
             flags |= CAPE_TEMPLATE_FLAG__ENCRYPTED;
           }
           
-          res = onFile (ptr, text, flags, err);
+          res = cb->on_file (cb->ptr, text, flags, err);
           goto exit_and_cleanup;
         }
         
@@ -719,7 +764,7 @@ int cape_template_file_apply (CapeTemplatePart self, CapeTemplatePart part, Cape
     }
   }
 
-  res = onFile (ptr, part->text, CAPE_TEMPLATE_FLAG__NONE, err);
+  res = cb->on_file (cb->ptr, part->text, CAPE_TEMPLATE_FLAG__NONE, err);
 
 exit_and_cleanup:
 
@@ -804,7 +849,7 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, CapeErr err)
 {
   double value = cape_template_math (self->text, node_stack);
   
@@ -817,7 +862,7 @@ int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, v
     }
     case FORMAT_TYPE_DECIMAL:
     {
-      return cape_template_part_eval_decimal (self, value, ptr, onText, onFile, err);
+      return cape_template_part_eval_decimal (self, value, cb, err);
     }
   }
   
@@ -826,7 +871,7 @@ int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, v
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, number_t pos, CapeErr err)
+int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
 {
   if (self->parts)
   {
@@ -841,16 +886,16 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
         case PART_TYPE_TEXT:
         case PART_TYPE_CR:
         {
-          if (onText)
+          if (cb->on_text)
           {
-            onText (ptr, part->text);
+            cb->on_text (cb->ptr, part->text);
           }
 
           break;
         }
         case PART_TYPE_FILE:
         {
-          int res = cape_template_file_apply (self, part, node_stack, ptr, onFile, err);
+          int res = cape_template_file_apply (self, part, node_stack, cb, err);
           if (res)
           {
             return res;
@@ -865,7 +910,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
             // check all modules by name
             if (cape_str_equal (part->modn + 1, "math"))
             {
-              int res = cape_template_mod_apply__math (part, node_stack, ptr, onText, onFile, err);
+              int res = cape_template_mod_apply__math (part, node_stack, cb, err);
               if (res)
               {
                 return res;
@@ -887,9 +932,9 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
           {
             CapeString h = cape_str_n (pos + 1);
             
-            if (onText)
+            if (cb->on_text)
             {
-              onText (ptr, h);
+              cb->on_text (cb->ptr, h);
             }
             
             cape_str_del (&h);
@@ -910,7 +955,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                     // add a next level
                     cape_list_push_back (node_stack, cursor_item->item);
                     
-                    int res = cape_template_part_apply (part, node_stack, ptr, onText, onFile, cursor_item->position, err);
+                    int res = cape_template_part_apply (part, node_stack, cb, cursor_item->position, err);
                     
                     cape_list_pop_back (node_stack);
                     
@@ -929,7 +974,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                   // add a next level
                   cape_list_push_back (node_stack, item);
 
-                  int res = cape_template_part_apply (part, node_stack, ptr, onText, onFile, cursor->position, err);
+                  int res = cape_template_part_apply (part, node_stack, cb, cursor->position, err);
 
                   cape_list_pop_back (node_stack);
 
@@ -942,7 +987,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                 }
                 case CAPE_UDC_STRING:
                 {
-                  int res = cape_template_part_eval_str (part, node_stack, item, ptr, onText, onFile, err);
+                  int res = cape_template_part_eval_str (part, node_stack, item, cb, err);
                   if (res)
                   {
                     return res;
@@ -952,7 +997,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                 }
                 case CAPE_UDC_NUMBER:
                 {
-                  int res = cape_template_part_eval_number (part, node_stack, item, ptr, onText, onFile, err);
+                  int res = cape_template_part_eval_number (part, node_stack, item, cb, err);
                   if (res)
                   {
                     return res;
@@ -962,7 +1007,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                 }
                 case CAPE_UDC_FLOAT:
                 {
-                  int res = cape_template_part_eval_double (part, node_stack, item, ptr, onText, onFile, err);
+                  int res = cape_template_part_eval_double (part, node_stack, item, cb, err);
                   if (res)
                   {
                     return res;
@@ -972,7 +1017,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                 }
                 case CAPE_UDC_DATETIME:
                 {
-                  int res = cape_template_part_eval_datetime (part, item, ptr, onText, onFile, err);
+                  int res = cape_template_part_eval_datetime (part, item, cb, err);
                   if (res)
                   {
                     return res;
@@ -982,7 +1027,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                 }
                 default:
                 {
-                  int res = cape_template_part_eval_str (part, node_stack, item, ptr, onText, onFile, err);
+                  int res = cape_template_part_eval_str (part, node_stack, item, cb, err);
                   if (res)
                   {
                     return res;
@@ -991,6 +1036,10 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, void* 
                   break;
                 }
               }
+            }
+            else
+            {
+              cape_log_fmt (CAPE_LL_WARN, "CAPE", "template", "can't find node '%s'", name);
             }
           }
 
@@ -1490,9 +1539,10 @@ int cape_template_compile_str (CapeTemplate self, const char* content, CapeErr e
 
 //-----------------------------------------------------------------------------
 
-int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text onText, fct_cape_template__on_file onFile, CapeErr err)
+int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text on_text, fct_cape_template__on_file on_file, fct_cape_template__on_pipe on_pipe, CapeErr err)
 {
   int res;
+  struct CapeTemplateCB_s cb;
   
   // a list to store all nodes in top down order
   CapeList node_stack = cape_list_new (NULL);
@@ -1500,7 +1550,13 @@ int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_te
   // first entry
   cape_list_push_back (node_stack, node);
   
-  res = cape_template_part_apply (self->root_part, node_stack, ptr, onText, onFile, 0, err);
+  // set the callbacks
+  cb.ptr = ptr;
+  cb.on_file = on_file;
+  cb.on_pipe = on_pipe;
+  cb.on_text = on_text;
+  
+  res = cape_template_part_apply (self->root_part, node_stack, &cb, 0, err);
 
   // cleanup
   cape_list_del (&node_stack);
@@ -1510,7 +1566,7 @@ int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_te
 
 //-----------------------------------------------------------------------------
 
-int cape_eval_f (const CapeString s, CapeUdc node, double* p_ret, CapeErr err)
+int cape_eval_f (const CapeString s, CapeUdc node, double* p_ret, fct_cape_template__on_pipe on_pipe, CapeErr err)
 {
   return CAPE_ERR_NONE;
 }
@@ -1636,7 +1692,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
+int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template__on_pipe on_pipe, CapeErr err)
 {
   int res;
   
@@ -1650,7 +1706,7 @@ int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, err);
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1670,7 +1726,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_template_run (const CapeString s, CapeUdc node, CapeErr err)
+CapeString cape_template_run (const CapeString s, CapeUdc node, fct_cape_template__on_pipe on_pipe, CapeErr err)
 {
   CapeString ret = NULL;
   int res;
@@ -1685,7 +1741,7 @@ CapeString cape_template_run (const CapeString s, CapeUdc node, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, err);
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, err);
   if (res)
   {
     goto exit_and_cleanup;

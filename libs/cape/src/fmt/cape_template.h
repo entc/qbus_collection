@@ -15,8 +15,9 @@ struct CapeTemplate_s; typedef struct CapeTemplate_s* CapeTemplate;
 
 //-----------------------------------------------------------------------------
 
-typedef int (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* text);
-typedef int (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file, number_t flags, CapeErr err);
+typedef int    (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* text);
+typedef int    (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file, number_t flags, CapeErr err);
+typedef char*  (__STDCALL *fct_cape_template__on_pipe) (const char* name, const char* pipe, const char* value);
 
 //-----------------------------------------------------------------------------
 
@@ -30,15 +31,15 @@ __CAPE_LIBEX   int            cape_template_compile_file   (CapeTemplate, const 
 
 __CAPE_LIBEX   int            cape_template_compile_str    (CapeTemplate, const char* content, CapeErr);
 
-__CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, CapeErr);
+__CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, fct_cape_template__on_pipe, CapeErr);
 
-__CAPE_LIBEX   CapeString     cape_template_run            (const CapeString s, CapeUdc node, CapeErr);
+__CAPE_LIBEX   CapeString     cape_template_run            (const CapeString s, CapeUdc node, fct_cape_template__on_pipe, CapeErr);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int            cape_eval_f                  (const CapeString s, CapeUdc node, double*, CapeErr);
+__CAPE_LIBEX   int            cape_eval_f                  (const CapeString s, CapeUdc node, double*, fct_cape_template__on_pipe, CapeErr);
 
-__CAPE_LIBEX   int            cape_eval_b                  (const CapeString s, CapeUdc node, int*, CapeErr);
+__CAPE_LIBEX   int            cape_eval_b                  (const CapeString s, CapeUdc node, int*, fct_cape_template__on_pipe, CapeErr);
 
 //-----------------------------------------------------------------------------
 
