@@ -227,12 +227,19 @@ namespace qbus
     
     try
     {
-      qbus::Message msg (qbus, qin, qout);
-      
-      // black magic to call a method
-      (ctx->ptr->*ctx->fct)(msg);
-      
-      res = msg.ret();
+      if (ctx->fct && ctx->ptr)
+      {
+        qbus::Message msg (qbus, qin, qout);
+        
+        // black magic to call a method
+        (ctx->ptr->*ctx->fct)(msg);
+        
+        res = msg.ret();
+      }
+      else
+      {
+        res = CAPE_ERR_NONE;
+      }
     }
     catch (cape::Exception& e)
     {
