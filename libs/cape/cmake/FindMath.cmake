@@ -57,8 +57,10 @@ if (NOT MATH_FOUND)
 	  ##____________________________________________________________________________
 	  ## Actions taken when all components have been found
 
-	  find_package_handle_standard_args (MATH DEFAULT_MSG MATH_LIBRARIES MATH_INCLUDES)
-		
+	  if (MATH_INCLUDES AND MATH_LIBRARIES)
+            SET(MATH_FOUND TRUE)
+          endif ()
+
 	  if (MATH_FOUND)
 		if (NOT MATH_FIND_QUIETLY)
 		  message (STATUS "MATH_INCLUDES  = ${MATH_INCLUDES}")
