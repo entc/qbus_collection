@@ -1,9 +1,11 @@
-import { Component, OnInit, SimpleChanges, Input, ViewChild } from '@angular/core';
+import { Component, OnInit, SimpleChanges, Input, ViewChild, Directive, Self } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
-import { NgForm } from '@angular/forms';
-import { Pipe, PipeTransform } from '@angular/core';
+import { NgForm, NgControl, NgModel } from '@angular/forms';
 import { PaginatePipe, PaginationService } from 'ngx-pagination';
+import { PageService } from '@qbus/page_service/service';
+import { Pipe, PipeTransform } from '@angular/core';
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
+import { map, filter } from 'rxjs/operators'
 
 //-----------------------------------------------------------------------------
 
@@ -14,6 +16,7 @@ import { PaginatePipe, PaginationService } from 'ngx-pagination';
 export class PageToolbarComponent implements OnInit {
 
   @Input('sorting') sort_expr: string;
+  @Input('recall') recall: string;
   public sort_vals: object;
   public sort_keys: string[];
 
@@ -21,12 +24,15 @@ export class PageToolbarComponent implements OnInit {
   currentPage: number;
   sort_name = undefined;
   sort_reverse: boolean = true;
-  search: string = undefined;
+
+  //public search: BehaviorSubject<string>;
+  public search: string;
 
   //-----------------------------------------------------------------------------
 
-  constructor()
+  constructor (private page_service: PageService)
   {
+    //this.search = new BehaviorSubject<string>(undefined);
   }
 
   //-----------------------------------------------------------------------------
@@ -37,13 +43,35 @@ export class PageToolbarComponent implements OnInit {
     this.sort_keys = Object.keys(this.sort_vals);
 
     this.sort_name = this.sort_vals[this.sort_keys[0]];
+
+    if (this.recall)
+    {
+      this.search = this.page_service.get (this.recall);
+
+      /*
+      this.search.subscribe ((search) => {
+
+        this.page_service.set (this.recall, search);
+
+      });
+      */
+    }
   }
 
   //-----------------------------------------------------------------------------
 
-  reset_search ()
+  on_search_reset ()
   {
+    //this.search.next (undefined);
     this.search = undefined;
+    this.page_service.set (this.recall, '');
+  }
+
+  //-----------------------------------------------------------------------------
+
+  on_search_changed ()
+  {
+    this.page_service.set (this.recall, this.search);
   }
 
   //-----------------------------------------------------------------------------
@@ -71,7 +99,21 @@ export class PageToolbarPipe implements PipeTransform {
 
   //---------------------------------------------------------------------------
 
-  transform (items: any[], instance: PageToolbarComponent, filters: string[]): any[] {
+  transform (items: any[], instance: PageToolbarComponent, filters: string[]) {
+
+    /*
+    return instance.search.pipe (map ((search) => {
+
+      var h = this.filter.transform (items, search, filters);
+
+      h = this.sort.transform (h, instance.sort_name, instance.sort_reverse);
+
+      return this.pagination.transform (h, { itemsPerPage: 30, currentPage: instance.currentPage });
+
+//        this.pagination.transform (this.sort.transform (this.filter.transform (items, data, filters), instance.sort_name, instance.sort_reverse), { itemsPerPage: 30, currentPage: instance.currentPage })
+
+    }));
+    */
 
     var items = this.filter.transform (items, instance.search, filters);
 
@@ -116,12 +158,76 @@ export class QbngFilterPipe implements PipeTransform {
 
     items.forEach(item => {
       filters.forEach(filter => {
-        if (item[filter] && item[filter].toLowerCase().includes(searchText)) {
-          filteredItems.push(item);
+
+        const item_var = item[filter];
+
+        if (item_var)
+        {
+          if (typeof item_var == 'number')
+          {
+            if (item_var === Number(searchText))
+            {
+              filteredItems.push(item);
+            }
+          }
+          else
+          {
+            if (item_var.toLowerCase().includes(searchText))
+            {
+              filteredItems.push(item);
+            }
+          }
         }
       })
     })
     return filteredItems;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Directive({
+  selector: '[asyncModel]'
+})
+export class RxModelDirective {
+
+  /**
+   * Reference to the behaviorSubject, because during the first change we will transform
+   * the behaviorSubject to its value in the ngModel
+   */
+  behaviorSubjectReference: BehaviorSubject<any>;
+
+  constructor( @Self() private ngControl: NgControl) { }
+
+
+  ngOnInit() {
+
+    if ( !(this.ngControl instanceof NgModel ) ) {
+        // If the ngControl is not an instanceof ngModel, return early
+        return;
+    }
+
+    const ngControlValue = this.ngControl.control.value;
+
+    this.ngControl.valueChanges.pipe(
+      filter( value => {
+        return value instanceof BehaviorSubject || Boolean(this.behaviorSubjectReference);
+      })
+    ).subscribe( (value: BehaviorSubject<any>|any) => {
+
+      if ( value instanceof BehaviorSubject ) {
+        // Saving the behaviorSubject for later use
+        //
+        this.behaviorSubjectReference = value;
+        this.ngControl.control.setValue(this.behaviorSubjectReference.value);
+      } else {
+        // If we are in the else clause, the first change has already gone by and we have a
+        // behaviorSubjectReference we can call .next on
+        //
+        this.behaviorSubjectReference.next(value);
+      }
+
+    });
   }
 }
 
