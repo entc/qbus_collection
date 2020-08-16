@@ -57,7 +57,9 @@ if (NOT CRYPT_FOUND)
 	  ##____________________________________________________________________________
 	  ## Actions taken when all components have been found
 
-	  find_package_handle_standard_args (CRYPT DEFAULT_MSG CRYPT_LIBRARIES CRYPT_INCLUDES)
+	  if (CRYPT_INCLUDES AND CRYPT_LIBRARIES)
+            SET(CRYPT_FOUND TRUE)
+          endif ()
 		
 	  if (CRYPT_FOUND)
 		if (NOT CRYPT_FIND_QUIETLY)
