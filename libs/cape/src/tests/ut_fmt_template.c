@@ -28,6 +28,8 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (values, "val_float2", "1,1");
   cape_udc_add_s_cp (values, "val_float3", "1,134.32");
   cape_udc_add_s_cp (values, "val_float4", "1.134,32");
+  cape_udc_add_s_cp (values, "val_float5", "10.35555");
+  cape_udc_add_s_cp (values, "val_float6", "10.35444");
 
   {
     res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, NULL, err);
@@ -79,6 +81,26 @@ int main (int argc, char *argv[])
     printf ("T5: %i\n", ret);
   }
 
+  {
+    res = cape_eval_b ("{{val_float5|decimal:1%,%2}} = 10,36", values, &ret, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T6: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_float6|decimal:1%,%2}} = 10,35", values, &ret, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T7: %i\n", ret);
+  }
+
   // user parsing
   {
     res = cape_eval_b ("{{val_float4|pipe_test:xyz}} = 13", values, &ret, main__on_pipe, err);
@@ -87,7 +109,7 @@ int main (int argc, char *argv[])
       goto exit_and_cleanup;
     }
     
-    printf ("T6: %i\n", ret);
+    printf ("T8: %i\n", ret);
   }
   
   {

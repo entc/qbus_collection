@@ -1,6 +1,7 @@
 #include "cape_template.h"
 
 #include <fcntl.h>
+#include <math.h>
 
 // cape includes
 #include "stc/cape_stream.h"
@@ -435,8 +436,13 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTe
     {
       double v = (double)value / fraction;
       
+      number_t dh = pow (10, decimal);
+      number_t dj = (number_t)(v * dh + 0.5);
+
+      double dk = (double)dj / dh;
+      
       CapeString fmt = cape_str_fmt ("%%.%if", decimal);
-      CapeString val = cape_str_fmt (fmt, v);
+      CapeString val = cape_str_fmt (fmt, dk);
       
       cape_str_replace (&val, ".", devider);
       
