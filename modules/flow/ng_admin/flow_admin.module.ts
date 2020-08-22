@@ -1,6 +1,8 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { TrloModule } from '@qbus/trlo.module';
 import { Routes, RouterModule } from '@angular/router';
 import { FlowEditorComponent, FlowEditorRmModalComponent, FlowEditorAddModalComponent } from './flow_editor/component';
 import { FlowWorkstepsComponent } from './flow_worksteps/component';
@@ -29,7 +31,16 @@ const routes: Routes = [
     FlowProcessDetailsComponent,
     FlowProcessDataModalComponent
   ],
-  imports: [CommonModule, FormsModule, FlowLogsModule, PageToolbarModule, AuthServiceModule, RouterModule.forChild(routes)],
+  imports: [
+    CommonModule,
+    FormsModule,
+    FlowLogsModule,
+    PageToolbarModule,
+    NgbModule,
+    TrloModule,
+    AuthServiceModule,
+    RouterModule.forChild(routes)
+  ],
   exports: [RouterModule],
   entryComponents: [ FlowEditorRmModalComponent, FlowEditorAddModalComponent, FlowProcessDataModalComponent ]
 })

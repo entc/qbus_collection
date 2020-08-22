@@ -14,7 +14,7 @@ import { AuthService } from '@qbus/auth.service';
 
 export class FlowWorkstepsComponent implements OnInit
 {
-  private wfid: number;
+  public wfid: number;
 
   modal_step_content: IWorkstep;
 

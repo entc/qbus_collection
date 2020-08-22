@@ -90,9 +90,12 @@ CapeUdc flow_data_get (AdblSession adbl_session, number_t dataid, CapeErr err)
 {
   CapeUdc ret = NULL;
   
+  const CapeString content_json;
+  
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc data = NULL;
+  CapeUdc content = NULL;
 
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -100,7 +103,8 @@ CapeUdc flow_data_get (AdblSession adbl_session, number_t dataid, CapeErr err)
     
     cape_udc_add_n      (params, "id"            , dataid);
 
-    cape_udc_add_node   (values, "content"       );
+    // default size is 4000 -> increase to 10000 bytes
+    cape_udc_add_s_cp   (values, "content"       , "{\"size\": 10000}");
 
     // execute the query
     query_results = adbl_session_query (adbl_session, "proc_data", &params, &values, err);
@@ -117,20 +121,27 @@ CapeUdc flow_data_get (AdblSession adbl_session, number_t dataid, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  // extract content
+  content_json = cape_udc_get_s (data, "content", NULL);
+  if (NULL == content_json)
   {
-    CapeUdc content = cape_udc_ext (data, "content");
-    
-    if (content)
-    {
-      cape_udc_replace_mv (&ret, &content);
-    }
+    cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find content");
+    goto exit_and_cleanup;
   }
+
+  content = cape_json_from_s (content_json);
+  if (NULL == content)
+  {
+    cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't parse content");
+    goto exit_and_cleanup;
+  }
+  
+  cape_udc_replace_mv (&ret, &content);
   
 exit_and_cleanup:
   
   cape_udc_del (&query_results);
   cape_udc_del (&data);
+  cape_udc_del (&content);
 
   return ret;
 }

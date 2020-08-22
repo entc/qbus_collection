@@ -1,18 +1,22 @@
-<page-toolbar #toolbar sorting="{'id': 'id', 'name': 'name'}"></page-toolbar>
+<page-toolbar #toolbar sorting="{'id': 'id', 'name': 'name'}" recall="e1f2bd9e-27dc-477a-8896-2fa757a0dbc5"></page-toolbar>
 
   <div class="container mt-2" *authRole="['flow_admin']">
 
     <table class="table mt-2">
       <tr>
-        <th></th>
-        <th width="100%">name</th>
+        <th>
+          <span class="badge badge-primary">wfid</span>
+        </th>
+        <th width="100%">{{ 'FLOW.WORKFLOWNAME' | transloco }}</th>
         <th></th>
         <th>
           <button (click)="modal__workflow_add__open()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus"></i></button>
         </th>
       </tr>
       <tr *ngFor="let wf of workflows | async | pageToolBar : toolbar : ['name', 'id']">
-        <td>{{wf.id}}</td>
+        <td>
+          <span class="badge badge-primary">{{wf.id}}</span>
+        </td>
         <td>{{wf.name}} <span class="badge badge-secondary">{{wf.cnt}}</span></td>
         <td>
           <!--
@@ -30,7 +34,7 @@
               <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
               <div class="dropdown-menu" ngbDropdownMenu>
                 <button (click)="modal__workflow_del__open (item)" type="button" class="dropdown-item">
-                  <i class="fa fa-trash"></i>&nbsp;&nbsp;delete
+                  <i class="fa fa-trash"></i>&nbsp;&nbsp;{{ 'MISC.DELETE' | transloco }}
                 </button>
               </div>
             </div>

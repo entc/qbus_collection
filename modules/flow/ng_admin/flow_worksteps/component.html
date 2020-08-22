@@ -260,18 +260,20 @@
 
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item">workflow editor</li>
-      <li class="breadcrumb-item active" aria-current="page"><a [routerLink]="['/flow_editor']">workflow list</a></li>
+      <li class="breadcrumb-item active" aria-current="page"><a [routerLink]="['/flow_editor']">{{ 'FLOW.WORKFLOWLIST' | transloco }}</a></li>
+      <li class="breadcrumb-item">wfid = {{wfid}}</li>
     </ol>
   </nav>
 
-  <button (click)="modal__workstep_add__open(modal_workstep_add, undefined)" type="button" class="btn btn-success">add step</button>
+  <button (click)="modal__workstep_add__open(modal_workstep_add, undefined)" type="button" class="btn btn-success">{{ 'FLOW.WORKSTEPADD' | transloco }}</button>
 
   <table class="table mt-2">
     <tr>
       <th></th>
-      <th width="100%">name</th>
-      <th></th>
+      <th>
+        <span class="badge badge-primary">wsid</span>
+      </th>
+      <th width="100%">{{ 'FLOW.WORKSTEPNAME' | transloco }}</th>
       <th></th>
     </tr>
     <tr *ngFor="let ws of worksteps">
@@ -284,18 +286,26 @@
         </button>
       </td>
       <td>
+        <span class="badge badge-primary">{{ws.id}}</span>
+      </td>
+      <td>
         {{ws.name}}<br>
         <small>{{function_name_get(ws.fctid)}}</small>
       </td>
       <td>
-        <button (click)="modal__workstep_add__open (modal_workstep_add, ws)" type="button" class="btn btn-outline-primary">
-          <i class="fa fa-edit"></i>
-        </button>
-      </td>
-      <td>
-        <button (click)="modal__workstep_del__open (modal_workstep_del, ws)" type="button" class="btn btn-outline-danger">
-          <i class="fa fa-trash"></i>
-        </button>
+        <div class="btn-group mr-3">
+          <button (click)="modal__workstep_add__open (modal_workstep_add, ws)" type="button" class="btn btn-sm btn-outline-primary">
+            <i class="fa fa-edit"></i>
+          </button>
+          <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
+            <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
+            <div class="dropdown-menu" ngbDropdownMenu>
+              <button (click)="modal__workstep_del__open (modal_workstep_del, ws)" type="button" class="dropdown-item">
+                <i class="fa fa-trash"></i>&nbsp;&nbsp;{{ 'MISC.DELETE' | transloco }}
+              </button>
+            </div>
+          </div>
+        </div>
       </td>
     </tr>
   </table>
