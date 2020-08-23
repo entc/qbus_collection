@@ -1,3 +1,100 @@
+<div class="mt-1">
+<div class="input-group" [ngSwitch]="type">
+  <div class="input-group-prepend" ngbDropdown>
+    <button ngbDropdownToggle type="button" class="btn btn-outline-primary btn-sm" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+      <span *ngSwitchCase="1">
+        X
+      </span>
+      <span *ngSwitchCase="2">
+        M
+      </span>
+      <span *ngSwitchCase="3">
+        A
+      </span>
+      <span *ngSwitchCase="4">
+        S
+      </span>
+      <span *ngSwitchCase="5">
+        N
+      </span>
+      <span *ngSwitchCase="6">
+        B
+      </span>
+    </button>
+    <div ngbDropdownMenu class="dropdown-menu">
+      <button (click) = "change_type(1)" class="dropdown-item" type="button"><span class="badge badge-secondary">X</span>&nbsp;&nbsp;[None]</button>
+      <button (click) = "change_type(2)" class="dropdown-item" type="button"><span class="badge badge-secondary">M</span>&nbsp;&nbsp;Map</button>
+      <button (click) = "change_type(3)" class="dropdown-item" type="button"><span class="badge badge-secondary">A</span>&nbsp;&nbsp;Array</button>
+      <button (click) = "change_type(4)" class="dropdown-item" type="button"><span class="badge badge-secondary">S</span>&nbsp;&nbsp;String</button>
+      <button (click) = "change_type(5)" class="dropdown-item" type="button"><span class="badge badge-secondary">N</span>&nbsp;&nbsp;Number</button>
+      <button (click) = "change_type(6)" class="dropdown-item" type="button"><span class="badge badge-secondary">B</span>&nbsp;&nbsp;Boolean</button>
+    </div>
+  </div>
+  <ng-container *ngSwitchCase="1">
+    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button" value="[empty element]">
+  </ng-container>
+  <ng-container *ngSwitchCase="2">
+    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button">
+    <div class="input-group-append">
+      <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
+        <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
+        <i *ngIf="show == true" class="fa fa-arrow-circle-down"></i>
+      </button>
+    </div>
+    <div class="input-group-append">
+      <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
+        <i class="fa fa-plus-circle"></i>
+      </button>
+    </div>
+  </ng-container>
+  <ng-container *ngSwitchCase="3">
+    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button" value="{{data_const.length}}">
+    <div class="input-group-append">
+      <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
+        <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
+        <i *ngIf="show == true" class="fa fa-arrow-circle-down"></i>
+      </button>
+    </div>
+    <div class="input-group-append">
+      <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
+        <i class="fa fa-plus-circle"></i>
+      </button>
+    </div>
+  </ng-container>
+  <ng-container *ngSwitchCase="4">
+    <input type="text" class="form-control" aria-label="Text input with dropdown button">
+  </ng-container>
+  <ng-container *ngSwitchCase="5">
+    <input type="text" class="form-control" aria-label="Text input with dropdown button">
+  </ng-container>
+  <ng-container *ngSwitchCase="6">
+
+  </ng-container>
+</div>
+<div *ngIf="show" class="input-group pl-4 pt-2 pb-2" [ngSwitch]="type">
+  <ng-container *ngSwitchCase="2">
+
+    <div *ngFor="let item of data_const | keyvalue">
+
+      <div class="input-group">
+        <div class="input-group-prepend">
+          <span class="input-group-text" id="basic-addon1">@</span>
+        </div>
+        <input (change)="change_key(item, $value)" type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1">
+      </div>
+      <qbng-params [(model)] = "item.value"></qbng-params>
+
+    </div>
+
+  </ng-container>
+  <ng-container *ngSwitchCase="3">
+
+    <qbng-params [(model)] = "child" *ngFor="let child of data_const"></qbng-params>
+
+  </ng-container>
+</div>
+</div>
+
 <!--
  <div *ngFor="let child of tn.children">
 

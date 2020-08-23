@@ -1,19 +1,19 @@
 <form #workflow_add = "ngForm" (ngSubmit) = "add_submit(workflow_add)">
 <div class="modal-header">
-  <h4 class="modal-title" id="modal-basic-title">
-    <i class="fa fa-plus"></i>&nbsp;&nbsp;add workflow
-  </h4>
+  <span class="modal-title">
+    <strong><i class="fa fa-plus-circle"></i>&nbsp;&nbsp;{{ 'FLOW.WORKFLOWADD' | transloco }}</strong>
+  </span>
 </div>
 <div class="modal-body">
     <div class="form-group">
-      <label for="dateOfBirth">name</label>
+      <label for="dateOfBirth">{{ 'FLOW.WORKFLOWNAME' | transloco }}</label>
       <div class="input-group">
         <input type="text" class="form-control" aria-describedby="name" placeholder="enter name" ngModel name = "workflow_name">
       </div>
     </div>
   </div>
 <div class="modal-footer">
-  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">Cancel</button>
-  <button type="submit" class="btn btn-outline-success">Add</button>
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+  <button type="submit" class="btn btn-outline-success">{{ 'MISC.ADD' | transloco }}</button>
 </div>
 </form>

@@ -14,7 +14,7 @@ import { AuthService } from '@qbus/auth.service';
 })
 export class FlowEditorComponent implements OnInit {
 
-  workflows: Observable<Array<IWorkflow>>;
+  workflows: Observable<IWorkflow[]>;
 
   //-----------------------------------------------------------------------------
 
@@ -62,11 +62,11 @@ export class FlowEditorComponent implements OnInit {
 
 //-----------------------------------------------------------------------------
 
-  modal__workflow_del__open (wfid)
+  modal__workflow_del__open (wf: IWorkflow)
   {
     this.modalService.open (FlowEditorRmModalComponent, {ariaLabelledBy: 'modal-basic-title'}).result.then((result) => {
 
-      this.AuthService.json_rpc ('FLOW', 'workflow_rm', {'wfid' : wfid}).subscribe(() => {
+      this.AuthService.json_rpc ('FLOW', 'workflow_rm', {'wfid' : wf.id}).subscribe(() => {
 
         this.workflow_get ();
 

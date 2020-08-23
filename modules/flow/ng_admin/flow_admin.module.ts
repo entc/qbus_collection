@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { Routes, RouterModule } from '@angular/router';
+import { QbngModule } from '@qbus/qbng.module';
 import { FlowEditorComponent, FlowEditorRmModalComponent, FlowEditorAddModalComponent } from './flow_editor/component';
-import { FlowWorkstepsComponent } from './flow_worksteps/component';
+import { FlowWorkstepsComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent } from './flow_worksteps/component';
 import { FlowProcessComponent, FlowProcessDataModalComponent } from './flow_process/component';
 import { FlowProcessDetailsComponent } from './flow_process_details/component';
 
@@ -24,6 +25,8 @@ const routes: Routes = [
   declarations:
   [
     FlowWorkstepsComponent,
+    FlowWorkstepsRmModalComponent,
+    FlowWorkstepsAddModalComponent,
     FlowEditorComponent,
     FlowProcessComponent,
     FlowEditorRmModalComponent,
@@ -38,11 +41,18 @@ const routes: Routes = [
     PageToolbarModule,
     NgbModule,
     TrloModule,
+    QbngModule,
     AuthServiceModule,
     RouterModule.forChild(routes)
   ],
   exports: [RouterModule],
-  entryComponents: [ FlowEditorRmModalComponent, FlowEditorAddModalComponent, FlowProcessDataModalComponent ]
+  entryComponents: [
+    FlowWorkstepsRmModalComponent,
+    FlowWorkstepsAddModalComponent,
+    FlowEditorRmModalComponent,
+    FlowEditorAddModalComponent,
+    FlowProcessDataModalComponent
+  ]
 })
 export class FlowAdminModule
 {

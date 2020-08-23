@@ -1,9 +1,26 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Injector } from '@angular/core';
+import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute, Params } from '@angular/router';
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgForm } from '@angular/forms';
 
 // auth service
 import { AuthService } from '@qbus/auth.service';
+
+export class StepFunctions {
+   public static STEP_FUNCTIONS = [
+     {id: 3, name: "call module's method (syncron)"},
+     {id: 4, name: "call module's method (asyncron)"},
+     {id: 5, name: "wait for list"},
+     {id: 10, name: "split flow"},
+     {id: 11, name: "start flow"},
+     {id: 12, name: "switch"},
+     {id: 13, name: "if"},
+     {id: 21, name: "place message"},
+     {id: 50, name: "(variable) copy"},
+     {id: 51, name: "(variable) create node"},
+     {id: 52, name: "(variable) move"}
+   ];
+}
 
 //-----------------------------------------------------------------------------
 
@@ -15,22 +32,6 @@ import { AuthService } from '@qbus/auth.service';
 export class FlowWorkstepsComponent implements OnInit
 {
   public wfid: number;
-
-  modal_step_content: IWorkstep;
-
-  public step_functions = [
-    {id: 3, name: "call module's method (syncron)"},
-    {id: 4, name: "call module's method (asyncron)"},
-    {id: 5, name: "wait for list"},
-    {id: 10, name: "split flow"},
-    {id: 11, name: "start flow"},
-    {id: 12, name: "switch"},
-    {id: 13, name: "if"},
-    {id: 21, name: "place message"},
-    {id: 50, name: "(variable) copy"},
-    {id: 51, name: "(variable) create node"},
-    {id: 52, name: "(variable) move"}
-  ];
 
   worksteps = new Array<IWorkstep>();
 
@@ -55,9 +56,9 @@ export class FlowWorkstepsComponent implements OnInit
 
   function_name_get (fctid: number)
   {
-    for (var i in this.step_functions)
+    for (var i in StepFunctions.STEP_FUNCTIONS)
     {
-      var fct = this.step_functions[i];
+      var fct = StepFunctions.STEP_FUNCTIONS[i];
       if (fct.id == fctid)
       {
         return fct.name;
@@ -90,19 +91,14 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  modal__workstep_del__open (modal_name, modal_content: IWorkstep)
+  modal__workstep_del__open (ws: IWorkstep)
   {
-    const modal = this.modalService.open(modal_name, {ariaLabelledBy: 'modal-basic-title'});
+    this.modalService.open (FlowWorkstepsRmModalComponent, {ariaLabelledBy: 'modal-basic-title'}).result.then(() => {
 
-    modal.result.then((result) => {
+      this.AuthService.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid}).subscribe(() => {
 
-      if (modal_content)
-      {
-        this.AuthService.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : modal_content.id, 'sqid' : modal_content.sqtid}).subscribe(() => {
-
-          this.workflow_get ();
-        });
-      }
+        this.workflow_get ();
+      });
 
     }, () => {
 
@@ -111,28 +107,11 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  modal__workstep_add__open (modal_name, modal_content: IWorkstep)
+  modal__workstep_add__open (modal_content: IWorkstep)
   {
-    const modal = this.modalService.open(modal_name, {ariaLabelledBy: 'modal-basic-title', size: 'lg'});
-    var flow_method: string;
+    var flow_method: string = modal_content ? 'workstep_set' : 'workstep_add';
 
-    if (modal_content)
-    {
-      this.modal_step_content = modal_content;
-      flow_method = 'workstep_set';
-
-      if (!this.modal_step_content.pdata)
-      {
-        this.modal_step_content.pdata = {};
-      }
-    }
-    else
-    {
-      this.modal_step_content = new IWorkstep;
-      flow_method = 'workstep_add';
-    }
-
-    modal.result.then((result) => {
+    this.modalService.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}])}).result.then((result) => {
 
       if (result)
       {
@@ -157,12 +136,78 @@ export class FlowWorkstepsComponent implements OnInit
 
 //-----------------------------------------------------------------------------
 
-class IWorkstep {
+export class IWorkstep {
 
   public id: number;
   public sqtid: number;
   public fctid: number;
   public name: string;
   public pdata = {};
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'flow-worksteps-add-modal-component',
+  templateUrl: './modal_add.html'
+}) export class FlowWorkstepsAddModalComponent implements OnInit {
+
+  //---------------------------------------------------------------------------
+
+  public modal_step_content: IWorkstep;
+  public step_functions = StepFunctions.STEP_FUNCTIONS;
+
+  constructor (public modal: NgbActiveModal, public modal_content: IWorkstep)
+  {
+    if (modal_content)
+    {
+      this.modal_step_content = modal_content;
+
+      if (!this.modal_step_content.pdata)
+      {
+        this.modal_step_content.pdata = {};
+      }
+    }
+    else
+    {
+      this.modal_step_content = new IWorkstep;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  add_submit (form: NgForm)
+  {
+    this.modal.close (form.value);
+    form.resetForm ();
+  }
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'flow-worksteps-rm-modal-component',
+  templateUrl: './modal_rm.html'
+}) export class FlowWorkstepsRmModalComponent implements OnInit {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
 
 }
