@@ -30,11 +30,15 @@
       <button (click) = "change_type(6)" class="dropdown-item" type="button"><span class="badge badge-secondary">B</span>&nbsp;&nbsp;Boolean</button>
     </div>
   </div>
+
+  <input *ngIf="name && nameUsed == false" readonly type="text" class="form-control" value="{{data_name}}">
+  <input *ngIf="name && nameUsed == true" [ngModel] = "name" (ngModelChange) = "nameChange.emit($event)" type="text" class="form-control">
+
   <ng-container *ngSwitchCase="1">
     <input readonly type="text" class="form-control" aria-label="Text input with dropdown button" value="[empty element]">
   </ng-container>
   <ng-container *ngSwitchCase="2">
-    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button">
+    <input readonly type="text" class="form-control" value="{{data_map.length}}">
     <div class="input-group-append">
       <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
         <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
@@ -48,7 +52,7 @@
     </div>
   </ng-container>
   <ng-container *ngSwitchCase="3">
-    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button" value="{{data_const.length}}">
+    <input readonly type="text" class="form-control" value="{{model.length}}">
     <div class="input-group-append">
       <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
         <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
@@ -62,10 +66,10 @@
     </div>
   </ng-container>
   <ng-container *ngSwitchCase="4">
-    <input type="text" class="form-control" aria-label="Text input with dropdown button">
+    <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="text" class="form-control" aria-label="Text input with dropdown button">
   </ng-container>
   <ng-container *ngSwitchCase="5">
-    <input type="text" class="form-control" aria-label="Text input with dropdown button">
+    <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="text" class="form-control" aria-label="Text input with dropdown button">
   </ng-container>
   <ng-container *ngSwitchCase="6">
 
@@ -74,15 +78,9 @@
 <div *ngIf="show" class="input-group pl-4 pt-2 pb-2" [ngSwitch]="type">
   <ng-container *ngSwitchCase="2">
 
-    <div *ngFor="let item of data_const | keyvalue">
+    <div *ngFor="let item of data_map">
 
-      <div class="input-group">
-        <div class="input-group-prepend">
-          <span class="input-group-text" id="basic-addon1">@</span>
-        </div>
-        <input (change)="change_key(item, $value)" type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1">
-      </div>
-      <qbng-params [(model)] = "item.value"></qbng-params>
+      <qbng-params [model]="item.data_const" (modelChange)="on_val_changed(item, $event)" [name]="item.key" (nameChange)="on_name_changed(item, $event)"></qbng-params>
 
     </div>
 

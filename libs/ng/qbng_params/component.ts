@@ -12,11 +12,17 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class QbngParamsComponent implements OnInit {
 
-  @Input('model') data_const: any;
-  @Output('model') data_change = new EventEmitter();
+  @Input() model: any;
+  @Output() modelChange = new EventEmitter();
+
+  @Input() name: string;
+  @Output() nameChange = new EventEmitter<string>();
+  public nameUsed = false;
 
   public type: number;
   public show: boolean;
+
+  public data_map: MapItem[];
 
   //-----------------------------------------------------------------------------
 
@@ -28,6 +34,8 @@ export class QbngParamsComponent implements OnInit {
 
   ngOnInit ()
   {
+    this.nameUsed = this.nameChange.observers.length > 0;
+
     this.show = false;
     this.on_type ();
   }
@@ -36,30 +44,38 @@ export class QbngParamsComponent implements OnInit {
 
   on_type ()
   {
-    if (this.data_const == undefined)
+    if (this.model == undefined)
     {
       this.type = 1;
     }
-    else if (typeof this.data_const === "object")
+    else if (typeof this.model === "object")
     {
-      if (Object.prototype.toString.call( this.data_const ) === '[object Array]')
+      if (Object.prototype.toString.call( this.model ) === '[object Array]')
       {
         this.type = 3;
       }
       else
       {
         this.type = 2;
+
+        // convert into list
+        this.data_map = [];
+
+        for (var i in this.model)
+        {
+          this.data_map.push ({key: i, val: this.model[i]});
+        }
       }
     }
-    else if (typeof this.data_const === "string")
+    else if (typeof this.model === "string")
     {
       this.type = 4;
     }
-    else if (typeof this.data_const === "number")
+    else if (typeof this.model === "number")
     {
       this.type = 5;
     }
-    else if (typeof this.data_const === "boolean")
+    else if (typeof this.model === "boolean")
     {
       this.type = 6;
     }
@@ -73,37 +89,37 @@ export class QbngParamsComponent implements OnInit {
     {
       case 1:
       {
-        this.data_const = undefined;
+        this.model = undefined;
         break;
       }
       case 2:
       {
-        this.data_const = {};
+        this.model = {};
         break;
       }
       case 3:
       {
-        this.data_const = [];
+        this.model = [];
         break;
       }
       case 4:
       {
-        this.data_const = '';
+        this.model = '';
         break;
       }
       case 5:
       {
-        this.data_const = 0;
+        this.model = 0;
         break;
       }
       case 6:
       {
-        this.data_const = false;
+        this.model = false;
         break;
       }
     }
 
-    this.data_change.emit (this.data_const);
+    this.modelChange.emit (this.model);
     this.on_type ();
   }
 
@@ -116,22 +132,39 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
+  build_map ()
+  {
+    // rebuild the map
+    // convert into list
+    this.model = {};
+
+    for (var i in this.data_map)
+    {
+      const data = this.data_map[i];
+      this.model [data.key] = data.val;
+    }
+
+    this.modelChange.emit (this.model);
+  }
+
+  //-----------------------------------------------------------------------------
+
   add_item ()
   {
     switch (this.type)
     {
       case 2:
       {
-        this.data_const['new'] = undefined;
         this.show = true;
-        this.data_change.emit (this.data_const);
+        this.data_map.push ({key: 'new', val: undefined});
+        this.build_map ();
         break;
       }
       case 3:
       {
-        this.data_const.push (undefined);
         this.show = true;
-        this.data_change.emit (this.data_const);
+        this.model.push (undefined);
+        this.modelChange.emit (this.model);
         break;
       }
     }
@@ -139,12 +172,38 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  change_key (item, value)
+  on_model_changed (value)
   {
-    console.log(item);
-    console.log(value);
+    this.model = value;
+    this.modelChange.emit (this.model);
   }
 
+  //-----------------------------------------------------------------------------
+
+  on_name_changed (item, value)
+  {
+    item.key = value;
+    this.build_map ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  on_val_changed (item, value)
+  {
+    item.val = value;
+
+    console.log(value);
+    this.build_map ();
+  }
+
+}
+
+//-----------------------------------------------------------------------------
+
+class MapItem
+{
+  key: string;
+  val: any;
 }
 
 //-----------------------------------------------------------------------------
