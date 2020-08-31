@@ -1,7 +1,5 @@
 import { Component, EventEmitter, OnInit, SimpleChanges, Input, Output, ViewChild } from '@angular/core';
-import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
-import { NgForm } from '@angular/forms';
 import { Pipe, PipeTransform } from '@angular/core';
 
 //-----------------------------------------------------------------------------
@@ -12,12 +10,16 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class QbngParamsComponent implements OnInit {
 
-  @Input() model: any;
+  // those variables control the underlaying data structure
+  @Input('model') model: any;
   @Output() modelChange = new EventEmitter();
 
+  // (optional) this controls the name of the structure
   @Input() name: string;
   @Output() nameChange = new EventEmitter<string>();
   public nameUsed = false;
+
+  @Output() remove = new EventEmitter();
 
   public type: number;
   public show: boolean;
@@ -37,14 +39,43 @@ export class QbngParamsComponent implements OnInit {
     this.nameUsed = this.nameChange.observers.length > 0;
 
     this.show = false;
+
     this.on_type ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  remove_item ()
+  {
+    this.remove.emit (true);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  on_remove (item: MapItem)
+  {
+    switch (this.type)
+    {
+      case 2:
+      {
+        this.data_map.splice (this.data_map.findIndex (element => element.key == item.key), 1);
+        this.build_map ();
+        break;
+      }
+      case 3:
+      {
+        this.data_map.splice (item.index, 1);
+        this.build_list ();
+        break;
+      }
+    }
   }
 
   //-----------------------------------------------------------------------------
 
   on_type ()
   {
-    if (this.model == undefined)
+    if (this.model == undefined || this.model == null)
     {
       this.type = 1;
     }
@@ -53,6 +84,14 @@ export class QbngParamsComponent implements OnInit {
       if (Object.prototype.toString.call( this.model ) === '[object Array]')
       {
         this.type = 3;
+
+        // convert into list
+        this.data_map = [];
+
+        for (var i in this.model)
+        {
+          this.data_map.push ({key: '', index: Number(i), val: this.model[i]});
+        }
       }
       else
       {
@@ -63,7 +102,7 @@ export class QbngParamsComponent implements OnInit {
 
         for (var i in this.model)
         {
-          this.data_map.push ({key: i, val: this.model[i]});
+          this.data_map.push ({key: i, index: 0, val: this.model[i]});
         }
       }
     }
@@ -85,6 +124,8 @@ export class QbngParamsComponent implements OnInit {
 
   change_type (type_id: number)
   {
+    this.show = false;
+
     switch (type_id)
     {
       case 1:
@@ -149,6 +190,23 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
+  build_list ()
+  {
+    // rebuild the map
+    // convert into list
+    this.model = [];
+
+    for (var i in this.data_map)
+    {
+      const data = this.data_map[i];
+      this.model.push(data.val);
+    }
+
+    this.modelChange.emit (this.model);
+  }
+
+  //-----------------------------------------------------------------------------
+
   add_item ()
   {
     switch (this.type)
@@ -156,15 +214,15 @@ export class QbngParamsComponent implements OnInit {
       case 2:
       {
         this.show = true;
-        this.data_map.push ({key: 'new', val: undefined});
+        this.data_map.push ({key: 'new', index: 0, val: undefined});
         this.build_map ();
         break;
       }
       case 3:
       {
         this.show = true;
-        this.model.push (undefined);
-        this.modelChange.emit (this.model);
+        this.data_map.push ({key: '', index: this.data_map.length, val: undefined});
+        this.build_list ();
         break;
       }
     }
@@ -174,13 +232,35 @@ export class QbngParamsComponent implements OnInit {
 
   on_model_changed (value)
   {
-    this.model = value;
+    switch (this.type)
+    {
+      case 4:
+      {
+        this.model = String(value);
+        break;
+      }
+      case 5:
+      {
+        this.model = Number(value);
+        break;
+      }
+      case 6:
+      {
+        this.model = (value === 'true');
+        break;
+      }
+      default:
+      {
+        this.model = value;
+      }
+    }
+
     this.modelChange.emit (this.model);
   }
 
   //-----------------------------------------------------------------------------
 
-  on_name_changed (item, value)
+  on_name_changed (item: MapItem, value: string)
   {
     item.key = value;
     this.build_map ();
@@ -188,14 +268,19 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  on_val_changed (item, value)
+  on_map_changed (item: MapItem, value)
   {
     item.val = value;
-
-    console.log(value);
     this.build_map ();
   }
 
+  //-----------------------------------------------------------------------------
+
+  on_list_changed (item: MapItem, value)
+  {
+    item.val = value;
+    this.build_list ();
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -204,51 +289,7 @@ class MapItem
 {
   key: string;
   val: any;
+  index: number;
 }
 
 //-----------------------------------------------------------------------------
-
-/*
-@Component({
-  selector: 'qbng-params',
-  template:
-  `
-  <a (click)="selectEvents.emit( node )" class="label">
-    {{ node.label }}
-  </a>
-
-  <div *ngIf="node.children.length" class="children">
-
-    <ng-template ngFor let-child [ngForOf]="node.children">
-
-      <my-tree-node
-        [node]="child"
-        [selectedNode]="selectedNode"
-        (select)="selectEvents.emit( $event )">
-      </my-tree-node>
-
-    </ng-template>
-
-  </div>
-
-  `
-})
-export class QbngParamsNodeComponent implements OnInit {
-
-  @Input('data') data_const: any;
-  @Output('data') data_change = new EventEmitter();
-
-  //-----------------------------------------------------------------------------
-
-  constructor()
-  {
-  }
-
-  //-----------------------------------------------------------------------------
-
-  ngOnInit()
-  {
-  }
-
-}
-*/

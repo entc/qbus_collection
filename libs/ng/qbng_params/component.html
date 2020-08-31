@@ -1,102 +1,127 @@
-<div class="mt-1">
-<div class="input-group" [ngSwitch]="type">
-  <div class="input-group-prepend" ngbDropdown>
-    <button ngbDropdownToggle type="button" class="btn btn-outline-primary btn-sm" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-      <span *ngSwitchCase="1">
-        X
-      </span>
-      <span *ngSwitchCase="2">
-        M
-      </span>
-      <span *ngSwitchCase="3">
-        A
-      </span>
-      <span *ngSwitchCase="4">
-        S
-      </span>
-      <span *ngSwitchCase="5">
-        N
-      </span>
-      <span *ngSwitchCase="6">
-        B
-      </span>
-    </button>
-    <div ngbDropdownMenu class="dropdown-menu">
-      <button (click) = "change_type(1)" class="dropdown-item" type="button"><span class="badge badge-secondary">X</span>&nbsp;&nbsp;[None]</button>
-      <button (click) = "change_type(2)" class="dropdown-item" type="button"><span class="badge badge-secondary">M</span>&nbsp;&nbsp;Map</button>
-      <button (click) = "change_type(3)" class="dropdown-item" type="button"><span class="badge badge-secondary">A</span>&nbsp;&nbsp;Array</button>
-      <button (click) = "change_type(4)" class="dropdown-item" type="button"><span class="badge badge-secondary">S</span>&nbsp;&nbsp;String</button>
-      <button (click) = "change_type(5)" class="dropdown-item" type="button"><span class="badge badge-secondary">N</span>&nbsp;&nbsp;Number</button>
-      <button (click) = "change_type(6)" class="dropdown-item" type="button"><span class="badge badge-secondary">B</span>&nbsp;&nbsp;Boolean</button>
+<div class="mt-1 w-100">
+  <div class="input-group" [ngSwitch]="type">
+    <div class="input-group-prepend" ngbDropdown>
+      <button ngbDropdownToggle type="button" class="btn btn-outline-primary btn-sm" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <span *ngSwitchCase="1">
+          X
+        </span>
+        <span *ngSwitchCase="2">
+          M
+        </span>
+        <span *ngSwitchCase="3">
+          A
+        </span>
+        <span *ngSwitchCase="4">
+          S
+        </span>
+        <span *ngSwitchCase="5">
+          N
+        </span>
+        <span *ngSwitchCase="6">
+          B
+        </span>
+      </button>
+      <div ngbDropdownMenu class="dropdown-menu">
+        <button (click) = "change_type(1)" class="dropdown-item" type="button"><span class="badge badge-secondary">X</span>&nbsp;&nbsp;[None]</button>
+        <button (click) = "change_type(4)" class="dropdown-item" type="button"><span class="badge badge-secondary">S</span>&nbsp;&nbsp;String</button>
+        <button (click) = "change_type(5)" class="dropdown-item" type="button"><span class="badge badge-secondary">N</span>&nbsp;&nbsp;Number</button>
+        <button (click) = "change_type(2)" class="dropdown-item" type="button"><span class="badge badge-secondary">M</span>&nbsp;&nbsp;Map</button>
+        <button (click) = "change_type(3)" class="dropdown-item" type="button"><span class="badge badge-secondary">A</span>&nbsp;&nbsp;Array</button>
+        <button (click) = "change_type(6)" class="dropdown-item" type="button"><span class="badge badge-secondary">B</span>&nbsp;&nbsp;Boolean</button>
+        <div class="dropdown-divider"></div>
+        <button (click) = "remove_item()" class="dropdown-item" type="button">delete</button>
+      </div>
     </div>
+
+    <input *ngIf="name != undefined && nameUsed == false" readonly type="text" class="form-control" [ngModel]="name">
+    <input *ngIf="name != undefined && nameUsed == true" name="name" [ngModel]="name" (ngModelChange)="nameChange.emit($event)" type="text" class="form-control">
+
+    <ng-container *ngSwitchCase="1">
+      <input readonly type="text" class="form-control" value="[empty element]">
+    </ng-container>
+
+    <ng-container *ngSwitchCase="2">
+      <input readonly type="text" class="form-control" value="{{data_map.length}}">
+      <div class="input-group-append">
+        <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
+          <span *ngIf="show == false"><i class="fa fa-arrow-circle-right"></i></span>
+          <span *ngIf="show == true"><i class="fa fa-arrow-circle-down"></i></span>
+        </button>
+      </div>
+      <div class="input-group-append">
+        <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
+          <i class="fa fa-plus-circle"></i>
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="3">
+      <input readonly type="text" class="form-control" value="{{model.length}}">
+      <div class="input-group-append">
+        <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
+          <span *ngIf="show == false"><i class="fa fa-arrow-circle-right"></i></span>
+          <span *ngIf="show == true"><i class="fa fa-arrow-circle-down"></i></span>
+        </button>
+      </div>
+      <div class="input-group-append">
+        <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
+          <i class="fa fa-plus-circle"></i>
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="4">
+      <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="text" class="form-control">
+    </ng-container>
+
+    <ng-container *ngSwitchCase="5">
+      <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="number" class="form-control">
+    </ng-container>
+
+    <ng-container *ngSwitchCase="6">
+
+      <select [ngModel]="model" (ngModelChange)="on_model_changed($event)" class="custom-select" id="inputGroupSelect01">
+        <option value="true">True</option>
+        <option value="false">False</option>
+      </select>
+
+    </ng-container>
   </div>
 
-  <input *ngIf="name && nameUsed == false" readonly type="text" class="form-control" value="{{data_name}}">
-  <input *ngIf="name && nameUsed == true" [ngModel] = "name" (ngModelChange) = "nameChange.emit($event)" type="text" class="form-control">
+  <div *ngIf="show" class="input-group pl-4 pt-2 pb-2" [ngSwitch]="type">
+    <ng-container *ngSwitchCase="2">
 
-  <ng-container *ngSwitchCase="1">
-    <input readonly type="text" class="form-control" aria-label="Text input with dropdown button" value="[empty element]">
-  </ng-container>
-  <ng-container *ngSwitchCase="2">
-    <input readonly type="text" class="form-control" value="{{data_map.length}}">
-    <div class="input-group-append">
-      <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
-        <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
-        <i *ngIf="show == true" class="fa fa-arrow-circle-down"></i>
-      </button>
-    </div>
-    <div class="input-group-append">
-      <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
-        <i class="fa fa-plus-circle"></i>
-      </button>
-    </div>
-  </ng-container>
-  <ng-container *ngSwitchCase="3">
-    <input readonly type="text" class="form-control" value="{{model.length}}">
-    <div class="input-group-append">
-      <button (click) = "toogle_show()" class="btn btn-outline-secondary" type="button">
-        <i *ngIf="show == false" class="fa fa-arrow-circle-right"></i>
-        <i *ngIf="show == true" class="fa fa-arrow-circle-down"></i>
-      </button>
-    </div>
-    <div class="input-group-append">
-      <button (click) = "add_item()" class="btn btn-outline-secondary" type="button">
-        <i class="fa fa-plus-circle"></i>
-      </button>
-    </div>
-  </ng-container>
-  <ng-container *ngSwitchCase="4">
-    <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="text" class="form-control" aria-label="Text input with dropdown button">
-  </ng-container>
-  <ng-container *ngSwitchCase="5">
-    <input [ngModel]="model" (ngModelChange)="on_model_changed($event)" type="text" class="form-control" aria-label="Text input with dropdown button">
-  </ng-container>
-  <ng-container *ngSwitchCase="6">
+        <h4>{{ '{' }}</h4>
 
-  </ng-container>
+        <div class="container">
+
+          <ng-container *ngFor="let item of data_map">
+
+            <qbng-params [model]="item.val" (modelChange)="on_map_changed(item, $event)" [name]="item.key" (nameChange)="on_name_changed(item, $event)" (remove)="on_remove(item)"></qbng-params>
+
+          </ng-container>
+
+        </div>
+
+        <h4>{{ '}' }}</h4>
+
+    </ng-container>
+    <ng-container *ngSwitchCase="3">
+
+      <h4>{{ '[' }}</h4>
+
+      <div class="container">
+
+        <ng-container *ngFor="let item of data_map; let i = index">
+
+          <qbng-params [model]="item.val" (modelChange)="on_list_changed(item, $event)" (remove)="on_remove(item)"></qbng-params>
+
+        </ng-container>
+
+      </div>
+
+      <h4>{{ ']' }}</h4>
+
+    </ng-container>
+  </div>
 </div>
-<div *ngIf="show" class="input-group pl-4 pt-2 pb-2" [ngSwitch]="type">
-  <ng-container *ngSwitchCase="2">
-
-    <div *ngFor="let item of data_map">
-
-      <qbng-params [model]="item.data_const" (modelChange)="on_val_changed(item, $event)" [name]="item.key" (nameChange)="on_name_changed(item, $event)"></qbng-params>
-
-    </div>
-
-  </ng-container>
-  <ng-container *ngSwitchCase="3">
-
-    <qbng-params [(model)] = "child" *ngFor="let child of data_const"></qbng-params>
-
-  </ng-container>
-</div>
-</div>
-
-<!--
- <div *ngFor="let child of tn.children">
-
-   {{child.name}}
-
- </div>
--->

@@ -113,19 +113,13 @@ export class FlowWorkstepsComponent implements OnInit
 
     this.modalService.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}])}).result.then((result) => {
 
-      if (result)
-      {
-        var step_name = result.step_name;
-        var step_fctid = Number(result.step_fctid);
+      const step_name = result.name;
+      const step_fctid = Number (result.fctid);
 
-        delete result.step_name;
-        delete result.step_fctid;
+      this.AuthService.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: result.pdata}).subscribe(() => {
 
-        this.AuthService.json_rpc ('FLOW', flow_method, {'wfid' : this.wfid, 'wsid' : modal_content ? modal_content.id : undefined, 'sqid' : 1, 'name': step_name, 'fctid': step_fctid, 'pdata': result}).subscribe(() => {
-
-          this.workflow_get ();
-        });
-      }
+        this.workflow_get ();
+      });
 
     }, () => {
 
@@ -158,6 +152,8 @@ export class IWorkstep {
   public modal_step_content: IWorkstep;
   public step_functions = StepFunctions.STEP_FUNCTIONS;
 
+  public submit_name: string;
+
   constructor (public modal: NgbActiveModal, public modal_content: IWorkstep)
   {
     if (modal_content)
@@ -168,10 +164,13 @@ export class IWorkstep {
       {
         this.modal_step_content.pdata = {};
       }
+
+      this.submit_name = 'MISC.APPLY';
     }
     else
     {
       this.modal_step_content = new IWorkstep;
+      this.submit_name = 'MISC.ADD';
     }
   }
 
@@ -185,9 +184,17 @@ export class IWorkstep {
 
   add_submit (form: NgForm)
   {
-    this.modal.close (form.value);
+    this.modal.close (this.modal_step_content);
     form.resetForm ();
   }
+
+  //---------------------------------------------------------------------------
+
+  on_pdata_change (data, name)
+  {
+    this.modal_step_content.pdata[name] = data;
+  }
+
 
 }
 

@@ -106,7 +106,8 @@
             </div>
           </div>
 
-          <qbng-params [(model)] = "modal_step_content.pdata.params" [name] = "'params'"></qbng-params>
+          <hr>
+          <qbng-params [model]="modal_step_content.pdata.params" (modelChange)="on_pdata_change($event, 'params')" [name]="'params'"></qbng-params>
 
         </div>
         <div class="form-group" *ngSwitchCase="4">
@@ -124,7 +125,8 @@
             </div>
           </div>
 
-          <qbng-params [(model)] = "modal_step_content.pdata.params" [name] = "'params'"></qbng-params>
+          <hr>
+          <qbng-params [model]="modal_step_content.pdata.params" (modelChange)="on_pdata_change($event, 'params')" [name]="'params'"></qbng-params>
 
         </div>
 
@@ -269,6 +271,6 @@
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
-  <button type="submit" class="btn btn-outline-success">{{ 'MISC.ADD' | transloco }}</button>
+  <button type="submit" class="btn btn-outline-success">{{ submit_name | transloco }}</button>
 </div>
 </form>

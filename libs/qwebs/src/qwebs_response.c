@@ -316,6 +316,15 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
   
   qwebs_response__internal__identification (s);
   
+  if (cape_err_code (err))
+  {
+    cape_stream_append_str (s, "Warning: ");
+    cape_stream_append_n (s, cape_err_code (err));
+    cape_stream_append_str (s, ", ");
+    cape_stream_append_str (s, cape_err_text (err));
+    cape_stream_append_str (s, "\r\n");
+  }
+  
   if (content)
   {
     // mime type for JSON
@@ -339,10 +348,6 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
         
         fctx.content = cape_stream_new ();
         fctx.enbase64 = NULL;
-        
-        cape_stream_append_str (s, "Warning: ");
-        cape_stream_append_str (s, cape_err_text (err));
-        cape_stream_append_str (s, "\r\n");
         
         res = cape_fs_file_load (qwebs_pages (webs), file, &fctx, qwebs_response__file__on_load, err);
         if (res)
