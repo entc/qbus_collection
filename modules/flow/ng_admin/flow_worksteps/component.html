@@ -7,8 +7,6 @@
     </ol>
   </nav>
 
-  <button (click)="modal__workstep_add__open(undefined)" type="button" class="btn btn-success">{{ 'FLOW.WORKSTEPADD' | transloco }}</button>
-
   <table class="table mt-2">
     <tr>
       <th></th>
@@ -16,7 +14,9 @@
         <span class="badge badge-primary">wsid</span>
       </th>
       <th width="100%">{{ 'FLOW.WORKSTEPNAME' | transloco }}</th>
-      <th></th>
+      <th>
+        <button (click)="modal__workstep_add__open(undefined)" type="button" class="btn btn-sm btn-success"><i class="fa fa-plus"></i></button>
+      </th>
     </tr>
     <tr *ngFor="let ws of worksteps">
       <td>

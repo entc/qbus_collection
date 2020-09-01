@@ -703,6 +703,40 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, 
 
 //-----------------------------------------------------------------------------
 
+int cape_template_part_eval_bool (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
+{
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval bool", "evaluate %s = []", cape_udc_name (item));
+
+  if (self->eval)
+  {
+    int h = cape_udc_b (item, FALSE);
+    
+    if ((h == TRUE) && cape_str_equal (self->eval, "TRUE"))
+    {
+      return cape_template_part_apply (self, node_stack, cb, 0, err);
+    }
+    else if ((h == FALSE) && cape_str_equal (self->eval, "FALSE"))
+    {
+      return cape_template_part_apply (self, node_stack, cb, 0, err);
+    }
+  }
+  else
+  {
+    if (cb->on_text)
+    {
+      const CapeString h = cape_udc_b (item, FALSE) ? "true" : "false";
+      
+      cb->on_text (cb->ptr, h);
+
+      return cape_template_part_apply (self, node_stack, cb, 0, err);
+    }
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_template__seek_item (CapeList node_stack, const CapeString name)
 {
   CapeUdc ret = NULL;
@@ -1019,6 +1053,16 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
                     return res;
                   }
                   
+                  break;
+                }
+                case CAPE_UDC_BOOL:
+                {
+                  int res = cape_template_part_eval_bool (part, node_stack, item, cb, err);
+                  if (res)
+                  {
+                    return res;
+                  }
+
                   break;
                 }
                 case CAPE_UDC_DATETIME:
