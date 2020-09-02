@@ -724,7 +724,7 @@ int cape_template_part_eval_bool (CapeTemplatePart self, CapeList node_stack, Ca
   {
     if (cb->on_text)
     {
-      const CapeString h = cape_udc_b (item, FALSE) ? "true" : "false";
+      const CapeString h = cape_udc_b (item, FALSE) ? "TRUE" : "FALSE";
       
       cb->on_text (cb->ptr, h);
 

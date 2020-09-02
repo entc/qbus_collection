@@ -31,6 +31,9 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (values, "val_float5", "10.35555");
   cape_udc_add_s_cp (values, "val_float6", "10.35444");
 
+  cape_udc_add_b (values, "val_bool_true", TRUE);
+  cape_udc_add_b (values, "val_bool_false", FALSE);
+
   {
     res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, NULL, err);
     if (res)
@@ -111,7 +114,32 @@ int main (int argc, char *argv[])
     
     printf ("T8: %i\n", ret);
   }
+
+  {
+    res = cape_eval_b ("{{val_bool_true}} = TRUE", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T9: %i\n", ret);
+  }
   
+  {
+    CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, err);
+
+    if (h)
+    {
+      printf ("VALUES: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+    
+    cape_str_del (&h);
+  }
+
   {
     CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
     
