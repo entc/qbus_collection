@@ -361,22 +361,12 @@ int flow_run_dbw_init__save (FlowRunDbw self, AdblTrx trx, number_t wfid, CapeEr
 
 //-----------------------------------------------------------------------------
 
-number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int add_psid, CapeErr err)
+number_t flow_run_dbw_init (FlowRunDbw self, AdblTrx trx, number_t wfid, number_t syncid, int add_psid, CapeErr err)
 {
   int res;
   
-  // local objects
-  AdblTrx trx = NULL;
-  
   self->syncid = syncid;
   
-  trx = adbl_trx_new (self->adbl_session, err);
-  if (NULL == trx)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
   // create a new data entry if there is content
   self->tdata_id = flow_data_add (trx, self->tdata, err);
   if (cape_err_code (err))
@@ -428,11 +418,8 @@ number_t flow_run_dbw_init (FlowRunDbw self, number_t wfid, number_t syncid, int
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", " P R O C E S S   C R E A T E D                      [%4i]", wfid);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run init", "------------------------------------------------------------");
   
-  adbl_trx_commit (&(trx), err);
-
 exit_and_cleanup:
   
-  adbl_trx_rollback (&(trx), err);
   return self->psid;
 }
 
@@ -1391,6 +1378,56 @@ exit_and_cleanup:
   // cleanup
   flow_run_dbw_del (p_self);
 
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, CapeUdc* p_params, CapeErr err)
+{
+  int res;
+  
+  number_t psid;
+  
+  // local objects
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self);
+  AdblTrx trx = NULL;
+  
+  if (p_params)
+  {
+    flow_run_dbw_tdata__merge_to (dbw_cloned, p_params);
+  }
+  
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  // create a new process task
+  psid = flow_run_dbw_init (dbw_cloned, trx, wfid, syncid, FALSE, err);
+  if (0 == psid)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // commit the all changes and continue processing in background
+  adbl_trx_commit (&trx, err);
+
+  // transfer ownership for queuing
+  res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
   return res;
 }
 

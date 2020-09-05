@@ -378,25 +378,9 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
   cursor = cape_udc_cursor_new (list, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
-    number_t psid;
-    FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
+    CapeUdc item = cape_udc_cursor_ext (list, cursor);
 
-    {
-      CapeUdc item = cape_udc_cursor_ext (list, cursor);
-
-      flow_run_dbw_tdata__merge_to (dbw_cloned, &item);
-    }
-        
-    // create a new process task
-    psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (0 == psid)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-    
-    // transfer ownership for queuing
-    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, &item, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -537,24 +521,12 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     // set state halt to commit all changes so far
     flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
 
-    FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
-
-    // create a new process task
-    // create a new process task
-    number_t psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (0 == psid)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-    
-    // transfer ownership for queuing
-    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
-    
+
     res = CAPE_ERR_CONTINUE;
   }
   else
@@ -642,24 +614,12 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
     // set state halt to commit all changes so far
     flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
 
-    FlowRunDbw dbw_cloned = flow_run_dbw_clone (dbw);
-
-    // create a new process task
-    // create a new process task
-    psid = flow_run_dbw_init (dbw_cloned, wfid, syncid, FALSE, err);
-    if (0 == psid)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-    
-    // transfer ownership for queuing
-    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
-    
+
     res = CAPE_ERR_CONTINUE;
   }
   else

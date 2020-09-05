@@ -18,6 +18,7 @@ struct FlowProcess_s
   number_t wfid;               // workflow id
   number_t sqid;               // sequence id
   number_t psid;               // process id
+  number_t fiid;               // flow instance ID
 
   number_t refid;              // reference id
   number_t syncid;             // process sync id
@@ -41,6 +42,7 @@ FlowProcess flow_process_new (QBus qbus, AdblSession adbl_session, CapeQueue que
   self->wfid = 0;
   self->psid = 0;
   self->sqid = 0;
+  self->fiid = 0;
   
   self->refid = 0;
   self->syncid = 0;
@@ -91,6 +93,65 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeErr err)
+{
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_n    (values, "wpid"         , self->wpid);
+  cape_udc_add_n    (values, "wfid"         , self->wfid);
+  cape_udc_add_n    (values, "refid"        , self->refid);
+  cape_udc_add_n    (values, "psid"         , self->psid);
+
+  // execute the query
+  self->fiid = adbl_trx_insert (trx, "flow_instance", &values, err);
+  
+  if (self->fiid)
+  {
+    return CAPE_ERR_NONE;
+  }
+  
+  cape_err_clr (err);
+  return cape_err_set (err, CAPE_ERR_RUNTIME, "instance was already created");
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_add__init (FlowProcess self, FlowRunDbw flow_run_dbw, CapeErr err)
+{
+  int res;
+  AdblTrx trx = NULL;
+
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  self->psid = flow_run_dbw_init (flow_run_dbw, trx, self->wfid, self->syncid, TRUE, err);
+  if (0 == self->psid)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_process_add__instance (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -119,14 +180,6 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  /*
-  if (NULL == qin->pdata)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
-    goto exit_and_cleanup;
-  }
-  */
-  
   self->refid = cape_udc_get_n (qin->cdata, "refid", 0);
   if (self->refid == 0)
   {
@@ -157,26 +210,33 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  self->psid = flow_run_dbw_init (flow_run_dbw, self->wfid, self->syncid, TRUE, err);
-  if (0 == self->psid)
+  // initialize the new flow process
+  // -> checks for uniqueness
+  res = flow_process_add__init (self, flow_run_dbw, err);
+  if (res)
   {
-    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-
+  
   // forward business logic to this class
   res = flow_run_dbw_start (&flow_run_dbw, FLOW_ACTION__PRIM, NULL, err);
-
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
   qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   cape_udc_add_n (qout->cdata, FLOW_CDATA__PSID, self->psid);
 
+  res = CAPE_ERR_NONE;
+  
 exit_and_cleanup:
 
   if (cape_err_code(err))
   {
     cape_log_msg (CAPE_LL_ERROR, "FLOW", "on add", cape_err_text (err));
   }
-
+  
   flow_run_dbw_del (&flow_run_dbw);
   
   flow_process_del (p_self);
