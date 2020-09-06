@@ -439,6 +439,7 @@ int flow_run_dbw__data_load (FlowRunDbw self, CapeErr err)
       goto exit_and_cleanup;
     }
     
+    /*
     // debug
     {
       CapeString h = cape_json_to_s (self->pdata);
@@ -446,6 +447,7 @@ int flow_run_dbw__data_load (FlowRunDbw self, CapeErr err)
       printf ("..............................................................................\n");
       printf ("PDATA: %s\n", h);
     }
+     */
   }
 
   if (self->tdata_id)
@@ -458,6 +460,7 @@ int flow_run_dbw__data_load (FlowRunDbw self, CapeErr err)
       goto exit_and_cleanup;
     }
 
+    /*
     // debug
     {
       CapeString h = cape_json_to_s (self->tdata);
@@ -465,6 +468,7 @@ int flow_run_dbw__data_load (FlowRunDbw self, CapeErr err)
       printf ("..............................................................................\n");
       printf ("TDATA: %s\n", h);
     }
+     */
   }
 
   res = CAPE_ERR_NONE;
@@ -950,6 +954,7 @@ int flow_run_dbw_sync__merge_tdata (AdblTrx trx, number_t syncid, CapeUdc tdata,
     cape_udc_add_name (tdata_db, &merge_node_tdata, merge_node);
   }
   
+  /*
   // debug
   {
     CapeString h = cape_json_to_s (tdata_db);
@@ -958,6 +963,7 @@ int flow_run_dbw_sync__merge_tdata (AdblTrx trx, number_t syncid, CapeUdc tdata,
     
     cape_str_del (&h);
   }
+   */
   
   res = flow_data_set (trx, tdid, tdata_db, err);
 
@@ -1211,8 +1217,8 @@ int flow_run_dbw__run_step (FlowRunDbw* p_self, number_t action, CapeErr err)
   
   FlowRunStep run_step = flow_run_step_new (self->qbus);
 
-  // TODO: make &self to self
   // transfer ownership and business logic to step class
+  // -> in return self might be NULL
   res = flow_run_step_set (&run_step, p_self, action, self->params, err);
   if (res)
   {
@@ -1222,7 +1228,7 @@ int flow_run_dbw__run_step (FlowRunDbw* p_self, number_t action, CapeErr err)
   // clear the input params
   cape_udc_del (&(self->params));
   
-  cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
+  //cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
   
   flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
 
@@ -1261,46 +1267,28 @@ static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
   // local objects
   CapeErr err = cape_err_new ();
   
-  while (TRUE)
+  while (self)
   {
     res = flow_run_dbw__run_step (&self, action, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
-     
-    res = flow_run_dbw__next (self, err);
-    if (res)
+    
+    if (self)
     {
-      goto exit_and_cleanup;
+      res = flow_run_dbw__next (self, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
     }
   }
 
 exit_and_cleanup:
   
-  cape_log_msg (CAPE_LL_DEBUG, "FLOW", "queue worker", "end of loop");
-  
-  /*
-  if (res && self)
-  {
-    if (res == CAPE_ERR_EOF)
-    {
-      // do nothing here
-    }
-    else if (res == CAPE_ERR_CONTINUE)
-    {
-      flow_run_dbw_state_set (self, FLOW_STATE__HALT, NULL);
-    }
-    else
-    {
-      flow_run_dbw_state_set (self, FLOW_STATE__ERROR, err);
-    }
-  }
-   */
-
   // cleanup
   flow_run_dbw_del (&self);
-  
   cape_err_del (&err);
 }
 
@@ -1368,7 +1356,10 @@ int flow_run_dbw_continue (FlowRunDbw* p_self, number_t action, CapeUdc* p_param
     goto exit_and_cleanup;
   }
 
+  // add process to queue
   cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  
+  // ownership was transfered to queue user ptr
   *p_self = NULL;
 
   res = CAPE_ERR_NONE;
@@ -1413,17 +1404,12 @@ int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, CapeU
     goto exit_and_cleanup;
   }
 
-  // commit the all changes and continue processing in background
+  // commit all changes
   adbl_trx_commit (&trx, err);
 
   // transfer ownership for queuing
+  // -> continue processing in background
   res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
   
@@ -2216,6 +2202,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
   // check for the list in t_data
   if (self->tdata)
   {
+    /*
     {
       CapeString h = cape_json_to_s (self->tdata);
       
@@ -2223,6 +2210,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
       
       cape_str_del (&h);
     }
+     */
     
     waitlist_node = cape_udc_get (self->tdata, waitlist_node_name);
     
@@ -2239,6 +2227,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
     goto exit_and_cleanup;
   }
   
+  /*
   {
     CapeString h = cape_json_to_s (waitlist_node);
     
@@ -2246,6 +2235,7 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
     
     cape_str_del (&h);
   }
+   */
   
   // start transaction
   trx = adbl_trx_new (self->adbl_session, err);

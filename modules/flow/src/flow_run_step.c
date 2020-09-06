@@ -76,20 +76,23 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
       goto exit_and_cleanup;
     }
     
-    
+    /*
     {
       CapeString h = cape_json_to_s (qin->cdata);
       
       printf ("................................................................................\n");
       printf ("RETURNED CDATA: %s\n", h);
     }
-    
+    */
+     
     flow_run_dbw_tdata__merge_to (self->dbw, &(qin->cdata));
   }
   else
   {
+    /*
     printf ("................................................................................\n");
     printf ("RETURNED CDATA: NONE\n");
+     */
   }
 
   // set the step to done

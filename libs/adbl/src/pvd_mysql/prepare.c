@@ -199,7 +199,7 @@ void adbl_prepare__replace_binds (AdblBindVars* p_to_replace, AdblBindVars with_
 
 //-----------------------------------------------------------------------------
 
-AdblPvdCursor adbl_prepare_to_cursor (AdblPrepare* p_self)
+AdblPvdCursor adbl_prepare_to_cursor (AdblPrepare* p_self, CapeMutex mutex)
 {
   AdblPrepare self = *p_self;
   
@@ -215,6 +215,7 @@ AdblPvdCursor adbl_prepare_to_cursor (AdblPrepare* p_self)
   self->values = NULL;
   
   cursor->pos = 0;
+  cursor->mutex = mutex;
   
   // cleanup
   adbl_prepare_del (p_self);

@@ -13,6 +13,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
+#include "sys/cape_mutex.h"
 
 //=============================================================================
 
@@ -30,6 +31,8 @@ struct AdblPvdCursor_s
   
   CapeUdc values;
   
+  CapeMutex mutex;   // reference
+  
 };
 
 //-----------------------------------------------------------------------------
@@ -38,7 +41,7 @@ __CAPE_LIBEX   AdblPrepare     adbl_prepare_new                (CapeUdc* p_param
 
 __CAPE_LIBEX   void            adbl_prepare_del                (AdblPrepare*);
 
-__CAPE_LIBEX   AdblPvdCursor   adbl_prepare_to_cursor          (AdblPrepare*);
+__CAPE_LIBEX   AdblPvdCursor   adbl_prepare_to_cursor          (AdblPrepare*, CapeMutex);
 
 //-----------------------------------------------------------------------------
 

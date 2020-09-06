@@ -622,10 +622,10 @@ int __STDCALL adbl_pvd_set (AdblPvdSession self, const char* table, CapeUdc* p_p
     goto exit_and_cleanup;
   }
   
+  pre = adbl_prepare_new (p_params, p_values);
+
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
-
-  pre = adbl_prepare_new (p_params, p_values);
 
   // run the procedure
   {
@@ -720,10 +720,10 @@ number_t __STDCALL adbl_pvd_ins_or_set (AdblPvdSession self, const char* table, 
     goto exit_and_cleanup;
   }
   
+  pre = adbl_prepare_new (p_params, p_values);
+
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
-
-  pre = adbl_prepare_new (p_params, p_values);
 
   // run the procedure
   {
@@ -941,7 +941,7 @@ AdblPvdCursor __STDCALL adbl_pvd_cursor_new (AdblPvdSession self, const char* ta
   }
   
   {
-    AdblPvdCursor ret = adbl_prepare_to_cursor (&pre);
+    AdblPvdCursor ret = adbl_prepare_to_cursor (&pre, self->mutex);
     
     cape_mutex_unlock (self->mutex);
 
@@ -963,9 +963,13 @@ void __STDCALL adbl_pvd_cursor_del (AdblPvdCursor* p_self)
 {
   AdblPvdCursor self = *p_self;
 
+  cape_mutex_lock (self->mutex);
+
   mysql_stmt_free_result (self->stmt);
   
   mysql_stmt_close (self->stmt);
+  
+  cape_mutex_unlock (self->mutex);
   
   // clean up the array
   adbl_bindvars_del (&(self->binds));   
@@ -979,7 +983,15 @@ void __STDCALL adbl_pvd_cursor_del (AdblPvdCursor* p_self)
 
 int __STDCALL adbl_pvd_cursor_next (AdblPvdCursor self)
 {
-  switch (mysql_stmt_fetch (self->stmt))
+  int fetch_result;
+  
+  cape_mutex_lock (self->mutex);
+
+  fetch_result = mysql_stmt_fetch (self->stmt);
+  
+  cape_mutex_unlock (self->mutex);
+
+  switch (fetch_result)
   {
     case 0:
     {
