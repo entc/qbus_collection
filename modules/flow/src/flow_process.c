@@ -497,7 +497,33 @@ int proc_taskflow_rm__entry (FlowProcess self, AdblTrx trx, number_t psid, CapeE
       goto exit_and_cleanup;
     }
   }
-  
+
+  // remove the logs
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"         , psid);
+    
+    res = adbl_trx_delete (trx, "flow_log", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  // remove the instance
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"         , psid);
+    
+    res = adbl_trx_delete (trx, "flow_instance", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
   // remove the process
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);

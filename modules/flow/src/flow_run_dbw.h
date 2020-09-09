@@ -23,6 +23,12 @@
 
 //-----------------------------------------------------------------------------
 
+#define FLOW_SEQUENCE__DEFAULT        1    // default workflow sequence
+#define FLOW_SEQUENCE__ABORT          2    // abort sequence
+#define FLOW_SEQUENCE__FAILOVER       3    // in case of failure
+
+//-----------------------------------------------------------------------------
+
 struct FlowRunDbw_s; typedef struct FlowRunDbw_s* FlowRunDbw;
 
 //-----------------------------------------------------------------------------
@@ -48,6 +54,9 @@ __CAPE_LOCAL   int          flow_run_dbw_continue          (FlowRunDbw*, number_
 
                             /* continue with the next process step */
 __CAPE_LOCAL   int          flow_run_dbw_inherit           (FlowRunDbw, number_t wfid, number_t syncid, CapeUdc* p_params, CapeErr err);
+
+                            /* change the sequence id of a process */
+__CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, CapeErr err);
 
 //-----------------------------------------------------------------------------
 // getter

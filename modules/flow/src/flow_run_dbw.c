@@ -1419,6 +1419,65 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+  
+  number_t psid;
+
+  // local objects
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self);
+  AdblTrx trx = NULL;
+
+  if (self->syncid)
+  {
+
+    
+  }
+  else
+  {
+    
+    
+    
+  }
+  
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  /*
+  // create a new process task
+  psid = flow_run_dbw_init (dbw_cloned, trx, self->wfid, self->syncid, FALSE, err);
+  if (0 == psid)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+   */
+
+  // change sequence id
+  
+  
+  // commit all changes
+  adbl_trx_commit (&trx, err);
+
+  // transfer ownership for queuing
+  // -> continue processing in background
+  res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+
+exit_and_cleanup:
+  
+  // cleanup
+  flow_run_dbw_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, CapeErr err)
 {
   int res;

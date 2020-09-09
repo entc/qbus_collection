@@ -694,19 +694,8 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
   {
     case FLOW_ACTION__ABORT:
     {
-      int res;
-      
-      /*
-      ProcTaskflow taskflow = proc_taskflow_new (self->qmod, self->adbo, self->mutex, self->wpid, self->page);
-      
-      // continue with a taskflow
-      // change the sequence ID to abort
-      res = proc_taskflow_seqt (&taskflow, din, dout, self->taid, self->syncid, PROC_TASK_SQTID__ABORT, err);
-
-      proc_task_del (p_self);
-       */
-      
-      return res;
+      res = flow_run_dbw_sqt (p_dbw, FLOW_SEQUENCE__ABORT, err);
+      goto exit_and_cleanup;
     }
     case FLOW_ACTION__NONE:
     {
