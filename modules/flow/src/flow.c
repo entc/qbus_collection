@@ -249,6 +249,32 @@ static int __STDCALL qbus_flow__process__details (QBus qbus, void* ptr, QBusM qi
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__process__once (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_once (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_flow__process__prev (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_prev (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__process__all (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -392,6 +418,14 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get analytic details of a process
   //   args: psid
   qbus_register (qbus, "process_details"     , ctx, qbus_flow__process__details, NULL, err);
+
+  // run the current process step once
+  //   args: psid
+  qbus_register (qbus, "process_once"        , ctx, qbus_flow__process__once, NULL, err);
+
+  // switch to the previous step
+  //   args: psid
+  qbus_register (qbus, "process_prev"        , ctx, qbus_flow__process__prev, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

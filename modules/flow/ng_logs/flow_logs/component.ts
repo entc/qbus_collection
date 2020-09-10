@@ -40,6 +40,8 @@ export class FlowLogsComponent implements OnInit
 
   grab_items (data: ChainItem[])
   {
+    var has_state_change = false;
+
     for (var i in data)
     {
       const item: ChainItem = data[i];
@@ -51,6 +53,34 @@ export class FlowLogsComponent implements OnInit
         if (item_chain.logs)
         {
           item_chain.logs = undefined;
+        }
+
+        switch (item_chain.state)
+        {
+          case 0:
+          {
+            if (has_state_change == false)
+            {
+              item_chain['between'] = true;
+              has_state_change = true;
+            }
+
+            break;
+          }
+          case 1:  // error
+          {
+            has_state_change = true;
+            break;
+          }
+          case 2:  // halt
+          {
+            has_state_change = true;
+            break;
+          }
+          case 3:  // done
+          {
+            break;
+          }
         }
 
         this.chain_items.push (item_chain);
@@ -182,6 +212,28 @@ export class FlowChainComponent implements OnInit
 
       this.refresh.emit (true);
       console.log('set step done');
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  rerun_once (item: ChainItem)
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_once', {'psid': item.psid}).subscribe(() => {
+
+      this.refresh.emit (true);
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  prev_step (item: ChainItem)
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_prev', {'psid': item.psid}).subscribe(() => {
+
+      this.refresh.emit (true);
 
     });
   }

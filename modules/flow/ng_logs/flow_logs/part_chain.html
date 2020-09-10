@@ -36,11 +36,13 @@
           </div>
 
         </div>
-        <div *ngIf="log.state == 2 || log.state == 1">
+        <div *ngIf="log.state == 2 || log.state == 1 || log.between">
 
           <hr>
-          <button (click)="open_process_modal (log)" class="btn btn-outline-primary btn-sm mr-2">{{ 'FLOW.STEPDETAILS' | transloco }}</button>
-          <button (click)="rerun_step (log)" class="btn btn-outline-primary btn-sm mr-2">{{ 'FLOW.RERUNSTEP' | transloco }}</button>
+          <button (click)="open_process_modal (log)" class="btn btn-outline-secondary btn-sm mr-2"><i class="fas fa-info-circle"></i>&nbsp;&nbsp;{{ 'FLOW.STEPDETAILS' | transloco }}</button>
+          <button (click)="rerun_step (log)" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-play-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNSTEP' | transloco }}</button>
+          <button (click)="rerun_once (log)" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-dot-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNONCE' | transloco }}</button>
+          <button (click)="prev_step (log)" class="btn btn-outline-secondary btn-sm mr-2"><i class="fas fa-arrow-alt-circle-up"></i>&nbsp;&nbsp;{{ 'FLOW.PREVSTEP' | transloco }}</button>
 
         </div>
 

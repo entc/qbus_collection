@@ -1478,6 +1478,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_run_dbw_once (FlowRunDbw* p_self, CapeErr err)
+{
+  int res;
+  FlowRunDbw self = *p_self;
+
+  // this shall load all current states from the database
+  res = flow_run_dbw__continue (self, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  if (self->state == FLOW_STATE__HALT)
+  {
+    // this is OK
+  }
+  else
+  {
+    // workaround
+    self->state = FLOW_STATE__HALT;
+  }
+
+  // run the next step
+  res = flow_run_dbw__run_step (p_self, FLOW_ACTION__PRIM, err);
+
+exit_and_cleanup:
+  
+  // cleanup
+  flow_run_dbw_del (p_self);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, CapeErr err)
 {
   int res;
