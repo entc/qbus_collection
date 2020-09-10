@@ -4,22 +4,28 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_log.h>
 
+// qcrypt
+#include <qcrypt.h>
+
 //-----------------------------------------------------------------------------
 
 struct AuthGP_s
 {
   AdblSession adbl_session;   // reference
+  AuthVault vault;            // reference
   
   number_t wpid;
 };
 
 //-----------------------------------------------------------------------------
 
-AuthGP auth_gp_new (AdblSession adbl_session)
+AuthGP auth_gp_new (AdblSession adbl_session, AuthVault vault)
 {
   AuthGP self = CAPE_NEW (struct AuthGP_s);
   
   self->adbl_session = adbl_session;
+  self->vault = vault;
+  
   self->wpid = 0;
   
   return self;
@@ -210,6 +216,170 @@ exit_and_cleanup:
   
   cape_udc_del (&query_results);
   
+  auth_gp_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_gp_set (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthGP self = *p_self;
+  
+  number_t gpid;
+  const CapeString title;
+  const CapeString firstname;
+  const CapeString lastname;
+  const CapeString vsec;
+
+  // local objects
+  AdblTrx trx = NULL;
+  CapeString title_encrypted = NULL;
+  CapeString firstname_encrypted = NULL;
+  CapeString lastname_encrypted = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{gp set} missing wpid");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{gp set} missing gpid");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "{gp set} cdata is missing");
+    goto exit_and_cleanup;
+  }
+
+  title = cape_udc_get_s (qin->cdata, "title", NULL);
+  if (title == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing title");
+    goto exit_and_cleanup;
+  }
+
+  firstname = cape_udc_get_s (qin->cdata, "firstname", NULL);
+  if (firstname == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing firstname");
+    goto exit_and_cleanup;
+  }
+
+  lastname = cape_udc_get_s (qin->cdata, "lastname", NULL);
+  if (lastname == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing lastname");
+    goto exit_and_cleanup;
+  }
+
+  if ((title == NULL) && (firstname == NULL) && (lastname == NULL))
+  {
+    res = CAPE_ERR_NONE;  // nothing to do
+    goto exit_and_cleanup;
+  }
+  
+  vsec = auth_vault__vsec (self->vault, self->wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{gp set} vault is missing");
+    goto exit_and_cleanup;
+  }
+  
+  if (title)
+  {
+    title_encrypted = qcrypt__encrypt (vsec, title, err);
+    if (title_encrypted == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  if (firstname)
+  {
+    firstname_encrypted = qcrypt__encrypt (vsec, firstname, err);
+    if (firstname_encrypted == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  if (lastname)
+  {
+    lastname_encrypted = qcrypt__encrypt (vsec, lastname, err);
+    if (lastname_encrypted == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  // start the transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // parameters
+    cape_udc_add_n      (params, "id"           , gpid);
+    cape_udc_add_n      (params, "wpid"         , self->wpid);
+
+    if (title_encrypted)
+    {
+      cape_udc_add_s_mv (values, "title", &title_encrypted);
+    }
+
+    if (firstname_encrypted)
+    {
+      cape_udc_add_s_mv (values, "firstname", &firstname_encrypted);
+    }
+
+    if (lastname_encrypted)
+    {
+      cape_udc_add_s_mv (values, "lastname", &lastname_encrypted);
+    }
+
+    // execute query
+    res = adbl_trx_update (trx, "glob_persons", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  
+  cape_str_del (&title_encrypted);
+  cape_str_del (&firstname_encrypted);
+  cape_str_del (&lastname_encrypted);
+
   auth_gp_del (p_self);
   return res;
 }

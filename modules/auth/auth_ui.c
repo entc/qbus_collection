@@ -645,3 +645,45 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+  
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  // check role
+  {
+    CapeUdc role_admin;
+    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+    
+    if (roles == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing roles");
+      goto exit_and_cleanup;
+    }
+    
+    role_admin = cape_udc_get (roles, "auth_ui_su_w");
+    if (role_admin == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing role");
+      goto exit_and_cleanup;
+    }
+  }
+
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

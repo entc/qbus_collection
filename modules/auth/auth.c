@@ -98,12 +98,25 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens);
+  
+  // run the command
+  return auth_ui_switch (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__gp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
   
   // run the command
   return auth_gp_get (&auth_gp, qin, qout, err);
@@ -116,10 +129,23 @@ static int __STDCALL qbus_auth__account_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
   
   // run the command
   return auth_gp_account (&auth_gp, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__gp_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_gp_set (&auth_gp, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -218,6 +244,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "getUI"                , ctx, qbus_auth_ui_get, NULL, err);
   qbus_register (qbus, "changeCredentials"    , ctx, qbus_auth_ui_set, NULL, err);
 
+  // change a user (needs admin roles)
+  //   args: gpid
+  qbus_register (qbus, "ui_switch"            , ctx, qbus_auth_ui_switch, NULL, err);
+
   // -------- callback methods --------------------------------------------
 
   // all global person functions
@@ -228,7 +258,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   -> account info (workspace)
   //   -> secret (encrypted)
   qbus_register (qbus, "account_get"          , ctx, qbus_auth__account_get, NULL, err);
-  
+
+  // set global user
+  qbus_register (qbus, "globperson_set"       , ctx, qbus_auth__gp_set, NULL, err);
+
   // -------- callback methods --------------------------------------------
 
   // all token functions
