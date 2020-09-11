@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-
+import { HttpClient } from '@angular/common/http';
 // auth service
 import { AuthService } from '@qbus/auth.service';
 
@@ -8,12 +8,11 @@ import { AuthService } from '@qbus/auth.service';
 
 @Component({
   selector: 'app-flow',
-  templateUrl: './component.html',
-  styleUrls: ['./component.scss']
+  templateUrl: './component.html'
 })
 export class AuthLoginsComponent implements OnInit {
 
-  login_items: Observable<Array<LoginItem>>;
+  login_items: LoginItem[];
 
   // for sorting and pagination
   currentPage: number;
@@ -22,7 +21,7 @@ export class AuthLoginsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private AuthService: AuthService)
+  constructor (private AuthService: AuthService, private map_service: MapsService)
   {
   }
 
@@ -30,7 +29,27 @@ export class AuthLoginsComponent implements OnInit {
 
   ngOnInit()
   {
-    this.login_items = this.AuthService.json_rpc ('AUTH', 'ui_login_get', {});
+    this.AuthService.json_rpc ('AUTH', 'ui_login_get', {lp: "D14"}).subscribe ((data: LoginItem[]) => {
+
+      for (var i in data)
+      {
+        const item: LoginItem = data[i];
+
+        const ip_parts = item.ip.split('.');
+
+        if (ip_parts.length == 4 && item.ip != '0.0.0.0')
+        {
+          this.map_service.getIPInfo (item.ip).subscribe ((map: IPInfo) => {
+
+            item.city = map.city;
+
+          });
+        }
+      }
+
+      this.login_items = data;
+
+    });
   }
 
   //-----------------------------------------------------------------------------
@@ -50,5 +69,33 @@ class LoginItem {
   public workspace: string;
   public ip: string;
   public info: object;
-
+  public city: string;
 }
+
+//-----------------------------------------------------------------------------
+
+interface IPInfo {
+	latitude: string;
+	longitude: string;
+	country_name: string;
+	city: string;
+}
+
+//-----------------------------------------------------------------------------
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MapsService {
+
+  constructor (private http: HttpClient)
+  {
+  }
+
+	getIPInfo (ip: string)
+  {
+		return this.http.get<IPInfo>('https://ipapi.co/' + ip + '/json/');
+	}
+}
+
+//-----------------------------------------------------------------------------

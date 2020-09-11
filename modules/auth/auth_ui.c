@@ -17,7 +17,6 @@ struct AuthUI_s
   AuthTokens tokens;          // reference
   
   number_t userid;
-  
   number_t wpid;
   
   CapeString secret;
@@ -36,7 +35,7 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens)
   self->wpid = 0;
   
   self->secret = NULL;
-  
+
   return self;
 }
 
@@ -44,11 +43,14 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens)
 
 void auth_ui_del (AuthUI* p_self)
 {
-  AuthUI self = *p_self;
-  
-  cape_str_del (&(self->secret));
-  
-  CAPE_DEL (p_self, struct AuthUI_s);
+  if (*p_self)
+  {
+    AuthUI self = *p_self;
+    
+    cape_str_del (&(self->secret));
+    
+    CAPE_DEL (p_self, struct AuthUI_s);
+  }
 }
 
 //---------------------------------------------------------------------------
@@ -145,10 +147,6 @@ int auth_ui_crypt4__compare_password (AuthUI self, const CapeString cha, const C
 
     hex_hash = qcrypt__hash_sha256__hex_m (s, err);
 
-    {
-      printf ("HASH: %s\n", hex_hash);
-    }
-    
     cape_stream_del (&s);
   }
 
@@ -582,6 +580,8 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   // local objects
   CapeUdc query_results = NULL;
+  CapeDatetime* sd = NULL;
+  CapeDatetime* td = NULL;
   
   // do some security checks
   if (qin->rinfo == NULL)
@@ -608,10 +608,60 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
+  
+  // lp
+  {
+    const CapeString lp = cape_udc_get_s (qin->cdata, "lp", NULL);
+    if (lp)
+    {
+      td = cape_datetime_new ();
+      
+      cape_datetime_utc (td);
+      cape_datetime__remove_s (td, lp, td);
+    }
+    else
+    {
+      // optional
+      sd = cape_datetime_cp (cape_udc_get_d (qin->cdata, "sd", NULL));
+      td = cape_datetime_cp (cape_udc_get_d (qin->cdata, "td", NULL));
+    }
+  }
+  
+  if (sd)
+  {
+    CapeString h = cape_datetime_s__std (sd);
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "login get", "use start date = %s", h);
+    cape_str_del (&h);
+  }
+  
+  if (td)
+  {
+    CapeString h = cape_datetime_s__std (td);
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "login get", "use stop date = %s", h);
+    cape_str_del (&h);
+  }
 
   {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
+    if (sd && td)
+    {
+      adbl_param_add__between_d (params, "ltime", sd, td);
+    }
+    else
+    {
+      if (sd)
+      {
+        adbl_param_add__less_than_d (params, "ltime", sd);
+      }
+      
+      if (td)
+      {
+        adbl_param_add__greater_than_d (params, "ltime", td);
+      }
+    }
+
     cape_udc_add_n      (values, "wpid"        , 0);
     cape_udc_add_n      (values, "gpid"        , 0);
     cape_udc_add_n      (values, "userid"      , 0);
@@ -620,8 +670,14 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_node   (values, "info"        );
     cape_udc_add_s_cp   (values, "workspace"   , NULL);
 
+    // delete the params if its empty
+    if (cape_udc_size (params) == 0)
+    {
+      cape_udc_del (&params);
+    }
+    
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "auth_logins_get_view", NULL, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "auth_logins_get_view", &params, &values, err);
     if (query_results == NULL)
     {
       return cape_err_code (err);
@@ -637,6 +693,9 @@ exit_and_cleanup:
   {
     cape_log_msg (CAPE_LL_ERROR, "AUTH", "logins get", cape_err_text (err));
   }
+  
+  cape_datetime_del (&sd);
+  cape_datetime_del (&td);
   
   cape_udc_del (&query_results);
   

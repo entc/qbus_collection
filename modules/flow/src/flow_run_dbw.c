@@ -1490,6 +1490,9 @@ int flow_run_dbw_once (FlowRunDbw* p_self, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  self->state = FLOW_STATE__NONE;
+
+  /*
   if (self->state == FLOW_STATE__HALT)
   {
     // this is OK
@@ -1499,6 +1502,7 @@ int flow_run_dbw_once (FlowRunDbw* p_self, CapeErr err)
     // workaround
     self->state = FLOW_STATE__HALT;
   }
+   */
 
   // run the next step
   res = flow_run_dbw__run_step (p_self, FLOW_ACTION__PRIM, err);
