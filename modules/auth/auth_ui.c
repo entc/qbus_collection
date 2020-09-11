@@ -651,10 +651,17 @@ int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthUI self = *p_self;
   
+  number_t gpid;
+  number_t wpid;
+  
+  // local objects
+  CapeUdc rinfo = NULL;
+  CapeUdc cdata = NULL;
+
   // do some security checks
   if (qin->rinfo == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui switch} missing rinfo");
     goto exit_and_cleanup;
   }
   
@@ -665,23 +672,58 @@ int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     if (roles == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing roles");
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{ui switch} missing roles");
       goto exit_and_cleanup;
     }
     
     role_admin = cape_udc_get (roles, "auth_ui_su_w");
     if (role_admin == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing role");
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{ui switch} missing role");
       goto exit_and_cleanup;
     }
   }
 
+  // for security reasons the switch is only possible from inside
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui switch} 'pdata' is missing");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (qin->pdata, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui switch} 'gpid' is missing");
+    goto exit_and_cleanup;
+  }
   
+  // optional
+  wpid = cape_udc_get_n (qin->pdata, "wpid", 0);
+  
+  {
+    // use the rinfo classes
+    AuthRInfo auth_rinfo = auth_rinfo_new (self->adbl_session, 0, wpid);
+    
+    // fetch all rinfo from database
+    res = auth_rinfo_get_gpid (&auth_rinfo, gpid, &rinfo, &cdata, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // replace the existing rinfo and cdata
+  cape_udc_replace_mv (&(qout->rinfo), &rinfo);
+  cape_udc_replace_mv (&(qout->cdata), &cdata);
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
   
+  cape_udc_del (&rinfo);
+  cape_udc_del (&cdata);
+
   auth_ui_del (p_self);
   return res;
 }

@@ -38,11 +38,9 @@ void auth_rinfo_del (AuthRInfo* p_self)
 
 //---------------------------------------------------------------------------
 
-void auth_rinfo__workspaces (AuthRInfo self, CapeUdc results, QBusM qout)
+void auth_rinfo__workspaces (AuthRInfo self, CapeUdc results, CapeUdc cdata)
 {
   CapeUdcCursor* cursor = cape_udc_cursor_new (results, CAPE_DIRECTION_FORW);
-  
-  qout->cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
   
   while (cape_udc_cursor_next (cursor))
   {
@@ -79,7 +77,7 @@ void auth_rinfo__workspaces (AuthRInfo self, CapeUdc results, QBusM qout)
       }
     }
 
-    cape_udc_add (qout->cdata, &workspace_node);
+    cape_udc_add (cdata, &workspace_node);
   }
   
   cape_udc_cursor_del (&cursor);
@@ -87,11 +85,11 @@ void auth_rinfo__workspaces (AuthRInfo self, CapeUdc results, QBusM qout)
 
 //---------------------------------------------------------------------------
 
-void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
+void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc rinfo)
 {
   // add essentials
-  cape_udc_add_n (cdata, "userid", self->userid);
-  cape_udc_add_n (cdata, "wpid", self->wpid);
+  cape_udc_add_n (rinfo, "userid", self->userid);
+  cape_udc_add_n (rinfo, "wpid", self->wpid);
   
   // ** add others **
   
@@ -99,7 +97,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "gpid");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -111,7 +109,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "token");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -123,7 +121,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "secret");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -135,7 +133,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "workspace");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -147,7 +145,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "title");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -159,7 +157,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "firstname");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -171,7 +169,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "lastname");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
     else
     {
@@ -183,7 +181,7 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "clts");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
   }
   
@@ -191,14 +189,14 @@ void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc cdata)
     CapeUdc h = cape_udc_ext (first_row, "cltsid");
     if (h)
     {
-      cape_udc_add (cdata, &h);
+      cape_udc_add (rinfo, &h);
     }
   }
 }
 
 //---------------------------------------------------------------------------
 
-int auth_rinfo__user_roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
+int auth_rinfo__user_roles (AuthRInfo self, CapeUdc roles, CapeErr err)
 {
   CapeUdc results = NULL;
   
@@ -227,7 +225,7 @@ int auth_rinfo__user_roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
       if (name)
       {
         // todo: extend here to usefull values
-        cape_udc_add_s_cp (cdata, name, "role");
+        cape_udc_add_s_cp (roles, name, "role");
       }
     }
     
@@ -281,7 +279,7 @@ int auth_rinfo__workspace_roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
 }
 //---------------------------------------------------------------------------
 
-int auth_rinfo__roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
+int auth_rinfo__roles (AuthRInfo self, CapeUdc rinfo, CapeErr err)
 {
   int res;
   
@@ -306,13 +304,13 @@ int auth_rinfo__roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
 
 exit_and_cleanup:
   
-  cape_udc_add (cdata, &roles);
+  cape_udc_add (rinfo, &roles);
   return res;
 }
 
 //---------------------------------------------------------------------------
 
-int auth_rinfo__userinfo (AuthRInfo self, CapeUdc results, QBusM qout, CapeErr err)
+int auth_rinfo__userinfo (AuthRInfo self, CapeUdc results, CapeUdc rinfo, CapeErr err)
 {
   CapeUdc first_row = cape_udc_get_first (results);
   
@@ -329,20 +327,17 @@ int auth_rinfo__userinfo (AuthRInfo self, CapeUdc results, QBusM qout, CapeErr e
     cape_log_msg (CAPE_LL_ERROR, "AUTH", "get rinfo", "result has no wpid");
     return cape_err_set (err, CAPE_ERR_NO_AUTH, "no rinfo found");
   }
-
-  // create the rinfo node
-  qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
-
+  
   // fill out the rinfo
-  auth_rinfo__merge (self, first_row, qout->rinfo);
+  auth_rinfo__merge (self, first_row, rinfo);
 
   // fill out the roles
-  return auth_rinfo__roles (self, qout->rinfo, err);
+  return auth_rinfo__roles (self, rinfo, err);
 }
 
 //---------------------------------------------------------------------------
 
-int auth_rinfo__results (AuthRInfo self, CapeUdc results, QBusM qout, CapeErr err)
+int auth_rinfo__results (AuthRInfo self, CapeUdc results, CapeUdc rinfo, CapeUdc cdata, CapeErr err)
 {
   number_t ressize = cape_udc_size (results);
   
@@ -353,16 +348,17 @@ int auth_rinfo__results (AuthRInfo self, CapeUdc results, QBusM qout, CapeErr er
   
   if (ressize > 1)
   {
-    auth_rinfo__workspaces (self, results, qout);
+    auth_rinfo__workspaces (self, results, cdata);
     
     return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too many results for rbac");
   }
 
-  return auth_rinfo__userinfo (self, results, qout, err);
+  return auth_rinfo__userinfo (self, results, rinfo, err);
 }
 
 //---------------------------------------------------------------------------
 
+// TODO: replace this method by a similar as auth_rinfo_get_gpid
 int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
 {
   int res;
@@ -403,7 +399,16 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_rinfo__results (self, results, qout, err);
+  // create the rinfo and cdata node
+  qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  qout->cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+  
+  res = auth_rinfo__results (self, results, qout->rinfo, qout->cdata, err);
+  
+  if (cape_udc_size (qout->cdata) == 0)
+  {
+    cape_udc_del (&(qout->cdata));
+  }
   
 exit_and_cleanup:
   
@@ -411,6 +416,65 @@ exit_and_cleanup:
   
   auth_rinfo_del (p_self);
   
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
+int auth_rinfo_get_gpid (AuthRInfo* p_self, number_t gpid, CapeUdc* p_rinfo, CapeUdc* p_cdata, CapeErr err)
+{
+  int res;
+  AuthRInfo self = *p_self;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc rinfo = NULL;
+  CapeUdc cdata = NULL;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // conditions
+    cape_udc_add_n      (params, "gpid"         , gpid);
+    // return values
+    cape_udc_add_n      (values, "wpid"         , 0);
+    cape_udc_add_n      (values, "gpid"         , 0);
+    cape_udc_add_s_cp   (values, "workspace"    , NULL);
+    cape_udc_add_s_cp   (values, "title"        , NULL);
+    cape_udc_add_s_cp   (values, "firstname"    , NULL);
+    cape_udc_add_s_cp   (values, "lastname"     , NULL);
+    cape_udc_add_s_cp   (values, "token"        , NULL);
+    cape_udc_add_s_cp   (values, "secret"       , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+  
+  res = auth_rinfo__results (self, query_results, rinfo, cdata, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+  cape_udc_replace_mv (p_rinfo, &rinfo);
+  cape_udc_replace_mv (p_cdata, &cdata);
+
+exit_and_cleanup:
+
+  cape_udc_del (&rinfo);
+  cape_udc_del (&cdata);
+
   return res;
 }
 
