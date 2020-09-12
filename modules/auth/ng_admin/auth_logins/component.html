@@ -9,7 +9,7 @@
   <ng-container *ngFor="let item of login_items | pageToolBar : toolbar : ['workplace', 'ip']">
 
   <tr>
-    <td>{{item.ip}} | {{item.city}}</td>
+    <td>{{item.ip}} | {{item.city}} | {{item.country_name}}</td>
     <td>{{item.workspace}}</td>
     <td>{{item.ltime | trlo_locale}}</td>
   </tr>

@@ -400,8 +400,15 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
   }
   
   // create the rinfo and cdata node
-  qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
-  qout->cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+  if (qout->rinfo == NULL)
+  {
+    qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+  
+  if (qout->cdata == NULL)
+  {
+    qout->cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+  }
   
   res = auth_rinfo__results (self, results, qout->rinfo, qout->cdata, err);
   

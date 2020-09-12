@@ -29,7 +29,7 @@ export class AuthLoginsComponent implements OnInit {
 
   ngOnInit()
   {
-    this.AuthService.json_rpc ('AUTH', 'ui_login_get', {lp: "D14"}).subscribe ((data: LoginItem[]) => {
+    this.AuthService.json_rpc ('AUTH', 'ui_login_get', {lp: "D5"}).subscribe ((data: LoginItem[]) => {
 
       for (var i in data)
       {
@@ -39,9 +39,10 @@ export class AuthLoginsComponent implements OnInit {
 
         if (ip_parts.length == 4 && item.ip != '0.0.0.0')
         {
-          this.map_service.getIPInfo (item.ip).subscribe ((map: IPInfo) => {
+          this.map_service.getIPInfo (item.ip).subscribe (data => {
 
-            item.city = map.city;
+            item.city = data.city;
+            item.country_name = data.country_name;
 
           });
         }
@@ -70,6 +71,7 @@ class LoginItem {
   public ip: string;
   public info: object;
   public city: string;
+  public country_name: string;
 }
 
 //-----------------------------------------------------------------------------
