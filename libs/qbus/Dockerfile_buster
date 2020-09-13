@@ -12,9 +12,7 @@ RUN apt-get update && apt-get install -y \
   uuid-dev \
   && rm -rf /var/lib/apt/lists/*
 
-ARG CACHEBUST=1 
-USER node
-
+ARG CACHEBUST=1
 ADD . /opt/modules/
 
 RUN ls /opt/modules/
