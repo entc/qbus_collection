@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y \
   cmake \
   gcc \
   g++ \
-  libmysqlclient-dev \
+  default-libmysqlclient-dev \
   libsqlite3-dev \
   libpcre3-dev \
   libcurl4-openssl-dev \
