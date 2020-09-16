@@ -373,6 +373,16 @@ namespace cape
 
   //-----------------------------------------------------------------------------------------------------  
   
+  template <> struct StreamTransType<unsigned int>
+  {
+    static void append (CapeStream obj, unsigned int value)
+    { 
+      cape_stream_append_n (obj, (int)value);
+    }
+  };
+
+  //-----------------------------------------------------------------------------------------------------  
+  
   template <> struct StreamTransType<number_t>
   {
     static void append (CapeStream obj, number_t value)
@@ -388,6 +398,16 @@ namespace cape
     static void append (CapeStream obj, double value)
     { 
       cape_stream_append_f (obj, value);
+    }
+  };
+
+  //-----------------------------------------------------------------------------------------------------  
+  
+  template <> struct StreamTransType<float>
+  {
+    static void append (CapeStream obj, float value)
+    { 
+      cape_stream_append_f (obj, (double)value);
     }
   };
 
@@ -977,11 +997,21 @@ namespace cape
     static long as (CapeUdc obj, long dv = 0) { return cape_udc_n (obj, dv); }
   };
 
+  template <> struct UdcTransType<unsigned int>
+  {
+    static unsigned int as (CapeUdc obj, unsigned int dv = 0) { return (unsigned int)cape_udc_n (obj, dv); }
+  };
+
   template <> struct UdcTransType<double>
   {
     static void add_cp (CapeUdc obj, const char* name, const double& value) { cape_udc_add_f (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, double& value) { cape_udc_add_f (obj, name, value); }
     static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
+  };
+  
+  template <> struct UdcTransType<float>
+  {
+    static float as (CapeUdc obj, float dv = .0) { return (float)cape_udc_f (obj, dv); }
   };
   
   template <> struct UdcTransType<bool>
