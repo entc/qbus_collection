@@ -2,20 +2,25 @@
 
 <table class="table mt-2">
   <tr>
-    <th></th>
     <th>ip</th>
-    <th>workplace</th>
-    <th width="100%">info</th>
+    <th width="100%">workplace</th>
+    <th></th>
   </tr>
-  <tr *ngFor="let item of login_items | async | pageToolBar : toolbar : ['workplace', 'ip']">
-    <td>{{item.ltime}}</td>
-    <td>{{item.ip}}</td>
-    <td>{{item.workplace}}</td>
-    <td>
+  <ng-container *ngFor="let item of login_items | pageToolBar : toolbar : ['workplace', 'ip']">
+
+  <tr>
+    <td>{{item.ip}} | {{item.city}} | {{item.country_name}}</td>
+    <td>{{item.workspace}}</td>
+    <td>{{item.ltime | trlo_locale}}</td>
+  </tr>
+  <tr>
+    <td colspan="3">
       <div *ngIf="item.info; else elseBlock">
-        {{item.info.appVersion}}
+        <small>{{item.info.appVersion}}</small>
       </div>
       <ng-template #elseBlock>no info</ng-template>
     </td>
   </tr>
+
+  </ng-container>
 </table>

@@ -20,13 +20,15 @@ struct AuthRInfo_s; typedef struct AuthRInfo_s* AuthRInfo;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthRInfo  auth_rinfo_new  (AdblSession adbl_session, number_t userid, number_t wpid);
+__CAPE_LIBEX   AuthRInfo  auth_rinfo_new        (AdblSession adbl_session, number_t userid, number_t wpid);
 
-__CAPE_LIBEX   void       auth_rino_del   (AuthRInfo*);
+__CAPE_LIBEX   void       auth_rino_del         (AuthRInfo*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int        auth_rinfo_get  (AuthRInfo*, QBusM qout, CapeErr err);
+__CAPE_LIBEX   int        auth_rinfo_get        (AuthRInfo*, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int        auth_rinfo_get_gpid   (AuthRInfo*, number_t gpid, CapeUdc* p_rinfo, CapeUdc* p_cdata, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

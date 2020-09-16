@@ -23,7 +23,7 @@ export class AuthService
   constructor (private http: HttpClient, private modalService: NgbModal)
   {
     this.fetch_login = false;
-    this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
+    this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
     this.gpg ();
   }
 
@@ -215,7 +215,7 @@ export class AuthService
         for (var i in data)
         {
           const gpid: AuthGlobalPerson = data[i];
-          this.globpersons.push ({gpid: gpid.gpid, firstname: this.decrypt (gpid.firstname, this.secret), lastname: this.decrypt (gpid.lastname, this.secret)});
+          this.globpersons.push ({gpid: gpid.gpid, title: this.decrypt (gpid.title, this.secret), firstname: this.decrypt (gpid.firstname, this.secret), lastname: this.decrypt (gpid.lastname, this.secret)});
         }
       }
 
@@ -236,6 +236,7 @@ export class AuthService
         this.secret = this.decrypt (c.secret, sessionStorage.getItem ('auth_pass'));
 
         // decrypt the name
+        c.title = this.decrypt (c.title, this.secret);
         c.firstname = this.decrypt (c.firstname, this.secret);
         c.lastname = this.decrypt (c.lastname, this.secret);
 
@@ -270,7 +271,7 @@ export class AuthService
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-    this.auth_credentials.next ({wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
+    this.auth_credentials.next ({wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
   }
 
   //-----------------------------------------------------------------------------
@@ -326,6 +327,7 @@ export class AuthCredential
 {
   gpid: number;
   wpid: number;
+  title: string;
   firstname: string;
   lastname: string;
   workspace: string;
@@ -338,6 +340,7 @@ export class AuthCredential
 class AuthGlobalPerson
 {
   gpid: number;
+  title: string;
   firstname: string;
   lastname: string;
 }
@@ -385,13 +388,16 @@ class AuthGlobalPerson
   templateUrl: './modal_info.html'
 }) export class AuthInfoModalComponent implements OnInit {
 
-  public auth_credentials: BehaviorSubject<AuthCredential>;
+  public auth_credentials: AuthCredential;
+  public edit_mode: boolean = false;
 
   //---------------------------------------------------------------------------
 
   constructor (public auth_service: AuthService, public modal: NgbActiveModal)
   {
-    this.auth_credentials = auth_service.auth_credentials;
+     auth_service.auth_credentials.subscribe((creds) => {
+       this.auth_credentials = creds;
+     })
   }
 
   //---------------------------------------------------------------------------
@@ -412,6 +418,24 @@ class AuthGlobalPerson
   logout_cancel ()
   {
     this.modal.dismiss ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  toogle_edit ()
+  {
+    this.edit_mode = true;
+  }
+
+  //---------------------------------------------------------------------------
+
+  save_changes ()
+  {
+    this.auth_service.json_rpc ('AUTH', 'globperson_set', {firstname : this.auth_credentials.firstname, lastname : this.auth_credentials.lastname}).subscribe(() => {
+
+      this.edit_mode = false;
+
+    });
   }
 }
 
@@ -496,7 +520,7 @@ class AuthGlobalPerson
 })
 export class AuthRoleDirective {
 
-  private auth_credentials: AuthCredential = {wpid: undefined, gpid: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined};
+  private auth_credentials: AuthCredential = {wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined};
   private permissions: Array<string>;
 
   //---------------------------------------------------------------------------

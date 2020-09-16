@@ -17,7 +17,6 @@ struct AuthUI_s
   AuthTokens tokens;          // reference
   
   number_t userid;
-  
   number_t wpid;
   
   CapeString secret;
@@ -36,7 +35,7 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens)
   self->wpid = 0;
   
   self->secret = NULL;
-  
+
   return self;
 }
 
@@ -44,11 +43,14 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens)
 
 void auth_ui_del (AuthUI* p_self)
 {
-  AuthUI self = *p_self;
-  
-  cape_str_del (&(self->secret));
-  
-  CAPE_DEL (p_self, struct AuthUI_s);
+  if (*p_self)
+  {
+    AuthUI self = *p_self;
+    
+    cape_str_del (&(self->secret));
+    
+    CAPE_DEL (p_self, struct AuthUI_s);
+  }
 }
 
 //---------------------------------------------------------------------------
@@ -145,10 +147,6 @@ int auth_ui_crypt4__compare_password (AuthUI self, const CapeString cha, const C
 
     hex_hash = qcrypt__hash_sha256__hex_m (s, err);
 
-    {
-      printf ("HASH: %s\n", hex_hash);
-    }
-    
     cape_stream_del (&s);
   }
 
@@ -582,6 +580,8 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   // local objects
   CapeUdc query_results = NULL;
+  CapeDatetime* sd = NULL;
+  CapeDatetime* td = NULL;
   
   // do some security checks
   if (qin->rinfo == NULL)
@@ -608,10 +608,60 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
+  
+  // lp
+  {
+    const CapeString lp = cape_udc_get_s (qin->cdata, "lp", NULL);
+    if (lp)
+    {
+      td = cape_datetime_new ();
+      
+      cape_datetime_utc (td);
+      cape_datetime__remove_s (td, lp, td);
+    }
+    else
+    {
+      // optional
+      sd = cape_datetime_cp (cape_udc_get_d (qin->cdata, "sd", NULL));
+      td = cape_datetime_cp (cape_udc_get_d (qin->cdata, "td", NULL));
+    }
+  }
+  
+  if (sd)
+  {
+    CapeString h = cape_datetime_s__std (sd);
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "login get", "use start date = %s", h);
+    cape_str_del (&h);
+  }
+  
+  if (td)
+  {
+    CapeString h = cape_datetime_s__std (td);
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "login get", "use stop date = %s", h);
+    cape_str_del (&h);
+  }
 
   {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
+    if (sd && td)
+    {
+      adbl_param_add__between_d (params, "ltime", sd, td);
+    }
+    else
+    {
+      if (sd)
+      {
+        adbl_param_add__less_than_d (params, "ltime", sd);
+      }
+      
+      if (td)
+      {
+        adbl_param_add__greater_than_d (params, "ltime", td);
+      }
+    }
+
     cape_udc_add_n      (values, "wpid"        , 0);
     cape_udc_add_n      (values, "gpid"        , 0);
     cape_udc_add_n      (values, "userid"      , 0);
@@ -620,8 +670,14 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_node   (values, "info"        );
     cape_udc_add_s_cp   (values, "workspace"   , NULL);
 
+    // delete the params if its empty
+    if (cape_udc_size (params) == 0)
+    {
+      cape_udc_del (&params);
+    }
+    
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "auth_logins_get_view", NULL, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "auth_logins_get_view", &params, &values, err);
     if (query_results == NULL)
     {
       return cape_err_code (err);
@@ -638,6 +694,9 @@ exit_and_cleanup:
     cape_log_msg (CAPE_LL_ERROR, "AUTH", "logins get", cape_err_text (err));
   }
   
+  cape_datetime_del (&sd);
+  cape_datetime_del (&td);
+  
   cape_udc_del (&query_results);
   
   auth_ui_del (p_self);
@@ -651,10 +710,17 @@ int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthUI self = *p_self;
   
+  number_t gpid;
+  number_t wpid;
+  
+  // local objects
+  CapeUdc rinfo = NULL;
+  CapeUdc cdata = NULL;
+
   // do some security checks
   if (qin->rinfo == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui switch} missing rinfo");
     goto exit_and_cleanup;
   }
   
@@ -665,23 +731,58 @@ int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     if (roles == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing roles");
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{ui switch} missing roles");
       goto exit_and_cleanup;
     }
     
     role_admin = cape_udc_get (roles, "auth_ui_su_w");
     if (role_admin == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing role");
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{ui switch} missing role");
       goto exit_and_cleanup;
     }
   }
 
+  // for security reasons the switch is only possible from inside
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui switch} 'pdata' is missing");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (qin->pdata, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui switch} 'gpid' is missing");
+    goto exit_and_cleanup;
+  }
   
+  // optional
+  wpid = cape_udc_get_n (qin->pdata, "wpid", 0);
+  
+  {
+    // use the rinfo classes
+    AuthRInfo auth_rinfo = auth_rinfo_new (self->adbl_session, 0, wpid);
+    
+    // fetch all rinfo from database
+    res = auth_rinfo_get_gpid (&auth_rinfo, gpid, &rinfo, &cdata, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // replace the existing rinfo and cdata
+  cape_udc_replace_mv (&(qout->rinfo), &rinfo);
+  cape_udc_replace_mv (&(qout->cdata), &cdata);
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
   
+  cape_udc_del (&rinfo);
+  cape_udc_del (&cdata);
+
   auth_ui_del (p_self);
   return res;
 }

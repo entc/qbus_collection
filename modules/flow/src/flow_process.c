@@ -15,6 +15,7 @@ struct FlowProcess_s
   CapeQueue queue;             // reference
   
   number_t wpid;               // workspace id
+  number_t gpid;               // global person id
   number_t wfid;               // workflow id
   number_t sqid;               // sequence id
   number_t psid;               // process id
@@ -39,6 +40,7 @@ FlowProcess flow_process_new (QBus qbus, AdblSession adbl_session, CapeQueue que
   self->queue = queue;
   
   self->wpid = 0;
+  self->gpid = 0;
   self->wfid = 0;
   self->psid = 0;
   self->sqid = 0;
@@ -83,6 +85,12 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
     return cape_err_set (err, CAPE_ERR_NO_AUTH, "missing wpid");
   }
   
+  self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (self->gpid == 0)
+  {
+    return cape_err_set (err, CAPE_ERR_NO_AUTH, "missing gpid");
+  }
+  
   if (qin->cdata == NULL)
   {
     return cape_err_set (err, CAPE_ERR_RUNTIME, "cdata is missing");
@@ -98,6 +106,7 @@ int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeErr err)
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
   
   cape_udc_add_n    (values, "wpid"         , self->wpid);
+  cape_udc_add_n    (values, "gpid"         , self->gpid);
   cape_udc_add_n    (values, "wfid"         , self->wfid);
   cape_udc_add_n    (values, "refid"        , self->refid);
   cape_udc_add_n    (values, "psid"         , self->psid);
@@ -992,10 +1001,119 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_process__instance_check (FlowProcess self, number_t* p_wpid, number_t* p_gpid, CapeErr err)
+{
+  int res;
+
+  CapeUdc first_row;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  number_t wpid = 0;
+  number_t gpid = 0;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"           , self->psid);
+    cape_udc_add_n      (values, "wpid"           , 0);
+    cape_udc_add_n      (values, "gpid"           , 0);
+    
+    query_results = adbl_session_query (self->adbl_session, "flow_instance", &params, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
+    goto exit_and_cleanup;
+  }
+  
+  wpid = cape_udc_get_n (first_row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "wpid is missing");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (first_row, "gpid", 0);
+
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  *p_wpid = wpid;
+  *p_gpid = gpid;
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_once__dbw (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+
+  // create a new run database wrapper
+  FlowRunDbw flow_run_dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, self->psid, cape_udc_get_s (qin->rinfo, "remote", NULL), qin->rinfo, 0);
+  
+  // forward business logic to this class
+  res = flow_run_dbw_once (&flow_run_dbw, err);
+  
+exit_and_cleanup:
+  
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL flow_process_once__on_switch (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = ptr;
+  
+  if (qin->err)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
+    goto exit_and_cleanup;
+  }
+
+  res = flow_process__intern__qin_check (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeString h = cape_json_to_s (qin->rinfo);
+    
+    printf ("RINFO: %s\n", h);
+  }
+  
+  res = flow_process_once__dbw (&self, qin, qout, err);
+  
+exit_and_cleanup:
+  
+  flow_process_del (&self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_process_once (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   FlowProcess self = *p_self;
+  
+  number_t wpid;
+  number_t gpid;
   
   res = flow_process__intern__qin_check (self, qin, err);
   if (res)
@@ -1011,29 +1129,45 @@ int flow_process_once (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  // check role
+  // check if the instance exists and fetch the original wpid and gpid
+  res = flow_process__instance_check (self, &wpid, &gpid, err);
+  if (res)
   {
-    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
-    if (roles == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
-      goto exit_and_cleanup;
-    }
-    
-    CapeUdc fa_role = cape_udc_get (roles, "flow_wp_fa_w");
-    if (fa_role)
-    {
-      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "process once", "run in full access write mode");
-      self->wpid = 0;
-    }
+    goto exit_and_cleanup;
   }
-
+  
+  if (self->wpid != wpid)
   {
-    // create a new run database wrapper
-    FlowRunDbw flow_run_dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, self->psid, cape_udc_get_s (qin->rinfo, "remote", NULL), qin->rinfo, 0);
+    // check role
+    {
+      CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+      if (roles == NULL)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+        goto exit_and_cleanup;
+      }
+      
+      CapeUdc fa_role = cape_udc_get (roles, "flow_wp_fa_w");
+      if (fa_role == NULL)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+        goto exit_and_cleanup;
+      }
+    }
+
+    // clean up
+    qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
     
-    // forward business logic to this class
-    res = flow_run_dbw_once (&flow_run_dbw, err);
+    qin->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (qin->pdata, "wpid", wpid);
+    cape_udc_add_n (qin->pdata, "gpid", gpid);
+
+    res = qbus_continue (self->qbus, "AUTH", "ui_switch", qin, (void**)p_self, flow_process_once__on_switch, err);
+  }
+  else
+  {
+    res = flow_process_once__dbw (p_self, qin, qout, err);
   }
   
 exit_and_cleanup:

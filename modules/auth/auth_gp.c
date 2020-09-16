@@ -266,26 +266,10 @@ int auth_gp_set (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // optional
   title = cape_udc_get_s (qin->cdata, "title", NULL);
-  if (title == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing title");
-    goto exit_and_cleanup;
-  }
-
   firstname = cape_udc_get_s (qin->cdata, "firstname", NULL);
-  if (firstname == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing firstname");
-    goto exit_and_cleanup;
-  }
-
   lastname = cape_udc_get_s (qin->cdata, "lastname", NULL);
-  if (lastname == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{gp set} missing lastname");
-    goto exit_and_cleanup;
-  }
 
   if ((title == NULL) && (firstname == NULL) && (lastname == NULL))
   {
