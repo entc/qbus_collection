@@ -1,5 +1,6 @@
 #include "webs_post.h"
 #include "webs_json.h"
+#include "webs_imca.h"
 
 #include "qbus.h"
 
@@ -31,19 +32,6 @@ static void __STDCALL webs__files__on_del (void* ptr)
   
   cape_str_del (&file);
 }
-
-//-----------------------------------------------------------------------------
-
-struct WebsStream_s
-{
-  CapeString image;
-  
-  CapeMutex mutex;
-  
-  number_t cnt;
-  number_t len;
-  
-}; typedef struct WebsStream_s* WebsStream;
 
 //-----------------------------------------------------------------------------
 
@@ -129,24 +117,7 @@ int __STDCALL qbus_webs__rest (void* user_ptr, QWebsRequest request, CapeErr err
 
 int __STDCALL qbus_webs__imca (void* user_ptr, QWebsRequest request, CapeErr err)
 {
-  WebsStream self = user_ptr;
-  
-  QWebsRequest h = request;  
-  
-  cape_mutex_lock (self->mutex);
-  
-  if (self->image)
-  {
-    qwebs_request_send_buf (&h, self->image, err);
-  }
-  else
-  {
-    qwebs_request_send_json (&h, NULL, err);    
-  }
-
-  cape_mutex_unlock (self->mutex);
-  
-  return CAPE_ERR_CONTINUE;
+  return webs_stream_get (user_ptr, request, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -155,7 +126,7 @@ int __STDCALL qbus_webs__post (void* user_ptr, QWebsRequest request, CapeErr err
 {
   WebsPost webs_post = webs_post_new (user_ptr, request);
   
-  return webs_post_run (&webs_post, err);  
+  return webs_post_run (&webs_post, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -181,101 +152,21 @@ int __STDCALL qbus_webs__modules_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 int __STDCALL qbus_webs__stream_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
-  WebsStream self = ptr;
-  
-  // local objects
-  CapeString token = NULL;
-
-
-  token = cape_str_uuid ();
-  
-  printf ("register stream\n");
-
-
-  res = CAPE_ERR_NONE;
-  qout->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-  
-  cape_udc_add_s_mv (qout->pdata, "token", &token);
-  
-exit_and_cleanup:
-  
-  cape_str_del (&token);
-  
-  return res;
+  return webs_stream_add (ptr, qin, qout, err);
 }
 
 //-----------------------------------------------------------------------------
 
 int __STDCALL qbus_webs__stream_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
-  WebsStream self = ptr;
-  
-  // local objects
-  CapeString image = NULL;
-  const CapeString token;
-  
-  if (NULL == qin->pdata)
-  {
-    // post some weired message
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "no security role found");
-    goto exit_and_cleanup;
-  }
-  
-  token = cape_udc_get_s (qin->pdata, "token", NULL);
-  if (NULL == token)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "no token");
-    goto exit_and_cleanup;
-  }
-  
-  if (NULL == qin->cdata)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "cdata is NULL");
-    goto exit_and_cleanup;
-  }
-  
-  image = cape_udc_ext_s (qin->cdata, "image");
-  if (NULL == image)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "image is NULL");
-    goto exit_and_cleanup;
-  }
-  
-  cape_mutex_lock (self->mutex);
-  
-  self->cnt++;
-  self->len = self->len + cape_str_size (image);
-  
-  cape_str_replace_mv (&(self->image), &image);
-
-  cape_mutex_unlock (self->mutex);
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  cape_str_del (&image);
-  
-  return res;
+  return webs_stream_set (ptr, qin, qout, err);
 }
 
 //-----------------------------------------------------------------------------
 
 static int __STDCALL qbus_webs__stream__on_timer (void* ptr)
 {
-  WebsStream self = ptr;
-  
-  cape_mutex_lock (self->mutex);
-
-  cape_log_fmt (CAPE_LL_DEBUG, "WSRV", "stream stats", "stream: %li images/s, %f kb/s", self->cnt, (double)self->len / 1024);
-
-  self->cnt = 0;
-  self->len = 0;
-  
-  cape_mutex_unlock (self->mutex);
-  
+  webs_stream_reset (ptr);
   return TRUE;
 }
 
@@ -327,13 +218,8 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   CapeAioTimer timer = cape_aio_timer_new ();
 
-  WebsStream s = CAPE_NEW (struct WebsStream_s);
+  WebsStream s = webs_stream_new ();
 
-  s->image = NULL;
-  s->mutex = cape_mutex_new ();
-  s->cnt = 0;
-  s->len = 0;
-  
   res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
   if (res)
   {
