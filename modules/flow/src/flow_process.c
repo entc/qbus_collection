@@ -456,6 +456,10 @@ int proc_taskflow_rm__syncs (FlowProcess self, AdblTrx trx, number_t psid, CapeE
     
     // remove all processes which are related to this sync object
     res = proc_taskflow_rm__syncs_process (self, trx, syncid, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
     
     // remove the sync entry
     {
@@ -1023,6 +1027,7 @@ int flow_process__instance_check (FlowProcess self, number_t* p_wpid, number_t* 
     query_results = adbl_session_query (self->adbl_session, "flow_instance", &params, &values, err);
     if (query_results == NULL)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }

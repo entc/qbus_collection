@@ -1225,13 +1225,17 @@ int flow_run_dbw__run_step (FlowRunDbw* p_self, number_t action, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  // clear the input params
-  cape_udc_del (&(self->params));
+  self = *p_self;
+  if (self)
+  {
+    // clear the input params
+    cape_udc_del (&(self->params));
+    
+    //cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
+    
+    flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
+  }
   
-  //cape_log_msg (CAPE_LL_TRACE, "FLOW", "run next", "continue with next step");
-  
-  flow_run_dbw_state_set (self, FLOW_STATE__DONE, NULL);
-
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
