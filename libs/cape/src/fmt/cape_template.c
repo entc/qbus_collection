@@ -91,7 +91,7 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     {
       self->format_type = FORMAT_TYPE_PIPE;
       self->eval = cape_str_trim_utf8 (f2);
-      self->modn = cape_str_trim_utf8 (f1);
+      self->modn = cape_str_mv (&h);
     }
     
     cape_str_del (&h);
