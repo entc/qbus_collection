@@ -202,7 +202,7 @@ FlowRunDbw flow_run_dbw_new (QBus qbus, AdblSession adbl_session, CapeQueue queu
   self->psid = psid;
   
   self->wsid = 0;
-  self->sqid = 0;
+  self->sqid = FLOW_SEQUENCE__DEFAULT;
   
   self->fctid = 0;
   
@@ -260,7 +260,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
   self->psid = rhs->psid;
   
   self->wsid = 0;
-  self->sqid = 0;
+  self->sqid = rhs->sqid;
   
   self->fctid = 0;
   
@@ -371,11 +371,10 @@ number_t flow_run_dbw_init (FlowRunDbw self, AdblTrx trx, number_t wfid, number_
   self->tdata_id = flow_data_add (trx, self->tdata, err);
   if (cape_err_code (err))
   {
-    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
   
-  // create a new taskflow
+  // create a new taskflow: set self->psid
   res = flow_run_dbw_init__save (self, trx, wfid, err);
   if (res)
   {
@@ -389,23 +388,12 @@ number_t flow_run_dbw_init (FlowRunDbw self, AdblTrx trx, number_t wfid, number_
   }
 
   // set the current psid
-  {
-    CapeUdc psid_node = cape_udc_get (self->tdata, "psid");
-    if (psid_node)
-    {
-      cape_udc_set_n (psid_node, self->psid);
-    }
-    else
-    {
-      // add the PSID for the tdata of this process
-      cape_udc_add_n (self->tdata, "psid", self->psid);
-    }
-  }
+  cape_udc_put_n (self->tdata, "psid", self->psid);
   
   if (add_psid)
   {
     // add the PSID for the tdata, which will be available in all sub-processes aswell
-    cape_udc_add_n (self->tdata, "psid_root", self->psid);
+    cape_udc_put_n (self->tdata, "psid_root", self->psid);
   }
 
   res = flow_run_dbw__tdata_update (self, trx, err);
@@ -498,6 +486,7 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     }
     
     cape_udc_add_n      (params, "taid"          , self->psid);
+    cape_udc_add_n      (params, "sqtid"         , self->sqid);
 
     cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "sqtid"         , 0);
@@ -518,12 +507,17 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     }
   }
   
+  {
+    CapeString h = cape_json_to_s (query_results);
+    
+    printf ("PROC_NEXT: %s\n", h);
+  }
+  
   first_row = cape_udc_ext_first (query_results);
 
   if (first_row)
   {
     self->wsid = cape_udc_get_n (first_row, "id", 0);
-    self->sqid = cape_udc_get_n (first_row, "sqtid", 0);
     
     self->fctid = cape_udc_get_n (first_row, "fctid", 0);
     self->refid = cape_udc_get_n (first_row, "refid", 0);
@@ -535,6 +529,10 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     self->log_type = cape_udc_get_n (first_row, "log", 0);
 
     res = flow_run_dbw__data_load (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   else
   {
@@ -714,7 +712,6 @@ void flow_run_dbw_state_set (FlowRunDbw self, number_t state, CapeErr result_err
   trx = adbl_trx_new (self->adbl_session, err);
   if (NULL == trx)
   {
-    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
@@ -1430,6 +1427,9 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, CapeErr err)
   
   number_t psid;
 
+  // check if a workflow was defined with this sequence id
+  
+  
   // local objects
   FlowRunDbw dbw_cloned = flow_run_dbw_clone (self);
   AdblTrx trx = NULL;
@@ -1560,25 +1560,30 @@ int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, Ca
     goto exit_and_cleanup;
   }
   
-  // add a special log entry, that this step was successfully set from outside
-  res = flow_log_add (self->adbl_session, self->psid, self->wsid, self->log_type, FLOW_STATE__SET, NULL, NULL, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  // continue with the next step
-  res = flow_run_dbw__next (self, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  // continue in background process
-  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  self = *p_self;
   
-  // transfer ownership to background process
-  *p_self = NULL;
+  if (self)
+  {
+    // add a special log entry, that this step was successfully set from outside
+    res = flow_log_add (self->adbl_session, self->psid, self->wsid, self->log_type, FLOW_STATE__SET, NULL, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // continue with the next step
+    res = flow_run_dbw__next (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // continue in background process
+    cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+    
+    // transfer ownership to background process
+    *p_self = NULL;
+  }
 
   res = CAPE_ERR_NONE;
   
@@ -1704,7 +1709,7 @@ int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfi
   if (self->pdata)
   {
     list_node_name = cape_udc_get_s (self->pdata, "list_node", NULL);
-    refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
+    //refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
     
     wfid = cape_udc_get_n (self->pdata, "wfid", 0);
   }
@@ -1764,7 +1769,7 @@ int flow_run_dbw_xdata__switch (FlowRunDbw self, CapeString* p_value, CapeUdc* p
   if (self->pdata)
   {
     value_node_name = cape_udc_get_s (self->pdata, "value_node", NULL);
-    refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
+    //refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
     
     switch_node = cape_udc_ext (self->pdata, "switch");
   }
@@ -2683,6 +2688,7 @@ int flow_log_add (AdblSession adbl_session, number_t psid, number_t wsid, number
   trx = adbl_trx_new (adbl_session, err);
   if (NULL == trx)
   {
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 

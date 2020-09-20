@@ -38,6 +38,8 @@ __CAPE_LIBEX   void            cape_datetime_del          (CapeDatetime**);
 
 __CAPE_LIBEX   CapeDatetime*   cape_datetime_cp           (const CapeDatetime*);
 
+__CAPE_LIBEX   void            cape_datetime_set          (CapeDatetime*, const CapeDatetime*);
+
 // example:
 /*
  * CapeDatetime* dt = cape_datetime_new ();

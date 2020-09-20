@@ -49,8 +49,8 @@ int __STDCALL qbus_webs__rest (void* user_ptr, QWebsRequest request, CapeErr err
   CapeList url_parts = qwebs_request_clist (request);
   if (cape_list_size (url_parts) >= 1)
   {
-    const CapeString module;
-    const CapeString method;
+    const CapeString module = NULL;
+    const CapeString method = NULL;
     
     CapeUdc clist;
     CapeString token = NULL;
@@ -102,12 +102,15 @@ int __STDCALL qbus_webs__rest (void* user_ptr, QWebsRequest request, CapeErr err
     
     cape_list_cursor_destroy (&cursor);
     
-    WebsJson webs_json = webs_json_new (user_ptr, request);
+    if (module && method)
+    {
+      WebsJson webs_json = webs_json_new (user_ptr, request);
+      
+      webs_json_set (webs_json, module, method, &clist, &token);
 
-    webs_json_set (webs_json, module, method, &clist, &token);
-
-    // check for authentication
-    return webs_json_run_gen (&webs_json, err);
+      // check for authentication
+      return webs_json_run_gen (&webs_json, err);
+    }
   }
   
   return CAPE_ERR_NONE;
@@ -216,7 +219,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list);
   
-  CapeAioTimer timer = cape_aio_timer_new ();
+  //CapeAioTimer timer = cape_aio_timer_new ();
 
   WebsStream s = webs_stream_new ();
 
