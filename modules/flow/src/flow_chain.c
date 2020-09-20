@@ -235,7 +235,7 @@ int flow_chain_item__prev (FlowChainItem self, number_t* p_prev)
 
 CapeUdc flow_chain_item__lot (FlowChainItem self, int* p_passed, number_t wsid)
 {
-  number_t state;
+  number_t state = FLOW_STATE__NONE;
   
   cape_udc_add_name (self->item, &(self->states), "states");
   

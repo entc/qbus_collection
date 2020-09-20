@@ -57,6 +57,13 @@ CapeDatetime* cape_datetime_cp (const CapeDatetime* self)
 
 //-----------------------------------------------------------------------------
 
+void cape_datetime_set (CapeDatetime* self, const CapeDatetime* rhs)
+{
+  memcpy (self, rhs, sizeof(CapeDatetime));
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime__convert_timeinfo (CapeDatetime* dt, const struct tm* timeinfo)
 {
   // fill the timeinfo
