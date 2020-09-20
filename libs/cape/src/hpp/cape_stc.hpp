@@ -955,23 +955,14 @@ namespace cape
   template <> struct UdcTransType<int>
   {
     static void add_cp (CapeUdc obj, const char* name, const int& value) { cape_udc_add_n (obj, name, value); }
-    
-    static void add_mv (CapeUdc obj, const char* name, int& value)
-    {
-      cape_udc_add_n (obj, name, value);
-    }
-    
+    static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
     static int as (CapeUdc obj, int dv = 0) { return cape_udc_n (obj, dv); }
   };
-  
   //-----------------------------------------------------------------------------------------------------
   
   template <> struct UdcTransType<int&>
   {
-    static void add_mv (CapeUdc obj, const char* name, int& value)
-    {
-      cape_udc_add_n (obj, name, value);
-    }
+    static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
   };
 
   //-----------------------------------------------------------------------------------------------------
@@ -999,6 +990,8 @@ namespace cape
 
   template <> struct UdcTransType<unsigned int>
   {
+    static void add_cp (CapeUdc obj, const char* name, unsigned int const & value) { cape_udc_add_n (obj, name, (int)value); }
+    static void add_mv (CapeUdc obj, const char* name, unsigned int& value) { cape_udc_add_n (obj, name, (int&)value); }
     static unsigned int as (CapeUdc obj, unsigned int dv = 0) { return (unsigned int)cape_udc_n (obj, dv); }
   };
 
@@ -1011,6 +1004,8 @@ namespace cape
   
   template <> struct UdcTransType<float>
   {
+    static void add_cp (CapeUdc obj, const char* name, float const& value) { cape_udc_add_f (obj, name, (double)value); }
+    static void add_mv (CapeUdc obj, const char* name, float& value) { cape_udc_add_f (obj, name, (double&)value); }
     static float as (CapeUdc obj, float dv = .0) { return (float)cape_udc_f (obj, dv); }
   };
   
