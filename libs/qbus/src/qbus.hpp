@@ -38,7 +38,7 @@ namespace qbus
       {
         if (m_out_cdata.valid())
         {
-          std::cout << m_out_cdata << std::endl;
+//          std::cout << m_out_cdata << std::endl;
           
           m_qout->cdata = m_out_cdata.release();
         }
