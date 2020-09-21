@@ -435,6 +435,56 @@ int cape_fs_file_del (const char* path, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+off_t cape_fs_file_size (const char* path, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+
+  off_t ret = 0;
+  LARGE_INTEGER lFileSize;
+  
+  // local objects
+  HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+  
+  if (hf == INVALID_HANDLE_VALUE)
+  {
+    cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+  
+  // retrieve the file size
+  if (GetFileSizeEx (hf, &lFileSize) == INVALID_FILE_SIZE)
+  {
+    cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+
+  // convert from large integer
+  ret = lFileSize.QuadPart;
+  
+exit_and_cleanup:
+  
+  CloseHandle (hf);
+  return ret;
+    
+#elif defined __LINUX_OS || defined __BSD_OS
+
+  struct stat st;
+  
+  if (stat (path, &st) == -1)
+  {
+    cape_err_lastOSError (err);
+    return 0;
+  }
+  else
+  {
+    return st.st_size;
+  }
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_fs_file_load (const CapeString path, const CapeString file, void* ptr, fct_cape_fs_file_load fct, CapeErr err)
 {
   int res;

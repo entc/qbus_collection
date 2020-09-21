@@ -244,7 +244,7 @@ void flow_run_dbw_del (FlowRunDbw* p_self)
 
 //-----------------------------------------------------------------------------
 
-FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
+FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t sqid)
 {
   FlowRunDbw self = CAPE_NEW(struct FlowRunDbw_s);
   
@@ -260,7 +260,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs)
   self->psid = rhs->psid;
   
   self->wsid = 0;
-  self->sqid = rhs->sqid;
+  self->sqid = sqid;
   
   self->fctid = 0;
   
@@ -1382,7 +1382,7 @@ int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, CapeU
   number_t psid;
   
   // local objects
-  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self);
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, self->sqid);
   AdblTrx trx = NULL;
   
   if (p_params)
@@ -1431,7 +1431,7 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, CapeErr err)
   
   
   // local objects
-  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self);
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, sequence_id);
   AdblTrx trx = NULL;
 
   if (self->syncid)

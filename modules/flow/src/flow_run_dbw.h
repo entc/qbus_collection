@@ -38,7 +38,7 @@ __CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, C
 
 __CAPE_LOCAL   void         flow_run_dbw_del               (FlowRunDbw*);
 
-__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw);
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw, number_t sqid);
 
 //-----------------------------------------------------------------------------
 // QBUS methods
