@@ -38,7 +38,7 @@ __CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, C
 
 __CAPE_LOCAL   void         flow_run_dbw_del               (FlowRunDbw*);
 
-__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw, number_t sqid);
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw, number_t psid, number_t sqid);
 
 //-----------------------------------------------------------------------------
 // QBUS methods
@@ -56,7 +56,7 @@ __CAPE_LOCAL   int          flow_run_dbw_continue          (FlowRunDbw*, number_
 __CAPE_LOCAL   int          flow_run_dbw_inherit           (FlowRunDbw, number_t wfid, number_t syncid, CapeUdc* p_params, CapeErr err);
 
                             /* change the sequence id of a process */
-__CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err);
 
                             /* reruns the step, but don't continues */
 __CAPE_LOCAL   int          flow_run_dbw_once              (FlowRunDbw*, CapeErr err);

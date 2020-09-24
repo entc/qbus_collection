@@ -244,7 +244,7 @@ void flow_run_dbw_del (FlowRunDbw* p_self)
 
 //-----------------------------------------------------------------------------
 
-FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t sqid)
+FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid)
 {
   FlowRunDbw self = CAPE_NEW(struct FlowRunDbw_s);
   
@@ -257,7 +257,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t sqid)
   self->refid = rhs->refid;
 
   self->wpid = rhs->wpid;
-  self->psid = rhs->psid;
+  self->psid = psid;
   
   self->wsid = 0;
   self->sqid = sqid;
@@ -790,21 +790,21 @@ int flow_run_dbw__task_deactivate (FlowRunDbw self, AdblTrx trx, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw__continue_parent_process (FlowRunDbw self, CapeErr err)
+int flow_run_dbw__get_parent_process (FlowRunDbw self, number_t* p_psid, CapeErr err)
 {
   int res;
   
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
-
+  
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n      (params, "id"            , self->syncid);
     cape_udc_add_n      (values, "taid"          , 0);
-
+    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_task_sync", &params, &values, err);
     if (query_results == NULL)
@@ -828,13 +828,9 @@ int flow_run_dbw__continue_parent_process (FlowRunDbw self, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  {
-    // create a new process chain
-    FlowRunDbw dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, psid, self->remote, self->rinfo, self->refid);
-    
-    res = flow_run_dbw_continue (&dbw, FLOW_STATE__HALT, NULL, err);
-  }
-  
+  *p_psid = psid;
+  res = CAPE_ERR_NONE;
+
 exit_and_cleanup:
   
   if (cape_err_code(err))
@@ -843,6 +839,31 @@ exit_and_cleanup:
   }
   
   cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw__continue_parent_process (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  number_t psid = 0;
+  
+  res = flow_run_dbw__get_parent_process (self, &psid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  {
+    // create a new process chain
+    FlowRunDbw dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, psid, self->remote, self->rinfo, self->refid);
+    
+    res = flow_run_dbw_continue (&dbw, FLOW_STATE__HALT, NULL, err);
+  }
+  
+exit_and_cleanup:
   
   return res;
 }
@@ -1382,7 +1403,7 @@ int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, CapeU
   number_t psid;
   
   // local objects
-  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, self->sqid);
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, self->psid, self->sqid);
   AdblTrx trx = NULL;
   
   if (p_params)
@@ -1420,30 +1441,223 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, CapeErr err)
+int flow_run_dbw_sqt__check (FlowRunDbw self, number_t sequence_id, number_t* p_wfid, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+  number_t wfid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->psid);
+    cape_udc_add_n      (params, "sqtid"         , sequence_id);
+
+    cape_udc_add_n      (values, "wfid"          , 0);
+
+    /*
+     --- flow_process_worksteps_view ---
+     
+     select ps.id, ps.wfid, ws.sqtid from proc_tasks ps join proc_worksteps ws on ws.wfid = ps.wfid where ws.prev IS NULL;
+     */
+  
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_process_worksteps_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row == NULL)
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  wfid = cape_udc_get_n (first_row, "wfid", 0);
+  if (wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't find wfid");
+    goto exit_and_cleanup;
+  }
+  
+  *p_wfid = wfid;
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_sqt__syncid_children (FlowRunDbw self, number_t sequence_id, number_t from_child, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  FlowRunDbw dbw_cloned = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid_parent"   , self->psid);
+    cape_udc_add_n      (params, "active"        , 1);
+    
+    cape_udc_add_n      (values, "psid"          , 0);
+    
+    /*
+     --- flow_sync_childs_view ---
+     
+     select ts.taid psid_parent, ts.id syncid, ps.id psid, ps.active from proc_task_sync ts join proc_tasks ps on ps.sync = ts.id;
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_sync_childs_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    number_t psid = cape_udc_get_n (cursor->item, "psid", 0);
+    
+    if (psid && (psid != from_child))
+    {
+      // clone the task with different psid and sequence ID
+      dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id);
+      
+      // load all data for the parent process
+      res = flow_run_dbw__current_task_load (dbw_cloned, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      // abort the parent process
+      res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, 0, self->psid, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  flow_run_dbw_del (&dbw_cloned);
+
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err)
 {
   int res;
   FlowRunDbw self = *p_self;
   
   number_t psid;
+  number_t wfid;
+
+  // local objects
+  FlowRunDbw dbw_cloned = NULL;
+  AdblTrx trx = NULL;
+  
+  if (self->syncid && (from_parent == 0))
+  {
+    res = flow_run_dbw__get_parent_process (self, &psid, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    // clone the task with different psid and sequence ID
+    dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id);
+
+    // load all data for the parent process
+    res = flow_run_dbw__current_task_load (dbw_cloned, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    // abort the parent process
+    res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, self->psid, 0, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  // run for each found syncid the abort mechanism
+  res = flow_run_dbw_sqt__syncid_children (self, sequence_id, self->psid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
 
   // check if a workflow was defined with this sequence id
-  
-  
-  // local objects
-  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, sequence_id);
-  AdblTrx trx = NULL;
-
-  if (self->syncid)
+  res = flow_run_dbw_sqt__check (self, sequence_id, &wfid, err);
+  if (res)
   {
-
-    
+    goto exit_and_cleanup;
   }
-  else
+  
+  if (wfid)
   {
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run sqt", "change sequence ID of psid = %i and wfid = %i", self->psid, wfid);
+
+    // clone the task with different sequence ID
+    dbw_cloned = flow_run_dbw_clone (self, self->psid, sequence_id);
+
+    trx = adbl_trx_new (self->adbl_session, err);
+    if (NULL == trx)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    // create a new process task
+    psid = flow_run_dbw_init (dbw_cloned, trx, wfid, 0, FALSE, err);
+    if (0 == psid)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
     
+    // commit all changes
+    adbl_trx_commit (&trx, err);
     
-    
+    // transfer ownership for queuing
+    // -> continue processing in background
+    res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
   trx = adbl_trx_new (self->adbl_session, err);
@@ -1453,28 +1667,24 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  /*
-  // create a new process task
-  psid = flow_run_dbw_init (dbw_cloned, trx, self->wfid, self->syncid, FALSE, err);
-  if (0 == psid)
+  res = flow_run_dbw__task_deactivate (self, trx, err);
+  if (res)
   {
-    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-   */
-
-  // change sequence id
-  
   
   // commit all changes
   adbl_trx_commit (&trx, err);
-
-  // transfer ownership for queuing
-  // -> continue processing in background
-  res = flow_run_dbw_start (&dbw_cloned, FLOW_ACTION__PRIM, NULL, err);
+  res = CAPE_ERR_NONE;
 
 exit_and_cleanup:
   
+  adbl_trx_rollback (&trx, err);
+
+  flow_run_dbw_state_set (self, FLOW_STATE__ABORTED, NULL);
+
+  flow_run_dbw_del (&dbw_cloned);
+
   // cleanup
   flow_run_dbw_del (p_self);
   return res;

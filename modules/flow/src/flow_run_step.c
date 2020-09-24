@@ -694,7 +694,7 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
   {
     case FLOW_ACTION__ABORT:
     {
-      res = flow_run_dbw_sqt (p_dbw, FLOW_SEQUENCE__ABORT, err);
+      res = flow_run_dbw_sqt (p_dbw, FLOW_SEQUENCE__ABORT, 0, 0, err);
       goto exit_and_cleanup;
     }
     case FLOW_ACTION__NONE:

@@ -1,6 +1,9 @@
 <ul class="timeline">
   <li *ngFor="let log of logs">
 
+    <div class="timeline-badge danger" *ngIf="log.state == 4">
+      <i class="fas fa-times"></i>
+    </div>
     <div class="timeline-badge success" *ngIf="log.state == 3">
       <i class="fas fa-check"></i>
     </div>
