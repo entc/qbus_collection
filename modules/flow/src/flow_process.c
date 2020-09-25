@@ -82,13 +82,13 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
   self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
   if (self->wpid == 0)
   {
-    return cape_err_set (err, CAPE_ERR_NO_AUTH, "missing wpid");
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
   }
   
   self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
   if (self->gpid == 0)
   {
-    return cape_err_set (err, CAPE_ERR_NO_AUTH, "missing gpid");
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
   }
   
   if (qin->cdata == NULL)
