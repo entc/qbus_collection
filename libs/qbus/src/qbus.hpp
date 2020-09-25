@@ -186,7 +186,7 @@ namespace qbus
   {
     typedef void(C::* fct_next_message)(qbus::Message& msg);
 
-    static void send (QBus qbus, const char* module, const char* method, cape::Udc& pdata, cape::Udc& cdata, C* ptr, fct_next_message fct)
+    static void send (QBus qbus, const char* module, const char* method, cape::Udc& pdata, cape::Udc& clist, cape::Udc& cdata, C* ptr, fct_next_message fct)
     {
       cape::ErrHolder errh;
       
@@ -200,6 +200,11 @@ namespace qbus
       if (cdata.valid())
       {
         msg->cdata = cdata.release ();
+      }
+      
+      if (clist.valid())
+      {
+        msg->clist = clist.release ();
       }
       
       NextMessageContext<C>* ctx = new NextMessageContext<C>;
