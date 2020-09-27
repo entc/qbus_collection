@@ -354,6 +354,7 @@ void qwebs_request_api (QWebsRequest* p_self)
   res = qwebs_api_call (self->api, self, err);
   if (res)
   {
+    *p_self = NULL;
     goto exit_and_cleanup;
   }
   
@@ -551,6 +552,54 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
 
 //-----------------------------------------------------------------------------
 
+void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
+{
+  QWebsRequest self = *p_self;
+  
+  self->method = cape_str_cp (method);
+  
+  //printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
+  
+  if (self->is_complete)
+  {
+    
+    {
+      CapeMapNode n = cape_map_find (self->header_values, "Connection");
+      if (n)
+      {
+        const CapeString connection_type = cape_map_node_value (n);
+        
+        //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "connection type: %s", connection_type);
+        
+        self->conn->close_connection = cape_str_equal (connection_type, "close");
+      }
+      else
+      {
+        cape_log_fmt (CAPE_LL_WARN, "WEBS", "on recv", "connection type unknown");
+      }
+    }
+    
+    if (self->api)
+    {
+      qwebs_request_api (p_self);
+    }
+    else
+    {
+      //printf ("FILE '%s'\'%s'\n", request->site, request->url);
+      
+      CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
+      if (s)
+      {
+        qwebs_connection_send (self->conn, &s);
+      }
+      
+      qwebs_request_del (p_self);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
   QWebsConnection self = ptr;
@@ -586,6 +635,10 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
     return;
   }
 
+  qwebs_request_complete ((QWebsRequest*)&(self->parser.data), http_method_str (self->parser.method));
+  
+  return;
+  
   {
     QWebsRequest request = self->parser.data;
 
