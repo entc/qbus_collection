@@ -601,7 +601,7 @@ void adbl_param_add__loe_than_n (CapeUdc params, const CapeString name, number_t
   CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
   
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__LESS_EQUAL_THAN);
-  cape_udc_add_d (h, ADBL_SPECIAL__VALUE, value);
+  cape_udc_add_n (h, ADBL_SPECIAL__VALUE, value);
   
   cape_udc_add (params, &h);
 }
@@ -613,8 +613,8 @@ void adbl_param_add__loe_than_d (CapeUdc params, const CapeString name, const Ca
   CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
   
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__LESS_EQUAL_THAN);
-  cape_udc_add_n (h, ADBL_SPECIAL__VALUE, value);
-  
+  cape_udc_add_d (h, ADBL_SPECIAL__VALUE, value);
+
   cape_udc_add (params, &h);
 }
 
