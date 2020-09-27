@@ -13,6 +13,7 @@ SET(ADBL_CORE_HEADERS
   core/adbl.h
   core/adbl_pool.h
   core/adbl.hpp
+  core/adbl_types.h
 )
 
 #----------------------------------------------------------------------------------

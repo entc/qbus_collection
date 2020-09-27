@@ -576,7 +576,7 @@ number_t adbl_prepare_append_constraints__node (CapeStream stream, int ansi, con
     }
     case ADBL_TYPE__GREATER_THAN:
     {
-      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__GREATER);
+      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__VALUE);
       
       if (greater)
       {
@@ -595,7 +595,7 @@ number_t adbl_prepare_append_constraints__node (CapeStream stream, int ansi, con
     }
     case ADBL_TYPE__LESS_THAN:
     {
-      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__LESS);
+      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__VALUE);
       
       if (greater)
       {
@@ -608,6 +608,44 @@ number_t adbl_prepare_append_constraints__node (CapeStream stream, int ansi, con
         cape_stream_append_str (stream, " < ?" );
         
         ret = 1;            
+      }
+      
+      break;
+    }
+    case ADBL_TYPE__GREATER_EQUAL_THAN:
+    {
+      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__VALUE);
+      
+      if (greater)
+      {
+        if (cursor->position > 0)
+        {
+          cape_stream_append_str (stream, " AND ");
+        }
+        
+        adbl_prepare_append_constraints__param (stream, ansi, param_name, table);
+        cape_stream_append_str (stream, " >= ?" );
+        
+        ret = 1;
+      }
+      
+      break;
+    }
+    case ADBL_TYPE__LESS_EQUAL_THAN:
+    {
+      CapeUdc greater = cape_udc_get (cursor->item, ADBL_SPECIAL__VALUE);
+      
+      if (greater)
+      {
+        if (cursor->position > 0)
+        {
+          cape_stream_append_str (stream, " AND ");
+        }
+        
+        adbl_prepare_append_constraints__param (stream, ansi, param_name, table);
+        cape_stream_append_str (stream, " <= ?" );
+        
+        ret = 1;
       }
       
       break;

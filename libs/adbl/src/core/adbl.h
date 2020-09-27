@@ -89,9 +89,21 @@ __CAPE_LIBEX   void          adbl_param_add__greater_than_n  (CapeUdc params, co
 
 __CAPE_LIBEX   void          adbl_param_add__greater_than_d  (CapeUdc params, const CapeString name, const CapeDatetime* value);
 
+                             /* greater or equal */
+__CAPE_LIBEX   void          adbl_param_add__goe_than_n      (CapeUdc params, const CapeString name, number_t value);
+
+                             /* greater or equal */
+__CAPE_LIBEX   void          adbl_param_add__goe_than_d      (CapeUdc params, const CapeString name, const CapeDatetime* value);
+
 __CAPE_LIBEX   void          adbl_param_add__less_than_n     (CapeUdc params, const CapeString name, number_t value);
 
 __CAPE_LIBEX   void          adbl_param_add__less_than_d     (CapeUdc params, const CapeString name, const CapeDatetime* value);
+
+                             /* less or equal */
+__CAPE_LIBEX   void          adbl_param_add__loe_than_d      (CapeUdc params, const CapeString name, const CapeDatetime* value);
+
+                             /* less or equal */
+__CAPE_LIBEX   void          adbl_param_add__loe_than_n      (CapeUdc params, const CapeString name, number_t value);
 
 __CAPE_LIBEX   void          adbl_param_add__between_n       (CapeUdc params, const CapeString name, number_t from, number_t until);
 
