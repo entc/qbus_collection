@@ -302,7 +302,7 @@ void cape_datetime__intern_sub_delta (struct timeval* time_timeval, const CapeSt
           h.tv_sec = atol (delta_part + 1);
           h.tv_usec = 0;
           
-         timersub (time_timeval, &h, time_timeval);
+          timersub (time_timeval, &h, time_timeval);
           break;
         }
         case 'u':
@@ -400,6 +400,62 @@ void cape_datetime__intern_add_delta (struct timeval* time_timeval, const CapeSt
 
 //-----------------------------------------------------------------------------
 
+void cape_datetime_add_s (CapeDatetime* self, const CapeString delta)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  // convert cape datetime into c time struct
+  time_timeval.tv_sec = cape_datetime_n__unix (self);
+  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  
+  // substract delta from time_timeval
+  cape_datetime__intern_add_delta (&time_timeval, delta);
+  
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
+
+  // convert into result
+  cape_datetime__convert_int_cape (self, &time_timeval, time_tm);
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_sub_s (CapeDatetime* self, const CapeString delta)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  // convert cape datetime into c time struct
+  time_timeval.tv_sec = cape_datetime_n__unix (self);
+  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  
+  // substract delta from time_timeval
+  cape_datetime__intern_sub_delta (&time_timeval, delta);
+  
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
+
+  // convert into result
+  cape_datetime__convert_int_cape (self, &time_timeval, time_tm);
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_utc__sub_s (CapeDatetime* self, const CapeString delta)
 {
 #if defined __WINDOWS_OS
@@ -472,8 +528,8 @@ void cape_datetime__remove_s (const CapeDatetime* self, const CapeString delta, 
   // substract delta from time_timeval
   cape_datetime__intern_sub_delta (&time_timeval, delta);
 
-  // convert back to localtime
-  time_tm = localtime (&(time_timeval.tv_sec));
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
 
   // convert into result
   cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
@@ -501,12 +557,40 @@ void cape_datetime__add_s (const CapeDatetime* input, const CapeString delta, Ca
   // accumulate delta to time_timeval
   cape_datetime__intern_add_delta (&time_timeval, delta);
 
-  // convert back to localtime
-  time_tm = localtime (&(time_timeval.tv_sec));
-  
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
+
   // convert into result
   cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
 
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime__sub_s (const CapeDatetime* input, const CapeString delta, CapeDatetime* result)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  // convert cape datetime into c time struct
+  time_timeval.tv_sec = cape_datetime_n__unix (input);
+  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+  
+  // accumulate delta to time_timeval
+  cape_datetime__intern_sub_delta (&time_timeval, delta);
+  
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
+
+  // convert into result
+  cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
+  
 #endif
 }
 
@@ -691,8 +775,13 @@ time_t cape_datetime_n__unix (const CapeDatetime* dt)
   
   cape_datetime__convert_cape (&timeinfo, dt);
   
-  return mktime (&timeinfo);
+  // this function uses the local timezone info
+  //return mktime (&timeinfo);
+  
+  // this function only exsists on BSD / Linux
+  return timegm (&timeinfo);
 }
+
 
 //-----------------------------------------------------------------------------
 

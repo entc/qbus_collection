@@ -261,25 +261,17 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
             break;
           }
           case ADBL_TYPE__GREATER_THAN:
-          {
-            CapeUdc greater = cape_udc_get (item, ADBL_SPECIAL__GREATER);
-           
-            if (greater)
-            {
-              adbl_bindvars_set (self, greater, FALSE);
-            }
-           
-            break;
-          }
+          case ADBL_TYPE__GREATER_EQUAL_THAN:
           case ADBL_TYPE__LESS_THAN:
+          case ADBL_TYPE__LESS_EQUAL_THAN:
           {
-            CapeUdc less = cape_udc_get (item, ADBL_SPECIAL__LESS);
-            
-            if (less)
+            CapeUdc val = cape_udc_get (item, ADBL_SPECIAL__VALUE);
+           
+            if (val)
             {
-              adbl_bindvars_set (self, less, FALSE);
+              adbl_bindvars_set (self, val, FALSE);
             }
-            
+           
             break;
           }
         }
