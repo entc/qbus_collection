@@ -17,6 +17,8 @@
 #define ADBL_SPECIAL__BETWEEN_FROM     "__from"
 #define ADBL_SPECIAL__BETWEEN_TO       "__to"
 #define ADBL_SPECIAL__VALUE            "__val"
+#define ADBL_SPECIAL__GREATER          "__greater"
+#define ADBL_SPECIAL__LESS             "__less"
 
 //-----------------------------------------------------------------------------
 
