@@ -1,45 +1,17 @@
-INCLUDE_DIRECTORIES("../../libs/cape/src" "../../libs/qbus/src" "../../libs/adbl/src/core" "../../libs/qcrypt/src")
+cmake_minimum_required(VERSION 2.4)
 
-#----------------------------------------------------------------------------------------
+SUBDIRS(src)
 
-SET (QBUS_MODULES_AUTH_SOURCES
-  "auth.c"
-  "auth_vault.c"
-  "auth_tokens.c"
-  "auth_ui.c"
-  "auth_gp.c"
-  "auth_rinfo.c"
-)
+#----------------------------------------------------------------------------------
 
-SET (QBUS_MODULES_AUTH_HEADERS
-  "auth_vault.h"
-  "auth_tokens.h"
-  "auth_ui.h"
-  "auth_gp.h"
-  "auth_rinfo.h"
-)
+# for docker install
+INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/modules/auth/src)
 
-ADD_EXECUTABLE (qbus_mod_auth ${QBUS_MODULES_AUTH_SOURCES} ${QBUS_MODULES_AUTH_HEADERS})
-TARGET_LINK_LIBRARIES(qbus_mod_auth qbus adbl2 qcrypt qcurl ${ENTC_LIBRARIES})
-
-INSTALL (TARGETS qbus_mod_auth DESTINATION modules)
-
-# set some symlinks for direct starting
-add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/auth.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/auth.json)
-add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/adbl_default.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl_default.json)
-add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
-
-# for docker
-INSTALL (TARGETS qbus_mod_auth DESTINATION docker/auth/mods)
-INSTALL (FILES ${ENTC_LIBRARIES} DESTINATION docker/auth/lib)
-#INSTALL (TARGETS cape DESTINATION docker/wspc/lib)
-#INSTALL (TARGETS qcrypt DESTINATION docker/wspc/lib)
-#INSTALL (TARGETS qbus DESTINATION docker/wspc/lib)
-#INSTALL (TARGETS adbl2 DESTINATION docker/wspc/lib)
+# for docker install
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/auth/)
 
 # remove none used ones (needs to fix)
-INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_auth:1.0.0)")
+INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:buster)")
 
 # build the docker image
-INSTALL (CODE "execute_process(COMMAND docker build -t qbus_mod_auth:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
-
+INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:buster -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_BINARY_DIR})")
