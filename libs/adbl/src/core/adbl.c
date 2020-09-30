@@ -530,7 +530,10 @@ void adbl_param_add__greater_than_n (CapeUdc params, const CapeString name, numb
   
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__GREATER_THAN);
   cape_udc_add_n (h, ADBL_SPECIAL__VALUE, value);
-  
+
+  // compatible with older versions
+  cape_udc_add_n (h, ADBL_SPECIAL__GREATER, value);
+
   cape_udc_add (params, &h);
 }
 
@@ -543,6 +546,9 @@ void adbl_param_add__greater_than_d (CapeUdc params, const CapeString name, cons
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__GREATER_THAN);
   cape_udc_add_d (h, ADBL_SPECIAL__VALUE, value);
   
+  // compatible with older versions
+  cape_udc_add_d (h, ADBL_SPECIAL__GREATER, value);
+
   cape_udc_add (params, &h);
 }
 
@@ -579,6 +585,9 @@ void adbl_param_add__less_than_n (CapeUdc params, const CapeString name, number_
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__LESS_THAN);
   cape_udc_add_n (h, ADBL_SPECIAL__VALUE, value);
   
+  // compatible with older versions
+  cape_udc_add_n (h, ADBL_SPECIAL__LESS, value);
+
   cape_udc_add (params, &h);
 }
 
@@ -591,6 +600,9 @@ void adbl_param_add__less_than_d (CapeUdc params, const CapeString name, const C
   cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__LESS_THAN);
   cape_udc_add_d (h, ADBL_SPECIAL__VALUE, value);
   
+  // compatible with older versions
+  cape_udc_add_d (h, ADBL_SPECIAL__LESS, value);
+
   cape_udc_add (params, &h);
 }
 

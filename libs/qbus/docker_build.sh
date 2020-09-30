@@ -18,4 +18,4 @@ if ! [[ -d $2/etc/$path ]]; then
 fi
 
 
-docker build -t qore/qbus:buster -f $1/Dockerfile_buster $2/etc/${QORE_CONFIG_PATH}/ --build-arg CACHEBUST=0
+docker build -t qore/qbus:buster -f $1/docker/Dockerfile_buster $2/etc/${QORE_CONFIG_PATH}/ --build-arg CACHEBUST=0
