@@ -8,10 +8,10 @@ SUBDIRS(src)
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/modules/webs/src)
 
 # for docker install
-INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/)
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/webs/)
 
 # remove none used ones (needs to fix)
-INSTALL(CODE "execute_process(COMMAND docker image rm qmod/webs:jessie)")
+INSTALL(CODE "execute_process(COMMAND docker image rm qmod/webs:buster)")
 
 # build the docker image
-INSTALL(CODE "execute_process(COMMAND docker build -t qmod/webs:jessie -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile ${CMAKE_BINARY_DIR})")
+INSTALL(CODE "execute_process(COMMAND docker build -t qmod/webs:buster -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_BINARY_DIR})")
