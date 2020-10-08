@@ -123,9 +123,12 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
-  CapeUdc params = NULL;
+  
+  // objects needed to call remote QBUS method
+  CapeUdc cdata = NULL;
+  CapeUdc clist = NULL;
 
-  res = flow_run_dbw_pdata__qbus (dbw, &module, &method, &params, err);
+  res = flow_run_dbw_pdata__qbus (dbw, &module, &method, &cdata, &clist, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -135,13 +138,13 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "          call | %s : %s                      |", module, method);
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
 
-  res = flow_run_dbw_pdata__logs_merge (dbw, params, err);
+  res = flow_run_dbw_pdata__logs_merge (dbw, cdata, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
-  flow_run_dbw_tdata__merge_in (dbw, params);
+  flow_run_dbw_tdata__merge_in (dbw, cdata);
   
   // call
   if (self->qbus)
@@ -149,8 +152,11 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
     QBusM msg = qbus_message_new (NULL, NULL);
     
     cape_udc_replace_cp (&(msg->rinfo), flow_run_dbw_rinfo_get (dbw));
-    cape_udc_replace_mv (&(msg->cdata), &params);
 
+    // transfer QBUS objects
+    cape_udc_replace_mv (&(msg->cdata), &cdata);
+    cape_udc_replace_mv (&(msg->clist), &clist);
+    
     // transfer owership of dbw to self objects
     self->dbw = dbw;
     *p_dbw = NULL;
@@ -171,7 +177,8 @@ exit_and_cleanup:
   cape_str_del (&module);
   cape_str_del (&method);
   
-  cape_udc_del (&params);
+  cape_udc_del (&cdata);
+  cape_udc_del (&clist);
 
   return res;
 }
@@ -220,9 +227,12 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
-  CapeUdc params = NULL;
 
-  res = flow_run_dbw_pdata__qbus (dbw, &module, &method, &params, err);
+  // objects needed to call remote QBUS method
+  CapeUdc cdata = NULL;
+  CapeUdc clist = NULL;
+
+  res = flow_run_dbw_pdata__qbus (dbw, &module, &method, &cdata, &clist, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -232,13 +242,13 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "|          call | %s : %s                      |", module, method);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "+---------------+----------------------------------+");
 
-  res = flow_run_dbw_pdata__logs_merge (dbw, params, err);
+  res = flow_run_dbw_pdata__logs_merge (dbw, cdata, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
-  flow_run_dbw_tdata__merge_in (dbw, params);
+  flow_run_dbw_tdata__merge_in (dbw, cdata);
 
   // call
   if (self->qbus)
@@ -246,7 +256,10 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
     QBusM msg = qbus_message_new (NULL, NULL);
     
     cape_udc_replace_cp (&(msg->rinfo), flow_run_dbw_rinfo_get (dbw));
-    cape_udc_replace_mv (&(msg->cdata), &params);
+
+    // transfer QBUS objects
+    cape_udc_replace_mv (&(msg->cdata), &cdata);
+    cape_udc_replace_mv (&(msg->clist), &clist);
 
     // transfer owership of dbw to self objects
     self->dbw = dbw;
@@ -262,7 +275,8 @@ exit_and_cleanup:
   cape_str_del (&module);
   cape_str_del (&method);
   
-  cape_udc_del (&params);
+  cape_udc_del (&cdata);
+  cape_udc_del (&clist);
 
   return res;
 }

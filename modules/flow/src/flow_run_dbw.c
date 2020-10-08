@@ -1842,21 +1842,50 @@ CapeUdc flow_run_dbw_rinfo_get (FlowRunDbw self)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString* p_method, CapeUdc* p_params, CapeErr err)
+int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString* p_method, CapeUdc* p_cdata, CapeUdc* p_clist, CapeErr err)
 {
   int res;
   
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
-  CapeUdc params = NULL;
-  
+
+  // objects needed to call remote QBUS method
+  CapeUdc cdata = NULL;
+  CapeUdc clist = NULL;
+
   if (self->pdata)
   {
     module = cape_udc_ext_s (self->pdata, "module");
     method = cape_udc_ext_s (self->pdata, "method");
 
-    params = cape_udc_ext (self->pdata, "params");
+    // check for clist
+    clist = cape_udc_ext (self->pdata, "clist");
+
+    // check for cdata
+    cdata = cape_udc_ext (self->pdata, "cdata");
+
+    if ((cdata == NULL) && (clist == NULL))
+    {
+      // support params
+      CapeUdc params = cape_udc_ext (self->pdata, "params");
+      if (params)
+      {
+        // check for clist
+        clist = cape_udc_ext (params, "clist");
+        
+        // check for cdata
+        cdata = cape_udc_ext (params, "cdata");
+        
+        if (cdata == NULL)
+        {
+          // old way
+          cape_udc_replace_mv (&cdata, &params);
+        }
+        
+        cape_udc_del (&params);
+      }
+    }
   }
   
   if (module == NULL)
@@ -1871,15 +1900,15 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
     goto exit_and_cleanup;
   }
   
-  if (params == NULL)
+  if (cdata == NULL)
   {
     cape_log_fmt (CAPE_LL_TRACE, "FLOW", "dbw pdata", "module = %s, method = %s, params = none", module, method);
 
-    params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   }
   else
   {
-    CapeString h = cape_json_to_s (params);
+    CapeString h = cape_json_to_s (cdata);
 
     cape_log_fmt (CAPE_LL_TRACE, "FLOW", "dbw pdata", "module = %s, method = %s, params = %s", module, method, h);
 
@@ -1890,15 +1919,16 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
   
   cape_str_replace_mv (p_module, &module);
   cape_str_replace_mv (p_method, &method);
-  cape_udc_replace_mv (p_params, &params);
+  cape_udc_replace_mv (p_cdata, &cdata);
   
 exit_and_cleanup:
   
   cape_str_del (&module);
   cape_str_del (&method);
 
-  cape_udc_del (&params);
-  
+  cape_udc_del (&cdata);
+  cape_udc_del (&clist);
+
   return res;
 }
 

@@ -85,7 +85,7 @@ __CAPE_LOCAL   void         flow_run_dbw_state_set         (FlowRunDbw, number_t
 // data manipulators
 
                             /* retrieve QBUS info for continue */
-__CAPE_LOCAL   int          flow_run_dbw_pdata__qbus         (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* params, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_pdata__qbus         (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* p_cdata, CapeUdc* p_clist, CapeErr err);
 
                             /* retrieve a list with all splits */
 __CAPE_LOCAL   int          flow_run_dbw_xdata__split        (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeErr err);
