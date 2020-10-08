@@ -498,6 +498,13 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     cape_udc_add_n      (values, "p_data"        , 0);
     cape_udc_add_n      (values, "t_data"        , 0);
 
+    /*
+    
+    proc_next_workstep_view
+    
+    select ws.id, ws.sqtid, ta.id taid, ta.wpid, ta.refid, ta.current_step, ws.name, ws.fctid, ws.log, ws.p_data, ta.t_data from proc_tasks ta join proc_worksteps ws on ws.wfid = ta.wfid and (ws.prev = ta.current_step or (ws.prev IS NULL and ta.current_step IS NULL));
+    
+    */
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_next_workstep_view", &params, &values, err);
     if (query_results == NULL)
@@ -582,6 +589,11 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
 
     cape_udc_add_n      (values, "current_state" , 0);
 
+    /*
+    proc_current_workstep_view
+    
+    select ws.id, ws.sqtid, ta.id taid, ta.wpid, ws.wfid, ta.active, ta.refid, ta.sync, ts.cnt sync_cnt, ta.current_step, ta.current_state, ws.name, ws.fctid, ws.log, ws.p_data, ta.t_data from proc_tasks ta join proc_worksteps ws on ws.id = ta.current_step left join proc_task_sync ts on ts.taid = ta.id order by taid desc;
+    */
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "proc_current_workstep_view", &params, &values, err);
     if (query_results == NULL)
