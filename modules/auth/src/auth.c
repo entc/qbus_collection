@@ -4,6 +4,7 @@
 #include "auth_gp.h"
 #include "auth_vault.h"
 #include "auth_tokens.h"
+#include "auth_perm.h"
 
 #include <adbl.h>
 
@@ -177,6 +178,32 @@ static int __STDCALL qbus_auth_token_del (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_perm_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_perm_set (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_perm_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_perm_get (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_vault_open (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -268,6 +295,18 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "newToken"             , ctx, qbus_auth_token_add, NULL, err);
   qbus_register (qbus, "getTokenContent"      , ctx, qbus_auth_token_get, NULL, err);
   qbus_register (qbus, "invalidateToken"      , ctx, qbus_auth_token_del, NULL, err);
+
+  // -------- callback methods --------------------------------------------
+
+  // renew a permanent token
+  //   args: [code], {roles} : pdata
+  qbus_register (qbus, "token_perm_set"       , ctx, qbus_auth_perm_set, NULL, err);
+
+  // get a permanent token
+  //   args: token
+  qbus_register (qbus, "token_perm_get"       , ctx, qbus_auth_perm_get, NULL, err);
+
+  // -------- callback methods --------------------------------------------
 
   // all vault functions
   qbus_register (qbus, "vault_set"            , ctx, qbus_auth_vault_open, NULL, err);

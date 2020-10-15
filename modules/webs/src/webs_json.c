@@ -32,8 +32,9 @@ struct WebsJson_s
   CapeList files_to_delete;
   
   // extra features
-  CapeString extra_token;
-  
+  CapeString extra_token_t;
+  CapeString extra_token_p;
+
   // shortcuts from the header values
   const CapeString mime;
   const CapeString auth;
@@ -67,8 +68,9 @@ WebsJson webs_json_new (QBus qbus, QWebsRequest request)
   self->files = NULL;
   
   self->files_to_delete = cape_list_new (webs__files__on_del);
-  self->extra_token = NULL;
-  
+  self->extra_token_t = NULL;
+  self->extra_token_p = NULL;
+
   self->mime = NULL;
   self->auth = NULL;
   
@@ -92,7 +94,8 @@ void webs_json_del (WebsJson* p_self)
     
     cape_list_del (&(self->files_to_delete));
     
-    cape_str_del (&(self->extra_token));
+    cape_str_del (&(self->extra_token_t));
+    cape_str_del (&(self->extra_token_p));
 
     if (self->request)
     {
@@ -171,7 +174,7 @@ static int __STDCALL qbus_webs__auth__on_call (QBus qbus, void* ptr, QBusM qin, 
     }
     case QBUS_MTYPE_FILE:
     {
-      cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
+      //cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
 
       // if the file is encrypted check if we have the vsec for it
       if (cape_udc_get_b (qin->cdata, "encrypted", FALSE))
@@ -323,7 +326,7 @@ void webs__check_body (WebsJson self)
 
   if (self->mime)
   {
-    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "handling content type = %s", self->mime);
+    //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "handling content type = %s", self->mime);
 
     // check mime type
     if (cape_str_begins (self->mime, "multipart"))
@@ -499,7 +502,7 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       
       QBusM msg = qbus_message_new (NULL, NULL);
       
-      cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
+      //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
 
       qbus_message_clr (msg, CAPE_UDC_NODE);
       
@@ -520,13 +523,13 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       return CAPE_ERR_CONTINUE;
     }
   }
-  else if (self->extra_token)
+  else if (self->extra_token_t)
   {
     int res;
     
     QBusM msg = qbus_message_new (NULL, NULL);
     
-    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
+    //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
 
     qbus_message_clr (msg, CAPE_UDC_NODE);
     
@@ -535,12 +538,34 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
     {
       CapeUdc extras = cape_udc_new (CAPE_UDC_NODE, "extras");
       
-      cape_udc_add_s_mv (extras, "__T", &(self->extra_token));
+      cape_udc_add_s_mv (extras, "__T", &(self->extra_token_t));
       
       cape_udc_add (msg->cdata, &extras);
     }
     
     res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
+    
+    qbus_message_del (&msg);
+    
+    *p_self = NULL;
+    
+    return CAPE_ERR_CONTINUE;
+  }
+  else if (self->extra_token_p)
+  {
+    int res;
+    
+    QBusM msg = qbus_message_new (NULL, NULL);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "perm token: ask for rinfo");
+    
+    qbus_message_clr (msg, CAPE_UDC_UNDEFINED);
+
+    msg->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_s_mv (msg->pdata, "token", &(self->extra_token_p));
+    
+    res = qbus_send (self->qbus, "AUTH", "token_perm_get", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);
     
@@ -585,8 +610,9 @@ int webs_json_run (WebsJson* p_self, CapeErr err)
     const CapeString module;
     const CapeString method;
     
-    CapeString token = NULL;
-    
+    CapeString token_t = NULL;
+    CapeString token_p = NULL;
+
     CapeListCursor* cursor = cape_list_cursor_create (clist, CAPE_DIRECTION_FORW);
     
     if (cape_list_cursor_next (cursor))
@@ -606,7 +632,14 @@ int webs_json_run (WebsJson* p_self, CapeErr err)
       {
         if (cape_list_cursor_next (cursor))
         {
-          token = cape_str_cp (cape_list_node_data (cursor->node));
+          token_t = cape_str_cp (cape_list_node_data (cursor->node));
+        }
+      }
+      else if (cape_str_equal (special, "__P"))
+      {
+        if (cape_list_cursor_next (cursor))
+        {
+          token_p = cape_str_cp (cape_list_node_data (cursor->node));
         }
       }
       else
@@ -630,7 +663,8 @@ int webs_json_run (WebsJson* p_self, CapeErr err)
     
     self->method = cape_str_cp (method);
     
-    cape_str_replace_mv (&(self->extra_token), &token);
+    cape_str_replace_mv (&(self->extra_token_t), &token_t);
+    cape_str_replace_mv (&(self->extra_token_p), &token_p);
 
     // check for authentication
     return webs_json_run_gen (p_self, err);
@@ -651,7 +685,7 @@ void webs_json_set (WebsJson self, const CapeString module, const CapeString met
   cape_str_replace_cp (&(self->method), method);
   cape_udc_replace_mv (&(self->clist), p_clist);
   
-  cape_str_replace_mv (&(self->extra_token), p_token);
+  cape_str_replace_mv (&(self->extra_token_t), p_token);
 }
 
 //-----------------------------------------------------------------------------

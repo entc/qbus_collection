@@ -468,6 +468,33 @@ void qbus_message_del (QBusM* p_self)
 
 //-----------------------------------------------------------------------------
 
+int qbus_message_role_has (QBusM self, const CapeString role_name)
+{
+  CapeUdc roles;
+  CapeUdc role;
+
+  if (self->rinfo == NULL)
+  {
+    return FALSE;
+  }
+  
+  roles = cape_udc_get (self->rinfo, "roles");
+  if (roles == NULL)
+  {
+    return FALSE;
+  }
+
+  role = cape_udc_get (roles, role_name);
+  if (role == NULL)
+  {
+    return FALSE;
+  }
+  
+  return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_check_param (CapeUdc data, const CapeUdc param)
 {
   const CapeString h = cape_udc_s (param, NULL);
