@@ -504,12 +504,21 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     goto exit_and_cleanup;
   }
       
+  if (NULL == switch_node)
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " CASE          | precondition failed              |");
+    cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", "---------------+----------------------------------+");
+    
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+
   if (NULL == value)
   {
     res = cape_err_set (err, CAPE_ERR_RUNTIME, "no value defined");
     goto exit_and_cleanup;
   }
-  
+    
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " VALUE         | value %8s                   |", value);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", "---------------+----------------------------------+");
 

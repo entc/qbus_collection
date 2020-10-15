@@ -2014,7 +2014,10 @@ int flow_run_dbw_xdata__switch (FlowRunDbw self, CapeString* p_value, CapeUdc* p
   const CapeString value_node_name = NULL;
   const CapeString refid_node_name = NULL;
   
+  const CapeString precondition_node_name = NULL;
+  
   CapeUdc value_node = NULL;
+  CapeUdc precondition_node = NULL;
 
   // local objects
   CapeString value = NULL;
@@ -2026,6 +2029,9 @@ int flow_run_dbw_xdata__switch (FlowRunDbw self, CapeString* p_value, CapeUdc* p
     //refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
     
     switch_node = cape_udc_ext (self->pdata, "switch");
+   
+    // that's optional
+    precondition_node_name = cape_udc_get_s (self->pdata, "precondition_node", NULL);
   }
   
   if (value_node_name == NULL)
@@ -2044,12 +2050,41 @@ int flow_run_dbw_xdata__switch (FlowRunDbw self, CapeString* p_value, CapeUdc* p
   if (self->tdata)
   {
     value_node = cape_udc_get (self->tdata, value_node_name);
+    
+    // optional
+    if (precondition_node_name)
+    {
+      precondition_node = cape_udc_get (self->tdata, precondition_node_name);
+    }
   }
   
   if (value_node == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'value_node' is empty or missing");
     goto exit_and_cleanup;
+  }
+  
+  // check precondition
+  if (precondition_node)
+  {
+    switch (cape_udc_type (precondition_node))
+    {
+      case CAPE_UDC_LIST:
+      case CAPE_UDC_NODE:
+      {
+        if (cape_udc_size (precondition_node) == 0)
+        {
+          res = CAPE_ERR_NONE;
+          
+          p_value = NULL;
+          p_switch_node = NULL;
+          
+          goto exit_and_cleanup;
+        }
+        
+        break;
+      }
+    }
   }
   
   switch (cape_udc_type (value_node))
