@@ -1931,7 +1931,9 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
   
   cape_str_replace_mv (p_module, &module);
   cape_str_replace_mv (p_method, &method);
+
   cape_udc_replace_mv (p_cdata, &cdata);
+  cape_udc_replace_mv (p_clist, &clist);
   
 exit_and_cleanup:
   
