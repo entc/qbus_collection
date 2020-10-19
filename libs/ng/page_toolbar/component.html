@@ -1,14 +1,17 @@
-<div class="row mt-2">
+<div class="row">
   <div class="col-sm-12 col-md-6 col-lg-4 order-sm-2 order-md-2">
 
-    <div class="input-group mb-2">
+    <div class="input-group input-group-sm mb-2">
+      <div class="input-group-prepend">
+        <span class="input-group-text"><i class="fa fa-sort"></i></span>
+      </div>
     	<select class="custom-select" [(ngModel)]="sort_name">
         <option *ngFor="let item of sort_keys" [value]="sort_vals[item]">{{item}}</option>
       </select>
       <div class="input-group-append">
         <button (click)="sort_reverse = !sort_reverse" class="btn btn-outline-secondary btn-sm" type="button">
-    			<span *ngIf="sort_reverse"><i class="fa fa-arrow-circle-down"></i></span>
-    			<span *ngIf="!sort_reverse"><i class="fa fa-arrow-circle-up"></i></span>
+    			<span *ngIf="sort_reverse"><i class="fa fa-sort-amount-down"></i></span>
+    			<span *ngIf="!sort_reverse"><i class="fa fa-sort-amount-up-alt"></i></span>
     		</button>
       </div>
     </div>
@@ -16,8 +19,11 @@
   </div>
   <div class="col-sm-12 col-md-6 col-lg-4 order-sm-1 order-md-3">
 
-    <div class="input-group mb-2">
-      <input type="text" class="form-control" placeholder="filter" aria-label="filter" aria-describedby="button-addon2" [(ngModel)]="search" (ngModelChange)="on_search_changed()">
+    <div class="input-group input-group-sm mb-2">
+      <div class="input-group-prepend">
+        <span class="input-group-text"><i class="fa fa-filter"></i></span>
+      </div>
+      <input type="text" class="form-control" aria-label="filter" aria-describedby="button-addon2" [(ngModel)]="search" (ngModelChange)="on_search_changed()">
       <div class="input-group-append">
         <button class="btn btn-outline-secondary btn-sm" type="button" (click)="on_search_reset()"><i class="fa fa-times-circle"></i></button>
       </div>
@@ -28,7 +34,7 @@
 
     <pagination-template #p="paginationApi" (pageChange)="currentPage = $event">
       <nav aria-label="Page navigation example" >
-        <ul class="pagination">
+        <ul class="pagination pagination-sm">
           <li class="page-item" *ngFor="let page of p.pages" [class.active]="p.getCurrent() === page.value"><a class="page-link" (click)="p.setCurrent(page.value)">{{page.label}}</a></li>
         </ul>
       </nav>
