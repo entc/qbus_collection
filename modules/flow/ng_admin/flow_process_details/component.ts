@@ -19,7 +19,7 @@ export class FlowProcessDetailsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private AuthService: AuthService, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
   {
   }
 
@@ -28,6 +28,13 @@ export class FlowProcessDetailsComponent implements OnInit {
   ngOnInit()
   {
     this.psid = Number(this.route.snapshot.paramMap.get('psid'));
+  }
+
+  //-----------------------------------------------------------------------------
+
+  return_page ()
+  {
+    this.router.navigate(['../../flow_process'], {relativeTo: this.route});
   }
 
   //-----------------------------------------------------------------------------
