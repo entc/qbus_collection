@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 
 // auth service
 import { AuthService } from '@qbus/auth.service';
@@ -18,7 +19,7 @@ export class FlowEditorComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private AuthService: AuthService, private modalService: NgbModal)
+  constructor (private AuthService: AuthService, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
   {
   }
 
@@ -86,6 +87,13 @@ export class FlowEditorComponent implements OnInit {
 
 
     });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  edit_details (wf: IWorkflow)
+  {
+    this.router.navigate(['../flow_editor', wf.id], {relativeTo: this.route});
   }
 
 //-----------------------------------------------------------------------------

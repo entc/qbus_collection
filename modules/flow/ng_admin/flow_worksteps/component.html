@@ -1,8 +1,6 @@
-<div class="container mt-2">
-
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item active" aria-current="page"><a [routerLink]="['/flow_editor']">{{ 'FLOW.WORKFLOWLIST' | transloco }}</a></li>
+      <li class="breadcrumb-item active" aria-current="page"><button class="btn btn-link" style="padding: 0px;" (click)="return_page()">{{ 'FLOW.WORKFLOWLIST' | transloco }}</button></li>
       <li class="breadcrumb-item">wfid = {{wfid}}</li>
     </ol>
   </nav>
@@ -51,5 +49,3 @@
       </td>
     </tr>
   </table>
-
-</div>

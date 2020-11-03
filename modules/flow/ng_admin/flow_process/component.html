@@ -1,13 +1,11 @@
 <page-toolbar #toolbar sorting="{'id': 'id'}"></page-toolbar>
 
-<div class="mt-2" *authRole="[]">
-
-  <table class="table mt-2">
+  <table class="table mt-2" *authRole="[]">
     <tr>
       <th></th>
       <th><span class="badge badge-primary">psid</span></th>
-      <th>workflow</th>
-      <th>current step</th>
+      <th width="50%">workflow</th>
+      <th width="50%">current step</th>
       <th></th>
     </tr>
     <tr *ngFor="let item of processes | async | pageToolBar : toolbar : ['id']">
@@ -34,5 +32,3 @@
       </td>
     </tr>
   </table>
-
-</div>
