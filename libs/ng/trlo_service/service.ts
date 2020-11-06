@@ -32,9 +32,11 @@ export class TrloService
 
   // all available languages apearing in the select
   public locales = [
-    { label: '🇩🇪', value: 'de-DE' },
-    { label: '🇺🇸', value: 'en-US' },
-    { label: '🇫🇷', value: 'fr-FR' }
+    { label: '🇩🇪(de)', value: 'de-DE' },
+    { label: '🇺🇸(us)', value: 'en-US' },
+    { label: '🇫🇷(fr)', value: 'fr-FR' },
+    { label: '🇮🇳(hi)', value: 'hi-IN' },
+    { label: '🇮🇳(ta)', value: 'ta-IN' }
   ];
 
   // this member is needed for the select html element

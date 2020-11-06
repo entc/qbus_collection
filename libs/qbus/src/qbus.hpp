@@ -232,6 +232,11 @@ namespace qbus
     
     try
     {
+      if (qin->err)
+      {
+        throw cape::Exception (cape_err_code (qin->err), cape_err_text (qin->err));
+      }
+
       if (ctx->fct && ctx->ptr)
       {
         qbus::Message msg (qbus, qin, qout);
