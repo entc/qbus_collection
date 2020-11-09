@@ -410,7 +410,7 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, CapeT
 
 int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTemplateCB cb, CapeErr err)
 {
-  number_t fraction = 1;
+  double fraction = 1.0;
   const CapeString devider;
   number_t decimal = 3;
   
@@ -422,8 +422,8 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTe
     
     cape_list_cursor_next (cursor);
 
-    fraction = strtol (cape_list_node_data (cursor->node), NULL, 10);
-
+    fraction = cape_str_to_f (cape_list_node_data (cursor->node));
+    
     cape_list_cursor_next (cursor);
 
     devider = cape_list_node_data (cursor->node);
