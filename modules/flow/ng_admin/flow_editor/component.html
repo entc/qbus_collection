@@ -1,8 +1,6 @@
 <page-toolbar #toolbar sorting="{'id': 'id', 'name': 'name'}" recall="e1f2bd9e-27dc-477a-8896-2fa757a0dbc5"></page-toolbar>
 
-  <div class="container mt-2" *authRole="['flow_admin']">
-
-    <table class="table mt-2">
+    <table class="table mt-2" *authRole="['flow_admin']">
       <tr>
         <th>
           <span class="badge badge-primary">wfid</span>
@@ -27,9 +25,7 @@
         </td>
         <td>
           <div class="btn-group mr-3">
-            <a class="btn btn-sm btn-outline-primary" [routerLink]="['/flow_editor', wf.id]">
-              <i class="fa fa-edit"></i>
-            </a>
+            <button (click)="edit_details (wf)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fa fa-edit"></i></button>
             <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
               <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
               <div class="dropdown-menu" ngbDropdownMenu>
@@ -42,6 +38,3 @@
         </td>
       </tr>
     </table>
-
-
-</div>

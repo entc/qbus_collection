@@ -18,7 +18,7 @@ export class FlowProcessComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private router: Router, private modalService: NgbModal)
+  constructor(private AuthService: AuthService, private router: Router, private modalService: NgbModal, private route: ActivatedRoute)
   {
   }
 
@@ -40,7 +40,7 @@ export class FlowProcessComponent implements OnInit {
 
   show_details (item: ProcessStep)
   {
-    this.router.navigate(['/flow_process', item.id]);
+    this.router.navigate(['../flow_process', item.id], {relativeTo: this.route});
   }
 
   //-----------------------------------------------------------------------------

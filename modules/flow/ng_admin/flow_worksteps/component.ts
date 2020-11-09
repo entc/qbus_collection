@@ -1,6 +1,6 @@
 import { Component, OnInit, Injector } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { ActivatedRoute, Params } from '@angular/router';
+import { Router, ActivatedRoute, Params } from '@angular/router';
 import { NgForm } from '@angular/forms';
 
 // auth service
@@ -37,7 +37,7 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private AuthService: AuthService, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
   {
   }
 
@@ -124,6 +124,13 @@ export class FlowWorkstepsComponent implements OnInit
     }, () => {
 
     });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  return_page ()
+  {
+    this.router.navigate(['../../flow_editor'], {relativeTo: this.route});
   }
 
 }

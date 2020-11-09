@@ -283,11 +283,14 @@ int qjobs__intern__event_run (QJobs self, CapeString* p_next_run, CapeErr err)
   number_t wpid = cape_udc_get_n (self->next_list_item, "wpid", 0);
   number_t gpid = cape_udc_get_n (self->next_list_item, "gpid", 0);
 
+  number_t r1id = cape_udc_get_n (self->next_list_item, "ref_id1", 0);
+  number_t r2id = cape_udc_get_n (self->next_list_item, "ref_id2", 0);
+
   const CapeString rinfo = cape_udc_get_s (self->next_list_item, "rinfo", NULL);
   
   if (self->user_fct)
   {
-    *p_next_run = self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo);
+    *p_next_run = self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo, r1id, r2id);
   }
   
   return CAPE_ERR_NONE;
