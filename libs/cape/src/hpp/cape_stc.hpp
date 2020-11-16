@@ -572,6 +572,20 @@ namespace cape
       
       UdcTransType<T>::add_mv (m_obj, NULL, val);
     }
+
+    //-----------------------------------------------------------------------------
+    
+    template <typename T> const T& operator =(T const &val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+
+      UdcTransType<T>::set (m_obj, val);
+      
+      return val;
+    }
     
     //-----------------------------------------------------------------------------
     
@@ -752,7 +766,10 @@ namespace cape
       
       if (h == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NOT_FOUND, "UDC has not such an entry");
+        std::string h ("UDC has not such an entry: ");
+        h.append (name);
+        
+        throw cape::Exception (CAPE_ERR_NOT_FOUND, h.c_str());
       }
       
       return Udc (h);
@@ -831,14 +848,16 @@ namespace cape
     
     //-----------------------------------------------------------------------------
     
-    CapeUdc clone ()
+    Udc clone ()
     {
       if (m_obj == NULL)
       {
         throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
       }
       
-      return cape_udc_cp (m_obj);
+      CapeUdc h = cape_udc_cp (m_obj);
+      
+      return Udc (&h);
     }
     
     //-----------------------------------------------------------------------------
@@ -957,7 +976,10 @@ namespace cape
     static void add_cp (CapeUdc obj, const char* name, const int& value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
     static int as (CapeUdc obj, int dv = 0) { return cape_udc_n (obj, dv); }
+    static void put (CapeUdc obj, const char* name, const int& value) { cape_udc_put_n (obj, name, value); }
+    static void set (CapeUdc obj, const int& value) { cape_udc_set_n (obj, value); }
   };
+  
   //-----------------------------------------------------------------------------------------------------
   
   template <> struct UdcTransType<int&>
@@ -972,6 +994,8 @@ namespace cape
     static void add_cp (CapeUdc obj, const char* name, const long& value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, number_t& value) { cape_udc_add_n (obj, name, value); }
     static long as (CapeUdc obj, long dv = 0) { return cape_udc_n (obj, dv); }    
+    static void put (CapeUdc obj, const char* name, const number_t& value) { cape_udc_put_n (obj, name, value); }
+    static void set (CapeUdc obj, const number_t value) { cape_udc_set_n (obj, value); }
   };
   
   template <> struct UdcTransType<number_t&>
@@ -979,6 +1003,8 @@ namespace cape
     static void add_cp (CapeUdc obj, const char* name, const long& value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, number_t& value) { cape_udc_add_n (obj, name, value); }
     static long as (CapeUdc obj, long dv = 0) { return cape_udc_n (obj, dv); }    
+    static void put (CapeUdc obj, const char* name, const number_t& value) { cape_udc_put_n (obj, name, value); }
+    static void set (CapeUdc obj, const number_t& value) { cape_udc_set_n (obj, value); }
   };
 
   template <> struct UdcTransType<unsigned int&>
@@ -1015,6 +1041,7 @@ namespace cape
     static void add_mv (CapeUdc obj, const char* name, bool& value) { cape_udc_add_b (obj, name, value ? TRUE : FALSE); }
     static bool as (CapeUdc obj, bool dv = false) { return cape_udc_b (obj, dv ? TRUE : FALSE) == TRUE ? true : false; }
     static void put (CapeUdc obj, const char* name, const bool& value) { cape_udc_put_b (obj, name, value ? TRUE : FALSE); }
+    static void set (CapeUdc obj, const bool& value) { cape_udc_set_b (obj, value ? TRUE : FALSE); }
   };
   
   template <> struct UdcTransType<std::string>
