@@ -45,6 +45,8 @@ __CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, Cape
 
 __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, CapeErr);
 
+__CAPE_LIBEX   int                cape_fs_path_exists    (const char* path);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                cape_fs_file_del       (const char* path, CapeErr);

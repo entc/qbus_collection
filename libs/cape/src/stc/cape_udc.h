@@ -136,6 +136,8 @@ __CAPE_LIBEX   CapeUdc              cape_udc_get_first        (CapeUdc);
 
 __CAPE_LIBEX   CapeString           cape_udc_ext_s            (CapeUdc, const CapeString name);
 
+__CAPE_LIBEX   CapeDatetime*        cape_udc_ext_d            (CapeUdc, const CapeString name);
+
 __CAPE_LIBEX   CapeUdc              cape_udc_ext_node         (CapeUdc, const CapeString name);
 
 __CAPE_LIBEX   CapeUdc              cape_udc_ext_list         (CapeUdc, const CapeString name);

@@ -303,6 +303,36 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
   CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
   while (cape_list_cursor_next (cursor))
   {
+    const CapeString part = cape_list_node_data (cursor->node);
+    
+    {
+      if (directory)
+      {
+        // For other deeps, check each subdir and create it if not existing
+        CapeString h = cape_fs_path_merge (directory, part);
+        
+        // replace directory (memory safe)
+        cape_str_replace_mv (&directory, &h);
+      }
+      else
+      {
+        directory = cape_str_cp (part);
+      }
+    }
+    
+    res = cape_fs_path_create (directory, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+
+    
+//    printf ("PART: %s\n", directory);
+
+    /*
+     */
+
+    /*
     // Root shall exist
     switch (cursor->position)
     {
@@ -347,7 +377,8 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
 
         break;
       }
-    }  
+    }
+     */
   } // End while
          
   res = CAPE_ERR_NONE;
@@ -356,6 +387,8 @@ exit_and_cleanup:
   
   cape_list_cursor_destroy (&cursor);
   cape_list_del (&tokens);
+  
+  cape_str_del (&directory);
   
   return res;
 }
@@ -553,6 +586,20 @@ off_t cape_fs_path_size (const char* path, CapeErr err)
   cape_str_del (&(fts_path[0]));
   
   return total_size;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_exists (const char* path)
+{
+  struct stat st;
+  
+  if (cape_str_empty (path))
+  {
+    return FALSE;
+  }
+  
+  return stat (path, &st) == 0;
 }
 
 //-----------------------------------------------------------------------------

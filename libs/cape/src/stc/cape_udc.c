@@ -1184,6 +1184,47 @@ CapeString cape_udc_ext_s (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+CapeDatetime* cape_udc_ext_d (CapeUdc self, const CapeString name)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_NODE:
+    {
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      if (n)
+      {
+        CapeUdc h = cape_map_node_value (n);
+        
+        if (h->type == CAPE_UDC_DATETIME)
+        {
+          CapeDatetime* ret;
+          
+          // remove the UDC (h) from the map
+          n = cape_map_extract (self->data, n);
+          
+          // get the content
+          ret = h->data;
+          h->data = NULL;
+          
+          // clean up
+          cape_udc_del (&h);
+          cape_map_node_del (&n);
+
+          return ret;
+        }
+      }
+      
+      return NULL;
+    }
+    default:
+    {
+      return NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_udc_ext_node (CapeUdc self, const CapeString name)
 {
   switch (self->type)
