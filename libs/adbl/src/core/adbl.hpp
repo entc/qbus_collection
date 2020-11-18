@@ -320,8 +320,8 @@ namespace adbl {
 
       {
         // clone
-        CapeUdc c_params = params.clone ();
-        CapeUdc c_values = values.clone ();
+        CapeUdc c_params = params.clone ().release ();
+        CapeUdc c_values = values.clone ().release ();
         
         // for sure set the column id
         cape_udc_put_n (c_values, column_id, 0);
