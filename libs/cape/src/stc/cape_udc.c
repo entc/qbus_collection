@@ -1074,6 +1074,36 @@ CapeUdc cape_udc_get_list (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_put_s_cp (CapeUdc self, const CapeString name, const CapeString val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_s_cp (h, val);
+  }
+  else
+  {
+    cape_udc_add_s_cp (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_s_mv (CapeUdc self, const CapeString name, CapeString* p_val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_s_mv (h, p_val);
+  }
+  else
+  {
+    cape_udc_add_s_mv (self, name, p_val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_put_n (CapeUdc self, const CapeString name, number_t val)
 {
   CapeUdc h = cape_udc_get (self, name);
