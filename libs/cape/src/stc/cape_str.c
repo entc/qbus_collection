@@ -1459,13 +1459,16 @@ void cape_str_fill (CapeString self, number_t len, const CapeString source)
 
 void cape_str_to_upper (CapeString self)
 {
-  char* pos = self;
-  
-  while (*pos)
+  if (self)
   {
-    *pos = toupper (*pos);
-    pos++;
-  }
+    char* pos = self;
+    
+    while (*pos)
+    {
+      *pos = toupper (*pos);
+      pos++;
+    }
+  }  
 }
 
 //-----------------------------------------------------------------------------
