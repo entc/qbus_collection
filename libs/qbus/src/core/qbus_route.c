@@ -1223,26 +1223,28 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
 
 void qbus_route_response (QBusRoute self, const char* module, QBusM msg, CapeErr err)
 {
-  QBusConnection const conn = qbus_route_module_find (self, module);
+  if (module)
+  {
+    QBusConnection const conn = qbus_route_module_find (self, module);
+    if (conn)
+    {
+      // create a new frame
+      QBusFrame frame = qbus_frame_new ();
+      
+      // add default content
+      qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_RES, msg->chain_key, module, NULL, self->name);
+      
+      // add message content
+      qbus_frame_set_qmsg (frame, msg, err);
+      
+      // finally send the frame
+      qbus_connection_send (conn, &frame);
+      
+      return;
+    }
+  }
   
-  if (conn)
-  {
-    // create a new frame
-    QBusFrame frame = qbus_frame_new ();
-    
-    // add default content
-    qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_RES, msg->chain_key, module, NULL, self->name);
-    
-    // add message content
-    qbus_frame_set_qmsg (frame, msg, err);
-    
-    // finally send the frame
-    qbus_connection_send (conn, &frame);
-  }
-  else
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "route response", "no route for response '%s'", module);
-  }
+  cape_log_fmt (CAPE_LL_ERROR, "QBUS", "route response", "no route for response '%s'", module);
 }
 
 //-----------------------------------------------------------------------------

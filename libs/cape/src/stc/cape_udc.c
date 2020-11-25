@@ -1074,6 +1074,36 @@ CapeUdc cape_udc_get_list (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_put_s_cp (CapeUdc self, const CapeString name, const CapeString val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_s_cp (h, val);
+  }
+  else
+  {
+    cape_udc_add_s_cp (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_s_mv (CapeUdc self, const CapeString name, CapeString* p_val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_s_mv (h, p_val);
+  }
+  else
+  {
+    cape_udc_add_s_mv (self, name, p_val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_put_n (CapeUdc self, const CapeString name, number_t val)
 {
   CapeUdc h = cape_udc_get (self, name);
@@ -1180,6 +1210,47 @@ CapeString cape_udc_ext_s (CapeUdc self, const CapeString name)
       return NULL;
     }
   }  
+}
+
+//-----------------------------------------------------------------------------
+
+CapeDatetime* cape_udc_ext_d (CapeUdc self, const CapeString name)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_NODE:
+    {
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      if (n)
+      {
+        CapeUdc h = cape_map_node_value (n);
+        
+        if (h->type == CAPE_UDC_DATETIME)
+        {
+          CapeDatetime* ret;
+          
+          // remove the UDC (h) from the map
+          n = cape_map_extract (self->data, n);
+          
+          // get the content
+          ret = h->data;
+          h->data = NULL;
+          
+          // clean up
+          cape_udc_del (&h);
+          cape_map_node_del (&n);
+
+          return ret;
+        }
+      }
+      
+      return NULL;
+    }
+    default:
+    {
+      return NULL;
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------

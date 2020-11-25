@@ -178,7 +178,7 @@ int jobs_list_add (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
   // clean up
   qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
   
-  res = qjobs_event (self->jobs, self->dt_start, 1, &params, qin->rinfo, "JOBS", "mjob", 0, 0, NULL, err);
+  res = qjobs_add (self->jobs, self->dt_start, 0, &params, qin->rinfo, "JOBS", "mjob", 0, 0, NULL, err);
 
 exit_and_cleanup:
   

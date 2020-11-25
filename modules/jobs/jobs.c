@@ -72,13 +72,12 @@ void qbus_jobs__ctx_del (JobsContext* p_self)
 
 //-------------------------------------------------------------------------------------
 
-CapeString __STDCALL qbus_jobs__on_event (void* user_ptr, CapeUdc params, number_t wpid, number_t gpid, const CapeString rinfo_encrypted)
+int __STDCALL qbus_jobs__on_event (QJobs jobs, QJobsEvent event, void* user_ptr, CapeErr err)
 {
   JobsContext ctx = user_ptr;
   
   
-  
-  return NULL;
+  return CAPE_ERR_EOF;
 }
 
 //-------------------------------------------------------------------------------------

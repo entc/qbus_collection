@@ -5,6 +5,7 @@
 #include <sys/cape_thread.h>
 #include <fmt/cape_json.h>
 #include <aio/cape_aio_timer.h>
+#include <sys/cape_mutex.h>
 
 // qcrypt includes
 #include <qcrypt.h>
@@ -23,9 +24,11 @@ struct QJobs_s
   fct_qjobs__on_event user_fct;
   
   CapeUdc list;
-  
+  CapeMutex mutex;
+
   const CapeDatetime* next_event;
   CapeUdc next_list_item;
+  
 };
 
 //-----------------------------------------------------------------------------
@@ -41,6 +44,8 @@ QJobs qjobs_new (AdblSession adbl_session, const CapeString database_table)
   self->adbl_table = cape_str_cp (database_table);
   
   self->list = NULL;
+  self->mutex = cape_mutex_new ();
+  
   self->next_event = NULL;
   
   return self;
@@ -56,6 +61,7 @@ void qjobs_del (QJobs* p_self)
     
     cape_str_del (&(self->adbl_table));
     cape_udc_del (&(self->list));
+    cape_mutex_del (&(self->mutex));
     
     CAPE_DEL (p_self, struct QJobs_s);
   }
@@ -125,7 +131,7 @@ int qjobs__intern__fetch (QJobs self, CapeErr err)
     cape_udc_add_n      (values, "gpid"        , 0);
 
     cape_udc_add_d      (values, "event_date"  , NULL);
-    cape_udc_add_n      (values, "repeats"     , 0);
+    cape_udc_add_n      (values, "period"      , 0);
     cape_udc_add_node   (values, "params"      );
     cape_udc_add_s_cp   (values, "rinfo"       , NULL);
     cape_udc_add_s_cp   (values, "ref_mod"     , NULL);
@@ -191,13 +197,46 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int qjobs__intern__event_set (QJobs self, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  number_t id;
+  
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  // execute query
+  res = adbl_trx_update (adbl_trx, self->adbl_table, p_params, p_values, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int qjobs__intern__event_rm (QJobs self, number_t id, CapeErr err)
 {
   int res;
   
   // local objects
   AdblTrx adbl_trx = NULL;
-  
   
   // start transaction
   adbl_trx = adbl_trx_new (self->adbl_session, err);
@@ -231,7 +270,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qjobs__intern__event_update (QJobs self, number_t id, const CapeString next_date, CapeErr err)
+int qjobs__intern__event_update (QJobs self, CapeDatetime* current, number_t id, number_t period, CapeErr err)
 {
   int res;
   
@@ -239,8 +278,22 @@ int qjobs__intern__event_update (QJobs self, number_t id, const CapeString next_
   AdblTrx adbl_trx = NULL;
   
   CapeDatetime dt;
-  
-  cape_datetime__add_s (self->next_event, next_date, &dt);
+  cape_datetime__add_n (self->next_event, period, &dt);
+
+  // check if the time is in the future
+  if (cape_datetime_cmp (&dt, current) <= 0)
+  {
+    time_t nn = cape_datetime_n__unix (current);
+    time_t nv = cape_datetime_n__unix (self->next_event);
+    
+    time_t delta = nn - nv;
+    
+    number_t multi_period = (number_t)((double)delta / period + 1);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QJOBS", "event update", "adjust event date into future: %i times", multi_period);
+    
+    cape_datetime__add_n (self->next_event, multi_period * period, &dt);
+  }
   
   // start transaction
   adbl_trx = adbl_trx_new (self->adbl_session, err);
@@ -256,6 +309,7 @@ int qjobs__intern__event_update (QJobs self, number_t id, const CapeString next_
 
     cape_udc_add_n (params, "id", id);
     cape_udc_add_d (values, "event_date", &dt);
+    cape_udc_add_d (values, "preev_date", self->next_event);
 
     // execute query
     res = adbl_trx_update (adbl_trx, self->adbl_table, &params, &values, err);
@@ -276,24 +330,32 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qjobs__intern__event_run (QJobs self, CapeString* p_next_run, CapeErr err)
+int qjobs__intern__event_run (QJobs self, number_t rpid, CapeErr err)
 {
+  int res = CAPE_ERR_EOF;
   cape_log_msg (CAPE_LL_TRACE, "QJOBS", "jobs loop", "event!");
   
   number_t wpid = cape_udc_get_n (self->next_list_item, "wpid", 0);
   number_t gpid = cape_udc_get_n (self->next_list_item, "gpid", 0);
 
-  number_t r1id = cape_udc_get_n (self->next_list_item, "ref_id1", 0);
-  number_t r2id = cape_udc_get_n (self->next_list_item, "ref_id2", 0);
-
-  const CapeString rinfo = cape_udc_get_s (self->next_list_item, "rinfo", NULL);
-  
   if (self->user_fct)
   {
-    *p_next_run = self->user_fct (self->user_ptr, cape_udc_get (self->next_list_item, "params"), wpid, gpid, rinfo, r1id, r2id);
+    struct QJobsEvent_s event;
+    
+    event.rpid = rpid;
+    event.wpid = wpid;
+    event.gpid = gpid;
+    
+    event.params = cape_udc_get (self->next_list_item, "params");
+    event.rinfo_encrypted = cape_udc_get_s (self->next_list_item, "rinfo", NULL);
+    
+    event.r1id = cape_udc_get_n (self->next_list_item, "ref_id1", 0);
+    event.r2id = cape_udc_get_n (self->next_list_item, "ref_id2", 0);
+    
+    res = self->user_fct (self, &event, self->user_ptr, err);
   }
   
-  return CAPE_ERR_NONE;
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -304,7 +366,9 @@ int __STDCALL qjobs__on_event (void* ptr)
   QJobs self = ptr;
   
   CapeErr err = cape_err_new ();
-    
+  
+  cape_mutex_lock (self->mutex);
+  
   if (self->list == NULL)
   {
     cape_log_msg (CAPE_LL_TRACE, "QJOBS", "jobs loop", "fetch from database");
@@ -326,20 +390,21 @@ int __STDCALL qjobs__on_event (void* ptr)
     // if next_event is in the past, trigger that event
     if (cape_datetime_cmp (self->next_event, &dt) <= 0)
     {
-      CapeString next_run = NULL;
+      res = qjobs__intern__event_run (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
       
-      res = qjobs__intern__event_run (self, &next_run, err);
-      
-      if (next_run == NULL)
+      switch (res)
       {
-        res = qjobs__intern__event_rm (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
+        case CAPE_ERR_EOF:
+        {
+          res = qjobs__intern__event_rm (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
+          break;
+        }
+        case CAPE_ERR_NONE:
+        {
+          res = qjobs__intern__event_update (self, &dt, cape_udc_get_n (self->next_list_item, "id", 0), cape_udc_get_n (self->next_list_item, "period", 0), err);
+          break;
+        }
       }
-      else
-      {
-        res = qjobs__intern__event_update (self, cape_udc_get_n (self->next_list_item, "id", 0), next_run, err);
-      }
-
-      cape_str_del (&next_run);
       
       res = qjobs__intern__fetch (self, err);
     }
@@ -354,6 +419,8 @@ exit_and_cleanup:
   
   cape_err_del (&err);
   
+  cape_mutex_unlock (self->mutex);
+
   return TRUE;  // keep running
 }
 
@@ -377,7 +444,7 @@ int qjobs_init (QJobs self, CapeAioContext aio_ctx, number_t precision_in_ms, vo
 
 //-----------------------------------------------------------------------------
 
-int qjobs_event (QJobs self, CapeDatetime* dt, number_t repeats, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr err)
+int qjobs_add (QJobs self, CapeDatetime* dt, number_t period, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr err)
 {
   int res;
   
@@ -420,7 +487,7 @@ int qjobs_event (QJobs self, CapeDatetime* dt, number_t repeats, CapeUdc* p_para
   }
   
   cape_udc_add_d (values, "event_date", dt);
-  cape_udc_add_n (values, "repeats", repeats);
+  cape_udc_add_n (values, "period", period);
   
   if (p_params)
   {
@@ -452,15 +519,20 @@ int qjobs_event (QJobs self, CapeDatetime* dt, number_t repeats, CapeUdc* p_para
     
   }
   
+  cape_mutex_lock (self->mutex);
+
   // finally add it to the database
   res = qjobs__intern__event_add (self, dt, &values, err);
   if (res)
   {
+    cape_mutex_unlock (self->mutex);
     goto exit_and_cleanup;
   }
   
   res = qjobs__intern__fetch (self, err);
-  
+
+  cape_mutex_unlock (self->mutex);
+
 exit_and_cleanup:
 
   if (p_params)
@@ -472,6 +544,95 @@ exit_and_cleanup:
   cape_str_del (&h2);
   cape_udc_del (&values);
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qjobs_set (QJobs self, number_t rpid, CapeDatetime* dt, number_t period_in_s, CapeUdc* p_params, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  // add params
+  cape_udc_add_n (params, "id", rpid);
+  
+  cape_udc_add_d (values, "event_date", dt);
+  
+  if (p_params)
+  {
+    cape_udc_add_name (values, p_params, "params");
+  }
+  
+  cape_mutex_lock (self->mutex);
+
+  // finally update it in the database
+  res = qjobs__intern__event_set (self, &params, &values, err);
+  if (res)
+  {
+    cape_mutex_unlock (self->mutex);
+    goto exit_and_cleanup;
+  }
+  
+  res = qjobs__intern__fetch (self, err);
+  
+  cape_mutex_unlock (self->mutex);
+
+exit_and_cleanup:
+  
+  if (p_params)
+  {
+    cape_udc_del (p_params);
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qjobs_rm (QJobs self, number_t jobid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (params, "id", jobid);
+    
+    res = adbl_trx_delete (trx, "stat_report_jobs", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  adbl_trx_commit (&trx, err);
+  
+  res = qjobs__intern__fetch (self, err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);  
+}
+
+//-----------------------------------------------------------------------------
+
+void qjobs_continue (QJobs self, number_t rpid, number_t multiplier)
+{
+  
+
 }
 
 //-----------------------------------------------------------------------------

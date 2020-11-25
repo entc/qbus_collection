@@ -88,6 +88,10 @@ __CAPE_LIBEX   void            cape_datetime__add_s       (const CapeDatetime*, 
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime__sub_s       (const CapeDatetime*, const CapeString delta, CapeDatetime* result);
 
+                               // append a certain time period defined as seconds: format and save it in result datetime
+                               /* period in seconds */
+__CAPE_LIBEX   void            cape_datetime__add_n       (const CapeDatetime*, number_t period, CapeDatetime* result);
+
                                // compares two datetimes
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
 

@@ -7,7 +7,7 @@
 
 static char* __STDCALL main__on_pipe (const char* name, const char* pipe, const char* value)
 {
-  printf ("ON PIPE: name = '%s', pipe = '%s', value = '%s'\n", pipe, value);
+  //printf ("ON PIPE: name = '%s', pipe = '%s', value = '%s'\n", pipe, value);
   
   return cape_str_cp ("13");
 }
