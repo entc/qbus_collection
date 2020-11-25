@@ -28,8 +28,10 @@ int main (int argc, char *argv[])
   int res;
   CapeErr err = cape_err_new ();
   
+  // local objects
   CapeAioContext aio_context = cape_aio_context_new ();
   QWebs webs = NULL;
+  CapeUdc sites = cape_udc_new (CAPE_UDC_LIST, NULL);
   
   res = cape_aio_context_open (aio_context, err);
   if (res)
@@ -43,7 +45,9 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  webs = qwebs_new ("public", "127.0.0.1", 8082, 4, "pages", NULL);
+  cape_udc_add_s_cp (sites, "/", "public");
+  
+  webs = qwebs_new (sites, "127.0.0.1", 8082, 4, "pages", NULL);
   
   res = qwebs_reg (webs, "json", NULL, main_on_json, err);
   if (res)
@@ -66,8 +70,8 @@ exit_and_cleanup:
     cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "main", "fetched error: %s", cape_err_text (err));
   }
   
+  cape_udc_del (&sites);
   qwebs_del (&webs);
-  
   cape_aio_context_del (&aio_context);
   
   cape_err_del (&err);
