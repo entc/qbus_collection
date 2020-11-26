@@ -37,7 +37,7 @@ int __STDCALL main_on_page (void* user_ptr, QWebsRequest request, CapeErr err)
   if (n)
   {
     // retrieve the value
-    const CapeString value = cape_map_node_value (n);
+    const CapeString value = (const CapeString)cape_map_node_value (n);
     
     qwebs_request_send_buf (&request, value, "text/html", err);
   }
