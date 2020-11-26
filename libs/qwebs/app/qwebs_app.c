@@ -28,24 +28,29 @@ int __STDCALL main_on_page (void* user_ptr, QWebsRequest request, CapeErr err)
   printf ("ON PAGE\n");
   
   // get the dictonary of the query part of the request
+  // -> result might be NULL
   CapeMap query_values = qwebs_request_query (request);
   
   // test with http://127.0.0.1:8080/hidden.html?M0:O1=123
   
-  // check for a certain key "M0:O1"
-  CapeMapNode n = cape_map_find (query_values, "M0:O1");
-  if (n)
+  if (query_values)
   {
-    // retrieve the value
-    const CapeString value = (const CapeString)cape_map_node_value (n);
-    
-    qwebs_request_send_buf (&request, value, "text/html", err);
-  }
-  else
-  {
-    qwebs_request_send_buf (&request, "<h1>hidden callback</h1>", "text/html", err);
+    // check for a certain key "M0:O1"
+    CapeMapNode n = cape_map_find (query_values, "M0:O1");
+    if (n)
+    {
+      // retrieve the value
+      const CapeString value = (const CapeString)cape_map_node_value (n);
+      
+      qwebs_request_send_buf (&request, value, "text/html", err);
+      
+      return CAPE_ERR_CONTINUE;
+    }
   }
   
+  // default
+  qwebs_request_send_buf (&request, "<h1>hidden callback</h1>", "text/html", err);
+
   return CAPE_ERR_CONTINUE;
 }
 
@@ -94,7 +99,7 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  res = qwebs_reg_page (webs, "hidden.html", NULL, main_on_page, err);
+  res = qwebs_reg_page (webs, "hidden.htm", NULL, main_on_page, err);
   if (res)
   {
     goto exit_and_cleanup;
