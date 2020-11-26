@@ -221,7 +221,7 @@ int webs_stream_get (WebsStream self, QWebsRequest request, CapeErr err)
         
         if (image)
         {
-          qwebs_request_send_buf (&h, image, err);
+          qwebs_request_send_image (&h, image, err);
         }
         else
         {

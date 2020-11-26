@@ -50,8 +50,9 @@ void qwebs_api_del (QWebsApi* p_self)
 
 struct QWebs_s
 {
-  CapeMap request_apis;
-  
+  CapeMap request_apis;      // all api callbacks
+  CapeMap request_page;      // all page callbacks
+
   CapeMap sites;
   
   CapeString host;
@@ -71,8 +72,6 @@ struct QWebs_s
   CapeUdc route_list;
   
   QWebsEncoder encoder;
-  
-  QWebsApi api;   // generic api
 };
 
 //-----------------------------------------------------------------------------
@@ -133,6 +132,7 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   self->pages = cape_str_cp (pages);
   
   self->request_apis = cape_map_new (NULL, qwebs__intern__on_api_del, NULL);
+  self->request_page = cape_map_new (NULL, qwebs__intern__on_api_del, NULL);
   
   self->aio_attached = NULL;
   self->accept = NULL;
@@ -150,8 +150,6 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   qwebs__internal__convert_sites (self, sites);
   
   self->encoder = qwebs_encode_new ();
-  
-  self->api = NULL;
 
   return self;
 }
@@ -165,6 +163,7 @@ void qwebs_del (QWebs* p_self)
     QWebs self = *p_self;
     
     cape_map_del (&(self->request_apis));
+    cape_map_del (&(self->request_page));
     cape_map_del (&(self->sites));
 
     cape_str_del (&(self->host));    
@@ -205,18 +204,33 @@ int qwebs_reg (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_
       return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
     }
   }
-  else
+
+  return cape_err_set (err, CAPE_ERR_RUNTIME, "API can't be registered");
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_reg_page (QWebs self, const CapeString page, void* user_ptr, fct_qwebs__on_request on_request, CapeErr err)
+{
+  if (page)
   {
-    if (self->api)
+    CapeMapNode n = cape_map_find (self->request_page, page);
+    if (NULL == n)
     {
-      return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
+      QWebsApi api = qwebs_api_new (user_ptr, on_request);
+      
+      // transfer ownership to the map
+      cape_map_insert (self->request_page, cape_str_cp (page), api);
+      
+      return CAPE_ERR_NONE;
     }
     else
     {
-      self->api = qwebs_api_new (user_ptr, on_request);    
-      return CAPE_ERR_NONE;
-    }    
-  }  
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
+    }
+  }
+  
+  return cape_err_set (err, CAPE_ERR_RUNTIME, "API can't be registered");
 }
 
 //-----------------------------------------------------------------------------
@@ -308,17 +322,28 @@ QWebsApi qwebs_get_api (QWebs self, const CapeString name)
   if (name)
   {
     CapeMapNode n = cape_map_find (self->request_apis, name);
-    
     if (n)
     {
       return cape_map_node_value (n);
     }
   }
-  else
+  
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+QWebsApi qwebs_get_page (QWebs self, const CapeString page)
+{
+  if (page)
   {
-    return self->api;
+    CapeMapNode n = cape_map_find (self->request_page, page);
+    if (n)
+    {
+      return cape_map_node_value (n);
+    }
   }
-    
+  
   return NULL;
 }
 

@@ -37,6 +37,7 @@ struct QWebsRequest_s
   CapeString mime;
   
   CapeMap header_values;
+  CapeMap option_values;
   
   CapeList url_values;
   
@@ -80,6 +81,8 @@ QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
   
   // this will be set in API mode
   self->header_values = NULL;
+  self->option_values = NULL;
+  
   self->url_values = NULL;
   self->body_value = NULL;
   
@@ -120,6 +123,37 @@ void qwebs_request_del (QWebsRequest* p_self)
 
 //-----------------------------------------------------------------------------
 
+CapeMap qwebs_request__internal__convert_query (const CapeString query)
+{
+  CapeMap ret = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+
+  CapeList values = cape_tokenizer_buf__noempty (query, cape_str_size (query), '&');
+  
+  CapeListCursor* cursor = cape_list_cursor_create (values, CAPE_DIRECTION_FORW);
+  while (cape_list_cursor_next (cursor))
+  {
+    const CapeString value = cape_list_node_data (cursor->node);
+    
+    CapeString key = NULL;
+    CapeString val = NULL;
+    
+    if (cape_tokenizer_split (value, '=', &key, &val))
+    {
+      cape_map_insert (ret, key, val);
+    }
+    else
+    {
+      cape_str_del (&key);
+      cape_str_del (&val);
+    }
+  }
+  
+  cape_list_del (&values);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 static int qwebs_request__internal__on_url (http_parser* parser, const char *at, size_t length)
 {
   QWebsRequest self = parser->data;
@@ -137,12 +171,16 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   if ('/' == *(self->url))
   {
     CapeString url = NULL;
-    CapeString opt = NULL;
+    CapeString query = NULL;
     
-    if (cape_tokenizer_split (self->url, '?', &url, &opt))
+    if (cape_tokenizer_split (self->url, '?', &url, &query))
     {
       cape_str_replace_mv (&(self->url), &url);
-      cape_str_del (&opt);
+      
+      // parse the options into a map
+      self->option_values = qwebs_request__internal__convert_query (query);
+      
+      cape_str_del (&query);
     }
 
     // split the url into its parts
@@ -176,6 +214,10 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
           self->body_value = cape_stream_new ();
         }
       }
+      else
+      {
+        self->api = qwebs_get_page (self->webs, self->url + 1);
+      }
     }    
     else
     {
@@ -183,6 +225,8 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
       {
         cape_str_replace_cp (&(self->url), "/index.html");
       }
+
+      self->api = qwebs_get_page (self->webs, self->url);
     }
   }
 
@@ -313,14 +357,29 @@ void qwebs_request_send_file (QWebsRequest* p_self, CapeUdc file_node, CapeErr e
 
 //-----------------------------------------------------------------------------
 
-void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, CapeErr err)
+void qwebs_request_send_image (QWebsRequest* p_self, const CapeString image_as_base64, CapeErr err)
 {
   QWebsRequest self = *p_self;
   
   // local objects
   CapeStream s = cape_stream_new ();
 
-  qwebs_response_buf (s, self->webs, buf);
+  qwebs_response_image (s, self->webs, image_as_base64);
+  
+  qwebs_connection_send (self->conn, &s);
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const CapeString mime_type, CapeErr err)
+{
+  QWebsRequest self = *p_self;
+  
+  // local objects
+  CapeStream s = cape_stream_new ();
+  
+  qwebs_response_buf (s, self->webs, buf, mime_type);
   
   qwebs_connection_send (self->conn, &s);
   qwebs_request_del (p_self);
@@ -377,6 +436,13 @@ CapeList qwebs_request_clist (QWebsRequest self)
 CapeMap qwebs_request_headers (QWebsRequest self)
 {
   return self->header_values;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMap qwebs_request_query (QWebsRequest self)
+{
+  return self->option_values;
 }
 
 //-----------------------------------------------------------------------------

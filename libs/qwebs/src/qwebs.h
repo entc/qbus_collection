@@ -28,11 +28,15 @@ typedef int     (__STDCALL *fct_qwebs__on_request)   (void* user_ptr, QWebsReque
 
 __CAPE_LIBEX     int                qwebs_reg        (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_request, CapeErr err);
 
+__CAPE_LIBEX     int                qwebs_reg_page   (QWebs, const CapeString page, void* user_ptr, fct_qwebs__on_request, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX     int                qwebs_attach     (QWebs, CapeAioContext, CapeErr err);
 
 __CAPE_LIBEX     QWebsApi           qwebs_get_api    (QWebs, const CapeString name);
+
+__CAPE_LIBEX     QWebsApi           qwebs_get_page   (QWebs, const CapeString page);
 
 __CAPE_LIBEX     QWebsFiles         qwebs_files      (QWebs);
 

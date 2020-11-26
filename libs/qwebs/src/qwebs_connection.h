@@ -29,7 +29,9 @@ __CAPE_LIBEX     void               qwebs_request_send_json   (QWebsRequest*, Ca
 
 __CAPE_LIBEX     void               qwebs_request_send_file   (QWebsRequest*, CapeUdc file_node, CapeErr);
 
-__CAPE_LIBEX     void               qwebs_request_send_buf    (QWebsRequest*, const CapeString buf, CapeErr);
+__CAPE_LIBEX     void               qwebs_request_send_image  (QWebsRequest*, const CapeString image, CapeErr);
+
+__CAPE_LIBEX     void               qwebs_request_send_buf    (QWebsRequest*, const CapeString buf, const CapeString mime_type, CapeErr);
 
 __CAPE_LIBEX     void               qwebs_request_redirect    (QWebsRequest*, const CapeString url);
 
@@ -38,6 +40,8 @@ __CAPE_LIBEX     void               qwebs_request_redirect    (QWebsRequest*, co
 __CAPE_LIBEX     CapeList           qwebs_request_clist       (QWebsRequest);
 
 __CAPE_LIBEX     CapeMap            qwebs_request_headers     (QWebsRequest);
+
+__CAPE_LIBEX     CapeMap            qwebs_request_query       (QWebsRequest);
 
 __CAPE_LIBEX     CapeStream         qwebs_request_body        (QWebsRequest);
 

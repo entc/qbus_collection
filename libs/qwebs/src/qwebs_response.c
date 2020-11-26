@@ -228,7 +228,7 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
 
 //-----------------------------------------------------------------------------
 
-void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf)
+void qwebs_response_image (CapeStream s, QWebs webs, const CapeString buf)
 {
   // BEGIN
   cape_stream_clr (s);
@@ -248,6 +248,27 @@ void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf)
   
   qwebs_response__internal__content_length (s, cape_str_size (data_url) + cape_str_size (buf));
   cape_stream_append_str (s, data_url);
+  cape_stream_append_str (s, buf);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const CapeString mime_type)
+{
+  cape_stream_clr (s);
+  
+  // start with the header
+  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
+  qwebs_response__internal__identification (s);
+
+  // mime type
+  {
+    cape_stream_append_str (s, "Content-Type: ");
+    cape_stream_append_str (s, mime_type);
+    cape_stream_append_str (s, "\r\n");
+  }
+
+  qwebs_response__internal__content_length (s, cape_str_size (buf));
   cape_stream_append_str (s, buf);
 }
 
