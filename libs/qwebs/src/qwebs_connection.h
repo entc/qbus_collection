@@ -33,6 +33,8 @@ __CAPE_LIBEX     void               qwebs_request_send_buf    (QWebsRequest*, co
 
 __CAPE_LIBEX     void               qwebs_request_redirect    (QWebsRequest*, const CapeString url);
 
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX     CapeList           qwebs_request_clist       (QWebsRequest);
 
 __CAPE_LIBEX     CapeMap            qwebs_request_headers     (QWebsRequest);

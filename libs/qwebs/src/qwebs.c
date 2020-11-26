@@ -71,6 +71,8 @@ struct QWebs_s
   CapeUdc route_list;
   
   QWebsEncoder encoder;
+  
+  QWebsApi api;   // generic api
 };
 
 //-----------------------------------------------------------------------------
@@ -148,6 +150,8 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   qwebs__internal__convert_sites (self, sites);
   
   self->encoder = qwebs_encode_new ();
+  
+  self->api = NULL;
 
   return self;
 }
@@ -184,21 +188,35 @@ void qwebs_del (QWebs* p_self)
 
 int qwebs_reg (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_request on_request, CapeErr err)
 {
-  CapeMapNode n = cape_map_find (self->request_apis, name);
-  
-  if (NULL == n)
+  if (name)
   {
-    QWebsApi api = qwebs_api_new (user_ptr, on_request);
-
-    // transfer ownership to the map
-    cape_map_insert (self->request_apis, cape_str_cp (name), api);
-    
-    return CAPE_ERR_NONE;
+    CapeMapNode n = cape_map_find (self->request_apis, name);
+    if (NULL == n)
+    {
+      QWebsApi api = qwebs_api_new (user_ptr, on_request);
+      
+      // transfer ownership to the map
+      cape_map_insert (self->request_apis, cape_str_cp (name), api);
+      
+      return CAPE_ERR_NONE;
+    }
+    else
+    {
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
+    }
   }
   else
   {
-    return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
-  }
+    if (self->api)
+    {
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "API was already registered");
+    }
+    else
+    {
+      self->api = qwebs_api_new (user_ptr, on_request);    
+      return CAPE_ERR_NONE;
+    }    
+  }  
 }
 
 //-----------------------------------------------------------------------------
@@ -287,13 +305,20 @@ exit_and_cleanup:
 
 QWebsApi qwebs_get_api (QWebs self, const CapeString name)
 {
-  CapeMapNode n = cape_map_find (self->request_apis, name);
-  
-  if (n)
+  if (name)
   {
-    return cape_map_node_value (n);
+    CapeMapNode n = cape_map_find (self->request_apis, name);
+    
+    if (n)
+    {
+      return cape_map_node_value (n);
+    }
   }
-  
+  else
+  {
+    return self->api;
+  }
+    
   return NULL;
 }
 
