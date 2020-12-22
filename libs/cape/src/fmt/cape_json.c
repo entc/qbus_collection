@@ -566,47 +566,39 @@ CapeString cape_json_to_s_max (const CapeUdc source, number_t max_item_size)
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL cape_json_from_file__on_load (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
+{
+  int res = cape_parser_json_process (ptr, bufdat, buflen, err);
+  if (res)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "json from file", "error in pasing: %s", cape_err_text(err));    
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_json_from_file (const CapeString file, CapeErr err)
 {
   int res;
   CapeUdc ret = NULL;
   
+  // local objects
   CapeParserJson parser_json = NULL;
-  CapeFileHandle fh = NULL;
-  
-  number_t bytes_read = 0;
-  char buffer [1024];
-
-  // allocate mem
-  fh = cape_fh_new (NULL, file);
-  
-  // try to open the file
-  res = cape_fh_open (fh, O_RDONLY, err);
-  if (res)
-  {
-    cape_err_set_fmt (err, cape_err_code (err), "can't open '%s': %s", file, cape_err_text (err));
-    
-    goto exit_and_cleanup;
-  }
   
   // create a new parser for the json format
   parser_json = cape_parser_json_new (NULL, cape_json_onItem, cape_json_onObjCreate, cape_json_onObjDestroy);
-    
-  // read all data
-  for (bytes_read = cape_fh_read_buf (fh, buffer, 1024); bytes_read; bytes_read = cape_fh_read_buf (fh, buffer, 1024))
+  
+  // load the file in buffer chunks
+  // for each chunk the callback method is called
+  res = cape_fs_file_load (NULL, file, parser_json, cape_json_from_file__on_load, err);
+  if (res)
   {
-    // try to parse the current buffer
-    res = cape_parser_json_process (parser_json, buffer, bytes_read, err);
-    if (res)
-    {
-      printf ("ERROR JSON PARSER: %s\n", cape_err_text(err));
-      
-      goto exit_and_cleanup;
-    }
+    goto exit_and_cleanup;
   }
-  
+
   ret = cape_parser_json_object (parser_json);
-  
   if (ret)
   {
     // set name
@@ -624,9 +616,7 @@ exit_and_cleanup:
     cape_parser_json_del (&parser_json); 
   }
   
-  cape_fh_del (&fh);
-  
-  return ret;  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
