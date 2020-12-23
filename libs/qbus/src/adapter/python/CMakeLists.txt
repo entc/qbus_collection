@@ -30,10 +30,13 @@ IF(Python3_FOUND)
 
   INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
 
+  # fetch the location of the adapter
+  get_property(lib_location TARGET qbus_adapter_python PROPERTY LOCATION)
+
   INSTALL(CODE "execute_process( \
     COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    qbus_adapter_python \
-    /opt/modules/qbus.so \
+    ${CMAKE_INSTALL_PREFIX}/lib/qbus_adapter_python.so \
+    ${CMAKE_INSTALL_PREFIX}/modules/qbus.so \
   )"
 )
   # for docker
