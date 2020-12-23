@@ -99,13 +99,24 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         MYSQL_BIND* bind = &(self->binds[self->pos]);
         
         const CapeString h = cape_udc_s (item, NULL);
-        
-        bind->buffer_type = MYSQL_TYPE_STRING;
-        bind->buffer = (char*)h;
-        bind->buffer_length = strlen (h);
-        bind->is_null = 0;
-        bind->length = 0;
-        bind->error = 0;
+        if (h)
+        {
+          bind->buffer_type = MYSQL_TYPE_STRING;
+          bind->buffer = (char*)h;
+          bind->buffer_length = strlen (h);
+          bind->is_null = 0;
+          bind->length = 0;
+          bind->error = 0;
+        }
+        else
+        {
+          bind->buffer_type = MYSQL_TYPE_STRING;
+          bind->buffer = NULL;
+          bind->buffer_length = 0;
+          bind->is_null = 1;
+          bind->length = 0;
+          bind->error = 0;
+        }
 
         self->pos++;
       }

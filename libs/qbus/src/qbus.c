@@ -495,6 +495,38 @@ int qbus_message_role_has (QBusM self, const CapeString role_name)
 
 //-----------------------------------------------------------------------------
 
+int qbus_message_role_or2 (QBusM self, const CapeString role01, const CapeString role02)
+{
+  CapeUdc roles;
+  CapeUdc role;
+  
+  if (self->rinfo == NULL)
+  {
+    cape_log_msg (CAPE_LL_WARN, "QBUS", "role or2", "rinfo is NULL");
+    return FALSE;
+  }
+  
+  roles = cape_udc_get (self->rinfo, "roles");
+  if (roles == NULL)
+  {
+    return FALSE;
+  }
+
+  role = cape_udc_get (roles, role01);
+  if (role == NULL)
+  {
+    role = cape_udc_get (roles, role02);
+    if (role == NULL)
+    {
+      return FALSE;
+    }
+  }
+  
+  return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_check_param (CapeUdc data, const CapeUdc param)
 {
   const CapeString h = cape_udc_s (param, NULL);

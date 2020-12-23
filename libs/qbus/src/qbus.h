@@ -99,7 +99,11 @@ __CAPE_LIBEX   void               qbus_message_del       (QBusM*);
 
 __CAPE_LIBEX   void               qbus_message_clr       (QBusM, u_t cdata_udc_type);
 
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeString role_name);
+
+__CAPE_LIBEX   int                qbus_message_role_or2  (QBusM, const CapeString role01, const CapeString role02);
 
 //-----------------------------------------------------------------------------
 
