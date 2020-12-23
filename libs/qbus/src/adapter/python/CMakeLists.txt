@@ -33,7 +33,7 @@ IF(Python3_FOUND)
   INSTALL(CODE "execute_process( \
     COMMAND ${CMAKE_COMMAND} -E create_symlink \
     qbus_adapter_python \
-    modules/qbus.so \
+    /opt/modules/qbus.so \
   )"
 )
   # for docker
