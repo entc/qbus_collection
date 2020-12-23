@@ -32,7 +32,7 @@ IF(Python3_FOUND)
 
   INSTALL(CODE "execute_process( \
     COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    ${CMAKE_INSTALL_PREFIX}/lib/qbus_adapter_python.so \
+    /lib/qbus_adapter_python.so \
     ${CMAKE_INSTALL_PREFIX}/modules/qbus.so \
   )"
 )
