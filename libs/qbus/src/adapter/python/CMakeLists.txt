@@ -28,8 +28,14 @@ IF(Python3_FOUND)
   target_link_libraries   (qbus_adapter_python cape qbus ${Python3_LIBRARIES})
   set_target_properties   (qbus_adapter_python PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
- #INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
+  INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
 
+  INSTALL(CODE "execute_process( \
+    COMMAND ${CMAKE_COMMAND} -E create_symlink \
+    /lib/libqbus_adapter_python.so.1.0.1 \
+    ${CMAKE_INSTALL_PREFIX}/modules/qbus.so \
+  )"
+)
   # for docker
 #INSTALL (TARGETS qbus_adapter_python DESTINATION docker/dbuild/mods)
 

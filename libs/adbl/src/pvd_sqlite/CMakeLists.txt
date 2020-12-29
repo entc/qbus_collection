@@ -24,13 +24,8 @@ IF(SQLITE_FOUND)
   TARGET_LINK_LIBRARIES( adbl2_sqlite3 adbl2 cape ${SQLITE_LIBRARIES})
 
   INSTALL (TARGETS adbl2_sqlite3 DESTINATION modules/adbl)
-  
-  # for docker
-  #INSTALL (TARGETS adbl2_sqlite3 DESTINATION docker/qore/mods/adbl)
-  #INSTALL (TARGETS adbl2_sqlite3 DESTINATION docker/qore/lib)
-  #INSTALL (FILES ${SQLITE_LIBRARIES} DESTINATION docker/qore/lib)
 
-    #--------------------------------------------------------------
+  #--------------------------------------------------------------
   # unit tests 
   
   INCLUDE_DIRECTORIES( "." ${SQLITE_INCLUDES})

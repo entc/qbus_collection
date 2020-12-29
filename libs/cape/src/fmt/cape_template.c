@@ -359,7 +359,30 @@ int cape__evaluate_expression__smaller_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, CapeTemplateCB cb, CapeErr err)
+void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
+{
+  // set the original as UTC
+  dt->is_utc = TRUE;
+  
+  // convert into local time
+  cape_datetime_to_local (dt);
+  
+  // apply format
+  {
+    CapeString h2 = cape_datetime_s__fmt (dt, self->eval);
+    
+    if (cb->on_text)
+    {
+      cb->on_text (cb->ptr, h2);
+    }
+    
+    cape_str_del (&h2);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_part_eval_datetime_item (CapeTemplatePart self, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
   const CapeDatetime* dt = cape_udc_d (item, NULL);
   if (dt)
@@ -370,31 +393,22 @@ int cape_template_part_eval_datetime (CapeTemplatePart self, CapeUdc item, CapeT
     {
       case FORMAT_TYPE_NONE:
       {
+        CapeString val = cape_datetime_s__std (dt);
         
+        if (cb->on_text)
+        {
+          cb->on_text (cb->ptr, val);
+        }
 
+        cape_str_del (&val);
+        
         break;
       }
       case FORMAT_TYPE_DATE:
       {
         CapeDatetime* h1 = cape_datetime_cp (dt);
-        
-        // set the original as UTC
-        h1->is_utc = TRUE;
-        
-        // convert into local time
-        cape_datetime_to_local (h1);
 
-        // apply format
-        {
-          CapeString h2 = cape_datetime_s__fmt (h1, self->eval);
-          
-          if (cb->on_text)
-          {
-            cb->on_text (cb->ptr, h2);
-          }
-          
-          cape_str_del (&h2);
-        }
+        cape_template_part_eval_datetime (self, h1, cb);
         
         cape_datetime_del (&h1);
         
@@ -911,6 +925,104 @@ int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, C
 
 //-----------------------------------------------------------------------------
 
+CapeDatetime* cape_template_date (const CapeString formular, CapeList node_stack)
+{
+  CapeDatetime* ret = NULL;
+  
+  CapeString le = NULL;
+  CapeString re = NULL;
+
+  if (cape_tokenizer_split (formular, '+', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    CapeUdc item = cape_template__seek_item (node_stack, lh);
+    if (item)
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_DATETIME:
+        {
+          const CapeDatetime* dt = cape_udc_d (item, NULL);
+          if (dt)
+          {
+            ret = cape_datetime_cp (dt);
+            cape_datetime__add_s (dt, rh, ret);
+          }
+
+          break;
+        }
+        case CAPE_UDC_STRING:
+        {
+          CapeDatetime dt;
+          
+          const CapeString text = cape_udc_s (item, NULL);
+          
+          // convert text into dateformat
+          if (cape_datetime__str_msec (&dt, text) || cape_datetime__str (&dt, text) || cape_datetime__std_msec (&dt, text) || cape_datetime__date_de (&dt, text))
+          {
+            ret = cape_datetime_cp (&dt);
+            cape_datetime__add_s (&dt, rh, ret);
+          }
+          else
+          {
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
+          }
+
+          break;
+        }
+      }
+    }
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else if (cape_tokenizer_split (formular, '-', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+
+  cape_str_del (&le);
+  cape_str_del (&re);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_mod_apply__date (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, CapeErr err)
+{
+  CapeDatetime* value = cape_template_date (self->text, node_stack);
+  if (value)
+  {
+    switch (self->format_type)
+    {
+      case FORMAT_TYPE_NONE:
+      {
+        
+        break;
+      }
+      case FORMAT_TYPE_DATE:
+      {
+        cape_template_part_eval_datetime (self, value, cb);
+        break;
+      }
+    }
+
+    cape_datetime_del (&value);
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
 {
   if (self->parts)
@@ -951,6 +1063,14 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
             if (cape_str_equal (part->modn + 1, "math"))
             {
               int res = cape_template_mod_apply__math (part, node_stack, cb, err);
+              if (res)
+              {
+                return res;
+              }
+            }
+            else if (cape_str_equal (part->modn + 1, "date"))
+            {
+              int res = cape_template_mod_apply__date (part, node_stack, cb, err);
               if (res)
               {
                 return res;
@@ -1067,7 +1187,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
                 }
                 case CAPE_UDC_DATETIME:
                 {
-                  int res = cape_template_part_eval_datetime (part, item, cb, err);
+                  int res = cape_template_part_eval_datetime_item (part, item, cb, err);
                   if (res)
                   {
                     return res;
