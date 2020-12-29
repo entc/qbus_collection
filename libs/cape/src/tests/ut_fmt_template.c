@@ -159,7 +159,28 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
     cape_udc_del (&n);
   }
-  
+  {
+    CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    CapeDatetime dt; cape_datetime_utc (&dt);
+    
+    cape_udc_add_d (n, "date", &dt);
+    
+    CapeString h = cape_template_run ("{{$date{date + D14}|date:%d.%m.%Y}}", n, NULL, err);
+    
+    if (h)
+    {
+      printf ("MATH: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+    
+    cape_str_del (&h);
+    cape_udc_del (&n);
+  }
+
   {
     CapeUdc n1 = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc n2 = cape_udc_new (CAPE_UDC_NODE, NULL);
