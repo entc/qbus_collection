@@ -5,6 +5,7 @@
 #include <sys/cape_file.h>
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
+#include <fmt/cape_tokenizer.h>
 
 // qcrypt includes
 #include <qcrypt.h>
@@ -79,43 +80,116 @@ int __STDCALL qwebs_response__file__on_load (void* ptr, const char* bufdat, numb
 
 //-----------------------------------------------------------------------------
 
-void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
+int qwebs_response_file__data_uri (CapeStream s, CapeUdc file_node, int is_encrypted, const CapeString file, const CapeString vsec, CapeErr err)
 {
-  int is_encrypted;
-  
-  const CapeString vsec;
-  const CapeString file;
-  
+  int res;
+
   // local objects
-  CapeErr err = cape_err_new ();
-  CapeStream c = NULL;
-  
-  // do some checks
-  file = cape_udc_get_s (file_node, "file", NULL);
-  if (NULL == file)
+  CapeStream c = cape_stream_new ();
+  CapeString h = NULL;
+  CapeString lh = NULL;
+  CapeString rh = NULL;
+  CapeString lu = NULL;
+  CapeString ru = NULL;
+
+  // load the file
   {
-    cape_err_set (err, CAPE_ERR_WRONG_VALUE, "file is not set");
-    goto on_error;
+    QWebsFileContext fctx;
+    
+    fctx.content = c;
+    fctx.enbase64 = FALSE;
+    
+    if (is_encrypted)
+    {
+      res = qcrypt_decrypt_file (vsec, file, &fctx, qwebs_response__file__on_load, err);
+    }
+    else
+    {
+      res = cape_fs_file_load (NULL, file, &fctx, qwebs_response__file__on_load, err);
+    }
+  }
+
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // convert into string
+  h = cape_stream_to_str (&c);
+  
+  // analyse the beginning
+  if (cape_str_begins (h, "data:") == FALSE)
+  {
+    cape_err_set (err, CAPE_ERR_WRONG_VALUE, "file is not in data uri format");
+    goto exit_and_cleanup;
   }
   
-  is_encrypted = cape_udc_get_b (file_node, "encrypted", FALSE);
-  if (is_encrypted)
+  if (cape_tokenizer_split (h + 5, ',', &lh, &rh) == FALSE)
   {
-    vsec = cape_udc_get_s (file_node, "vsec", NULL);
-    if (NULL == vsec)
+    cape_err_set (err, CAPE_ERR_WRONG_VALUE, "file is not in data uri format");
+    goto exit_and_cleanup;
+  }
+  
+  if (cape_tokenizer_split (lh, ';', &lu, &ru))
+  {
+    if (cape_str_equal (ru, "base64"))
     {
-      cape_err_set (err, CAPE_ERR_WRONG_VALUE, "vsec is not set");
-      goto on_error;
+      c = qcrypt__decode_base64_s (rh);
+      
+      // mime type
+      {
+        cape_stream_append_str (s, "Content-Type: ");
+        cape_stream_append_str (s, lu);
+        cape_stream_append_str (s, "\r\n");
+      }
+    }
+  }
+  else
+  {
+    // mime type
+    {
+      cape_stream_append_str (s, "Content-Type: ");
+      cape_stream_append_str (s, lh);
+      cape_stream_append_str (s, "\r\n");
     }
   }
   
-  // BEGIN
-  cape_stream_clr (s);
+  // name (this is important to open the file directly in the browser)
+  {
+    cape_stream_append_str (s, "Content-Disposition: inline; filename=\"");
+    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
+    cape_stream_append_str (s, "\"; name=\"");
+    cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
+    cape_stream_append_str (s, "\"\r\n");
+  }
+
+  if (c)
+  {
+    // content
+    qwebs_response__internal__content_length (s, cape_stream_size (c));
+    cape_stream_append_stream (s, c);
+  }
+
+exit_and_cleanup:
+
+  cape_str_del (&lu);
+  cape_str_del (&ru);
+  cape_str_del (&lh);
+  cape_str_del (&rh);
+  cape_stream_del (&c);
+  cape_str_del (&h);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_response_file__content (CapeStream s, CapeUdc file_node, int is_encrypted, const CapeString file, const CapeString vsec, CapeErr err)
+{
+  int res;
   
-  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
-  
-  qwebs_response__internal__identification (s);
-  
+  // local objects
+  CapeStream c = NULL;
+
   // mime type
   {
     cape_stream_append_str (s, "Content-Type: ");
@@ -131,7 +205,7 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
     cape_stream_append_str (s, cape_udc_get_s (file_node, "name", "document"));
     cape_stream_append_str (s, "\"\r\n");
   }
-  
+
   // create a stream for the content
   c = cape_stream_new ();
   
@@ -169,39 +243,90 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
     if (res)
     {
       cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't open file");
-      goto on_error;
+      goto exit_and_cleanup;
     }
-
+    
     if (fctx.enbase64)
     {
       // we need to finalize the base64 stream
       res = qencrypt_base64_finalize (fctx.enbase64, err);
     }
-
+    
     // cleanup
     qencrypt_base64_del (&(fctx.enbase64));
-
+    
     if (res)
     {
       cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't open file");
-      goto on_error;
+      goto exit_and_cleanup;
     }
-
+    
     // content
-    qwebs_response__internal__content_length (s, cape_stream_size (c));    
+    qwebs_response__internal__content_length (s, cape_stream_size (c));
     cape_stream_append_stream (s, c);
   }
-  
-  goto exit_and_cleanup;
-  
-on_error:
 
-  //cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "send file", "got error: %s", cape_err_text (err));
-  qwebs_response_err (s, webs, NULL, cape_udc_get_s (file_node, "mime", "application/json"), err);
+exit_and_cleanup:
+
+  cape_stream_del (&c);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
+{
+  int is_encrypted;
+  
+  const CapeString vsec;
+  const CapeString file;
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  // do some checks
+  file = cape_udc_get_s (file_node, "file", NULL);
+  if (NULL == file)
+  {
+    cape_err_set (err, CAPE_ERR_WRONG_VALUE, "file is not set");
+    goto exit_and_cleanup;
+  }
+  
+  is_encrypted = cape_udc_get_b (file_node, "encrypted", FALSE);
+  if (is_encrypted)
+  {
+    vsec = cape_udc_get_s (file_node, "vsec", NULL);
+    if (NULL == vsec)
+    {
+      cape_err_set (err, CAPE_ERR_WRONG_VALUE, "vsec is not set");
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
+  
+  qwebs_response__internal__identification (s);
+  
+  if (cape_udc_get_b (file_node, "data_uri", FALSE))
+  {
+    qwebs_response_file__data_uri (s, file_node, is_encrypted, file, vsec, err);
+  }
+  else
+  {
+    qwebs_response_file__content (s, file_node, is_encrypted, file, vsec, err);
+  }
   
 exit_and_cleanup:
   
-  cape_stream_del (&c);
+  if (cape_err_code (err))
+  {
+    //cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "send file", "got error: %s", cape_err_text (err));
+    qwebs_response_err (s, webs, NULL, cape_udc_get_s (file_node, "mime", "application/json"), err);
+  }
+  
   cape_err_del (&err);
 }
 

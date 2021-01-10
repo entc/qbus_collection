@@ -23,7 +23,7 @@ IF(SQLITE_FOUND)
   ADD_LIBRARY(adbl2_sqlite3 SHARED ${CORE_SOURCES} ${CORE_HEADERS})
   TARGET_LINK_LIBRARIES( adbl2_sqlite3 adbl2 cape ${SQLITE_LIBRARIES})
 
-  INSTALL (TARGETS adbl2_sqlite3 DESTINATION modules/adbl)
+  INSTALL (TARGETS adbl2_sqlite3 DESTINATION mods/adbl)
 
   #--------------------------------------------------------------
   # unit tests 
