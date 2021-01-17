@@ -1,0 +1,17 @@
+<div class="row mb-2">
+    <div class="col">
+      <ng-content></ng-content>
+    </div>
+    <div class="col text-right">
+      <button *ngIf="val" type="button" class="btn btn-outline-success width_10em" (click)="on_toggle()">
+
+        <i class="fa fa-toggle-on"></i>&nbsp;&nbsp;{{ 'MISC.ON' | transloco }}
+
+      </button>
+      <button *ngIf="!val" type="button" class="btn btn-outline-danger width_10em" (click)="on_toggle()">
+
+        <i class="fa fa-toggle-off"></i>&nbsp;&nbsp;{{ 'MISC.OFF' | transloco }}
+
+      </button>
+    </div>
+</div>

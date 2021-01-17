@@ -188,7 +188,7 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
-  decrypt (encrypted_text: string, secret: string): string
+  private decrypt_intern (encrypted_text: string, secret: string): string
   {
     var secmode = { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 };
 
@@ -204,6 +204,13 @@ export class AuthService
 
   //-----------------------------------------------------------------------------
 
+  public decrypt (encrypted_text: string): string
+  {
+    return this.decrypt_intern (encrypted_text, this.secret);
+  }
+
+  //-----------------------------------------------------------------------------
+
   fetch_globalpersons ()
   {
     this.json_rpc ('AUTH', 'globperson_get', {}).subscribe((data: Array<AuthGlobalPerson>) => {
@@ -215,7 +222,7 @@ export class AuthService
         for (var i in data)
         {
           const gpid: AuthGlobalPerson = data[i];
-          this.globpersons.push ({gpid: gpid.gpid, title: this.decrypt (gpid.title, this.secret), firstname: this.decrypt (gpid.firstname, this.secret), lastname: this.decrypt (gpid.lastname, this.secret)});
+          this.globpersons.push ({gpid: gpid.gpid, title: this.decrypt (gpid.title), firstname: this.decrypt (gpid.firstname), lastname: this.decrypt (gpid.lastname)});
         }
       }
 
@@ -233,12 +240,12 @@ export class AuthService
         var c: AuthCredential = data[0];
 
         // decrypt the secret with our password
-        this.secret = this.decrypt (c.secret, sessionStorage.getItem ('auth_pass'));
+        this.secret = this.decrypt_intern (c.secret, sessionStorage.getItem ('auth_pass'));
 
         // decrypt the name
-        c.title = this.decrypt (c.title, this.secret);
-        c.firstname = this.decrypt (c.firstname, this.secret);
-        c.lastname = this.decrypt (c.lastname, this.secret);
+        c.title = this.decrypt (c.title);
+        c.firstname = this.decrypt (c.firstname);
+        c.lastname = this.decrypt (c.lastname);
 
         this.auth_credentials.next (c);
 
