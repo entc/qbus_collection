@@ -4,12 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngParamsComponent } from './qbng_params/component';
-import { QbngSwitchComponent } from './qbng_widgets/component';
+import { QbngSwitchComponent, QbngUploadComponent, QbngUploadModalComponent } from './qbng_widgets/component';
 
 @NgModule({
   declarations: [
     QbngParamsComponent,
-    QbngSwitchComponent
+    QbngSwitchComponent,
+    QbngUploadComponent,
+    QbngUploadModalComponent
   ],
   imports: [
     CommonModule,
@@ -19,7 +21,11 @@ import { QbngSwitchComponent } from './qbng_widgets/component';
   ],
   exports: [
     QbngParamsComponent,
-    QbngSwitchComponent
+    QbngSwitchComponent,
+    QbngUploadComponent
+  ],
+  entryComponents: [
+    QbngUploadModalComponent
   ]
 })
 export class QbngModule

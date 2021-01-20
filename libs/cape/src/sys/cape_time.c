@@ -57,6 +57,21 @@ CapeDatetime* cape_datetime_cp (const CapeDatetime* self)
 
 //-----------------------------------------------------------------------------
 
+CapeDatetime* cape_datetime_mv (CapeDatetime** p_self)
+{
+  CapeDatetime* ret = NULL;
+  
+  if (p_self)
+  {
+    ret = *p_self;
+    *p_self = NULL;
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_set (CapeDatetime* self, const CapeDatetime* rhs)
 {
   memcpy (self, rhs, sizeof(CapeDatetime));

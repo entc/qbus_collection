@@ -1,0 +1,41 @@
+<div class="modal-header">
+  <span class="modal-title">
+    <strong><i class="fa fa-file-upload"></i>&nbsp;&nbsp;{{ 'GBNG.APPLYUPLOAD' | transloco }}</strong>
+  </span>
+</div>
+<div class="modal-body">
+
+  <p>
+    <strong>{{ 'GBNG.FILENAME' | transloco }}:</strong><br>
+    {{file.name}}
+  </p>
+  <hr>
+  <div class="row mb-2">
+      <div class="col">
+        <strong>{{ 'GBNG.FILESIZE' | transloco }}:</strong><br>
+        {{size}}
+      </div>
+      <div class="col text-right">
+        <span *ngIf="size_status == 0" class="badge bg-success width_15em p-2 text-right"><small>{{ 'GBNG.ALLOWED' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-check-circle fa-2x"></i></span>
+        <span *ngIf="size_status == 1" class="badge bg-warning width_15em p-2 text-right"><small>{{ 'GBNG.SIZEWARNING' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-exclamation-circle fa-2x"></i></span>
+        <span *ngIf="size_status == 2" class="badge bg-danger width_15em p-2 text-right"><small>{{ 'GBNG.SIZENOTALLOWED' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-times-circle fa-2x"></i></span>
+      </div>
+  </div>
+  <hr>
+  <div class="row mb-2">
+      <div class="col">
+        <strong>{{ 'GBNG.FILETYPE' | transloco }}:</strong><br>
+        {{file.type}}
+      </div>
+      <div class="col text-right">
+        <span *ngIf="type_status == 0" class="badge bg-secondary width_15em p-2 text-right"><i class="fas fa-question-circle fa-2x"></i></span>
+        <span *ngIf="type_status == 1" class="badge bg-success width_15em p-2 text-right"><small>{{ 'GBNG.ALLOWED' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-check-circle fa-2x"></i></span>
+        <span *ngIf="type_status == 2" class="badge bg-danger width_15em p-2 text-right"><small>{{ 'GBNG.NOTALLOWED' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-times-circle fa-2x"></i></span>
+      </div>
+  </div>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+  <button type="button" class="btn btn-outline-success" (click)="modal.close()">{{ 'MISC.CONTINUE' | transloco }}</button>
+</div>
