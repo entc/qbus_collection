@@ -18,6 +18,7 @@ struct AuthPerm_s
   AuthVault vault;           // reference
 
   number_t wpid;             // rinfo: mandatory
+  number_t gpid;             // rinfo: mandatory
   number_t rfid;             // input: mandatory
 
   CapeUdc roles;             // input: mandatory
@@ -38,6 +39,7 @@ AuthPerm auth_perm_new (AdblSession adbl_session, AuthVault vault)
   self->vault = vault;
   
   self->wpid = 0;
+  self->gpid = 0;
   self->rfid = 0;
   self->roles = NULL;
   
@@ -83,6 +85,13 @@ int auth_perm__intern__check_input (AuthPerm self, QBusM qin, CapeErr err)
   if (self->wpid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+    goto exit_and_cleanup;
+  }
+
+  self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (self->gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
     goto exit_and_cleanup;
   }
 
@@ -219,7 +228,8 @@ int auth_perm__intern__encrypt_rinfo (AuthPerm self, QBusM qin, const CapeString
   
   cape_udc_add_name (rinfo, &(self->roles), "roles");
   cape_udc_add_n (rinfo, "wpid", self->wpid);
-  
+  cape_udc_add_n (rinfo, "gpid", self->gpid);
+
   h1 = cape_json_to_s (rinfo);
   if (h1 == NULL)
   {
