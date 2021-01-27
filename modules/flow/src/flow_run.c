@@ -332,6 +332,7 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
+  CapeString rdata_text = NULL;
 
   // do some security checks
   if (qin->rinfo == NULL)
@@ -371,8 +372,10 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "state"            , 0);
     cape_udc_add_s_cp   (values, "created"          , NULL);
     cape_udc_add_f      (values, "time_passed"      , .0);
-    cape_udc_add_node   (values, "rdata"            );
     cape_udc_add_list   (values, "sections"         );
+
+    // default size is 4000 -> increase to 10000 bytes
+    cape_udc_add_s_cp   (values, "rdata"          , "{\"size\": 10000}");
 
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "flow_run_get_view", &params, &values, err);
@@ -390,11 +393,28 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
 
+  // extract the rdata as text
+  rdata_text = cape_udc_ext_s (first_row, "rdata");
+  if (rdata_text)
+  {
+    // deserialize
+    CapeUdc h = cape_json_from_s (rdata_text);
+    if (h == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "rdata can't be deserialized");
+      goto exit_and_cleanup;
+    }
+    
+    cape_udc_add_name (first_row, &h, "rdata");
+  }
+
   cape_udc_replace_mv (&(qout->cdata), &first_row);
   res = CAPE_ERR_NONE;
     
 exit_and_cleanup:
 
+  cape_str_del (&rdata_text);
+  
   cape_udc_del (&query_results);
   cape_udc_del (&first_row);
 
