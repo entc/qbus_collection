@@ -392,6 +392,37 @@ namespace qbus
 
   //-----------------------------------------------------------------------------
 
+  // generic struct to call a static function from a class
+  template<class T> struct Caller
+  {
+    typedef void (*Fct)(std::unique_ptr<T>&, qbus::Message&);
+    
+    template <class ...Ts> static int run (Fct fct, QBus qbus, QBusM qin, QBusM qout, CapeErr err, Ts&&... args)
+    {
+      try
+      {
+        std::unique_ptr<T> obj (new T (args...));
+        
+        qbus::Message msg (qbus, qin, qout);
+        
+        (*fct)(obj, msg);
+        
+        return msg.ret();
+      }
+      catch (cape::Exception& e)
+      {
+        qout->cdata = e.release_udc();
+        return cape_err_set (err, e.code(), e.what());
+      }
+      catch (std::exception& e)
+      {
+        return cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+      }
+    }
+  };
+  
+  //-----------------------------------------------------------------------------
+
 }
 
 #endif

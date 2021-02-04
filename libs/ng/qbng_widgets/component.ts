@@ -50,7 +50,7 @@ export class QbngUploadComponent {
 
   open_modal_upload_apply (item: QbngUploadFile)
   {
-    this.modal_service.open (QbngUploadModalComponent, {ariaLabelledBy: 'modal-basic-title', scrollable: true, injector: Injector.create([{provide: QbngUploadFile, useValue: item}])}).result.then(() => {
+    this.modal_service.open (QbngUploadModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngUploadFile, useValue: item}])}).result.then(() => {
 
       this.onChange.emit (item.file);
 

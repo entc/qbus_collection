@@ -15,6 +15,9 @@ export class Graph {
 
   private grid: number;
 
+  private option_mv_x: boolean;
+  private option_mv_y: boolean;
+
   //-----------------------------------------------------------------------------
 
   constructor (private el_dom: ElementRef, private el_box: TemplateRef<any>, private rd: Renderer2)
@@ -28,16 +31,22 @@ export class Graph {
     this.action_ref = 0;
 
     this.grid = 10;
+
+    this.option_mv_x = false;
+    this.option_mv_y = false;
   }
 
   //-----------------------------------------------------------------------------
 
-  public init (): void
+  public init (width: number = 800, height: number = 600, move_x: boolean = true, move_y: boolean = true): void
   {
     const dom_el = this.el_dom.nativeElement;
 
-    dom_el.style.width = "800px";
-    dom_el.style.height = "600px";
+    dom_el.style.width = String(width) + "px";
+    dom_el.style.height = String(height) + "px";
+
+    this.option_mv_x = move_x;
+    this.option_mv_y = move_y;
 
     this.init__events (dom_el);
   }
@@ -81,9 +90,16 @@ export class Graph {
         {
           const v = this.calc_coordinates (event.clientX, event.clientY);
 
-          // change position
-          this.rd.setStyle (this.btn_mv_active, 'left', '' + v.x + 'px');
-          this.rd.setStyle (this.btn_mv_active, 'top', '' + v.y + 'px');
+          if (this.option_mv_x)
+          {
+            // change X position
+            this.rd.setStyle (this.btn_mv_active, 'left', '' + v.x + 'px');
+          }
+          if (this.option_mv_y)
+          {
+            // change Y position
+            this.rd.setStyle (this.btn_mv_active, 'top', '' + v.y + 'px');
+          }
         }
       }
 
@@ -222,7 +238,15 @@ export class Graph {
       const dom_head = dom_head_elements[0];
 
       this.rd.setProperty (dom_head, 'innerHTML', names['head']);
-      this.rd.setStyle (dom_head, 'color', colors['head']);
+
+      if (colors)
+      {
+        const color_head = colors['head'];
+        if (color_head)
+        {
+          this.rd.setStyle (dom_head, 'color', color_head);
+        }
+      }
     }
 
     let dom_body_elements = dom_box.querySelectorAll('.box-el-body');
@@ -232,7 +256,15 @@ export class Graph {
       const dom_body = dom_body_elements[0];
 
       this.rd.setProperty (dom_body, 'innerHTML', names['body']);
-      this.rd.setStyle (dom_body, 'color', colors['body']);
+
+      if (colors)
+      {
+        const color_body = colors['body'];
+        if (color_body)
+        {
+          this.rd.setStyle (dom_body, 'color', color_body);
+        }
+      }
     }
 
     let dom_foot_elements = dom_box.querySelectorAll('.box-el-foot');
@@ -242,7 +274,15 @@ export class Graph {
       const dom_foot = dom_foot_elements[0];
 
       this.rd.setProperty (dom_foot, 'innerHTML', names['foot']);
-      this.rd.setStyle (dom_foot, 'color', colors['foot']);
+
+      if (colors)
+      {
+        const color_foot = colors['foot'];
+        if (color_foot)
+        {
+          this.rd.setStyle (dom_foot, 'color', color_foot);
+        }
+      }
     }
   }
 
