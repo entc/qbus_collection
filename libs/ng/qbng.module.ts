@@ -5,13 +5,16 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngParamsComponent } from './qbng_params/component';
 import { QbngSwitchComponent, QbngUploadComponent, QbngUploadModalComponent } from './qbng_widgets/component';
+import { SizeService } from './size_service/service'
+import { SizeDetectorComponent } from './size_service/component'
 
 @NgModule({
   declarations: [
     QbngParamsComponent,
     QbngSwitchComponent,
     QbngUploadComponent,
-    QbngUploadModalComponent
+    QbngUploadModalComponent,
+    SizeDetectorComponent
   ],
   imports: [
     CommonModule,
@@ -19,10 +22,14 @@ import { QbngSwitchComponent, QbngUploadComponent, QbngUploadModalComponent } fr
     NgbModule,
     TrloModule
   ],
+  providers: [
+    SizeService
+  ],
   exports: [
     QbngParamsComponent,
     QbngSwitchComponent,
-    QbngUploadComponent
+    QbngUploadComponent,
+    SizeDetectorComponent
   ],
   entryComponents: [
     QbngUploadModalComponent
