@@ -29,6 +29,8 @@ __CAPE_LIBEX   int          auth_perm_set       (AuthPerm*, QBusM qin, QBusM qou
 
 __CAPE_LIBEX   int          auth_perm_get       (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int          auth_perm_code_set  (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

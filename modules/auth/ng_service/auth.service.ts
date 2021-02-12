@@ -1,4 +1,4 @@
-import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Injector, ElementRef, ViewContainerRef } from '@angular/core';
+import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
@@ -18,6 +18,8 @@ export class AuthService
   private secret: string;
   private globpersons: Array<AuthGlobalPerson>;
 
+  private login_callback = undefined;
+
   //-----------------------------------------------------------------------------
 
   constructor (private http: HttpClient, private modalService: NgbModal)
@@ -25,6 +27,13 @@ export class AuthService
     this.fetch_login = false;
     this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
     this.gpg ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_login (callback)
+  {
+    this.login_callback = callback;
   }
 
   //-----------------------------------------------------------------------------
@@ -85,15 +94,20 @@ export class AuthService
 
         this.fetch_login = true;
 
-        var modalRef = this.modalService.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"});
+        if (this.login_callback)
+        {
+          this.login_callback ();
+        }
+        else
+        {
+          this.modalService.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then((result: AuthLoginData) => {
 
-        modalRef.result.then((result) => {
+            this.set (result);
 
-          this.cre (result.user, result.pass);
+          }, () => {
 
-        }, () => {
-
-        });
+          });
+        }
 
         return throwError (error);
       }
@@ -287,16 +301,28 @@ console.log(error);
 
   login ()
   {
-    var modalRef = this.modalService.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"});
+    if (this.login_callback)
+    {
+      this.login_callback ();
+    }
+    else
+    {
+      this.modalService.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then((result: AuthLoginData) => {
 
-    modalRef.result.then((result) => {
+        this.set (result);
 
-      this.fetch_login = true;
-      this.cre (result.user, result.pass);
+      }, () => {
 
-    }, () => {
+      });
+    }
+  }
 
-    });
+  //-----------------------------------------------------------------------------
+
+  public set (credentials: AuthLoginData)
+  {
+    this.fetch_login = true;
+    this.cre (credentials.user, credentials.pass);
   }
 
   //-----------------------------------------------------------------------------
@@ -344,6 +370,12 @@ export class AuthCredential
   roles: object;
 }
 
+export class AuthLoginData
+{
+  user: string;
+  pass: string;
+}
+
 //=============================================================================
 
 class AuthGlobalPerson
@@ -357,19 +389,15 @@ class AuthGlobalPerson
 //=============================================================================
 
 @Component({
-  selector: 'auth-login-modal-component',
-  templateUrl: './modal_login.html'
-}) export class AuthLoginModalComponent implements OnInit {
+  selector: 'auth-login',
+  templateUrl: './component_login.html'
+}) export class AuthLoginComponent {
+
+  @Output() onLogin = new EventEmitter();
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, private AuthService: AuthService)
-  {
-  }
-
-  //---------------------------------------------------------------------------
-
-  ngOnInit()
+  constructor ()
   {
   }
 
@@ -377,17 +405,30 @@ class AuthGlobalPerson
 
   login_submit (form: NgForm)
   {
-    this.modal.close (form.value);
+    this.onLogin.emit (form.value);
     form.resetForm ();
+  }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-login-modal-component',
+  templateUrl: './modal_login.html'
+}) export class AuthLoginModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_service: AuthService, public modal: NgbActiveModal)
+  {
   }
 
   //---------------------------------------------------------------------------
 
-  login_cancel ()
+  on_login (login_data: AuthLoginData)
   {
-    this.modal.dismiss ();
+    this.modal.close (login_data);
   }
-
 }
 
 //=============================================================================

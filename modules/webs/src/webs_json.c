@@ -565,6 +565,17 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
     
     cape_udc_add_s_mv (msg->pdata, "token", &(self->extra_token_p));
     
+    {
+      // get the body as stream from the incoming request
+      CapeStream body = qwebs_request_body (self->request);
+
+      if (cape_stream_size (body) > 0)
+      {
+        // try to convert into a UDC container
+        msg->cdata = cape_json_from_buf (cape_stream_data (body), cape_stream_size (body));
+      }
+    }
+    
     res = qbus_send (self->qbus, "AUTH", "token_perm_get", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);

@@ -1,41 +1,15 @@
-<form #userlogin = "ngForm" (ngSubmit) = "login_submit (userlogin)">
-  <div class="modal-header">
-    <div class="modal-title">
-      <strong><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN_MODAL' | transloco }}</strong>
-    </div>
+<div class="modal-header">
+  <div class="modal-title">
+    <strong><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN_MODAL' | transloco }}</strong>
   </div>
-  <div class="modal-body">
+</div>
+<div class="modal-body">
 
-    <img src="img/login_image.png" class="w-100 mb-4">
+  <img src="img/login_image.png" class="w-100 mb-4">
 
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
-      </div>
-      <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus ngModel name = "user">
-    </div>
+  <auth-login (onLogin)="on_login($event)"></auth-login>
 
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
-      </div>
-      <input type="password" class="form-control" id="InputPassword" required ngModel name = "pass">
-    </div>
-
-    <!--
-    <div class="form-group">
-        <label for="InputEmail">{{ 'AUTH.USERNAME' | transloco }}</label>
-        <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus ngModel name = "user">
-      </div>
-      <div class="form-group">
-        <label for="InputPassword">{{ 'AUTH.PASSWORD' | transloco }}</label>
-        <input type="password" class="form-control" id="InputPassword" required ngModel name = "pass">
-    </div>
-    -->
-
-  </div>
-  <div class="modal-footer">
-    <button type="button" class="btn btn-secondary" (click)="login_cancel()">{{ 'MISC.CANCEL' | transloco }}</button>
-    <button type="submit" class="btn btn-primary">{{ 'AUTH.LOGIN' | transloco }}</button>
-  </div>
-</form>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+</div>

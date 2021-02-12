@@ -485,11 +485,14 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   CapeUdc first_row;
   const CapeString token;
+  const CapeString code;
+  number_t code_active;
 
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc rinfo = NULL;
   CapeUdc cdata = NULL;
+  int remove_roles = FALSE;
 
   if (qin->pdata == NULL)
   {
@@ -519,6 +522,8 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_udc_add_s_cp   (params, "token"         , self->token);
     cape_udc_add_n      (values, "wpid"          , 0);
+    cape_udc_add_s_cp   (values, "code"          , NULL);
+    cape_udc_add_n      (values, "code_active"   , 0);
     cape_udc_add_s_cp   (values, "rinfo"         , NULL);
     cape_udc_add_s_cp   (values, "cdata"         , NULL);
     
@@ -541,6 +546,45 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   // get the workspace ID
   self->wpid = cape_udc_get_n (first_row, "wpid", 0);
 
+  // get active code status
+  code_active = cape_udc_get_n (first_row, "code_active", 0);
+  
+  if (code_active)
+  {
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing content");
+      goto exit_and_cleanup;
+    }
+    
+    code = cape_udc_get_s (qin->cdata, "acc_code", NULL);
+    if (code == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing code");
+      goto exit_and_cleanup;
+    }
+    
+    if (cape_str_equal (code, "__NOCODE__"))
+    {
+      remove_roles = TRUE;
+    }
+    else
+    {
+      self->code = qcrypt__hash_sha256__hex_o (code, cape_str_size(code), err);
+      if (self->code == NULL)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+      
+      if (!cape_str_equal (self->code, cape_udc_get_s (first_row, "code", NULL)))
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code mismatch");
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
   res = auth_perm__intern__decrypt (self, first_row, err);
   if (res)
   {
@@ -553,6 +597,12 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "rinfo not found");
     goto exit_and_cleanup;
+  }
+  
+  if (remove_roles)
+  {
+    CapeUdc roles = cape_udc_ext (rinfo, "roles");
+    cape_udc_del (&roles);
   }
   
   cdata = cape_udc_ext (first_row, "cdata");
@@ -574,3 +624,112 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_perm_code_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+  
+  const CapeString token;
+  CapeUdc active_node;
+  const CapeString code;
+
+  // local objects
+  AdblTrx trx = NULL;
+  CapeString hash = NULL;
+
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
+    goto exit_and_cleanup;
+  }
+  
+  token = cape_udc_get_s (qin->pdata, "token", NULL);
+  if (token == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing token");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing cdata");
+    goto exit_and_cleanup;
+  }
+
+  // optional (at least one)
+  active_node = cape_udc_get (qin->cdata, "active");
+  
+  // optional (at least one)
+  code = cape_udc_get_s (qin->cdata, "code", NULL);
+
+  if ((active_node == NULL) && (code == NULL))
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing content");
+    goto exit_and_cleanup;
+  }
+
+  // create the hash of the token
+  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (self->token == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  if (code)
+  {
+    hash = qcrypt__hash_sha256__hex_o (code, cape_str_size(code), err);
+    if (hash == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_s_cp   (params, "token"           , self->token);
+    
+    if (active_node)
+    {
+      cape_udc_add_n      (values, "code_active"     , cape_udc_n (active_node, 0));
+    }
+    
+    if (hash)
+    {
+      cape_udc_add_s_mv   (values, "code"            , &hash);
+    }
+    
+    // execute query
+    res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  
+  cape_str_del (&hash);
+
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
