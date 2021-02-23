@@ -1,0 +1,32 @@
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>name of the list node</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['list_node']" (ngModelChange)="on_pdata_change($event, 'list_node')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>workflow id</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['wfid']" (ngModelChange)="on_pdata_change($event, 'wfid')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>name of the refid node</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['refid_node']" (ngModelChange)="on_pdata_change($event, 'refid_node')">
+      </div>
+    </div>
+
+  </div>
+</div>

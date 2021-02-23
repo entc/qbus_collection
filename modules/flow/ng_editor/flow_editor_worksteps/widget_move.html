@@ -1,0 +1,22 @@
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>variable name</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['var_name']" (ngModelChange)="on_pdata_change($event, 'var_name')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>new variable name</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['new_name']" (ngModelChange)="on_pdata_change($event, 'new_name')">
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,12 @@
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>node name</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['node_name']" (ngModelChange)="on_pdata_change($event, 'node_name')">
+      </div>
+    </div>
+
+  </div>
+</div>

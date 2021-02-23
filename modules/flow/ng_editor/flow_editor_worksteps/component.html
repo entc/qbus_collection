@@ -1,0 +1,52 @@
+<!--
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item active" aria-current="page"><button class="btn btn-link" style="padding: 0px;" (click)="return_page()">{{ 'FLOW.WORKFLOWLIST' | transloco }}</button></li>
+      <li class="breadcrumb-item">wfid = {{wfid}}</li>
+    </ol>
+  </nav>
+-->
+  <table class="table mt-2">
+    <tr>
+      <th></th>
+      <th>
+        <span class="badge badge-primary">wsid</span>
+      </th>
+      <th width="100%">{{ 'FLOW.WORKSTEPNAME' | transloco }}</th>
+      <th>
+        <button (click)="modal__workstep_add__open(undefined)" type="button" class="btn btn-sm btn-success"><i class="fa fa-plus"></i></button>
+      </th>
+    </tr>
+    <tr *ngFor="let ws of worksteps">
+      <td>
+        <button (click)="workstep_mv (ws, -1)" type="button" class="btn btn-sm btn-outline-dark mb-1">
+          <i class="fa fa-arrow-up"></i>
+        </button><br>
+        <button (click)="workstep_mv (ws, +1)" type="button" class="btn btn-sm btn-outline-dark">
+          <i class="fa fa-arrow-down"></i>
+        </button>
+      </td>
+      <td>
+        <span class="badge badge-primary">{{ws.id}}</span>
+      </td>
+      <td>
+        {{ws.name}}<br>
+        <small>{{function_name_get(ws.fctid)}}</small>
+      </td>
+      <td>
+        <div class="btn-group mr-3">
+          <button (click)="modal__workstep_add__open (ws)" type="button" class="btn btn-sm btn-outline-primary">
+            <i class="fa fa-edit"></i>
+          </button>
+          <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
+            <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
+            <div class="dropdown-menu" ngbDropdownMenu>
+              <button (click)="modal__workstep_del__open (ws)" type="button" class="dropdown-item">
+                <i class="fa fa-trash"></i>&nbsp;&nbsp;{{ 'MISC.DELETE' | transloco }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>

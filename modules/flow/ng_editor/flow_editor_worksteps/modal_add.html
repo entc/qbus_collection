@@ -1,0 +1,285 @@
+<div class="modal-header">
+  <span class="modal-title">
+    <strong><i class="fa fa-plus-circle"></i>&nbsp;&nbsp;{{ 'FLOW.WORKSTEPADD' | transloco }}</strong>
+  </span>
+</div>
+<div class="modal-body">
+
+      <div class="row">
+        <div class="col-md-6 col-12">
+          <div class="form-group">
+            <label>{{ 'FLOW.WSNAME' | transloco }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.name" name="step_name" required>
+              <div class="invalid-feedback">please enter a name for this step</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-12">
+          <div class="form-group">
+            <label>{{ 'FLOW.WSFUNCTION' | transloco }}</label>
+            <select class="form-control" (ngModelChange)="on_index_change($event)" [ngModel]="current_index">
+              <option *ngFor="let fct of function_service.values; let i = index" [value]="i">{{fct.name}}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info" role="alert">
+
+        {{function_service.get_desc(current_index)}}
+
+      </div>
+
+      <flow-widget-component [function_index]="step_index" [content]="modal_step_content" (contentChange)="on_content_change($event)"></flow-widget-component>
+
+<!--
+      <div [ngSwitch]="modal_step_content.fctid">
+
+        <div class="form-group" *ngSwitchCase="0">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="3">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="4">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="5">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="10">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="11">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="12">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="13">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="21">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="50">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="51">
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="52">
+
+        </div>
+
+        <div class="form-group" *ngSwitchDefault>
+          <div class="alert alert-danger" role="alert">
+            please select a function
+          </div>
+        </div>
+
+      </div>
+-->
+<!--
+      <div [ngSwitch]="modal_step_content.fctid">
+        <div class="form-group" *ngSwitchCase="0">
+
+
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="3">
+
+          <div class="form-group">
+            <label>{{ 'FLOW.WSMODULE' | transloco }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.module" name="module">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>{{ 'FLOW.WSMETHOD' | transloco }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.method" name="method">
+            </div>
+          </div>
+
+          <hr>
+          <qbng-params [model]="modal_step_content.pdata.params" (modelChange)="on_pdata_change($event, 'params')" [name]="'params'"></qbng-params>
+
+        </div>
+        <div class="form-group" *ngSwitchCase="4">
+
+          <div class="form-group">
+            <label>module</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.module" name="module">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>method</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.method" name="method">
+            </div>
+          </div>
+
+          <hr>
+          <qbng-params [model]="modal_step_content.pdata.params" (modelChange)="on_pdata_change($event, 'params')" [name]="'params'"></qbng-params>
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="5">
+
+          <div class="form-group">
+            <label>wait list node</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.waitlist_node" name="waitlist_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>code variable (optional)</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.code_node" name="code_node">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="10">
+
+          <div class="form-group">
+            <label>name of the list node</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.list_node" name="list_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>name of the refid node</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.refid_node" name="refid_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>workflow id</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.wfid" name="wfid">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="12">
+
+          <div class="form-group">
+            <label>value node</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.value_node" name="value_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>name of the refid node</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.refid_node" name="refid_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>switch</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.switch" name="switch">
+            </div>
+          </div>
+
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="13">
+
+          <div class="form-group">
+            <label>variable name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.value_node" name="value_node">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>workflow ID if found</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.wfid" name="wfid">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>params node (optional)</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.params_node" name="params_node">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="50">
+
+          <div class="form-group">
+            <label>variable name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.var_name" name="var_name">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>new variable name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.new_name" name="new_name">
+            </div>
+          </div>
+
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="51">
+
+          <div class="form-group">
+            <label>node name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.node_name" name="node_name">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-group" *ngSwitchCase="52">
+
+          <div class="form-group">
+            <label>variable name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.var_name" name="var_name">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>new variable name</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata.new_name" name="new_name">
+            </div>
+          </div>
+
+
+        </div>
+
+      </div>
+-->
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+  <button type="button" class="btn btn-outline-success" (click)="submit()">{{ submit_name | transloco }}</button>
+</div>

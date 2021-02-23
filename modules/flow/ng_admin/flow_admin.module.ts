@@ -15,10 +15,12 @@ import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { FlowLogsModule } from '@qbus/flow_logs.module';
 
 const routes: Routes = [
-  { path: 'flow_editor', component: FlowEditorComponent },
-  { path: 'flow_editor/:wfid', component: FlowWorkstepsComponent },
-  { path: 'flow_process', component: FlowProcessComponent },
-  { path: 'flow_process/:psid', component: FlowProcessDetailsComponent }
+  /*
+  { path: 'flow-editor', component: FlowEditorComponent },
+  { path: 'flow-editor/:wfid', component: FlowWorkstepsComponent },
+  { path: 'flow-process', component: FlowProcessComponent },
+  { path: 'flow-process/:psid', component: FlowProcessDetailsComponent }
+  */
 ];
 
 @NgModule({

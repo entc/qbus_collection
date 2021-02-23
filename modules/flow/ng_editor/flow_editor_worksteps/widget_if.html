@@ -1,0 +1,32 @@
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>variable name</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['value_node']" (ngModelChange)="on_pdata_change($event, 'value_node')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>workflow ID if found</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['wfid']" (ngModelChange)="on_pdata_change($event, 'wfid')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>params node (optional)</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['params_node']" (ngModelChange)="on_pdata_change($event, 'params_node')">
+      </div>
+    </div>
+
+  </div>
+</div>

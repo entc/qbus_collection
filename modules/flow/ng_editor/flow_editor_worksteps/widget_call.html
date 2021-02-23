@@ -1,0 +1,25 @@
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>{{ 'FLOW.WSMODULE' | transloco }}</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['module']" (ngModelChange)="on_pdata_change($event, 'module')">
+      </div>
+    </div>
+
+  </div>
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
+      <label>{{ 'FLOW.WSMETHOD' | transloco }}</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['method']" (ngModelChange)="on_pdata_change($event, 'method')">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr>
+<qbng-params [model]="content.pdata['params']" (modelChange)="on_pdata_change($event, 'params')"></qbng-params>
