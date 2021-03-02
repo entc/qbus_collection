@@ -1182,6 +1182,8 @@ int flow_run_dbw__continue (FlowRunDbw self, CapeErr err)
 {
   int res;
 
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run set", "processing step [%i], wpid = %i, psid = %i", self->state, self->wpid, self->psid);
+
   switch (self->state)
   {
     case FLOW_STATE__INIT:

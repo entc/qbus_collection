@@ -5,7 +5,7 @@ import { TrloModule } from '@qbus/trlo.module';
 import { HttpClientModule } from '@angular/common/http';
 
 // auth services
-import { AuthService, AuthCredential, AuthLoginComponent, AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent, AuthRoleDirective } from '@qbus/auth.service';
+import { AuthService, AuthCredential, AuthLoginComponent, AuthLoginModalComponent, AuthInfoModalComponent, AuthWorkspacesModalComponent, AuthServiceComponent, AuthRoleDirective, AuthContentComponent, AuthComponentType } from '@qbus/auth.service';
 
 @NgModule({
   declarations: [
@@ -14,7 +14,9 @@ import { AuthService, AuthCredential, AuthLoginComponent, AuthLoginModalComponen
     AuthWorkspacesModalComponent,
     AuthServiceComponent,
     AuthRoleDirective,
-    AuthLoginComponent
+    AuthLoginComponent,
+    AuthContentComponent,
+    AuthComponentType
   ],
   providers: [
     AuthService
@@ -33,7 +35,8 @@ import { AuthService, AuthCredential, AuthLoginComponent, AuthLoginModalComponen
   exports: [
     AuthServiceComponent,
     AuthRoleDirective,
-    AuthLoginComponent
+    AuthLoginComponent,
+    AuthContentComponent
   ]
 })
 export class AuthServiceModule

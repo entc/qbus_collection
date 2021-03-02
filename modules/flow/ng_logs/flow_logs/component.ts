@@ -16,6 +16,7 @@ export class FlowLogsComponent implements OnInit
 {
   @Input('psid') psid: number;
   @Input('tag') tag: string;
+  @Input('tools') tools: boolean;
 
   public chain_items: ChainItem[];
   public filter: boolean;
@@ -171,6 +172,7 @@ class ChainEvent
 export class FlowChainComponent implements OnInit
 {
   @Input('logs') logs: ChainItem[];
+  @Input('tools') tools: boolean;
   @Output ('refresh') refresh = new EventEmitter<boolean>();
 
   show_details: boolean;
@@ -200,40 +202,6 @@ export class FlowChainComponent implements OnInit
 
 
     }, () => {
-
-    });
-  }
-
-  //-----------------------------------------------------------------------------
-
-  rerun_step (item: ChainItem)
-  {
-    this.auth_service.json_rpc ('FLOW', 'process_set', {'psid': item.psid}).subscribe(() => {
-
-      this.refresh.emit (true);
-      console.log('set step done');
-
-    });
-  }
-
-  //-----------------------------------------------------------------------------
-
-  rerun_once (item: ChainItem)
-  {
-    this.auth_service.json_rpc ('FLOW', 'process_once', {'psid': item.psid}).subscribe(() => {
-
-      this.refresh.emit (true);
-
-    });
-  }
-
-  //-----------------------------------------------------------------------------
-
-  prev_step (item: ChainItem)
-  {
-    this.auth_service.json_rpc ('FLOW', 'process_prev', {'psid': item.psid}).subscribe(() => {
-
-      this.refresh.emit (true);
 
     });
   }
@@ -299,6 +267,40 @@ export class FlowDetailsItem
       this.data = data;
       this.data.tdata_text = JSON.stringify(this.data.tdata);
       this.data.pdata_text = JSON.stringify(this.data.pdata);
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  rerun_step ()
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_set', {'psid': this.psid}).subscribe(() => {
+
+    //  this.refresh.emit (true);
+      console.log('set step done');
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  rerun_once ()
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_once', {'psid': this.psid}).subscribe(() => {
+
+    //  this.refresh.emit (true);
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  prev_step ()
+  {
+    this.auth_service.json_rpc ('FLOW', 'process_prev', {'psid': this.psid}).subscribe(() => {
+
+    //  this.refresh.emit (true);
+
     });
   }
 
