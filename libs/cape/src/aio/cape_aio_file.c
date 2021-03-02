@@ -55,6 +55,9 @@ void cape_aio_freader_del (CapeAioFileReader* p_self)
   // delete the AIO handle
   cape_aio_handle_del (&(self->aioh));
   
+  // close the file handle
+  close ((number_t)(self->handle));
+  
   CAPE_FREE(self->bufdat);
   
   CAPE_DEL(p_self, struct CapeAioFileReader_s);

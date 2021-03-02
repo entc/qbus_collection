@@ -194,16 +194,19 @@ export class FlowChainComponent implements OnInit
 
   open_process_modal (item: ChainItem)
   {
-    var details: FlowDetails = new FlowDetails;
+    if (this.tools)
+    {
+      var details: FlowDetails = new FlowDetails;
 
-    details.psid = item.psid;
+      details.psid = item.psid;
 
-    this.modalService.open (FlowLogDetailsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: FlowDetails, useValue: details}])}).result.then((result) => {
+      this.modalService.open (FlowLogDetailsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: FlowDetails, useValue: details}])}).result.then((result) => {
 
 
-    }, () => {
+      }, () => {
 
-    });
+      });
+    }
   }
 
   //-----------------------------------------------------------------------------
