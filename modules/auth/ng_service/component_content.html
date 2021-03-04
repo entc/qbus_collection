@@ -1,0 +1,18 @@
+<ng-container [ngSwitch]="creds.wpid">
+
+   <ng-container *ngSwitchCase="undefined">
+     <!-- display nothing (loading ...) -->
+
+   </ng-container>
+
+   <ng-container *ngSwitchCase="0">
+     <!-- display the login component -->
+     <auth-component-type></auth-component-type>
+   </ng-container>
+
+   <ng-container *ngSwitchDefault>
+     <!-- display the content -->
+     <ng-content></ng-content>
+   </ng-container>
+
+</ng-container>
