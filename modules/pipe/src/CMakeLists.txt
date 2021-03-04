@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 2.4)
+SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
+find_package(Pcre REQUIRED)
 
-INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src")
+INCLUDE_DIRECTORIES(${PCRE_INCLUDE_DIRS} "../../../libs/cape/src" "../../../libs/qbus/src")
 
 #----------------------------------------------------------------------------------------
 
@@ -12,7 +13,7 @@ SET (QBUS_MODULES_PIPE_HEADERS
 )
 
 ADD_EXECUTABLE (qbus_mod_pipe ${QBUS_MODULES_PIPE_SOURCES} ${QBUS_MODULES_PIPE_HEADERS})
-TARGET_LINK_LIBRARIES(qbus_mod_pipe qbus)
+TARGET_LINK_LIBRARIES(qbus_mod_pipe qbus ${PCRE_LIBRARIES})
 
 # install
 INSTALL (TARGETS qbus_mod_pipe DESTINATION mods)
