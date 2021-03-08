@@ -6,9 +6,11 @@
 
 //=============================================================================
 
-__CAPE_LIBEX   void*         cape_pipe_create     (const char* path, const char* name, CapeErr err);
+__CAPE_LIBEX   void*         cape_pipe_create               (const char* path, const char* name, CapeErr err);
 
-__CAPE_LIBEX   void*         cape_pipe_connect    (const char* path, const char* name, CapeErr err);
+__CAPE_LIBEX   void*         cape_pipe_connect              (const char* path, const char* name, CapeErr err);
+
+__CAPE_LIBEX   void*         cape_pipe_create_or_connect    (const char* path, const char* name, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

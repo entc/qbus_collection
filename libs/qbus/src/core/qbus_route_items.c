@@ -78,9 +78,19 @@ void qbus_route_items_node_add (QBusRouteItems self, QBusConnection conn, CapeUd
         
         cape_str_to_upper (h);
         
-        printf ("ROUTE NODES: insert %s -> %p\n", h, conn);
-        
-        cape_map_insert (self->routes_node, (void*)h, (void*)conn);
+        {
+          CapeMapNode n = cape_map_find (self->routes_node, (void*)h);
+          if (n == NULL)
+          {
+            //printf ("ROUTE NODES: insert %s -> %p\n", h, conn);
+            
+            cape_map_insert (self->routes_node, (void*)h, (void*)conn);
+          }
+          else
+          {
+            cape_str_del (&h);
+          }
+        }
       }
     }
   }

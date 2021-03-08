@@ -14,7 +14,7 @@ INSTALL(CODE "execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/docker_bu
 #--------------------- OLD VERSION --------------------------
 
 # remove none used ones (needs to fix)
-INSTALL(CODE "execute_process(COMMAND docker image rm qore:1.0.0)")
+#INSTALL(CODE "execute_process(COMMAND docker image rm qore:1.0.0)")
 
 # build the docker image
-INSTALL(CODE "execute_process(COMMAND docker build -t qore:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
+#INSTALL(CODE "execute_process(COMMAND docker build -t qore:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")

@@ -1,4 +1,4 @@
-import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter } from '@angular/core';
+import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators'
@@ -18,7 +18,7 @@ export class AuthService
   private secret: string;
   private globpersons: Array<AuthGlobalPerson>;
 
-  private login_callback = undefined;
+  private component_type = undefined;
 
   //-----------------------------------------------------------------------------
 
@@ -27,13 +27,6 @@ export class AuthService
     this.fetch_login = false;
     this.auth_credentials = new BehaviorSubject<AuthCredential> ({wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
     this.gpg ();
-  }
-
-  //-----------------------------------------------------------------------------
-
-  public on_login (callback)
-  {
-    this.login_callback = callback;
   }
 
   //-----------------------------------------------------------------------------
@@ -94,9 +87,9 @@ export class AuthService
 
         this.fetch_login = true;
 
-        if (this.login_callback)
+        if (this.component_type)
         {
-          this.login_callback ();
+
         }
         else
         {
@@ -294,16 +287,16 @@ console.log(error);
     sessionStorage.removeItem ('auth_wpid');
 
     this.fetch_login = false;
-    this.auth_credentials.next ({wpid: undefined, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
+    this.auth_credentials.next ({wpid: 0, gpid: undefined, title: undefined, firstname: undefined, lastname: undefined, workspace: undefined, secret: undefined, roles: undefined});
   }
 
   //-----------------------------------------------------------------------------
 
   login ()
   {
-    if (this.login_callback)
+    if (this.component_type)
     {
-      this.login_callback ();
+
     }
     else
     {
@@ -353,6 +346,48 @@ console.log(error);
     {
       return "[unknown]";
     }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  has_role (permissions: string[]): boolean
+  {
+    let creds: AuthCredential = this.auth_credentials.value;
+
+    if (permissions)
+    {
+      if (creds.roles)
+      {
+        // check if permissions are in the roles
+        for (var i in permissions)
+        {
+          if (creds.roles [permissions[i]] != undefined)
+          {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+    else
+    {
+      return creds.wpid > 0;
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public set_content_type (type: any)
+  {
+    this.component_type = type;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public get_content_type ()
+  {
+    return this.component_type;
   }
 
   //-----------------------------------------------------------------------------
@@ -591,8 +626,7 @@ export class AuthRoleDirective {
 
   //---------------------------------------------------------------------------
 
-  @Input ()
-  set authRole (val: Array<string>)
+  @Input () set authRole (val: Array<string>)
   {
     this.permissions = val;
     this.updateView ();
@@ -638,3 +672,64 @@ export class AuthRoleDirective {
     }
   }
 }
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-content',
+  templateUrl: './component_content.html'
+}) export class AuthContentComponent {
+
+  public creds = undefined;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_service: AuthService)
+  {
+    this.auth_service.auth_credentials.subscribe ((val: AuthCredential) => {
+
+      this.creds = val;
+
+    });
+  }
+}
+
+//=============================================================================
+
+@Directive({
+  selector: 'auth-component-type'
+}) export class AuthComponentType implements OnInit {
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_service: AuthService, private view: ViewContainerRef, private component_factory_resolver: ComponentFactoryResolver)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit ()
+  {
+    // clear the current view
+    this.view.clear();
+
+    try
+    {
+      const type = this.auth_service.get_content_type ();
+      if (type)
+      {
+        // create a factory for creating new components
+        const factory = this.component_factory_resolver.resolveComponentFactory (type);
+
+        // use the factory to create the new component
+        const compontent = this.view.createComponent(factory);
+      }
+    }
+    catch (e)
+    {
+
+    }
+  }
+}
+
+//=============================================================================

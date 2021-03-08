@@ -1,5 +1,9 @@
 <button (click)="fetch()" type="button" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-redo"></i>&nbsp;&nbsp;{{ 'FLOW.REFRESH' | transloco }}</button>
-<button (click)="filter_deactivate()" *ngIf="filter == true" type="button" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-expand"></i>&nbsp;&nbsp;{{ 'FLOW.SHOWMORE' | transloco }}</button>
-<button (click)="filter_acivate()" *ngIf="filter == false" type="button" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-compress"></i>&nbsp;&nbsp;{{ 'FLOW.SHOWLESS' | transloco }}</button>
+
+<ng-container *ngIf="tools">
+  <button (click)="filter_deactivate()" *ngIf="filter == true" type="button" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-expand"></i>&nbsp;&nbsp;{{ 'FLOW.SHOWMORE' | transloco }}</button>
+  <button (click)="filter_acivate()" *ngIf="filter == false" type="button" class="btn btn-outline-primary btn-sm mr-2"><i class="fas fa-compress"></i>&nbsp;&nbsp;{{ 'FLOW.SHOWLESS' | transloco }}</button>
+</ng-container>
+
 <hr>
-<flow-chain [logs]="chain_items" (refresh)="fetch()"></flow-chain>
+<flow-chain [logs]="chain_items" (refresh)="fetch()" [tools]="tools"></flow-chain>

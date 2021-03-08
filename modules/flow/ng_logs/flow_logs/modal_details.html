@@ -33,6 +33,10 @@
       <textarea class="form-control" id="TData" rows="10">{{data.tdata_text}}</textarea>
   </div>
 
+  <button (click)="rerun_step ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-play-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNSTEP' | transloco }}</button>
+  <button (click)="rerun_once ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-dot-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNONCE' | transloco }}</button>
+  <button (click)="prev_step ()" class="btn btn-outline-secondary btn-sm mr-2"><i class="fas fa-arrow-alt-circle-up"></i>&nbsp;&nbsp;{{ 'FLOW.PREVSTEP' | transloco }}</button>
+
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>

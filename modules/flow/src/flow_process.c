@@ -1060,6 +1060,61 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_process__process_check (FlowProcess self, number_t* p_wpid, number_t* p_gpid, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  number_t wpid = 0;
+  number_t gpid = 0;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"             , self->psid);
+    cape_udc_add_n      (values, "wpid"           , 0);
+    //cape_udc_add_n      (values, "gpid"           , 0);
+    
+    query_results = adbl_session_query (self->adbl_session, "proc_tasks", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
+    goto exit_and_cleanup;
+  }
+  
+  wpid = cape_udc_get_n (first_row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "wpid is missing");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (first_row, "gpid", 0);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  *p_wpid = wpid;
+  *p_gpid = gpid;
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_process_once__dbw (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -1134,8 +1189,10 @@ int flow_process_once (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "process prev", "using psid = %i", self->psid);
+  
   // check if the instance exists and fetch the original wpid and gpid
-  res = flow_process__instance_check (self, &wpid, &gpid, err);
+  res = flow_process__process_check (self, &wpid, &gpid, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1244,6 +1301,7 @@ int flow_process_prev (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
 
   // check active
+  /*
   {
     number_t active = cape_udc_get_n (first_row, "active", 0);
     if (active == 0)
@@ -1252,8 +1310,10 @@ int flow_process_prev (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
+   */
 
   // check sync
+  /*
   {
     number_t sync = cape_udc_get_n (first_row, "sync", 0);
     if (sync)
@@ -1262,6 +1322,7 @@ int flow_process_prev (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
+   */
 
   // get the previous step id
   prev = cape_udc_get_n (first_row, "prev", 0);

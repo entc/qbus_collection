@@ -527,9 +527,9 @@ int qbus_message_role_or2 (QBusM self, const CapeString role01, const CapeString
 
 //-----------------------------------------------------------------------------
 
-void qbus_check_param (CapeUdc data, const CapeUdc param)
+void qbus_check_param__string (CapeUdc data, const CapeUdc string_param)
 {
-  const CapeString h = cape_udc_s (param, NULL);
+  const CapeString h = cape_udc_s (string_param, NULL);
   if (h)
   {
     CapeList options = cape_tokenizer_buf (h, strlen(h), ':');
@@ -561,6 +561,32 @@ void qbus_check_param (CapeUdc data, const CapeUdc param)
     }
     
     cape_list_del (&options);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_check_param (CapeUdc data, const CapeUdc param)
+{
+  switch (cape_udc_type (param))
+  {
+    case CAPE_UDC_LIST:
+    {
+      CapeUdcCursor* cursor = cape_udc_cursor_new (param, CAPE_DIRECTION_FORW);
+
+      while (cape_udc_cursor_next (cursor))
+      {
+        qbus_check_param (data, cursor->item);
+      }
+      
+      cape_udc_cursor_del (&cursor);
+      break;
+    }
+    case CAPE_UDC_STRING:
+    {
+      qbus_check_param__string (data, param);
+      break;
+    }
   }
 }
 
