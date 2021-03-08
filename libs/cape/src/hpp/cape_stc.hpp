@@ -1044,6 +1044,12 @@ namespace cape
     static void set (CapeUdc obj, const bool& value) { cape_udc_set_b (obj, value ? TRUE : FALSE); }
   };
   
+  template <> struct UdcTransType<const CapeDatetime*>
+  {
+    static void add_cp (CapeUdc obj, const char* name, const CapeDatetime* value) { cape_udc_add_d (obj, name, value); }
+    static const CapeDatetime* as (CapeUdc obj, const CapeDatetime* dv = NULL) { return cape_udc_d (obj, dv); }
+  };
+
   template <> struct UdcTransType<std::string>
   {
     static void add_cp (CapeUdc obj, const char* name, const std::string& value) { cape_udc_add_s_cp (obj, name, value.c_str()); }

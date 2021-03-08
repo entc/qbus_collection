@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.4)
-
 SET(CMAKE_SKIP_RPATH TRUE)
 
 find_package (Python3 COMPONENTS Interpreter Development QUIET)

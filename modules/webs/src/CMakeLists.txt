@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.4)
-
 INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/qwebs/src" "../../../libs/qcrypt/src")
 
 #----------------------------------------------------------------------------------------

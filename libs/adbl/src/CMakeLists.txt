@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 2.4)
-
-SET(CMAKE_BUILD_TYPE Debug)
+#SET(CMAKE_BUILD_TYPE Debug)
 
 #----------------------------------------------------------------------------------
 
