@@ -312,8 +312,8 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-    let width = 100;
-    let height = 120;
+    let width = 60;
+    let height = 60;
 
     let dom_box = this.rd.createElement('div');
 

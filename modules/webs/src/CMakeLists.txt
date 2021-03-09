@@ -17,15 +17,11 @@ SET (QBUS_MODULES_WEBS_HEADERS
 
 ADD_EXECUTABLE (qbus_mod_webs ${QBUS_MODULES_WEBS_SOURCES} ${QBUS_MODULES_WEBS_HEADERS})
 TARGET_LINK_LIBRARIES(qbus_mod_webs qwebs qbus qcrypt)
-#TARGET_LINK_LIBRARIES(qbus_mod_webs cape qwebs qbus qbus_core qbus_engine_tcp qcrypt)
-
-# deprecated install path
-INSTALL (TARGETS qbus_mod_webs DESTINATION modules)
 
 # new install path
 INSTALL (TARGETS qbus_mod_webs DESTINATION mods)
 
 # set some symlinks for direct starting
-add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/webs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/webs.json)
+add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/base/webs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/webs.json)
 add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/dist ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/dist)
 add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/p_site ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/site)

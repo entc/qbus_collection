@@ -527,6 +527,18 @@ namespace cape
     
     //-----------------------------------------------------------------------------
     
+    void add (const char* name, CapeDatetime* value)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+      }
+      
+      cape_udc_add_d (m_obj, name, value);
+    }
+
+    //-----------------------------------------------------------------------------
+    
     template <typename S, typename T> void add (S const &name, T const &val)
     {
       if (m_obj == NULL)
