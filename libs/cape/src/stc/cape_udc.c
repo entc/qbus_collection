@@ -1134,6 +1134,301 @@ void cape_udc_put_b (CapeUdc self, const CapeString name, int val)
 
 //-----------------------------------------------------------------------------
 
+int cape_udc_cto_s (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_STRING:
+    {
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      // change the type
+      self->type = CAPE_UDC_STRING;
+      self->data = cape_str_n ((number_t)self->data);
+      
+      return TRUE;
+    }
+    case CAPE_UDC_BOOL:
+    {
+      // change the type
+      self->type = CAPE_UDC_STRING;
+      self->data = cape_str_n ((number_t)self->data);
+      
+      return TRUE;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      double* h = self->data;
+
+      // change type and set value
+      self->type = CAPE_UDC_STRING;
+      self->data = cape_str_f (*h);
+
+      CAPE_DEL (&h, double);
+
+      return TRUE;
+    }
+    case CAPE_UDC_DATETIME:
+    {
+      CapeDatetime* h = self->data;
+
+      // change type and set value
+      self->type = CAPE_UDC_STRING;
+      self->data = cape_datetime_s__std_msec (h);
+      
+      cape_datetime_del (&h);
+      
+      return TRUE;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_cto_n (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_NUMBER:
+    {
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_BOOL:
+    {
+      // change the type
+      self->type = CAPE_UDC_NUMBER;
+
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      double* h = self->data;
+
+      // change type and set value
+      self->type = CAPE_UDC_NUMBER;
+      self->data = (number_t)*h;
+      
+      CAPE_DEL (&h, double);
+
+      return TRUE;
+    }
+    case CAPE_UDC_DATETIME:
+    {
+      CapeDatetime* h = self->data;
+
+      // change type and set value
+      self->type = CAPE_UDC_NUMBER;
+      self->data = (number_t)cape_datetime_n__unix (h);  // convert into unix time (seconds since 1970)
+      
+      cape_datetime_del (&h);
+
+      return TRUE;
+    }
+    case CAPE_UDC_STRING:
+    {
+      char * pEnd;
+      number_t h = strtol (self->data, &pEnd, 10);
+      
+      if (pEnd)  // convertion was possible
+      {
+        // change the type
+        self->type = CAPE_UDC_NUMBER;
+        cape_str_del ((CapeString*)&(self->data));
+
+        self->data = h;
+        
+        return TRUE;
+      }
+      
+      break;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_cto_f (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_FLOAT:
+    {
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_NUMBER:
+    case CAPE_UDC_BOOL:
+    {
+      number_t h = (number_t)(self->data);
+
+      // change the type and allocate memory
+      self->type = CAPE_UDC_FLOAT;
+      self->data = CAPE_NEW (double);
+      
+      // set the value
+      *(double*)(self->data) = h;
+      
+      return TRUE;
+    }
+    case CAPE_UDC_DATETIME:
+    {
+      CapeDatetime* h = self->data;
+
+      // change the type and allocate memory
+      self->type = CAPE_UDC_FLOAT;
+      self->data = CAPE_NEW (double);
+
+      // set the value
+      *(double*)(self->data) = (double)cape_datetime_n__unix (h);  // convert into unix time (seconds since 1970)
+      
+      cape_datetime_del (&h);
+      
+      return TRUE;
+    }
+    case CAPE_UDC_STRING:
+    {
+      char * pEnd;
+      double h = strtod (self->data, &pEnd);  // try to convert
+      
+      if (pEnd)  // convertion was possible
+      {
+        // cleanup
+        cape_str_del ((CapeString*)&(self->data));
+
+        // change the type and allocate memory
+        self->type = CAPE_UDC_FLOAT;
+        self->data = CAPE_NEW (double);
+        
+        // set the value
+        *(double*)(self->data) = h;
+        
+        return TRUE;
+      }
+      
+      break;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_cto_b (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_BOOL:
+    {
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      number_t h = (number_t)(self->data);
+      
+      self->type = CAPE_UDC_BOOL;
+      self->data = (number_t)(h ? TRUE : FALSE);
+      
+      return TRUE;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      double* h = self->data;
+      
+      // change type and set value
+      self->type = CAPE_UDC_BOOL;
+      self->data = (number_t)(h == 0 ? FALSE : TRUE);
+      
+      CAPE_DEL (&h, double);
+      
+      return TRUE;
+    }
+    case CAPE_UDC_STRING:
+    {
+      if (cape_str_equal (self->data, "1"))
+      {
+        // cleanup
+        cape_str_del ((CapeString*)&(self->data));
+
+        // change type and set value
+        self->type = CAPE_UDC_BOOL;
+        self->data = TRUE;
+        
+        return TRUE;
+      }
+      else if (cape_str_equal (self->data, "0"))
+      {
+        // cleanup
+        cape_str_del ((CapeString*)&(self->data));
+        
+        // change type and set value
+        self->type = CAPE_UDC_BOOL;
+        self->data = FALSE;
+        
+        return TRUE;
+      }
+      
+      break;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_cto_d (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_DATETIME:
+    {
+      // we are fine here
+      return TRUE;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      number_t h = (number_t)(self->data);
+
+      // TODO: convert from time_t into DateTime object
+      
+      break;
+    }
+    case CAPE_UDC_STRING:
+    {
+      CapeDatetime dt;
+      
+      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
+      {
+        // cleanup
+        cape_str_del ((CapeString*)&(self->data));
+
+        // change type and set value
+        self->type = CAPE_UDC_DATETIME;
+        self->data = cape_datetime_cp (&dt);
+        
+        return TRUE;
+      }
+      
+      break;
+    }
+  }
+  
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_udc_get_first (CapeUdc self)
 {
   switch (self->type)

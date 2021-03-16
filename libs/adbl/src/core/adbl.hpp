@@ -55,7 +55,28 @@ namespace adbl {
       
       return CAPE_ERR_NONE;
     }
+
+    //-----------------------------------------------------------------------------
     
+    int init_ex (const CapeString backend, CapeErr err)
+    {
+      // create a new database context
+      m_ctx = adbl_ctx_new ("adbl", backend, err);
+      if (m_ctx == NULL)
+      {
+        return cape_err_code (err);
+      }
+      
+      // connect to database
+      m_session = adbl_session_open_file (m_ctx, "adbl_default.json", err);
+      if (m_session == NULL)
+      {
+        return cape_err_code (err);
+      }
+      
+      return CAPE_ERR_NONE;
+    }
+
     //-----------------------------------------------------------------------------
     
     cape::Udc query (const char* table, cape::Udc& values)
