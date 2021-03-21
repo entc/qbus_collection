@@ -1213,7 +1213,7 @@ int cape_udc_cto_n (CapeUdc self)
 
       // change type and set value
       self->type = CAPE_UDC_NUMBER;
-      self->data = (number_t)*h;
+      self->data = (void*)((number_t)*h);
       
       CAPE_DEL (&h, double);
 
@@ -1225,7 +1225,7 @@ int cape_udc_cto_n (CapeUdc self)
 
       // change type and set value
       self->type = CAPE_UDC_NUMBER;
-      self->data = (number_t)cape_datetime_n__unix (h);  // convert into unix time (seconds since 1970)
+      self->data = (void*)((number_t)cape_datetime_n__unix (h));  // convert into unix time (seconds since 1970)
       
       cape_datetime_del (&h);
 
@@ -1242,7 +1242,7 @@ int cape_udc_cto_n (CapeUdc self)
         self->type = CAPE_UDC_NUMBER;
         cape_str_del ((CapeString*)&(self->data));
 
-        self->data = h;
+        self->data = (void*)h;
         
         return TRUE;
       }
@@ -1337,7 +1337,7 @@ int cape_udc_cto_b (CapeUdc self)
       number_t h = (number_t)(self->data);
       
       self->type = CAPE_UDC_BOOL;
-      self->data = (number_t)(h ? TRUE : FALSE);
+      self->data = (void*)((number_t)(h ? TRUE : FALSE));
       
       return TRUE;
     }
@@ -1347,7 +1347,7 @@ int cape_udc_cto_b (CapeUdc self)
       
       // change type and set value
       self->type = CAPE_UDC_BOOL;
-      self->data = (number_t)(h == 0 ? FALSE : TRUE);
+      self->data = (void*)((number_t)(h == 0 ? FALSE : TRUE));
       
       CAPE_DEL (&h, double);
       
@@ -1362,7 +1362,7 @@ int cape_udc_cto_b (CapeUdc self)
 
         // change type and set value
         self->type = CAPE_UDC_BOOL;
-        self->data = TRUE;
+        self->data = (void*)TRUE;
         
         return TRUE;
       }
