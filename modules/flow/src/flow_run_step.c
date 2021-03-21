@@ -370,8 +370,9 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
   
   number_t syncid = 0;
   number_t wfid;
+  CapeString refid_name = NULL;
     
-  res = flow_run_dbw_xdata__split (dbw, &list, &wfid, err);
+  res = flow_run_dbw_xdata__split (dbw, &list, &wfid, &refid_name, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -395,9 +396,15 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
   cursor = cape_udc_cursor_new (list, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
+    number_t refid = 0;
     CapeUdc item = cape_udc_cursor_ext (list, cursor);
 
-    res = flow_run_dbw_inherit (dbw, wfid, syncid, &item, err);
+    if (refid_name)
+    {
+      refid = cape_udc_get_n (item, refid_name, 0);
+    }
+    
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, refid, &item, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -547,7 +554,7 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     // set state halt to commit all changes so far
     flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
 
-    res = flow_run_dbw_inherit (dbw, wfid, syncid, NULL, err);
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, 0, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -640,7 +647,7 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
     // set state halt to commit all changes so far
     flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
 
-    res = flow_run_dbw_inherit (dbw, wfid, syncid, NULL, err);
+    res = flow_run_dbw_inherit (dbw, wfid, syncid, 0, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;

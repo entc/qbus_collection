@@ -244,7 +244,7 @@ void flow_run_dbw_del (FlowRunDbw* p_self)
 
 //-----------------------------------------------------------------------------
 
-FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid)
+FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid, number_t refid)
 {
   FlowRunDbw self = CAPE_NEW(struct FlowRunDbw_s);
   
@@ -254,7 +254,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid)
   
   self->remote = cape_str_cp (rhs->remote);
   self->rinfo = cape_udc_cp (rhs->rinfo);
-  self->refid = rhs->refid;
+  self->refid = refid;
 
   self->wpid = rhs->wpid;
   self->psid = psid;
@@ -272,7 +272,20 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid)
   self->pdata = NULL;
   
   self->tdata_id = 0;
+  
+  // copy the tdata
   self->tdata = cape_udc_cp (rhs->tdata);
+
+  cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "clone", "clone a process with refid = %i", refid);
+  
+  if (self->tdata)
+  {
+    CapeUdc refid_node = cape_udc_ext (self->tdata, "refid");
+    
+    cape_udc_del (&refid_node);
+    
+    cape_udc_add_n (self->tdata, "refid", self->refid);
+  }
   
   /*
   self->vdata_id = 0;
@@ -1410,14 +1423,14 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, CapeUdc* p_params, CapeErr err)
+int flow_run_dbw_inherit (FlowRunDbw self, number_t wfid, number_t syncid, number_t refid, CapeUdc* p_params, CapeErr err)
 {
   int res;
   
   number_t psid;
   
   // local objects
-  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, self->psid, self->sqid);
+  FlowRunDbw dbw_cloned = flow_run_dbw_clone (self, self->psid, self->sqid, refid);
   AdblTrx trx = NULL;
   
   if (p_params)
@@ -1557,7 +1570,7 @@ int flow_run_dbw_sqt__syncid_children (FlowRunDbw self, number_t sequence_id, nu
     if (psid && (psid != from_child))
     {
       // clone the task with different psid and sequence ID
-      dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id);
+      dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id, self->refid);
       
       // load all data for the parent process
       res = flow_run_dbw__current_task_load (dbw_cloned, err);
@@ -1609,7 +1622,7 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     }
     
     // clone the task with different psid and sequence ID
-    dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id);
+    dbw_cloned = flow_run_dbw_clone (self, psid, sequence_id, self->refid);
 
     // load all data for the parent process
     res = flow_run_dbw__current_task_load (dbw_cloned, err);
@@ -1645,7 +1658,7 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run sqt", "change sequence ID of psid = %i and wfid = %i", self->psid, wfid);
 
     // clone the task with different sequence ID
-    dbw_cloned = flow_run_dbw_clone (self, self->psid, sequence_id);
+    dbw_cloned = flow_run_dbw_clone (self, self->psid, sequence_id, self->refid);
 
     trx = adbl_trx_new (self->adbl_session, err);
     if (NULL == trx)
@@ -1950,7 +1963,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfid, CapeErr err)
+int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfid, CapeString* p_refid_name, CapeErr err)
 {
   int res;
   
@@ -1965,7 +1978,7 @@ int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfi
   if (self->pdata)
   {
     list_node_name = cape_udc_get_s (self->pdata, "list_node", NULL);
-    //refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
+    refid_node_name = cape_udc_get_s (self->pdata, "refid_node", NULL);
     
     wfid = cape_udc_get_n (self->pdata, "wfid", 0);
   }
@@ -1996,6 +2009,11 @@ int flow_run_dbw_xdata__split (FlowRunDbw self, CapeUdc* p_list, number_t* p_wfi
   
   res = CAPE_ERR_NONE;
   
+  if (refid_node_name)
+  {
+    cape_str_replace_cp (p_refid_name, refid_node_name);
+  }
+
   cape_udc_replace_mv (p_list, &list);
   *p_wfid = wfid;
   

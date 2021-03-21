@@ -340,6 +340,19 @@ static int __STDCALL qbus_flow__chain__data (QBus qbus, void* ptr, QBusM qin, QB
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__log__get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowChain flow_chain = flow_chain_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return flow_chain_log (&flow_chain, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
   int res;
@@ -446,6 +459,13 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get data of the process chain
   //   args: psid
   qbus_register (qbus, "chain_data"          , ctx, qbus_flow__chain__data, NULL, err);
+
+  // -------- callback methods --------------------------------------------
+
+  // get the logs related to a refid
+  // -> this is using the internal instance table
+  //   args: refid
+  qbus_register (qbus, "log_get"             , ctx, qbus_flow__log__get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

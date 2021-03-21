@@ -673,3 +673,300 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+void __STDCALL flow_chain_log__logs__on_del (void* key, void* val)
+{
+  {
+    CapeUdc log_item = val;
+    cape_udc_del (&log_item);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_chain_log__append (CapeUdc item, CapeMap log_items, const CapeString lx_id, const CapeString tx_refid, const CapeString lx_state, const CapeString lx_pot, const CapeString lx_text, const CapeString wx_name, const CapeString wx_tag)
+{
+  number_t log_id = cape_udc_get_n (item, lx_id, 0);
+  if (log_id)
+  {
+    // check if the entry already exists
+    CapeMapNode n = cape_map_find (log_items, (void*)log_id);
+    if (n == NULL)
+    {
+      CapeUdc log_item = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n (log_item, "logid", log_id);
+      cape_udc_add_n (log_item, "refid", cape_udc_get_n (item, tx_refid, 0));
+      cape_udc_add_n (log_item, "state", cape_udc_get_n (item, lx_state, 0));
+      cape_udc_add_d (log_item, "pot", cape_udc_get_d (item, lx_pot, NULL));
+      
+      {
+        const CapeString h1 = cape_udc_get_s (item, lx_text, NULL);
+        if (h1)
+        {
+          CapeUdc h2 = cape_json_from_s (h1);
+          if (h2)
+          {
+            cape_udc_add_name (log_item, &h2, "log");
+          }
+        }
+      }
+      {
+        CapeString h1 = cape_udc_ext_s (item, wx_name);
+        if (h1)
+        {
+          cape_udc_add_s_mv (log_item, "step", &h1);
+        }
+      }
+      {
+        CapeString h1 = cape_udc_ext_s (item, wx_tag);
+        if (h1)
+        {
+          cape_udc_add_s_mv (log_item, "tag", &h1);
+        }
+      }
+
+      cape_map_insert (log_items, (void*)log_id, log_item);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void flow_chain_log__convert_to_cdata (CapeMap log_items, CapeUdc cdata)
+{
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_create (log_items, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    // transfer ownership
+    CapeUdc item = cape_map_node_value (cursor->node);
+    cape_map_node_set (cursor->node, NULL);
+
+    cape_udc_add (cdata, &item);
+  }
+  
+  cape_map_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_log__ps (FlowChain self, number_t psid, CapeUdc cdata, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  CapeMap log_items = NULL;
+
+  // get the psid's having the refid
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "t1_psid"          , psid);
+    
+    cape_udc_add_n      (values, "t1_refid"         , 0);
+    cape_udc_add_n      (values, "l1_id"            , 0);
+    cape_udc_add_d      (values, "l1_pot"           , NULL);
+    cape_udc_add_n      (values, "l1_state"         , 0);
+    cape_udc_add_s_cp   (values, "l1_text"          , NULL);
+    cape_udc_add_s_cp   (values, "w1_name"          , NULL);
+    cape_udc_add_s_cp   (values, "w1_tag"           , NULL);
+    cape_udc_add_n      (values, "t2_refid"         , 0);
+    cape_udc_add_n      (values, "l2_id"            , 0);
+    cape_udc_add_d      (values, "l2_pot"           , NULL);
+    cape_udc_add_n      (values, "l2_state"         , 0);
+    cape_udc_add_s_cp   (values, "l2_text"          , NULL);
+    cape_udc_add_s_cp   (values, "w2_name"          , NULL);
+    cape_udc_add_s_cp   (values, "w2_tag"           , NULL);
+    cape_udc_add_n      (values, "t3_refid"         , 0);
+    cape_udc_add_n      (values, "l3_id"            , 0);
+    cape_udc_add_d      (values, "l3_pot"           , NULL);
+    cape_udc_add_n      (values, "l3_state"         , 0);
+    cape_udc_add_s_cp   (values, "l3_text"          , NULL);
+    cape_udc_add_s_cp   (values, "w3_name"          , NULL);
+    cape_udc_add_s_cp   (values, "w3_tag"           , NULL);
+    cape_udc_add_n      (values, "t4_refid"         , 0);
+    cape_udc_add_n      (values, "l4_id"            , 0);
+    cape_udc_add_d      (values, "l4_pot"           , NULL);
+    cape_udc_add_n      (values, "l4_state"         , 0);
+    cape_udc_add_s_cp   (values, "l4_text"          , NULL);
+    cape_udc_add_s_cp   (values, "w4_name"          , NULL);
+    cape_udc_add_s_cp   (values, "w4_tag"           , NULL);
+    cape_udc_add_n      (values, "t5_refid"         , 0);
+    cape_udc_add_n      (values, "l5_id"            , 0);
+    cape_udc_add_d      (values, "l5_pot"           , NULL);
+    cape_udc_add_n      (values, "l5_state"         , 0);
+    cape_udc_add_s_cp   (values, "l5_text"          , NULL);
+    cape_udc_add_s_cp   (values, "w5_name"          , NULL);
+    cape_udc_add_s_cp   (values, "w5_tag"           , NULL);
+
+    /*
+     flow_log_view
+     
+     select
+     
+     t1.id t1_psid, t2.id t2_psid, t3.id t3_psid, t4.id t4_psid, t5.id t5_psid,
+     
+     t1.refid t1_refid, l1.id l1_id, l1.pot l1_pot, l1.state l1_state, l1.data l1_text,
+     t2.refid t2_refid, l2.id l2_id, l2.pot l2_pot, l2.state l2_state, l2.data l2_text,
+     t3.refid t3_refid, l3.id l3_id, l3.pot l3_pot, l3.state l3_state, l3.data l3_text,
+     t4.refid t4_refid, l4.id l4_id, l4.pot l4_pot, l4.state l4_state, l4.data l4_text,
+     t5.refid t5_refid, l5.id l5_id, l5.pot l5_pot, l5.state l5_state, l5.data l5_text,
+     
+     w1.name w1_name, w1.tag w1_tag,
+     w2.name w2_name, w2.tag w2_tag,
+     w3.name w3_name, w3.tag w3_tag,
+     w4.name w4_name, w4.tag w4_tag,
+     w5.name w5_name, w5.tag w5_tag
+
+     from proc_tasks t1 left join proc_task_sync s1 on s1.taid = t1.id left join proc_tasks t2 on t2.sync = s1.id left join proc_task_sync s2 on s2.taid = t2.id left join proc_tasks t3 on t3.sync = s2.id left join proc_task_sync s3 on s3.taid = t3.id left join proc_tasks t4 on t4.sync = s3.id left join proc_task_sync s4 on s4.taid = t4.id left join proc_tasks t5 on t5.sync = s4.id
+     
+     left join flow_log l1 on l1.psid = t1.id
+     left join flow_log l2 on l2.psid = t2.id
+     left join flow_log l3 on l3.psid = t3.id
+     left join flow_log l4 on l4.psid = t4.id
+     left join flow_log l5 on l5.psid = t5.id
+     
+     left join proc_worksteps w1 on w1.id = l1.wsid
+     left join proc_worksteps w2 on w2.id = l2.wsid
+     left join proc_worksteps w3 on w3.id = l3.wsid
+     left join proc_worksteps w4 on w4.id = l4.wsid
+     left join proc_worksteps w5 on w5.id = l5.wsid
+     ;
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_log_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // create a map to flatten the logs tree
+  log_items = cape_map_new (cape_map__compare__n, flow_chain_log__logs__on_del, NULL);
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  while (cape_udc_cursor_next (cursor))
+  {
+    flow_chain_log__append (cursor->item, log_items, "l1_id", "t1_refid", "l1_state", "l1_pot", "l1_text", "w1_name", "w1_tag");
+    flow_chain_log__append (cursor->item, log_items, "l2_id", "t2_refid", "l2_state", "l2_pot", "l2_text", "w2_name", "w2_tag");
+    flow_chain_log__append (cursor->item, log_items, "l3_id", "t3_refid", "l3_state", "l3_pot", "l3_text", "w3_name", "w3_tag");
+    flow_chain_log__append (cursor->item, log_items, "l4_id", "t4_refid", "l4_state", "l4_pot", "l4_text", "w4_name", "w4_tag");
+    flow_chain_log__append (cursor->item, log_items, "l5_id", "t5_refid", "l5_state", "l5_pot", "l5_text", "w5_name", "w5_tag");
+  }
+  
+  flow_chain_log__convert_to_cdata (log_items, cdata);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  cape_map_del (&log_items);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_chain_log (FlowChain* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowChain self = *p_self;
+  
+  number_t refid;
+  number_t gpid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  CapeUdc cdata = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing wpid");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing gpid");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "cdata is missing");
+    goto exit_and_cleanup;
+  }
+
+  refid = cape_udc_get_n (qin->cdata, "refid", 0);
+  if (refid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "refid is missing");
+    goto exit_and_cleanup;
+  }
+
+  // get the psid's having the refid
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "refid"            , refid);
+    cape_udc_add_n      (params, "wpid"             , self->wpid);
+    cape_udc_add_n      (params, "gpid"             , gpid);
+
+    cape_udc_add_n      (values, "psid"             , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_instance", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  // create the result structure
+  cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  while (cape_udc_cursor_next (cursor))
+  {
+    // continue with the process specific collecting
+    res = flow_chain_log__ps (self, cape_udc_get_n (cursor->item, "psid", 0), cdata, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &cdata);
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  cape_udc_del (&cdata);
+
+  flow_chain_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

@@ -38,7 +38,7 @@ __CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, C
 
 __CAPE_LOCAL   void         flow_run_dbw_del               (FlowRunDbw*);
 
-__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw, number_t psid, number_t sqid);
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_clone             (FlowRunDbw, number_t psid, number_t sqid, number_t refid);
 
 //-----------------------------------------------------------------------------
 // QBUS methods
@@ -53,7 +53,7 @@ __CAPE_LOCAL   int          flow_run_dbw_set               (FlowRunDbw*, number_
 __CAPE_LOCAL   int          flow_run_dbw_continue          (FlowRunDbw*, number_t action, CapeUdc* p_params, CapeErr err);
 
                             /* continue with the next process step */
-__CAPE_LOCAL   int          flow_run_dbw_inherit           (FlowRunDbw, number_t wfid, number_t syncid, CapeUdc* p_params, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_inherit           (FlowRunDbw, number_t wfid, number_t syncid, number_t refid, CapeUdc* p_params, CapeErr err);
 
                             /* change the sequence id of a process */
 __CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err);
@@ -88,7 +88,7 @@ __CAPE_LOCAL   void         flow_run_dbw_state_set         (FlowRunDbw, number_t
 __CAPE_LOCAL   int          flow_run_dbw_pdata__qbus         (FlowRunDbw, CapeString* module, CapeString* method, CapeUdc* p_cdata, CapeUdc* p_clist, CapeErr err);
 
                             /* retrieve a list with all splits */
-__CAPE_LOCAL   int          flow_run_dbw_xdata__split        (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_xdata__split        (FlowRunDbw, CapeUdc* list, number_t* wfid, CapeString* refid_name, CapeErr err);
 
                             /* retrieve all data for a switch */
 __CAPE_LOCAL   int          flow_run_dbw_xdata__switch       (FlowRunDbw, CapeString* p_value, CapeUdc* p_switch_node, CapeErr err);
