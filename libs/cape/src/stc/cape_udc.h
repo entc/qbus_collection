@@ -156,6 +156,25 @@ __CAPE_LIBEX   void                 cape_udc_put_b            (CapeUdc, const Ca
 
 //-----------------------------------------------------------------------------
 
+/* the following group of functions are converting the udc object into a specific type
+    -> depending on the original type a transmutation will be performed
+    -> at the moment only simple types are supported
+    -> the return value [TRUE|FALSE] indicates that the transmutation was possible
+       and has been performed
+ */
+
+__CAPE_LIBEX   int                  cape_udc_cto_s            (CapeUdc);  // into string
+
+__CAPE_LIBEX   int                  cape_udc_cto_n            (CapeUdc);  // into number
+
+__CAPE_LIBEX   int                  cape_udc_cto_f            (CapeUdc);  // into float
+
+__CAPE_LIBEX   int                  cape_udc_cto_b            (CapeUdc);  // into boolean
+
+__CAPE_LIBEX   int                  cape_udc_cto_d            (CapeUdc);  // into datetime
+
+//-----------------------------------------------------------------------------
+
 typedef struct
 {
   

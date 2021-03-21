@@ -611,7 +611,7 @@ int qjobs_rm (QJobs self, number_t jobid, CapeErr err)
     
     cape_udc_add_n (params, "id", jobid);
     
-    res = adbl_trx_delete (trx, "stat_report_jobs", &params, err);
+    res = adbl_trx_delete (trx, self->adbl_table, &params, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -624,7 +624,8 @@ int qjobs_rm (QJobs self, number_t jobid, CapeErr err)
 
 exit_and_cleanup:
   
-  adbl_trx_rollback (&trx, err);  
+  adbl_trx_rollback (&trx, err);
+  return res;
 }
 
 //-----------------------------------------------------------------------------

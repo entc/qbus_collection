@@ -72,6 +72,46 @@ export class QbngUploadComponent {
   }
 }
 
+//-----------------------------------------------------------------------------
+
+export class QbngUploadFile {
+
+  public file: File;
+  public header: string[];
+
+  public size_status: number;
+  public type_status: number;
+
+  constructor (file: File, mimes: string[], size_warn: number, size_max: number)
+  {
+    this.file = file;
+    this.type_status = 0;
+
+    if (mimes)
+    {
+      this.type_status = mimes.find (element => element == file.type) ? 1 : 2;
+    }
+
+    this.size_status = 0;
+
+    if (size_warn)
+    {
+      if (file.size > size_warn)
+      {
+        this.size_status = 1;
+      }
+    }
+
+    if (size_max)
+    {
+      if (file.size > size_max)
+      {
+        this.size_status = 2;
+      }
+    }
+  }
+}
+
 //=============================================================================
 
 @Component({
@@ -110,46 +150,5 @@ export class QbngUploadComponent {
     }
 
     return parseFloat (bytes.toFixed(2)) + ' ' + UNITS[index];
-  }
-
-}
-
-//-----------------------------------------------------------------------------
-
-export class QbngUploadFile {
-
-  public file: File;
-  public header: string[];
-
-  public size_status: number;
-  public type_status: number;
-
-  constructor (file: File, mimes: string[], size_warn: number, size_max: number)
-  {
-    this.file = file;
-    this.type_status = 0;
-
-    if (mimes)
-    {
-      this.type_status = mimes.find (element => element == file.type) ? 1 : 2;
-    }
-
-    this.size_status = 0;
-
-    if (size_warn)
-    {
-      if (file.size > size_warn)
-      {
-        this.size_status = 1;
-      }
-    }
-
-    if (size_max)
-    {
-      if (file.size > size_max)
-      {
-        this.size_status = 2;
-      }
-    }
   }
 }

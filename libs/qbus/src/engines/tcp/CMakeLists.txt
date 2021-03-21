@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 2.4)
-
 # abstract operation-system layer
 INCLUDE_DIRECTORIES("../../../cape/src" "../../core" "../../src")
 

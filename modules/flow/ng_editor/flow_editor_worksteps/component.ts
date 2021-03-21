@@ -222,15 +222,6 @@ export class FlowWorkstepsComponent implements OnInit
 
     });
   }
-
-  //-----------------------------------------------------------------------------
-
-/*
-  return_page ()
-  {
-    this.router.navigate(['../../flow_editor'], {relativeTo: this.route});
-  }
-*/
 }
 
 export class WidgetItem
