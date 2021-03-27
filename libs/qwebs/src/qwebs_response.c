@@ -562,3 +562,49 @@ void qwebs_response_redirect (CapeStream s, QWebs webs, const CapeString url)
 }
 
 //-----------------------------------------------------------------------------
+
+void qwebs_response_mp_init (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  // start with the header
+  cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
+  qwebs_response__internal__identification (s);
+
+  cape_stream_append_str (s, "Max-Age: 0\r\n");
+  cape_stream_append_str (s, "Expires: 0\r\n");
+  cape_stream_append_str (s, "Cache-Control: no-cache, private\r\n");
+  cape_stream_append_str (s, "Pragma: no-cache\r\n");
+  
+  cape_stream_append_str (s, "Content-Type: ");
+  cape_stream_append_str (s, mime);
+  cape_stream_append_str (s, "; boundary=--");
+  cape_stream_append_str (s, boundary);
+  cape_stream_append_str (s, "\r\n");
+  cape_stream_append_str (s, "\r\n");  
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_mp_part (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime, const char* bufdat, number_t buflen)
+{
+  // BEGIN
+  cape_stream_clr (s);
+  
+  cape_stream_append_str (s, "--");
+  cape_stream_append_str (s, boundary);
+  cape_stream_append_str (s, "\r\n");
+
+  cape_stream_append_str (s, "Content-Type: ");
+  cape_stream_append_str (s, mime);
+  cape_stream_append_str (s, "\r\n");
+
+  qwebs_response__internal__content_length (s, buflen);
+
+  cape_stream_append_buf (s, bufdat, buflen);
+
+  cape_stream_append_str (s, "\r\n");
+}
+
+//-----------------------------------------------------------------------------

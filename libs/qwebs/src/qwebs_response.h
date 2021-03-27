@@ -25,6 +25,10 @@ __CAPE_LIBEX   void      qwebs_response_err       (CapeStream s, QWebs webs, Cap
 
 __CAPE_LIBEX   void      qwebs_response_redirect  (CapeStream s, QWebs webs, const CapeString url);
 
+__CAPE_LIBEX   void      qwebs_response_mp_init   (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime);
+
+__CAPE_LIBEX   void      qwebs_response_mp_part   (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime, const char* bufdat, number_t buflen);
+
 //-----------------------------------------------------------------------------
 
 #endif

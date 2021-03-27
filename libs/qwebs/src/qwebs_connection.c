@@ -402,6 +402,30 @@ void qwebs_request_redirect (QWebsRequest* p_self, const CapeString url)
 
 //-----------------------------------------------------------------------------
 
+void qwebs_request_stream_init (QWebsRequest self, const CapeString boundary, const CapeString mime_type, CapeErr err)
+{
+  // local objects
+  CapeStream s = cape_stream_new ();
+
+  qwebs_response_mp_init (s, self->webs, boundary, mime_type);
+  
+  qwebs_connection_send (self->conn, &s);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_request_stream_buf (QWebsRequest self, const CapeString boundary, const char* bufdat, number_t buflen, const CapeString mime_type, CapeErr err)
+{
+  // local objects
+  CapeStream s = cape_stream_new ();
+  
+  qwebs_response_mp_part (s, self->webs, boundary, mime_type, bufdat, buflen);
+  
+  qwebs_connection_send (self->conn, &s);
+}
+
+//-----------------------------------------------------------------------------
+
 void qwebs_request_api (QWebsRequest* p_self)
 {
   int res;
