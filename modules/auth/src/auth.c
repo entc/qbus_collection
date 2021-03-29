@@ -217,6 +217,19 @@ static int __STDCALL qbus_auth_perm_code_set (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_perm_code_rm (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_perm_rm (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_vault_open (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -261,7 +274,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   ctx->adbl_session = adbl_session;
   
   ctx->vault = auth_vault_new ();
-  ctx->tokens = auth_tokens_new (ctx->adbl_session);
+  ctx->tokens = auth_tokens_new (ctx->adbl_session, ctx->vault);
   
   *p_ptr = ctx;
 
@@ -322,6 +335,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get a permanent token
   //   args: token, [code], [active]
   qbus_register (qbus, "perm_code_set"        , ctx, qbus_auth_perm_code_set, NULL, err);
+
+  // remove permanent token
+  //   args: token
+  qbus_register (qbus, "token_perm_rm"         , ctx, qbus_auth_perm_code_rm, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

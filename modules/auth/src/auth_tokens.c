@@ -7,6 +7,9 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
 
+// qcrypt includes
+#include <qcrypt.h>
+
 //-----------------------------------------------------------------------------
 
 typedef struct
@@ -41,15 +44,15 @@ static void __STDCALL auth_tokens__on_del (void* key, void* val)
 struct AuthTokens_s
 {
   CapeMap tokens;
-  
   CapeMutex mutex;
   
   AdblSession adbl_session;  // reference
+  AuthVault vault;           // reference
 };
 
 //-----------------------------------------------------------------------------
 
-AuthTokens auth_tokens_new (AdblSession adbl_session)
+AuthTokens auth_tokens_new (AdblSession adbl_session, AuthVault vault)
 {
   AuthTokens self = CAPE_NEW (struct AuthTokens_s);
   
@@ -57,6 +60,7 @@ AuthTokens auth_tokens_new (AdblSession adbl_session)
   self->mutex = cape_mutex_new ();
   
   self->adbl_session = adbl_session;
+  self->vault = vault;
 
   return self;
 }
@@ -257,7 +261,7 @@ int auth_tokens_rm (AuthTokens self, QBusM qin, QBusM qout, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
 {
   int res;
   CapeUdc results = NULL;
@@ -267,15 +271,15 @@ int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM 
   
   // return values
   cape_udc_add_s_cp   (params, "token"       , token);
-
+  
   // conditions
   cape_udc_add_n      (values, "userid"      , 0);
   cape_udc_add_n      (values, "wpid"        , 0);
-
+  
   // TODO: encrypt content
   cape_udc_add_node   (values, "content"     );
   cape_udc_add_n      (values, "ref"         , 0);
-
+  
   // execute the query
   results = adbl_session_query (self->adbl_session, "q5_tokens", &params, &values, err);
   if (results == NULL)
@@ -291,8 +295,8 @@ int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM 
     
     cape_str_del (&h);
   }
-
-
+  
+  
   {
     number_t userid;
     number_t wpid;
@@ -310,7 +314,7 @@ int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM 
       res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "token's userid is invalid");
       goto exit_and_cleanup;
     }
-
+    
     wpid = cape_udc_get_n (row, "wpid", 0);
     if (wpid == 0)
     {
@@ -334,16 +338,16 @@ int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM 
         cape_udc_replace_mv (&(qin->cdata), &content);
       }
     }
-  
+    
     {
       // not sure what happen with ref
       number_t ref = cape_udc_get_n (row, "ref", 0);
     }
-
+    
     {
       // use the rinfo classes
       AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, userid, wpid);
-
+      
       // fetch all rinfo from database
       res = auth_rinfo_get (&rinfo, qin, err);
       if (res)
@@ -356,6 +360,112 @@ int auth_tokens_fetch__database (AuthTokens self, const CapeString token, QBusM 
 exit_and_cleanup:
   
   cape_udc_del (&results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+{
+  int res;
+  
+  //res = auth_perm__helper__get (self->adbl_session, self->vault, qin, err);
+
+  
+  CapeUdc row;
+  number_t wpid;
+  const CapeString vsec;
+
+  // local objects
+  CapeUdc results = NULL;
+  CapeString token_hash = NULL;
+
+  token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (token_hash == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // return values
+    cape_udc_add_s_mv   (params, "token"       , &token_hash);
+    
+    cape_udc_add_n      (values, "wpid"        , 0);
+    cape_udc_add_s_cp   (values, "rinfo"       , NULL);
+    cape_udc_add_s_cp   (values, "cdata"       , NULL);
+    
+    // execute the query
+    results = adbl_session_query (self->adbl_session, "auth_perm", &params, &values, err);
+    if (results == NULL)
+    {
+      // try the old way using the q5_tokens table
+      res = auth_tokens_fetch__database_q5 (self, token, qin, err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  row = cape_udc_get_first (results);
+  if (row == NULL)
+  {
+    // try the old way using the q5_tokens table
+    res = auth_tokens_fetch__database_q5 (self, token, qin, err);
+    goto exit_and_cleanup;
+  }
+
+  wpid = cape_udc_get_n (row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "token's wpid is invalid");
+    goto exit_and_cleanup;
+  }
+
+  // get the workspace encryption key
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "vsec was not set for this workspace");
+    goto exit_and_cleanup;
+  }
+
+  res = qcrypt__decrypt_row_node (vsec, row, "rinfo", err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = qcrypt__decrypt_row_node (vsec, row, "cdata", err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // replace rinfo
+  {
+    CapeUdc h = cape_udc_ext (row, "rinfo");
+    
+    cape_udc_replace_mv (&(qin->rinfo), &h);
+  }
+
+  // replace cdata
+  {
+    CapeUdc h = cape_udc_ext (row, "cdata");
+    
+    cape_udc_replace_mv (&(qin->cdata), &h);
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "tokens fetch", "found token in perm repo");
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&token_hash);
+  cape_udc_del (&results);
+
   return res;
 }
 
@@ -394,7 +504,7 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeE
   }
   else
   {
-    return auth_tokens_fetch__database (self, token, qin, err);
+    return auth_tokens_fetch__database_perm (self, token, qin, err);
   }
 }
 

@@ -1,6 +1,8 @@
 #ifndef __AUTH__TOKENS__H
 #define __AUTH__TOKENS__H 1
 
+#include "auth_vault.h"
+
 #include "sys/cape_export.h"
 #include "sys/cape_types.h"
 
@@ -16,7 +18,7 @@ struct AuthTokens_s; typedef struct AuthTokens_s* AuthTokens;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthTokens   auth_tokens_new       (AdblSession adbl_session);
+__CAPE_LIBEX   AuthTokens   auth_tokens_new       (AdblSession adbl_session, AuthVault vault);
 
 __CAPE_LIBEX   void         auth_tokens_del       (AuthTokens*);
 
