@@ -328,7 +328,15 @@ CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
       int cmp = self->cmp_fct (key, p->key, self->cmp_ptr);      
       if (cmp == 0)
       {
-        cape_log_fmt (CAPE_LL_WARN, "CAPE", "map insert", "key already exists '%s'", (char*)p->key);
+        if (self->cmp_fct == cape_map__compare__s)
+        {
+          cape_log_fmt (CAPE_LL_WARN, "CAPE", "map insert", "key already exists '%s'", (char*)p->key);
+        }
+        else
+        {
+          cape_log_msg (CAPE_LL_WARN, "CAPE", "map insert", "key already exists");
+        }
+        
         return p;
       }
       

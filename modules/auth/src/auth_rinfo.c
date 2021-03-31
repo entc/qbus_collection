@@ -225,7 +225,7 @@ int auth_rinfo__user_roles (AuthRInfo self, CapeUdc roles, CapeErr err)
       if (name)
       {
         // todo: extend here to usefull values
-        cape_udc_add_s_cp (roles, name, "role");
+        cape_udc_put_s_cp (roles, name, "role");
       }
     }
     
@@ -267,7 +267,7 @@ int auth_rinfo__workspace_roles (AuthRInfo self, CapeUdc cdata, CapeErr err)
       if (name)
       {
         // todo: extend here to usefull values
-        cape_udc_add_s_cp (cdata, name, "role");
+        cape_udc_put_s_cp (cdata, name, "role");
       }
     }
     

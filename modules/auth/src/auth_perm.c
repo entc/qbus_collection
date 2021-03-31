@@ -298,12 +298,12 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_perm__intern__decrypt (AuthPerm self, CapeUdc row, CapeErr err)
+int auth_perm__intern__decrypt (AuthVault vault, CapeUdc row, number_t wpid, CapeErr err)
 {
   int res;
   const CapeString vsec;
   
-  vsec = auth_vault__vsec (self->vault, self->wpid);
+  vsec = auth_vault__vsec (vault, wpid);
   if (vsec == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
@@ -478,22 +478,25 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
-  AuthPerm self = *p_self;
   
   CapeUdc first_row;
   const CapeString token;
   const CapeString code;
   number_t code_active;
-
+  number_t wpid;
+  
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc rinfo = NULL;
   CapeUdc cdata = NULL;
   int remove_roles = FALSE;
-
+  
+  CapeString token_hash = NULL;
+  CapeString code_hash = NULL;
+  
   if (qin->pdata == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
@@ -507,20 +510,20 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
-  if (self->token == NULL)
+  token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (token_hash == NULL)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-
-  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm get", "seek token = %s", self->token);
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm get", "seek token = %s", self->token);
   
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_s_cp   (params, "token"         , self->token);
+    cape_udc_add_s_cp   (params, "token"         , token_hash);
     cape_udc_add_n      (values, "wpid"          , 0);
     cape_udc_add_s_cp   (values, "code"          , NULL);
     cape_udc_add_n      (values, "code_active"   , 0);
@@ -528,14 +531,14 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp   (values, "cdata"         , NULL);
     
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "auth_perm", &params, &values, err);
+    query_results = adbl_session_query (adbl_session, "auth_perm", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }
-
+  
   first_row = cape_udc_get_first (query_results);
   if (first_row == NULL)
   {
@@ -544,8 +547,13 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   // get the workspace ID
-  self->wpid = cape_udc_get_n (first_row, "wpid", 0);
-
+  wpid = cape_udc_get_n (first_row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "wpid not found");
+    goto exit_and_cleanup;
+  }
+  
   // get active code status
   code_active = cape_udc_get_n (first_row, "code_active", 0);
   
@@ -570,14 +578,14 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
     else
     {
-      self->code = qcrypt__hash_sha256__hex_o (code, cape_str_size(code), err);
-      if (self->code == NULL)
+      code_hash = qcrypt__hash_sha256__hex_o (code, cape_str_size(code), err);
+      if (code_hash == NULL)
       {
         res = cape_err_code (err);
         goto exit_and_cleanup;
       }
       
-      if (!cape_str_equal (self->code, cape_udc_get_s (first_row, "code", NULL)))
+      if (!cape_str_equal (code_hash, cape_udc_get_s (first_row, "code", NULL)))
       {
         res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code mismatch");
         goto exit_and_cleanup;
@@ -585,7 +593,7 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  res = auth_perm__intern__decrypt (self, first_row, err);
+  res = auth_perm__intern__decrypt (vault, first_row, wpid, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -617,7 +625,21 @@ exit_and_cleanup:
   cape_udc_del (&query_results);
   cape_udc_del (&rinfo);
   cape_udc_del (&cdata);
+  cape_str_del (&token_hash);
+  cape_str_del (&code_hash);
+  
+  return res;
+}
 
+//-----------------------------------------------------------------------------
+
+int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+  
   auth_perm_del (p_self);
   return res;
 }
@@ -727,6 +749,73 @@ exit_and_cleanup:
   adbl_trx_rollback (&trx, err);
   
   cape_str_del (&hash);
+
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm_rm (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  const CapeString token;
+
+  // local objects
+  AdblTrx trx = NULL;
+
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
+    goto exit_and_cleanup;
+  }
+  
+  token = cape_udc_get_s (qin->pdata, "token", NULL);
+  if (token == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing token");
+    goto exit_and_cleanup;
+  }
+
+  // create the hash of the token
+  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (self->token == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_s_mv (params, "token", &(self->token));
+    
+    res = adbl_trx_delete (trx, "auth_perm", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&trx, err);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm rm", "token was removed");
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
 
   auth_perm_del (p_self);
   return res;

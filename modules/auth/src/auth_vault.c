@@ -184,7 +184,7 @@ int auth_vault_get (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_udc_add_s_cp (qout->cdata, "secret", secret);
     
-    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault get", "returned secret for wpid (%i)", wpid);
+    //cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault get", "returned secret for wpid (%i)", wpid);
 
     return CAPE_ERR_NONE;
   }
