@@ -13,7 +13,8 @@
       </div>
 
     </li>
-    <li class="list-group-item">step: {{data.current_step}}</li>
+    <li class="list-group-item">psid: {{psid}}</li>
+    <li class="list-group-item">step: {{wsid}}</li>
     <li class="list-group-item">parent sync id: {{data.sync_pa_id}}</li>
     <li class="list-group-item">parent sync counter: {{data.sync_pa_cnt}}</li>
     <li class="list-group-item">parent sync wsid: {{data.sync_pa_wsid}}</li>
@@ -35,7 +36,7 @@
 
   <button (click)="rerun_step ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-play-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNSTEP' | transloco }}</button>
   <button (click)="rerun_once ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-dot-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNONCE' | transloco }}</button>
-  <button (click)="prev_step ()" class="btn btn-outline-secondary btn-sm mr-2"><i class="fas fa-arrow-alt-circle-up"></i>&nbsp;&nbsp;{{ 'FLOW.PREVSTEP' | transloco }}</button>
+  <button (click)="set_step ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-play-circle"></i>&nbsp;&nbsp;{{ 'FLOW.SETSTEP' | transloco }}</button>
 
 </div>
 <div class="modal-footer">

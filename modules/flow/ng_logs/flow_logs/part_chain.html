@@ -1,6 +1,9 @@
 <ul class="timeline">
   <li *ngFor="let log of logs">
 
+    <div class="timeline-badge info" *ngIf="log.state == 5" (click)="open_process_modal (log)">
+      <i class="fas fa-question"></i>
+    </div>
     <div class="timeline-badge danger" *ngIf="log.state == 4" (click)="open_process_modal (log)">
       <i class="fas fa-times"></i>
     </div>
@@ -53,7 +56,7 @@
       <div class="mt-4" *ngIf="log.logs">
         <div class="timeline-body mt-2">
 
-          <flow-chain [logs]="log.logs" (refresh)="refresh_apply()"></flow-chain>
+          <flow-chain [logs]="log.logs" (refresh)="refresh_apply()" [tools]="tools"></flow-chain>
 
         </div>
       </div>

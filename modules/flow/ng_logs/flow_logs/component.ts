@@ -143,6 +143,7 @@ export class FlowLogsComponent implements OnInit
 class ChainItem
 {
   psid: number;
+  wsid: number;
   name: string;
   logs: ChainItem[];
   fctid: number;
@@ -199,6 +200,7 @@ export class FlowChainComponent implements OnInit
       var details: FlowDetails = new FlowDetails;
 
       details.psid = item.psid;
+      details.wsid = item.wsid;
 
       this.modalService.open (FlowLogDetailsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: FlowDetails, useValue: details}])}).result.then((result) => {
 
@@ -226,6 +228,7 @@ export class FlowChainComponent implements OnInit
 export class FlowDetails
 {
   psid: number;
+  wsid: number;
 }
 
 export class FlowDetailsItem
@@ -252,20 +255,22 @@ export class FlowDetailsItem
 }) export class FlowLogDetailsModalComponent implements OnInit {
 
   public data: FlowDetailsItem;
-  private psid: number;
+  public psid: number;
+  public wsid: number;
 
   //---------------------------------------------------------------------------
 
   constructor (private auth_service: AuthService, public modal: NgbActiveModal, private details: FlowDetails)
   {
     this.psid = details.psid;
+    this.wsid = details.wsid;
   }
 
   //---------------------------------------------------------------------------
 
   ngOnInit()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_details', {'psid': this.psid}).subscribe((data: FlowDetailsItem) => {
+    this.auth_service.json_rpc ('FLOW', 'process_details', {psid: this.psid}).subscribe((data: FlowDetailsItem) => {
 
       this.data = data;
       this.data.tdata_text = JSON.stringify(this.data.tdata);
@@ -277,7 +282,7 @@ export class FlowDetailsItem
 
   rerun_step ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_set', {'psid': this.psid}).subscribe(() => {
+    this.auth_service.json_rpc ('FLOW', 'process_set', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);
       console.log('set step done');
@@ -289,7 +294,7 @@ export class FlowDetailsItem
 
   rerun_once ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_once', {'psid': this.psid}).subscribe(() => {
+    this.auth_service.json_rpc ('FLOW', 'process_once', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);
 
@@ -298,11 +303,9 @@ export class FlowDetailsItem
 
   //-----------------------------------------------------------------------------
 
-  prev_step ()
+  set_step ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_prev', {'psid': this.psid}).subscribe(() => {
-
-    //  this.refresh.emit (true);
+    this.auth_service.json_rpc ('FLOW', 'process_step', {psid: this.psid, wsid: this.wsid}).subscribe(() => {
 
     });
   }
