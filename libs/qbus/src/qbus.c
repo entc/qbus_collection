@@ -811,10 +811,14 @@ int qbus_config_b (QBus self, const char* name, int default_val)
 void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, int argc, char *argv[])
 {
   int res = CAPE_ERR_NONE;
+
+  const CapeString module_name;
+  
+  // local objects
   CapeErr err = cape_err_new ();
   CapeFileLog log = NULL;
 
-  QBus qbus = qbus_new (name);
+  QBus qbus = NULL;
 
   CapeUdc bind = NULL;
   CapeUdc remotes = NULL;
@@ -837,19 +841,26 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     goto exit_and_cleanup;
   }
   
-  // load config
-  qbus_config_load (qbus);
+  // convert program arguments into a node with parameters
+  args = cape_args_from_args (argc, argv, NULL);
+
+  // replace name from the parameters
+  module_name = cape_udc_get_s (args, "n", name);
+  
+  // start a new qbus instance
+  qbus = qbus_new (module_name);
   
   // create params
   params = cape_udc_new (CAPE_UDC_NODE, NULL);
   
-  // convert program arguments into a node with parameters 
-  args = cape_args_from_args (argc, argv, NULL);
   if (args)
   {
     cape_udc_merge_mv (params, &args);  
   }
   
+  // load config
+  qbus_config_load (qbus);
+
   if (qbus->config)
   {
     cape_udc_merge_cp (params, qbus->config);  
