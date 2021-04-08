@@ -103,8 +103,8 @@ CapeUdc flow_data_get (AdblSession adbl_session, number_t dataid, CapeErr err)
     
     cape_udc_add_n      (params, "id"            , dataid);
 
-    // default size is 4000 -> increase to 10000 bytes
-    cape_udc_add_s_cp   (values, "content"       , "{\"size\": 10000}");
+    // default size is 4000 -> increase to 20000 bytes
+    cape_udc_add_s_cp   (values, "content"       , "{\"size\": 20000}");
 
     // execute the query
     query_results = adbl_session_query (adbl_session, "proc_data", &params, &values, err);

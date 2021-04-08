@@ -374,8 +374,8 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_f      (values, "time_passed"      , .0);
     cape_udc_add_list   (values, "sections"         );
 
-    // default size is 4000 -> increase to 10000 bytes
-    cape_udc_add_s_cp   (values, "rdata"          , "{\"size\": 10000}");
+    // default size is 4000 -> increase to 20000 bytes
+    cape_udc_add_s_cp   (values, "rdata"          , "{\"size\": 20000}");
 
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "flow_run_get_view", &params, &values, err);

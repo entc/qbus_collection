@@ -1043,7 +1043,7 @@ int flow_process_details (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr er
     cape_udc_add_n      (values, "sync_ci_cnt"    , 0);
     cape_udc_add_n      (values, "sync_ci_wsid"   , 0);
 
-    cape_udc_add_node   (values, "tdata"          );
+    cape_udc_add_s_cp   (values, "tdata"          , "{\"size\": 20000}");
     cape_udc_add_node   (values, "pdata"          );
     
     /*
@@ -1064,6 +1064,24 @@ int flow_process_details (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr er
   {
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
     goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc tdata_node = cape_udc_ext (first_row, "tdata");
+    if (tdata_node)
+    {
+      const CapeString h1 = cape_udc_s (tdata_node, NULL);
+      if (h1)
+      {
+        CapeUdc h2 = cape_json_from_s (h1);
+        if (h2)
+        {
+          cape_udc_add_name (first_row, &h2, "tdata");
+        }
+      }
+      
+      cape_udc_del (&tdata_node);
+    }
   }
   
   /*
