@@ -5,6 +5,7 @@
 #include "auth_vault.h"
 #include "auth_tokens.h"
 #include "auth_perm.h"
+#include "auth_session.h"
 
 #include <adbl.h>
 
@@ -230,6 +231,32 @@ static int __STDCALL qbus_auth_perm_code_rm (QBus qbus, void* ptr, QBusM qin, QB
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_session_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthSession auth_session = auth_session_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_session_add (&auth_session, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_session_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthSession auth_session = auth_session_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_session_get (&auth_session, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_vault_open (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -338,7 +365,17 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // remove permanent token
   //   args: token
-  qbus_register (qbus, "token_perm_rm"         , ctx, qbus_auth_perm_code_rm, NULL, err);
+  qbus_register (qbus, "token_perm_rm"        , ctx, qbus_auth_perm_code_rm, NULL, err);
+
+  // -------- callback methods --------------------------------------------
+
+  // create a new session if the credentials were correct
+  //   args:
+  qbus_register (qbus, "session_add"          , ctx, qbus_session_add, NULL, err);
+
+  // returns rinfo with a valid session token
+  //   args: token
+  qbus_register (qbus, "session_get"          , ctx, qbus_session_get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 
