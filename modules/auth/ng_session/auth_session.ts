@@ -50,7 +50,7 @@ export class AuthSession
 
     this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID))});
 
-    this.roles = new BehaviorSubject({});
+    this.roles = new BehaviorSubject(null);
 
     // get the last update timestamp
     let vp = Number(sessionStorage.getItem (SESSION_STORAGE_VP));
@@ -97,7 +97,34 @@ export class AuthSession
   public disable (): void
   {
     this.storage_clear ();
-    this.roles.next ({});
+    this.roles.next (null);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public contains_role__or (roles: object, permissions: string[]): boolean
+  {
+    if (roles && Array.isArray (permissions))
+    {
+      // if we don't have any entries it shall alwasy return true
+      // -> this can be used to activate / deactivate parts depending
+      // -> on the roles existenz only
+      if (permissions.length == 0)
+      {
+        return true;
+      }
+
+      // check if permissions are in the roles
+      for (var i in permissions)
+      {
+        if (roles [permissions[i]] != undefined)
+        {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   //---------------------------------------------------------------------------
@@ -199,6 +226,24 @@ export class AuthSession
     }
 
     return this.handle_error_session<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), header));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public rest_GET<T> (path: string, params: object): Observable<T>
+  {
+    var header: object;
+
+    if (this.session_token)
+    {
+      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + this.session_token})};
+    }
+    else
+    {
+      header = {};
+    }
+
+    return this.handle_error_session<T> (this.http.get<T>('rest/' + path, header));
   }
 
   //---------------------------------------------------------------------------
@@ -546,3 +591,5 @@ export class AuthSessionComponentDirective {
   }
 
 }
+
+//=============================================================================

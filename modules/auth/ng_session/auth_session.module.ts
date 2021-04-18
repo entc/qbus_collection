@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { TrloModule } from '@qbus/trlo.module';
 import { HttpClientModule } from '@angular/common/http';
 import { AuthSession, AuthSessionLoginModalComponent, AuthWorkspacesModalComponent, AuthSessionComponentDirective, AuthSessionLoginComponent } from '@qbus/auth_session';
-import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './component';
+import { AuthSessionMenuComponent, AuthSessionInfoModalComponent, AuthSessionRoleDirective } from './component';
+import { AuthSessionGuard } from '@qbus/auth_session/route';
 
 @NgModule({
   declarations: [
@@ -13,10 +14,12 @@ import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './compo
     AuthSessionMenuComponent,
     AuthSessionComponentDirective,
     AuthSessionLoginComponent,
-    AuthSessionInfoModalComponent
+    AuthSessionInfoModalComponent,
+    AuthSessionRoleDirective
   ],
   providers: [
-    AuthSession
+    AuthSession,
+    AuthSessionGuard
   ],
   imports: [
     CommonModule,
@@ -31,7 +34,8 @@ import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './compo
     AuthSessionInfoModalComponent
   ],
   exports: [
-    AuthSessionMenuComponent
+    AuthSessionMenuComponent,
+    AuthSessionRoleDirective
   ]
 })
 export class AuthSessionModule

@@ -1,4 +1,4 @@
-import { Component, EventEmitter } from '@angular/core';
+import { Component, EventEmitter, Directive, Input, ElementRef, TemplateRef, ViewContainerRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject } from 'rxjs';
@@ -131,3 +131,49 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
     this.mode = 0;
   }
 }
+
+//=============================================================================
+
+@Directive({
+  selector: '[authSessionRole]'
+})
+export class AuthSessionRoleDirective {
+
+  private permissions: Array<string>;
+  private roles: object;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_session: AuthSession, private element: ElementRef, private templateRef: TemplateRef<any>, private viewContainer: ViewContainerRef)
+  {
+    this.auth_session.roles.subscribe ((roles: object) => {
+
+      this.roles = roles;
+      this.updateView ();
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  @Input () set authSessionRole (val: Array<string>)
+  {
+    this.permissions = val;
+    this.updateView ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private updateView ()
+  {
+    if (this.auth_session.contains_role__or (this.roles, this.permissions))
+    {
+      this.viewContainer.createEmbeddedView(this.templateRef);
+    }
+    else
+    {
+      this.viewContainer.clear();
+    }
+  }
+}
+
+//=============================================================================
