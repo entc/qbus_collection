@@ -61,6 +61,8 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthSession self = *p_self;
   
+  number_t vp = 600;   // 10 minutes
+  
   // local objects
   CapeString session_token = cape_str_uuid ();
   CapeString session_token_hash = NULL;
@@ -116,7 +118,6 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 
     cape_udc_add_d      (values, "lt"          , NULL);
     cape_udc_add_d      (values, "lu"          , NULL);
-    cape_udc_add_n      (values, "vp"          , 0);
 
     /*
      auth_sessions_wp_view
@@ -197,7 +198,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
       cape_udc_add_d (values, "lu", &dt);
     }
 
-    cape_udc_add_n      (values, "vp"            , 60);
+    cape_udc_add_n      (values, "vp"            , vp);
 
     cape_udc_add_s_mv   (values, "rinfo"         , &h2);
 
@@ -246,6 +247,9 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_n      (first_row, "wpid"        , self->wpid);
   cape_udc_add_n      (first_row, "gpid"        , self->gpid);
   
+  // set the vp
+  cape_udc_add_n (first_row, "vp", vp);
+  
   res = CAPE_ERR_NONE;
   adbl_trx_commit (&trx, err);
 
@@ -271,6 +275,52 @@ exit_and_cleanup:
   cape_str_del (&h2);
 
   auth_session_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_session_get__update (AuthSession self, number_t session_id, CapeErr err)
+{
+  int res;
+
+  // local objects
+  AdblTrx trx = NULL;
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n   (params, "id"           , session_id);
+    
+    {
+      CapeDatetime dt; cape_datetime_utc (&dt);
+      cape_udc_add_d (values, "lu", &dt);
+    }
+
+    // execute query
+    res = adbl_trx_update (trx, "auth_sessions", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
   return res;
 }
 
@@ -318,6 +368,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_s_mv   (params, "token"         , &session_token_hash);
+    cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_d      (values, "lu"            , NULL);
     cape_udc_add_n      (values, "vp"            , 0);
     cape_udc_add_n      (values, "wpid"          , 0);
@@ -400,6 +451,12 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   if (h1 == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "can't decrypt rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_session_get__update (self, cape_udc_get_n (first_row, "id", 0), err);
+  if (res)
+  {
     goto exit_and_cleanup;
   }
 
