@@ -498,29 +498,50 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
     
     if (cape_tokenizer_split (self->auth, ' ', &auth_type, &auth_cont))
     {
-      int res;
-      
-      QBusM msg = qbus_message_new (NULL, NULL);
-      
-      //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
-
-      qbus_message_clr (msg, CAPE_UDC_NODE);
-      
-      cape_udc_add_s_cp (msg->cdata, "type", auth_type);
-      
-      // content needs to be base64 encrypted
+      if (cape_str_equal (auth_type, "Bearer"))
       {
-        CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
-        cape_udc_add_s_mv (msg->cdata, "content", &h);
+        int res;
+        
+        QBusM msg = qbus_message_new (NULL, NULL);
+        
+        qbus_message_clr (msg, CAPE_UDC_UNDEFINED);
+
+        msg->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+        
+        cape_udc_add_s_cp (msg->pdata, "token", auth_cont);
+        
+        res = qbus_send (self->qbus, "AUTH", "session_get", msg, self, qbus_webs__auth__on_ui, err);
+        
+        qbus_message_del (&msg);
+        
+        *p_self = NULL;
+        return CAPE_ERR_CONTINUE;
       }
-      
-      res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
-      
-      qbus_message_del (&msg);
-      
-      *p_self = NULL;
-      
-      return CAPE_ERR_CONTINUE;
+      else
+      {
+        int res;
+        
+        QBusM msg = qbus_message_new (NULL, NULL);
+        
+        //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
+        
+        qbus_message_clr (msg, CAPE_UDC_NODE);
+        
+        cape_udc_add_s_cp (msg->cdata, "type", auth_type);
+        
+        // content needs to be base64 encrypted
+        {
+          CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
+          cape_udc_add_s_mv (msg->cdata, "content", &h);
+        }
+        
+        res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
+        
+        qbus_message_del (&msg);
+        
+        *p_self = NULL;
+        return CAPE_ERR_CONTINUE;
+      }
     }
   }
   else if (self->extra_token_t)

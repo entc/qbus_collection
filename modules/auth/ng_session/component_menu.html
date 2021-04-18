@@ -1,0 +1,12 @@
+<div *ngIf="(session | async)?.token; else elseBlock">
+  <button (click)="open_info ()" type="button" class="btn btn-sm btn-outline-primary">
+    <i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ (session | async)?.workspace }}&nbsp;&nbsp;
+    /&nbsp;&nbsp;<i class="fa fa-user"></i>&nbsp;&nbsp;{{ (session | async)?.firstname }}&nbsp;{{ (session | async)?.lastname }}
+    /&nbsp;&nbsp;<i class="fa fa-stopwatch"></i>&nbsp;&nbsp;{{ticks}}s
+  </button>
+</div>
+<ng-template #elseBlock>
+  <button (click)="login ()" type="button" class="btn btn-sm btn-outline-primary">
+    <i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN' | transloco }}
+  </button>
+</ng-template>

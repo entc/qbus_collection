@@ -1,0 +1,15 @@
+<div class="modal-header">
+  <div class="modal-title">
+    <strong><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN_MODAL' | transloco }}</strong>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="modal.dismiss()"><i class="fa fa-times"></i></button>
+</div>
+<div class="modal-body">
+
+  <auth-session-component (onClose)="modal.close()"></auth-session-component>
+
+</div>
+<!--
+<div class="modal-footer">
+</div>
+-->
