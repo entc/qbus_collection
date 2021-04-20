@@ -175,6 +175,12 @@ __CAPE_LIBEX   int                  cape_udc_cto_d            (CapeUdc);  // int
 
 //-----------------------------------------------------------------------------
 
+typedef int (__STDCALL *fct_cape_udc__on_compare) (CapeUdc obj1, CapeUdc obj2);
+
+__CAPE_LIBEX   void                 cape_udc_sort_list        (CapeUdc, fct_cape_udc__on_compare);
+
+//-----------------------------------------------------------------------------
+
 typedef struct
 {
   

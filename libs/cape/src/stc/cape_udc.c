@@ -1894,3 +1894,17 @@ void cape_udc_print (const CapeUdc self)
 }
 
 //-----------------------------------------------------------------------------
+
+void cape_udc_sort_list (CapeUdc self, fct_cape_udc__on_compare on_compare)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_LIST:
+    {
+      cape_list_sort (self->data, (fct_cape_list_onCompare)on_compare);
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
