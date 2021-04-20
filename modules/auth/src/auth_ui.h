@@ -13,6 +13,7 @@
 
 // module includes
 #include "auth_tokens.h"
+#include "auth_vault.h"
 
 //-----------------------------------------------------------------------------
 
@@ -20,7 +21,7 @@ struct AuthUI_s; typedef struct AuthUI_s* AuthUI;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthUI  auth_ui_new        (AdblSession adbl_session, AuthTokens tokens);
+__CAPE_LIBEX   AuthUI  auth_ui_new        (AdblSession adbl_session, AuthTokens tokens, AuthVault vault);
 
 __CAPE_LIBEX   void    auth_ui_del        (AuthUI*);
 

@@ -104,7 +104,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
           bind->buffer_type = MYSQL_TYPE_STRING;
           bind->buffer = (char*)h;
           bind->buffer_length = strlen (h);
-          bind->is_null = 0;
+          bind->is_null = NULL;
           bind->length = 0;
           bind->error = 0;
         }
@@ -113,7 +113,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
           bind->buffer_type = MYSQL_TYPE_STRING;
           bind->buffer = NULL;
           bind->buffer_length = 0;
-          bind->is_null = 1;
+          bind->is_null = NULL;
           bind->length = 0;
           bind->error = 0;
         }
@@ -132,7 +132,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         bind->buffer_type = MYSQL_TYPE_LONGLONG;
         bind->buffer = cape_udc_data (item);
         bind->buffer_length = 0;
-        bind->is_null = 0;
+        bind->is_null = NULL;
         bind->length = 0;
         bind->error = 0; 
         bind->is_unsigned = 0;
@@ -151,7 +151,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         bind->buffer_type = MYSQL_TYPE_DOUBLE;
         bind->buffer = cape_udc_data (item);
         bind->buffer_length = 0;
-        bind->is_null = 0;
+        bind->is_null = NULL;
         bind->length = 0;
         bind->error = 0; 
         bind->is_unsigned = 0;
@@ -189,7 +189,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
           bind->buffer_type = MYSQL_TYPE_DATETIME;
           bind->buffer = dt;
           bind->buffer_length = 0;
-          bind->is_null = 0;
+          bind->is_null = NULL;
           bind->length = 0;
           bind->error = 0; 
           bind->is_unsigned = 0;
@@ -201,7 +201,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
           bind->buffer_type = MYSQL_TYPE_DATETIME;
           bind->buffer = NULL;
           bind->buffer_length = 0;
-          bind->is_null = 0;
+          bind->is_null = NULL;
           bind->length = 0;
           bind->error = 0; 
           bind->is_unsigned = 0;
@@ -221,7 +221,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         bind->buffer_type = MYSQL_TYPE_LONG;    // use long because original is int
         bind->buffer = cape_udc_data (item);
         bind->buffer_length = 0;
-        bind->is_null = 0;
+        bind->is_null = NULL;
         bind->length = 0;
         bind->error = 0; 
         bind->is_unsigned = 1;
@@ -240,7 +240,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         bind->buffer_type = MYSQL_TYPE_NULL;
         bind->buffer = NULL;
         bind->buffer_length = 0;
-        bind->is_null = 0;
+        bind->is_null = NULL;
         bind->length = 0;
         bind->error = 0; 
         bind->is_unsigned = 0;

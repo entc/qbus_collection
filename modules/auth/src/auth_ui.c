@@ -12,10 +12,10 @@
 
 struct AuthUI_s
 {
-  AdblSession adbl_session;   // reference
-  
+  AdblSession adbl_session;   // reference  
   AuthTokens tokens;          // reference
-  
+  AuthVault vault;           // reference
+
   number_t userid;
   number_t wpid;
   
@@ -24,7 +24,7 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens)
+AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
