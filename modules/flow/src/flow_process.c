@@ -733,12 +733,204 @@ int flow_process_rm (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   {
     goto exit_and_cleanup;
   }
+  
+  
 
   adbl_trx_commit (&trx, err);
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
 
+  adbl_trx_rollback (&trx, err);
+
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_instance_rm__instance (FlowProcess self, AdblTrx trx, CapeErr err)
+{
+  int res;
+
+  CapeUdc first_row;
+  number_t psid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "refid"         , self->refid);
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (values, "gpid"          , 0);
+    cape_udc_add_n      (values, "psid"          , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_instance", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row == NULL)
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  psid = cape_udc_get_n (first_row, "psid", 0);
+  if (psid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "psid not found");
+    goto exit_and_cleanup;
+  }
+  
+  // optional
+  self->gpid = cape_udc_get_n (first_row, "gpid", 0);
+  
+  res = flow_process_rm__item (self, trx, psid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_instance_rm__tasks (FlowProcess self, AdblTrx trx, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+  number_t psid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "refid"         , self->refid);
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "sync"          , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_tasks", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    number_t psid = cape_udc_get_n (cursor->item, "id", 0);
+    number_t sync = cape_udc_get_n (cursor->item, "sync", 0);
+    
+    if (sync == 0)
+    {
+      res = flow_process_rm__item (self, trx, psid, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_instance_rm (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  
+  // allow only admin role from workspace
+  if (qbus_message_role_has (qin, "flow_admin") == FALSE)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing cdata");
+    goto exit_and_cleanup;
+  }
+
+  self->refid = cape_udc_get_n (qin->cdata, "refid", 0);
+  if (self->refid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing refid");
+    goto exit_and_cleanup;
+  }
+
+  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+    goto exit_and_cleanup;
+  }
+
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = flow_process_instance_rm__instance (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = flow_process_instance_rm__tasks (self, trx, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  if (cape_err_code (err))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "FLOW", "instance rm", cape_err_text (err));
+  }
+  
   adbl_trx_rollback (&trx, err);
 
   flow_process_del (p_self);

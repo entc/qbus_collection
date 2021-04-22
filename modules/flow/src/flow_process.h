@@ -54,6 +54,8 @@ __CAPE_LIBEX   int            flow_process_prev        (FlowProcess*, QBusM qin,
 
 __CAPE_LIBEX   int            flow_process_step        (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_process_instance_rm (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif
