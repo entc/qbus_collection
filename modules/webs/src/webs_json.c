@@ -417,7 +417,7 @@ static int __STDCALL qbus_webs__auth__on_ui (QBus qbus, void* ptr, QBusM qin, QB
     cape_err_set (err, cape_err_code (qin->err), cape_err_text (qin->err));
     goto exit_and_cleanup;
   }
-  
+    
   CapeUdc cdata = cape_udc_mv (&(qin->cdata));
   
   return webs_auth_call (&self, qin, &cdata, err);

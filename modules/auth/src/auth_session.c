@@ -69,6 +69,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   CapeString h1 = NULL;
   CapeString h2 = NULL;
+  CapeString h3 = NULL;
 
   AdblTrx trx = NULL;
   CapeUdc query_results = NULL;
@@ -119,10 +120,12 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_d      (values, "lt"          , NULL);
     cape_udc_add_d      (values, "lu"          , NULL);
 
+    cape_udc_add_s_cp   (values, "remote"      , NULL);
+
     /*
      auth_sessions_wp_view
      
-     select wp.id wpid, gp.id gpid, gp.firstname, gp.lastname, wp.name workspace, au.lt lt, au.lu lu, au.vp vp, wp.active wp_active from rbac_workspaces wp left join glob_persons gp on gp.wpid = wp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
+     select wp.id wpid, gp.id gpid, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active from rbac_workspaces wp left join glob_persons gp on gp.wpid = wp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
      */
     
     // execute the query
@@ -141,10 +144,17 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  h1 = cape_json_to_s (qin->rinfo);
+  roles = cape_udc_ext (qin->rinfo, "roles");
+  if (roles == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+    goto exit_and_cleanup;
+  }
+
+  h1 = cape_json_to_s (roles);
   if (h1 == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize cdata");
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize roles");
     goto exit_and_cleanup;
   }
   
@@ -154,12 +164,18 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-
-  roles = cape_udc_ext (qin->rinfo, "roles");
-  if (roles == NULL)
+  
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
-    goto exit_and_cleanup;
+    const CapeString remote = cape_udc_get_s (qin->rinfo, "remote", NULL);
+    if (remote)
+    {
+      h3 = qcrypt__encrypt (self->vsec, remote, err);
+      if (h3 == NULL)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
   }
 
   // create the hash of the token
@@ -200,8 +216,13 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 
     cape_udc_add_n      (values, "vp"            , vp);
 
-    cape_udc_add_s_mv   (values, "rinfo"         , &h2);
+    cape_udc_add_s_mv   (values, "roles"         , &h2);
 
+    if (h3)
+    {
+      cape_udc_add_s_mv   (values, "remote"      , &h3);
+    }
+    
     // execute query
     id = adbl_trx_inorup (trx, "auth_sessions", &params, &values, err);
     if (id == 0)
@@ -239,6 +260,22 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     else
     {
       cape_udc_add_s_mv (first_row, "lastname", &h4);
+      cape_udc_del (&node);
+    }
+  }
+
+  {
+    CapeUdc node = cape_udc_ext (first_row, "remote");
+    
+    CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
+    if (h4 == NULL)
+    {
+      cape_err_clr (err);
+      cape_udc_add (first_row, &node);
+    }
+    else
+    {
+      cape_udc_add_s_mv (first_row, "remote", &h4);
       cape_udc_del (&node);
     }
   }
@@ -332,7 +369,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   AuthSession self = *p_self;
   
   const CapeString session_token;
-  const CapeString rinfo_ecrypted;
+  const CapeString roles_ecrypted;
   CapeUdc first_row;
   number_t vp;
   
@@ -340,6 +377,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString session_token_hash = NULL;
   CapeUdc query_results = NULL;
   CapeString h1 = NULL;
+  CapeUdc roles = NULL;
   
   // do some security checks
   if (qin->pdata == NULL)
@@ -368,15 +406,17 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_s_mv   (params, "token"         , &session_token_hash);
-    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "wp_active"     , 0);
     cape_udc_add_d      (values, "lu"            , NULL);
     cape_udc_add_n      (values, "vp"            , 0);
     cape_udc_add_n      (values, "wpid"          , 0);
     cape_udc_add_n      (values, "gpid"          , 0);
-    cape_udc_add_s_cp   (values, "rinfo"         , NULL);
+    cape_udc_add_s_cp   (values, "roles"         , "{\"size\": 2000}");
+    cape_udc_add_s_cp   (values, "firstname"     , NULL);
+    cape_udc_add_s_cp   (values, "lastname"      , NULL);
 
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "auth_sessions", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "auth_sessions_wp_view", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
@@ -440,17 +480,24 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  rinfo_ecrypted = cape_udc_get_s (first_row, "rinfo", NULL);
-  if (rinfo_ecrypted == NULL)
+  roles_ecrypted = cape_udc_get_s (first_row, "roles", NULL);
+  if (roles_ecrypted == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing rinfo");
     goto exit_and_cleanup;
   }
   
-  h1 = qcrypt__decrypt (self->vsec, rinfo_ecrypted, err);
+  h1 = qcrypt__decrypt (self->vsec, roles_ecrypted, err);
   if (h1 == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "can't decrypt rinfo");
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "can't decrypt roles");
+    goto exit_and_cleanup;
+  }
+  
+  roles = cape_json_from_s (h1);
+  if (roles == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "can't deserialize roles");
     goto exit_and_cleanup;
   }
   
@@ -460,7 +507,17 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  qout->rinfo = cape_json_from_s (h1);
+  // to be safe
+  if (qout->rinfo == NULL)
+  {
+    qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+  
+  // construct the rinfo output
+  cape_udc_add_name (qout->rinfo, &roles, "roles");
+  cape_udc_add_n    (qout->rinfo, "wpid", self->wpid);
+  cape_udc_add_n    (qout->rinfo, "gpid", self->gpid);
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
@@ -468,7 +525,8 @@ exit_and_cleanup:
   cape_str_del (&session_token_hash);
   cape_udc_del (&query_results);
   cape_str_del (&h1);
-  
+  cape_udc_del (&roles);
+
   auth_session_del (p_self);
   return res;
 }
