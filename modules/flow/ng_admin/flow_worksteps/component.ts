@@ -2,9 +2,7 @@ import { Component, OnInit, Injector } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Router, ActivatedRoute, Params } from '@angular/router';
 import { NgForm } from '@angular/forms';
-
-// auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 export class StepFunctions {
    public static STEP_FUNCTIONS = [
@@ -37,7 +35,7 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
+  constructor(private auth_session: AuthSession, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
   {
   }
 
@@ -72,7 +70,7 @@ export class FlowWorkstepsComponent implements OnInit
 
   workstep_mv (ws: IWorkstep, direction: number)
   {
-    this.AuthService.json_rpc ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
 
       this.workflow_get ();
     });
@@ -82,7 +80,7 @@ export class FlowWorkstepsComponent implements OnInit
 
   workflow_get ()
   {
-    this.AuthService.json_rpc ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
+    this.auth_session.json_rpc ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
 
       this.worksteps = data;
 
@@ -95,7 +93,7 @@ export class FlowWorkstepsComponent implements OnInit
   {
     this.modalService.open (FlowWorkstepsRmModalComponent, {ariaLabelledBy: 'modal-basic-title'}).result.then(() => {
 
-      this.AuthService.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid}).subscribe(() => {
+      this.auth_session.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid}).subscribe(() => {
 
         this.workflow_get ();
       });
@@ -116,7 +114,7 @@ export class FlowWorkstepsComponent implements OnInit
       const step_name = result.name;
       const step_fctid = Number (result.fctid);
 
-      this.AuthService.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: result.pdata}).subscribe(() => {
+      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: result.pdata}).subscribe(() => {
 
         this.workflow_get ();
       });

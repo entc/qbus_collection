@@ -2,9 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgbModal, NgbActiveModal, NgbTimeStruct, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { NgForm } from '@angular/forms';
-
-// auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 //-----------------------------------------------------------------------------
 
@@ -19,7 +17,7 @@ export class JobsListComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private AuthService: AuthService, private modalService: NgbModal)
+  constructor (private auth_session: AuthSession, private modalService: NgbModal)
   {
   }
 
@@ -34,7 +32,7 @@ export class JobsListComponent implements OnInit {
 
   jobs_get ()
   {
-    this.job_list = this.AuthService.json_rpc ('JOBS', 'list_get', {});
+    this.job_list = this.auth_session.json_rpc ('JOBS', 'list_get', {});
   }
 
   //-----------------------------------------------------------------------------
@@ -48,7 +46,7 @@ export class JobsListComponent implements OnInit {
       // convert from boostrap to default javscript Date object
       var d: Date = new Date (result.start_date.year, result.start_date.month - 1, result.start_date.day, result.start_time.hour, result.start_time.minute, result.start_time.second, 0);
 
-      this.AuthService.json_rpc ('JOBS', 'list_add', {'event_start': d.toISOString()}).subscribe((data: Object) => {
+      this.auth_session.json_rpc ('JOBS', 'list_add', {'event_start': d.toISOString()}).subscribe((data: Object) => {
 
         this.jobs_get ();
       });

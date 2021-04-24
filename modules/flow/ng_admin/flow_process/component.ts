@@ -1,10 +1,10 @@
 import { Component, OnInit, Injector } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 
 // auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 //-----------------------------------------------------------------------------
 
@@ -12,28 +12,26 @@ import { AuthService } from '@qbus/auth.service';
   selector: 'app-flow-process',
   templateUrl: './component.html'
 })
-export class FlowProcessComponent implements OnInit {
+export class FlowProcessComponent {
 
-  processes: Observable<ProcessStep[]>;
-
-  //-----------------------------------------------------------------------------
-
-  constructor(private AuthService: AuthService, private router: Router, private modalService: NgbModal, private route: ActivatedRoute)
-  {
-  }
+  public processes: Observable<ProcessStep[]> = of();
 
   //-----------------------------------------------------------------------------
 
-  ngOnInit()
+  constructor(private auth_session: AuthSession, private router: Router, private modalService: NgbModal, private route: ActivatedRoute)
   {
-    this.processes_get ();
-  }
+    this.auth_session.session.subscribe ((data) => {
 
-  //-----------------------------------------------------------------------------
+      if (data)
+      {
+        this.processes = this.auth_session.json_rpc ('FLOW', 'process_all', {});
+      }
+      else
+      {
+        this.processes = of();
+      }
 
-  processes_get ()
-  {
-    this.processes = this.AuthService.json_rpc ('FLOW', 'process_all', {});
+    });
   }
 
   //-----------------------------------------------------------------------------
@@ -75,7 +73,7 @@ export class ProcessStep
 
   //---------------------------------------------------------------------------
 
-  constructor (private auth_service: AuthService, public modal: NgbActiveModal, private process_step: ProcessStep)
+  constructor (private auth_session: AuthSession, public modal: NgbActiveModal, private process_step: ProcessStep)
   {
   }
 
@@ -83,7 +81,7 @@ export class ProcessStep
 
   ngOnInit()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_get', {'psid': this.process_step.id}).subscribe ((data: any) => {
+    this.auth_session.json_rpc ('FLOW', 'process_get', {'psid': this.process_step.id}).subscribe ((data: any) => {
 
       this.content = JSON.stringify(data.content);
 

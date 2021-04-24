@@ -2,9 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
-
-// auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 //-----------------------------------------------------------------------------
 
@@ -19,7 +17,7 @@ export class FlowProcessDetailsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
+  constructor(private auth_session: AuthSession, private modalService: NgbModal, private router: Router, private route: ActivatedRoute)
   {
   }
 

@@ -10,7 +10,7 @@ import { FlowWorkstepsComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAdd
 import { FlowProcessComponent, FlowProcessDataModalComponent } from './flow_process/component';
 import { FlowProcessDetailsComponent } from './flow_process_details/component';
 
-import { AuthServiceModule } from '@qbus/auth_service.module';
+import { AuthSessionModule } from '@qbus/auth_session.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { FlowLogsModule } from '@qbus/flow_logs.module';
 
@@ -44,7 +44,7 @@ const routes: Routes = [
     NgbModule,
     TrloModule,
     QbngModule,
-    AuthServiceModule,
+    AuthSessionModule,
     RouterModule.forChild(routes)
   ],
   exports: [RouterModule],

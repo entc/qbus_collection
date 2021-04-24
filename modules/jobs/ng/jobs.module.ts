@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Routes, RouterModule } from '@angular/router';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { QbngModule } from '@qbus/qbng.module';
-import { AuthServiceModule } from '@qbus/auth_service.module';
+import { AuthSessionModule } from '@qbus/auth_session.module';
 
 import { JobsListComponent, JobsAddModalComponent } from './jobs_list/component';
 
@@ -14,7 +14,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [JobsListComponent, JobsAddModalComponent],
-  imports: [CommonModule, FormsModule, NgbModule, QbngModule, AuthServiceModule, RouterModule.forChild(routes)],
+  imports: [CommonModule, FormsModule, NgbModule, QbngModule, AuthSessionModule, RouterModule.forChild(routes)],
   exports: [RouterModule],
   entryComponents: [JobsAddModalComponent]
 })

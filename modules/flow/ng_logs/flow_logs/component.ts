@@ -2,9 +2,7 @@ import { Component, OnInit, Input, Output, Injector, EventEmitter } from '@angul
 import { ActivatedRoute, Params } from '@angular/router';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Observable } from 'rxjs';
-
-// auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 //-----------------------------------------------------------------------------
 
@@ -25,7 +23,7 @@ export class FlowLogsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private AuthService: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private auth_session: AuthSession, private modalService: NgbModal, private route: ActivatedRoute)
   {
   }
 
@@ -113,7 +111,7 @@ export class FlowLogsComponent implements OnInit
 
   fetch ()
   {
-    this.AuthService.json_rpc ('FLOW', 'chain_get', {'psid': this.psid}).subscribe((data: ChainItem[]) => {
+    this.auth_session.json_rpc ('FLOW', 'chain_get', {'psid': this.psid}).subscribe((data: ChainItem[]) => {
 
       this.data = data;
       this.apply_data ();
@@ -180,7 +178,7 @@ export class FlowChainComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private auth_service: AuthService, private modalService: NgbModal, private route: ActivatedRoute)
+  constructor(private modalService: NgbModal, private route: ActivatedRoute)
   {
   }
 
@@ -260,7 +258,7 @@ export class FlowDetailsItem
 
   //---------------------------------------------------------------------------
 
-  constructor (private auth_service: AuthService, public modal: NgbActiveModal, private details: FlowDetails)
+  constructor (private auth_session: AuthSession, public modal: NgbActiveModal, private details: FlowDetails)
   {
     this.psid = details.psid;
     this.wsid = details.wsid;
@@ -270,7 +268,7 @@ export class FlowDetailsItem
 
   ngOnInit()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_details', {psid: this.psid}).subscribe((data: FlowDetailsItem) => {
+    this.auth_session.json_rpc ('FLOW', 'process_details', {psid: this.psid}).subscribe((data: FlowDetailsItem) => {
 
       this.data = data;
       this.data.tdata_text = JSON.stringify(this.data.tdata);
@@ -282,7 +280,7 @@ export class FlowDetailsItem
 
   rerun_step ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_set', {psid: this.psid}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'process_set', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);
       console.log('set step done');
@@ -294,7 +292,7 @@ export class FlowDetailsItem
 
   rerun_once ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_once', {psid: this.psid}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'process_once', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);
 
@@ -305,7 +303,7 @@ export class FlowDetailsItem
 
   set_step ()
   {
-    this.auth_service.json_rpc ('FLOW', 'process_step', {psid: this.psid, wsid: this.wsid}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'process_step', {psid: this.psid, wsid: this.wsid}).subscribe(() => {
 
     });
   }

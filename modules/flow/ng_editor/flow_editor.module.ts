@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
-import { AuthServiceModule } from '@qbus/auth_service.module';
+import { AuthSessionModule } from '@qbus/auth_session.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 
 // components
@@ -34,7 +34,7 @@ import { FlowFunctionService, FlowWorkstepsComponent, FlowWidgetComponent, FlowW
     NgbModule,
     TrloModule,
     QbngModule,
-    AuthServiceModule
+    AuthSessionModule
   ],
   providers: [
     FlowFunctionService

@@ -52,6 +52,10 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
   public sitem: AuthSessionItem;
   public mode: number = 0;
 
+  public pass_old: string;
+  public pass_new1: string;
+  public pass_new2: string;
+
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
@@ -108,6 +112,13 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
   change_password_apply ()
   {
 
+  }
+
+  //---------------------------------------------------------------------------
+
+  open_messages_modal ()
+  {
+    this.mode = 4;
   }
 
   //---------------------------------------------------------------------------

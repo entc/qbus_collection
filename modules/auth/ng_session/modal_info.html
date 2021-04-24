@@ -52,6 +52,17 @@
 
     <div class="row mb-2">
         <div class="col">
+          {{ 'AUTH.MSG2FACTOR' | transloco }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-secondary width_10em" (click)="open_messages_modal ()"><i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'MISC.SETTINGS' | transloco }}</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
           {{ 'AUTH.ACCDEACTIVATE' | transloco }}
         </div>
         <div class="col text-right">
@@ -79,7 +90,41 @@
   </ng-container>
   <ng-container *ngSwitchCase="2">
 
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDCURRENT' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="pass_old" type="password" class="form-control">
+    </div>
 
+    <hr>
+
+    <div class="text-right mb-1">
+      <button type="button" class="btn btn-outline-primary" (click)="generate_password ()">{{ 'AUTH.GENPASS' | transloco }}</button>
+    </div>
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="pass_new1" type="text" class="form-control">
+    </div>
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="pass_new2" type="text" class="form-control">
+    </div>
+
+    <hr>
+
+    <div class="alert alert-success" role="alert">
+
+    </div>
+    <div class="alert alert-danger" role="alert">
+
+    </div>
 
 
   </ng-container>
@@ -88,6 +133,11 @@
     <div class="alert alert-danger" role="alert">
 
     </div>
+
+  </ng-container>
+  <ng-container *ngSwitchCase="4">
+
+
 
   </ng-container>
 
@@ -106,5 +156,5 @@
     <button type="button" class="btn btn-outline-danger mr-auto" (click)="disabe_account_apply ()"><i class="fas fa-ban"></i>&nbsp;&nbsp;{{ 'AUTH.ACCDEACTIVATE' | transloco }}</button>
   </ng-container>
 
-  <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.CANCEL' | transloco }}</button>
+  <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
 </div>

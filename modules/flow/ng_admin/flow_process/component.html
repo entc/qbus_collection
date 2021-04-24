@@ -1,6 +1,8 @@
+<ng-container *authSessionRole="[]">
+
 <page-toolbar #toolbar sorting="{'id': 'id'}"></page-toolbar>
 
-  <table class="table mt-2" *authRole="[]">
+  <table class="table mt-2">
     <tr>
       <th></th>
       <th><span class="badge badge-primary">psid</span></th>
@@ -32,3 +34,5 @@
       </td>
     </tr>
   </table>
+
+  </ng-container>
