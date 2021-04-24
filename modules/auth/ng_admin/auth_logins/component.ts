@@ -2,7 +2,7 @@ import { Component, OnInit, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 // auth service
-import { AuthService } from '@qbus/auth.service';
+import { AuthSession } from '@qbus/auth_session';
 
 //-----------------------------------------------------------------------------
 
@@ -21,7 +21,7 @@ export class AuthLoginsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private AuthService: AuthService, private map_service: MapsService)
+  constructor (private auth_session: AuthSession, private map_service: MapsService)
   {
   }
 
@@ -29,7 +29,7 @@ export class AuthLoginsComponent implements OnInit {
 
   ngOnInit()
   {
-    this.AuthService.json_rpc ('AUTH', 'ui_login_get', {lp: "D5"}).subscribe ((data: LoginItem[]) => {
+    this.auth_session.json_rpc ('AUTH', 'ui_login_get', {lp: "D5"}).subscribe ((data: LoginItem[]) => {
 
       for (var i in data)
       {

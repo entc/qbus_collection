@@ -48,8 +48,6 @@ export class AuthSession
     // read it from the persitent browser data
     this.session_token = sessionStorage.getItem (SESSION_STORAGE_TOKEN);
 
-    this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID))});
-
     this.roles = new BehaviorSubject(null);
 
     // get the last update timestamp
@@ -58,6 +56,12 @@ export class AuthSession
     {
       this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
       this.timer_set (vp);
+
+      this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID))});
+    }
+    else
+    {
+      this.session = new BehaviorSubject(null);
     }
   }
 
@@ -65,6 +69,8 @@ export class AuthSession
 
   public set_content_type (type: any, modal: boolean = false)
   {
+    console.log('set custom content type');
+
     this.login_component = type;
     this.login_modal = modal;
   }
@@ -549,7 +555,7 @@ export class AuthSessionComponentDirective {
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
+  constructor (private auth_session: AuthSession)
   {
   }
 

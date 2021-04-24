@@ -188,3 +188,30 @@ export class AuthSessionRoleDirective {
 }
 
 //=============================================================================
+
+@Component({
+  selector: 'auth-session-content',
+  templateUrl: './component_content.html'
+}) export class AuthSessionContentComponent {
+
+  public sitem: AuthSessionItem = null;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_session: AuthSession)
+  {
+    this.auth_session.session.subscribe ((data: AuthSessionItem) => {
+
+      this.sitem = data;
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  on_close ()
+  {
+  }
+}
+
+//=============================================================================
