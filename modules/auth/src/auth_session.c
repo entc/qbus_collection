@@ -234,49 +234,55 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   {
     CapeUdc node = cape_udc_ext (first_row, "firstname");
-    
-    CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-    if (h4 == NULL)
+    if (node)
     {
-      cape_err_clr (err);
-      cape_udc_add (first_row, &node);
-    }
-    else
-    {
-      cape_udc_add_s_mv (first_row, "firstname", &h4);
-      cape_udc_del (&node);
+      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
+      if (h4 == NULL)
+      {
+        cape_err_clr (err);
+        cape_udc_add (first_row, &node);
+      }
+      else
+      {
+        cape_udc_add_s_mv (first_row, "firstname", &h4);
+        cape_udc_del (&node);
+      }
     }
   }
 
   {
     CapeUdc node = cape_udc_ext (first_row, "lastname");
-    
-    CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-    if (h4 == NULL)
+    if (node)
     {
-      cape_err_clr (err);
-      cape_udc_add (first_row, &node);
-    }
-    else
-    {
-      cape_udc_add_s_mv (first_row, "lastname", &h4);
-      cape_udc_del (&node);
+      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
+      if (h4 == NULL)
+      {
+        cape_err_clr (err);
+        cape_udc_add (first_row, &node);
+      }
+      else
+      {
+        cape_udc_add_s_mv (first_row, "lastname", &h4);
+        cape_udc_del (&node);
+      }
     }
   }
 
   {
     CapeUdc node = cape_udc_ext (first_row, "remote");
-    
-    CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-    if (h4 == NULL)
+    if (node)
     {
-      cape_err_clr (err);
-      cape_udc_add (first_row, &node);
-    }
-    else
-    {
-      cape_udc_add_s_mv (first_row, "remote", &h4);
-      cape_udc_del (&node);
+      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
+      if (h4 == NULL)
+      {
+        cape_err_clr (err);
+        cape_udc_add (first_row, &node);
+      }
+      else
+      {
+        cape_udc_add_s_mv (first_row, "remote", &h4);
+        cape_udc_del (&node);
+      }
     }
   }
 
