@@ -514,11 +514,37 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthUI self = *p_self;
   
+  number_t wpid;
+  number_t gpid;
   const CapeString password;
   const CapeString secret;
+  CapeUdc first_row;
+  const CapeString vsec;
 
   // local objects
   AdblTrx adbl_trx = NULL;
+  CapeUdc query_results = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    goto exit_and_cleanup;
+  }
+
+  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+    goto exit_and_cleanup;
+  }
 
   if (qin->cdata == NULL)
   {
@@ -526,20 +552,68 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  password = cape_udc_get_s (qin->cdata, "password", NULL);
-  if (password == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'password' is empty or missing");
-    goto exit_and_cleanup;
-  }
-
   secret = cape_udc_get_s (qin->cdata, "secret", NULL);
   if (secret == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'password' is empty or missing");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'secret' is empty or missing");
     goto exit_and_cleanup;
   }
 
+  // optional (if given we need to check)
+  password = cape_udc_get_s (qin->cdata, "password", NULL);
+
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // conditions
+    cape_udc_add_n      (params, "wpid"         , wpid);
+    cape_udc_add_n      (params, "gpid"         , gpid);
+    cape_udc_add_n      (params, "active"       , 1);
+    cape_udc_add_n      (values, "usid"         , 0);
+    cape_udc_add_n      (values, "userid"       , 0);
+    cape_udc_add_s_cp   (values, "secret"       , NULL);
+    
+    /*
+     auth_users_secret_view
+     
+     select ru.id usid, gpid, wpid, qu.secret, qu.id userid, qu.active from rbac_users ru join q5_users qu on qu.id = ru.userid;
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_users_secret_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "account not found or active");
+    goto exit_and_cleanup;
+  }
+
+  if (password)
+  {
+    const CapeString old_password_db = cape_udc_get_s (first_row, "secret", NULL);
+
+    if (!cape_str_equal (old_password_db, password))
+    {
+      res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "password missmatch");
+      goto exit_and_cleanup;
+    }
+  }
+  
   // start transaction
   adbl_trx = adbl_trx_new (self->adbl_session, err);
   if (adbl_trx == NULL)
@@ -548,13 +622,41 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  // update tables
   {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
+    // unique key
+    cape_udc_add_n     (params, "id"        , cape_udc_get_n (first_row, "userid", 0));
     
-    
+    cape_udc_add_s_cp  (values, "secret"    , NULL);
+
+    // execute query
+    res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "id"        , cape_udc_get_n (first_row, "usid", 0));
+    
+    cape_udc_add_s_cp  (values, "secret"    , NULL);
+    cape_udc_add_n     (values, "state"     , 2);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
   adbl_trx_commit (&adbl_trx, err);
   res = CAPE_ERR_NONE;
 
@@ -564,8 +666,10 @@ exit_and_cleanup:
   
   if (cape_err_code (err))
   {
-    cape_log_msg (CAPE_LL_ERROR, "WSPC", "groups add", cape_err_text (err));
+    cape_log_msg (CAPE_LL_ERROR, "AUTH", "ui set", cape_err_text (err));
   }
+  
+  cape_udc_del (&query_results);
 
   auth_ui_del (p_self);
   return res;
