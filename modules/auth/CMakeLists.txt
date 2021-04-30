@@ -14,4 +14,4 @@ INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${C
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:buster_${VERSION_NUMBER})")
 
 # build the docker image with buster
-INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:buster_${VERSION_NUMBER} -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_BINARY_DIR})")
+INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:${VERSION_NUMBER}_buster -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_BINARY_DIR})")
