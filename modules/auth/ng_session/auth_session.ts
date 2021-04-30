@@ -31,9 +31,9 @@ export class AuthSession
   private login_component: Type<any> = AuthSessionLoginComponent;
   private login_modal: boolean = true;
 
-  private user: string;
-  private pass: string;
-  private wpid: string;
+  private user: string = null;
+  private pass: string = null;
+  private wpid: string = null;
 
   // initialize the session emitter
   public session: BehaviorSubject<AuthSessionItem>;
@@ -47,13 +47,13 @@ export class AuthSession
     this.roles = new BehaviorSubject(null);
 
     // get the last update timestamp
-    let vp = Number(sessionStorage.getItem (SESSION_STORAGE_VP));
-    if (vp)
+    this.wpid = sessionStorage.getItem (SESSION_STORAGE_WPID);
+    if (this.wpid)
     {
-      this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
-      this.timer_set (vp);
+      this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)), state: 0, user: null});
 
-      this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)), state: 0});
+      this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
+      this.timer_set (Number(sessionStorage.getItem (SESSION_STORAGE_VP)));
     }
     else
     {
@@ -192,6 +192,14 @@ export class AuthSession
 
     this.session.next (sitem);
     this.timer_set (sitem.vp);
+
+    console.log('session was set, token = ' + sitem.token);
+    let sitem2: AuthSessionItem = this.session ? this.session.value : null;
+
+    if (sitem2)
+    {
+      console.log('session was get, token = ' + sitem2.token);
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -221,11 +229,11 @@ export class AuthSession
   public json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
     var header: object;
-    let sitem: AuthSessionItem = this.session.value;
+    var sitem: AuthSessionItem = this.session ? this.session.value : null;
 
     if (sitem)
     {
-      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token})};
+      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
     }
     else
     {
@@ -240,11 +248,11 @@ export class AuthSession
   public json_rpc_blob (qbus_module: string, qbus_method: string, params: object): Observable<string>
   {
     var options: object;
-    let sitem: AuthSessionItem = this.session.value;
+    var sitem: AuthSessionItem = this.session ? this.session.value : null;
 
     if (sitem)
     {
-      options = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token}), responseType: 'blob'};
+      options = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}), responseType: 'blob'};
     }
     else
     {
@@ -259,11 +267,11 @@ export class AuthSession
   public rest_GET<T> (path: string, params: object): Observable<T>
   {
     var header: object;
-    let sitem: AuthSessionItem = this.session.value;
+    var sitem: AuthSessionItem = this.session ? this.session.value : null;
 
     if (sitem)
     {
-      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token})};
+      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
     }
     else
     {
@@ -349,6 +357,9 @@ export class AuthSession
 
       if (data)
       {
+        // set the user
+        data.user = this.user;
+
         switch (data.state)
         {
           case 1:
@@ -359,10 +370,7 @@ export class AuthSession
             // to disable the login background
             this.session.next (data);
 
-            var asuser: AuthSessionUser = new AuthSessionUser;
-            asuser.user = this.user;
-
-            this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionUser, useValue: asuser}])}).result.then(() => {
+            this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
 
               this.storage_set (data);
               response.emit (data);
@@ -485,10 +493,8 @@ export class AuthSessionItem
 
   wpid: number;
   gpid: number;
-}
 
-export class AuthSessionUser
-{
+  // will be set internally
   user: string;
 }
 
@@ -587,10 +593,12 @@ export class AuthSessionComponentDirective {
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, asuser: AuthSessionUser)
+  constructor (public modal: NgbActiveModal, sitem: AuthSessionItem)
   {
-    this.user = asuser.user;
+    this.user = sitem.user;
   }
+
+  //---------------------------------------------------------------------------
 
   on_password_changed()
   {

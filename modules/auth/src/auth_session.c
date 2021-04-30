@@ -575,7 +575,7 @@ int auth_session_roles (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   roles = cape_udc_ext (qin->rinfo, "roles");
   if (roles == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing roles");
     goto exit_and_cleanup;
   }
   

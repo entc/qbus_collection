@@ -248,7 +248,7 @@ export class AuthSessionRoleDirective {
   @Input () set user (val: string)
   {
     this.user_value = val;
-    this.user_readonly = true;
+    this.user_readonly = this.user_value != null;
   }
 
   //---------------------------------------------------------------------------
@@ -302,6 +302,10 @@ export class AuthSessionRoleDirective {
 
       this.was_set = true;
       this.onChange.emit (true);
+
+    }, () => {
+
+      this.err = 'AUTH.WRONGPASS';
 
     });
   }

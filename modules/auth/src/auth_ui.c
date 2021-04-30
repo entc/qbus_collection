@@ -12,10 +12,11 @@
 
 struct AuthUI_s
 {
-  AdblSession adbl_session;   // reference  
-  AuthTokens tokens;          // reference
-  AuthVault vault;           // reference
-
+  AdblSession adbl_session;        // reference
+  AuthTokens tokens;               // reference
+  AuthVault vault;                 // reference
+  const CapeString err_log_file;   // reference
+  
   number_t userid;
   number_t wpid;
   
@@ -24,13 +25,14 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault)
+AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
   self->adbl_session = adbl_session;
   self->tokens = tokens;
   self->vault = vault;
+  self->err_log_file = err_log_file;
   
   self->userid = 0;
   self->wpid = 0;
@@ -211,10 +213,9 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
-int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QBusM qout, CapeErr err)
+int auth_ui_crypt4 (AuthUI self, const CapeString content, CapeUdc extras, QBusM qout, CapeErr err)
 {
   int res;
-  AuthUI self = *p_self;
   
   CapeUdc auth_crypt_credentials = NULL;
   
@@ -256,17 +257,14 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
 exit_and_cleanup:
   
   cape_udc_del (&auth_crypt_credentials);
-
-  auth_ui_del (p_self);
   return res;
 }
 
 //---------------------------------------------------------------------------
 
-int auth_ui_token (AuthUI* p_self, CapeUdc extras, QBusM qout, CapeErr err)
+int auth_ui_token (AuthUI self, CapeUdc extras, QBusM qout, CapeErr err)
 {
   int res;
-  AuthUI self = *p_self;
   
   const CapeString token;
   
@@ -282,8 +280,6 @@ int auth_ui_token (AuthUI* p_self, CapeUdc extras, QBusM qout, CapeErr err)
     return cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
   }
   
-  auth_ui_del (p_self);
-
   return CAPE_ERR_NONE;
 }
 
@@ -313,9 +309,58 @@ number_t auth_convert_type (const CapeString type)
 
 //-----------------------------------------------------------------------------
 
+void auth_ui__intern__write_log (AuthUI self, CapeUdc cdata)
+{
+  int res;
+  const CapeString remote = "unknown";
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  CapeFileHandle fh = NULL;
+  CapeStream s = cape_stream_new ();
+  
+  {
+    CapeDatetime dt; cape_datetime_utc (&dt);
+    cape_stream_append_d (s, &dt);
+  }
+
+  cape_stream_append_c (s, ' ');
+
+  if (cdata)
+  {
+    remote = cape_udc_get_s (cdata, "remote", NULL);
+  }
+
+  cape_stream_append_str (s, remote);
+  cape_stream_append_c (s, ' ');
+
+  cape_stream_append_str (s, "access denied");
+
+  cape_stream_append_c (s, '\n');
+
+  fh = cape_fh_new (NULL, self->err_log_file);
+      
+  res = cape_fh_open (fh, O_RDWR | O_CREAT | O_APPEND, err);
+  if (res)
+  {
+
+  }
+  else
+  {
+    cape_fh_write_buf (fh, cape_stream_data (s), cape_stream_size (s));
+  }
+
+  cape_stream_del (&s);
+  cape_fh_del (&fh);
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
+  AuthUI self = *p_self;
   
   const CapeString auth_type;
   const CapeString auth_content;
@@ -352,17 +397,24 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
         goto exit_and_cleanup;
       }
       
-      return auth_ui_crypt4 (p_self, auth_content, auth_extras, qout, err);
+      res = auth_ui_crypt4 (self, auth_content, auth_extras, qout, err);
+      goto exit_and_cleanup;
     }
     case 4:
     {
-      return auth_ui_token (p_self, auth_extras, qout, err);
+      res = auth_ui_token (self, auth_extras, qout, err);
+      goto exit_and_cleanup;
     }
   }
 
   res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "authentication type not supported");
 
 exit_and_cleanup:
+  
+  if (res == CAPE_ERR_NO_AUTH)
+  {
+    auth_ui__intern__write_log (self, qin->cdata);
+  }
   
   auth_ui_del (p_self);
   return res;
@@ -614,25 +666,32 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+CapeString auth_ui__intern__construct_password (const CapeString q5_user, const CapeString secret, CapeErr err)
+{
+  CapeString ret = NULL;
+  
+  // local objects
+  CapeStream s = cape_stream_new ();
+  
+  cape_stream_append_str (s, q5_user);
+  cape_stream_append_c (s, ':');
+  cape_stream_append_str (s, secret);
+  
+  ret = qcrypt__hash_sha256__hex_m (s, err);
+  
+  cape_stream_del (&s);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_set__q5_users__update (AuthUI self, AdblTrx adbl_trx, number_t userid, const CapeString q5_user, const CapeString secret, CapeErr err)
 {
   int res;
 
   // local objects
-  CapeString h1 = NULL;
-
-  {
-    CapeStream s = cape_stream_new ();
-    
-    cape_stream_append_str (s, q5_user);
-    cape_stream_append_c (s, ':');
-    cape_stream_append_str (s, secret);
-    
-    h1 = qcrypt__hash_sha256__hex_m (s, err);
-    
-    cape_stream_del (&s);
-  }
-  
+  CapeString h1 = auth_ui__intern__construct_password (q5_user, secret, err);
   if (h1 == NULL)
   {
     res = cape_err_code (err);
@@ -682,6 +741,7 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   
   CapeString h0 = NULL;
+  CapeString h1 = NULL;
 
   // do some security checks
   if (qin->rinfo == NULL)
@@ -727,6 +787,7 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   // optional (if given we need to check)
   q5_pass = cape_udc_get_s (qin->cdata, "pass", NULL);
 
+  // create the hash version of the user
   h0 = qcrypt__hash_sha256__hex_o (q5_user, cape_str_size (q5_user), err);
   if (h0 == NULL)
   {
@@ -780,8 +841,15 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   if (q5_pass)
   {
     const CapeString old_password_db = cape_udc_get_s (first_row, "secret", NULL);
+    
+    h1 = auth_ui__intern__construct_password (q5_user, q5_pass, err);
+    if (h1 == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
 
-    if (!cape_str_equal (old_password_db, q5_pass))
+    if (!cape_str_equal (old_password_db, h1))
     {
       res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "password missmatch");
       goto exit_and_cleanup;
@@ -821,6 +889,7 @@ exit_and_cleanup:
   }
   
   cape_str_del (&h0);
+  cape_str_del (&h1);
   cape_udc_del (&query_results);
 
   auth_ui_del (p_self);

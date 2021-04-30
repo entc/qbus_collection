@@ -417,7 +417,7 @@ static int __STDCALL qbus_webs__auth__on_ui (QBus qbus, void* ptr, QBusM qin, QB
     cape_err_set (err, cape_err_code (qin->err), cape_err_text (qin->err));
     goto exit_and_cleanup;
   }
-    
+  
   CapeUdc cdata = cape_udc_mv (&(qin->cdata));
   
   return webs_auth_call (&self, qin, &cdata, err);
@@ -504,7 +504,16 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
         
         QBusM msg = qbus_message_new (NULL, NULL);
         
-        qbus_message_clr (msg, CAPE_UDC_UNDEFINED);
+        qbus_message_clr (msg, CAPE_UDC_NODE);
+
+        // remote
+        {
+          CapeString remote = qwebs_request_remote (self->request);
+          if (remote)
+          {
+            cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+          }
+        }
 
         msg->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
         
@@ -534,7 +543,16 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
           CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
           cape_udc_add_s_mv (msg->cdata, "content", &h);
         }
-        
+
+        // remote
+        {
+          CapeString remote = qwebs_request_remote (self->request);
+          if (remote)
+          {
+            cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+          }
+        }
+
         res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
         
         qbus_message_del (&msg);
