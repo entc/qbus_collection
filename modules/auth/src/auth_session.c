@@ -62,6 +62,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   AuthSession self = *p_self;
   
   number_t vp = 600;   // 10 minutes
+  number_t type;
   
   // local objects
   CapeString session_token = cape_str_uuid ();
@@ -98,6 +99,20 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // do some security checks
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
+    goto exit_and_cleanup;
+  }
+
+  type = cape_udc_get_n (qin->cdata, "type", 1);
+  if (type == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing type");
+    goto exit_and_cleanup;
+  }
+
   self->vsec = cape_str_cp (auth_vault__vsec (self->vault, self->wpid));
   if (self->vsec == NULL)
   {
@@ -112,7 +127,9 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "wp_active"   , 1);
     cape_udc_add_n      (params, "wpid"        , self->wpid);
     cape_udc_add_n      (params, "gpid"        , self->gpid);
-    
+
+    cape_udc_add_n      (values, "state"       , 0);
+
     cape_udc_add_s_cp   (values, "firstname"   , NULL);
     cape_udc_add_s_cp   (values, "lastname"    , NULL);
     cape_udc_add_s_cp   (values, "workspace"   , NULL);
@@ -125,7 +142,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      auth_sessions_wp_view
      
-     select wp.id wpid, gp.id gpid, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active from rbac_workspaces wp left join glob_persons gp on gp.wpid = wp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
+     select wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
      */
     
     // execute the query
@@ -204,6 +221,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
     
     cape_udc_add_n      (params, "wpid"         , self->wpid);
+    cape_udc_add_n      (params, "type"         , type);
     cape_udc_add_n      (params, "gpid"         , self->gpid);
 
     cape_udc_add_s_mv   (values, "token"         , &session_token_hash);

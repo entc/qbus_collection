@@ -1,7 +1,7 @@
-import { Component, EventEmitter, Directive, Input, ElementRef, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Component, EventEmitter, Directive, Input, Output, ElementRef, TemplateRef, ViewContainerRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
 //=============================================================================
@@ -52,10 +52,6 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
   public sitem: AuthSessionItem;
   public mode: number = 0;
 
-  public pass_old: string;
-  public pass_new1: string;
-  public pass_new2: string;
-
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
@@ -76,6 +72,20 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
   //---------------------------------------------------------------------------
 
+  toogle_edit ()
+  {
+    this.mode = 1;
+  }
+
+  //---------------------------------------------------------------------------
+
+  untoogle_edit ()
+  {
+    this.mode = 0;
+  }
+
+  //---------------------------------------------------------------------------
+
   logout_submit ()
   {
     this.auth_session.disable ();
@@ -86,7 +96,7 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
   change_name ()
   {
-    this.mode = 1;
+    this.mode = 2;
   }
 
   //---------------------------------------------------------------------------
@@ -104,7 +114,7 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
   change_password ()
   {
-    this.mode = 2;
+    this.mode = 3;
   }
 
   //---------------------------------------------------------------------------
@@ -118,14 +128,14 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
   open_messages_modal ()
   {
-    this.mode = 4;
+    this.mode = 5;
   }
 
   //---------------------------------------------------------------------------
 
   disabe_account ()
   {
-    this.mode = 3;
+    this.mode = 4;
   }
 
   //---------------------------------------------------------------------------
@@ -139,7 +149,7 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
   reset_mode ()
   {
-    this.mode = 0;
+    this.mode = 1;
   }
 }
 
@@ -212,6 +222,241 @@ export class AuthSessionRoleDirective {
   on_close ()
   {
   }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-session-passreset',
+  templateUrl: './component_passreset.html'
+}) export class AuthSessionPassResetComponent {
+
+  @Input() old: boolean;
+  @Output() onChange = new EventEmitter();
+
+  public pass_old: string;
+  public pass_new1: string;
+  public pass_new2: string;
+
+  public err: string = null;
+  public was_set: boolean = false;
+  public user_readonly: boolean = false;
+  public user_value: string;
+
+  //---------------------------------------------------------------------------
+
+  @Input () set user (val: string)
+  {
+    this.user_value = val;
+    this.user_readonly = true;
+  }
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_session: AuthSession)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_change_1 (val: string)
+  {
+    this.pass_new1 = val;
+    this.check_passwords ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_change_2 (val: string)
+  {
+    this.pass_new2 = val;
+    this.check_passwords ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private check_passwords ()
+  {
+    if (this.pass_new1 && this.pass_new2 && this.pass_new1 != this.pass_new2)
+    {
+      this.err = 'AUTH.PASSMISMATCH';
+    }
+    else
+    {
+      this.err = null;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public apply ()
+  {
+    var params = {secret: this.pass_new1, user: this.user_value};
+
+    if (this.old)
+    {
+      params['pass'] = this.pass_old;
+    }
+
+    this.auth_session.json_rpc ('AUTH', 'ui_set', params).subscribe(() => {
+
+      this.was_set = true;
+      this.onChange.emit (true);
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  generate_password ()
+  {
+
+  }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-session-msgs',
+  templateUrl: './component_msgs.html'
+}) export class AuthSessionMsgsComponent {
+
+  msgs_list: AuthMsgsItem[];
+  new_item: AuthMsgsItem = null;
+
+  msgs_active: boolean = false;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_session: AuthSession, private modal_service: NgbModal)
+  {
+    this.auth_session.session.subscribe ((data) => {
+
+      if (data)
+      {
+        this.fetch ();
+      }
+      else
+      {
+        this.msgs_list = [];
+      }
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  fetch ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'msgs_get', {}).subscribe ((data: AuthMsgsItem[]) => {
+
+      for (var i in data)
+      {
+        const item: AuthMsgsItem = data[i];
+        item.mode = 0;
+      }
+
+      this.msgs_list = data;
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  msgs_active_changed (val: boolean)
+  {
+    this.msgs_active = val;
+  }
+
+  //---------------------------------------------------------------------------
+
+  new_start ()
+  {
+    this.new_item = new AuthMsgsItem;
+  }
+
+  //---------------------------------------------------------------------------
+
+  new_cancel ()
+  {
+    this.new_item = null;
+  }
+
+  //---------------------------------------------------------------------------
+
+  new_apply ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'msgs_add', this.new_item).subscribe (() => {
+
+      this.new_item = null;
+      this.fetch ();
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  open_edit (item: AuthMsgsItem)
+  {
+    item.mode = 1;
+  }
+
+  //---------------------------------------------------------------------------
+
+  cancel_edit (item: AuthMsgsItem)
+  {
+    item.mode = 0;
+    this.fetch ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  apply (item: AuthMsgsItem)
+  {
+    this.auth_session.json_rpc ('AUTH', 'msgs_set', item).subscribe (() => {
+
+      item.mode = 0;
+      this.fetch ();
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  open_rm (item: AuthMsgsItem)
+  {
+    item.mode = 2;
+  }
+
+  //---------------------------------------------------------------------------
+
+  rm_apply (item: AuthMsgsItem)
+  {
+    this.auth_session.json_rpc ('AUTH', 'msgs_rm', item).subscribe (() => {
+
+      item.mode = 0;
+      this.fetch ();
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  rm_cancel (item: AuthMsgsItem)
+  {
+    item.mode = 0;
+  }
+
+  //---------------------------------------------------------------------------
+}
+
+class AuthMsgsItem
+{
+  id: number;
+  email: string;
+  type: number;
+
+  mode: number;
 }
 
 //=============================================================================

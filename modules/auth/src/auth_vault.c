@@ -104,7 +104,7 @@ int auth_vault_set (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
     
     if (n == NULL)
     {
-      cape_log_msg (CAPE_LL_DEBUG, "AUTH", "vault set", "new vault secret inserted");
+      //cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault set", "new vault secret inserted %i = '%s'", wpid, secret);
       
       cape_map_insert (self->contexts, (void*)wpid, cape_str_cp (secret));
     }

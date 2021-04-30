@@ -1,8 +1,11 @@
 <div class="modal-header">
   <div class="modal-title mr-auto">
-    <strong><i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ sitem.workspace }}&nbsp;&nbsp;<span class="badge badge-secondary">WPID: {{ sitem.wpid }}</span></strong>
+    <strong><i class="fa fa-info"></i>&nbsp;&nbsp;{{ 'AUTH.ACCINFO' | transloco }}</strong>
   </div>
-  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="modal.dismiss()"><i class="fa fa-times"></i></button>
+  <button *ngIf="mode == 0" type="button" class="btn btn-outline-secondary btn-sm width_2em" (click)="toogle_edit()"><i class="fa fa-lock"></i></button>
+  <button *ngIf="mode == 1" type="button" class="btn btn-outline-secondary btn-sm width_2em" (click)="untoogle_edit()"><i class="fa fa-unlock"></i></button>
+  &nbsp;&nbsp;
+  <button type="button" class="btn btn-outline-danger btn-sm width_2em" (click)="modal.dismiss()"><i class="fa fa-times"></i></button>
 </div>
 
 <div class="modal-body" [ngSwitch]="mode">
@@ -11,10 +14,18 @@
 
     <div class="row mb-2">
         <div class="col">
-          {{ 'AUTH.LASTLOGIN' | transloco }}
+          <i class="fa fa-user width_2em"></i>&nbsp;&nbsp;{{ sitem.firstname }}&nbsp;{{ sitem.lastname }}
         </div>
-        <div class="col text-right width_10em">
-          {{sitem.lt | trlo_locale}}
+        <div class="col text-right">
+          <span class="badge badge-secondary">GPID: {{ sitem.gpid }}</span>
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col">
+          <i class="fa fa-desktop width_2em"></i>&nbsp;&nbsp;{{ sitem.workspace }}
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-secondary">WPID: {{ sitem.wpid }}</span>
         </div>
     </div>
 
@@ -22,12 +33,22 @@
 
     <div class="row mb-2">
         <div class="col">
-          {{ sitem.firstname }}&nbsp;{{ sitem.lastname }}&nbsp;&nbsp;<span class="badge badge-secondary">GPID: {{ sitem.gpid }}</span>
+          {{ 'AUTH.LASTLOGIN' | transloco }}
         </div>
-        <div class="col text-right">
-          <button type="button" class="btn btn-outline-secondary width_10em" (click)="change_name ()">{{ 'AUTH.EDIT' | transloco }}</button>
+        <div class="col text-right width_10em" *ngIf="sitem.lt">
+          {{sitem.lt | trlo_locale}}
         </div>
     </div>
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.LASTHOST' | transloco }}
+        </div>
+        <div class="col text-right width_10em">
+          {{sitem.remote}}
+        </div>
+    </div>
+
+    <hr>
 
     <div class="row mb-2">
         <div class="col">
@@ -37,7 +58,17 @@
         </div>
     </div>
 
-    <hr>
+  </ng-container>
+  <ng-container *ngSwitchCase="1">
+
+    <div class="row mb-2">
+        <div class="col">
+          <i class="fa fa-user width_2em"></i>&nbsp;&nbsp;{{ sitem.firstname }}&nbsp;{{ sitem.lastname }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-secondary width_10em" (click)="change_name ()">{{ 'AUTH.EDIT' | transloco }}</button>
+        </div>
+    </div>
 
     <div class="row mb-2">
         <div class="col">
@@ -71,7 +102,7 @@
     </div>
 
   </ng-container>
-  <ng-container *ngSwitchCase="1">
+  <ng-container *ngSwitchCase="2">
 
     <div class="input-group mb-1">
       <div class="input-group-prepend">
@@ -88,73 +119,43 @@
     </div>
 
   </ng-container>
-  <ng-container *ngSwitchCase="2">
-
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDCURRENT' | transloco }}</small></span>
-      </div>
-      <input [(ngModel)]="pass_old" type="password" class="form-control">
-    </div>
-
-    <hr>
-
-    <div class="text-right mb-1">
-      <button type="button" class="btn btn-outline-primary" (click)="generate_password ()">{{ 'AUTH.GENPASS' | transloco }}</button>
-    </div>
-
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
-      </div>
-      <input [(ngModel)]="pass_new1" type="text" class="form-control">
-    </div>
-
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
-      </div>
-      <input [(ngModel)]="pass_new2" type="text" class="form-control">
-    </div>
-
-    <hr>
-
-    <div class="alert alert-success" role="alert">
-
-    </div>
-    <div class="alert alert-danger" role="alert">
-
-    </div>
-
-
-  </ng-container>
   <ng-container *ngSwitchCase="3">
 
-    <div class="alert alert-danger" role="alert">
-
-    </div>
+    <auth-session-passreset [old]="true"></auth-session-passreset>
 
   </ng-container>
   <ng-container *ngSwitchCase="4">
 
+    <div class="alert alert-danger" role="alert">
 
+    </div>
+
+  </ng-container>
+  <ng-container *ngSwitchCase="5">
+
+    <auth-session-msgs></auth-session-msgs>
 
   </ng-container>
 
 </div>
-<div class="modal-footer" *ngIf="mode > 0" [ngSwitch]="mode">
-
-  <ng-container *ngSwitchCase="1">
-    <button type="button" class="btn btn-outline-success mr-auto" (click)="change_name_apply ()"><i class="fas fa-save"></i>&nbsp;&nbsp;{{ 'MISC.APPLY' | transloco }}</button>
-  </ng-container>
+<div class="modal-footer" *ngIf="mode > 1" [ngSwitch]="mode">
 
   <ng-container *ngSwitchCase="2">
-    <button type="button" class="btn btn-outline-success mr-auto" (click)="change_password_apply ()"><i class="fas fa-check"></i>&nbsp;&nbsp;{{ 'AUTH.CHANGE' | transloco }}</button>
+    <button type="button" class="btn btn-outline-success mr-auto" (click)="change_name_apply ()"><i class="fas fa-save"></i>&nbsp;&nbsp;{{ 'MISC.APPLY' | transloco }}</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
   </ng-container>
 
   <ng-container *ngSwitchCase="3">
-    <button type="button" class="btn btn-outline-danger mr-auto" (click)="disabe_account_apply ()"><i class="fas fa-ban"></i>&nbsp;&nbsp;{{ 'AUTH.ACCDEACTIVATE' | transloco }}</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
   </ng-container>
 
-  <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+  <ng-container *ngSwitchCase="4">
+    <button type="button" class="btn btn-outline-danger mr-auto" (click)="disabe_account_apply ()"><i class="fas fa-ban"></i>&nbsp;&nbsp;{{ 'AUTH.ACCDEACTIVATE' | transloco }}</button>
+    <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+  </ng-container>
+
+  <ng-container *ngSwitchCase="5">
+    <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+  </ng-container>
+
 </div>

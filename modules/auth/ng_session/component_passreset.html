@@ -1,0 +1,57 @@
+<ng-container *ngIf="was_set == false">
+
+  <ng-container>
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="user_value" type="text" class="form-control" [readonly]="user_readonly">
+    </div>
+
+  </ng-container>
+  <ng-container *ngIf="old">
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDCURRENT' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="pass_old" type="password" class="form-control">
+    </div>
+
+    <hr>
+
+  </ng-container>
+
+  <div class="input-group mb-1">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
+    </div>
+    <input (blur)="on_change_1 ($event.target.value)" type="password" class="form-control">
+  </div>
+
+  <div class="input-group mb-1">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
+    </div>
+    <input (blur)="on_change_2 ($event.target.value)" type="password" class="form-control">
+  </div>
+
+  <hr>
+
+  <div *ngIf="err" class="alert alert-danger" role="alert">
+    {{ err | transloco }}
+  </div>
+
+  <div class="text-right mt-2">
+    <button (click)="apply ()" type="button" class="btn btn-outline-primary btn-block">{{ 'AUTH.CHANGE' | transloco }}</button>
+  </div>
+
+</ng-container>
+<ng-container *ngIf="was_set == true">
+
+  <div class="alert alert-success" role="alert">
+    {{ 'AUTH.PASSCHANGED' | transloco }}
+  </div>
+
+</ng-container>

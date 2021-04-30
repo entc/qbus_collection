@@ -30,6 +30,7 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault
   
   self->adbl_session = adbl_session;
   self->tokens = tokens;
+  self->vault = vault;
   
   self->userid = 0;
   self->wpid = 0;
@@ -509,6 +510,160 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_ui_set__rbac_users__update (AuthUI self, AdblTrx adbl_trx, number_t usid, number_t wpid, const CapeString secret, CapeErr err)
+{
+  int res;
+  const CapeString vsec;
+
+  // local objects
+  CapeString h2 = NULL;
+  
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+    goto exit_and_cleanup;
+  }
+
+  //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui set", "update rbac users with usid = %i, vsec = '%s'", usid, vsec);
+  
+  // encrypt the vault with the user password
+  h2 = qcrypt__encrypt (secret, vsec, err);
+  if (h2 == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "id"        , usid);
+    
+    cape_udc_add_s_mv  (values, "secret"    , &h2);
+    cape_udc_add_n     (values, "state"     , 2);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_set__rbac_users (AuthUI self, AdblTrx adbl_trx, number_t userid, const CapeString secret, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui set", "update rbac users with userid = %i", userid);
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // conditions
+    cape_udc_add_n      (params, "userid"       , userid);
+    cape_udc_add_n      (values, "id"           , 0);
+    cape_udc_add_n      (values, "wpid"         , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    number_t usid = cape_udc_get_n (cursor->item, "id", 0);
+    number_t wpid = cape_udc_get_n (cursor->item, "wpid", 0);
+
+    res = auth_ui_set__rbac_users__update (self, adbl_trx, usid, wpid, secret, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_set__q5_users__update (AuthUI self, AdblTrx adbl_trx, number_t userid, const CapeString q5_user, const CapeString secret, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeString h1 = NULL;
+
+  {
+    CapeStream s = cape_stream_new ();
+    
+    cape_stream_append_str (s, q5_user);
+    cape_stream_append_c (s, ':');
+    cape_stream_append_str (s, secret);
+    
+    h1 = qcrypt__hash_sha256__hex_m (s, err);
+    
+    cape_stream_del (&s);
+  }
+  
+  if (h1 == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (params, "id"        , userid);
+    cape_udc_add_s_mv  (values, "secret"    , &h1);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&h1);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -516,14 +671,17 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   number_t wpid;
   number_t gpid;
-  const CapeString password;
+  number_t userid;
+  const CapeString q5_user;
+  const CapeString q5_pass;
   const CapeString secret;
   CapeUdc first_row;
-  const CapeString vsec;
 
   // local objects
   AdblTrx adbl_trx = NULL;
   CapeUdc query_results = NULL;
+  
+  CapeString h0 = NULL;
 
   // do some security checks
   if (qin->rinfo == NULL)
@@ -559,13 +717,20 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  // optional (if given we need to check)
-  password = cape_udc_get_s (qin->cdata, "password", NULL);
-
-  vsec = auth_vault__vsec (self->vault, wpid);
-  if (vsec == NULL)
+  q5_user = cape_udc_get_s (qin->cdata, "user", NULL);
+  if (q5_user == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'user' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  // optional (if given we need to check)
+  q5_pass = cape_udc_get_s (qin->cdata, "pass", NULL);
+
+  h0 = qcrypt__hash_sha256__hex_o (q5_user, cape_str_size (q5_user), err);
+  if (h0 == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't hash h0");
     goto exit_and_cleanup;
   }
 
@@ -577,6 +742,8 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "wpid"         , wpid);
     cape_udc_add_n      (params, "gpid"         , gpid);
     cape_udc_add_n      (params, "active"       , 1);
+    cape_udc_add_s_mv   (params, "user512"      , &h0);
+
     cape_udc_add_n      (values, "usid"         , 0);
     cape_udc_add_n      (values, "userid"       , 0);
     cape_udc_add_s_cp   (values, "secret"       , NULL);
@@ -584,7 +751,7 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      auth_users_secret_view
      
-     select ru.id usid, gpid, wpid, qu.secret, qu.id userid, qu.active from rbac_users ru join q5_users qu on qu.id = ru.userid;
+     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active from rbac_users ru join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -603,11 +770,18 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  if (password)
+  userid = cape_udc_get_n (first_row, "userid", 0);
+  if (userid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "userid not found");
+    goto exit_and_cleanup;
+  }
+  
+  if (q5_pass)
   {
     const CapeString old_password_db = cape_udc_get_s (first_row, "secret", NULL);
 
-    if (!cape_str_equal (old_password_db, password))
+    if (!cape_str_equal (old_password_db, q5_pass))
     {
       res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "password missmatch");
       goto exit_and_cleanup;
@@ -622,39 +796,16 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  res = auth_ui_set__q5_users__update (self, adbl_trx, userid, q5_user, secret, err);
+  if (res)
   {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // unique key
-    cape_udc_add_n     (params, "id"        , cape_udc_get_n (first_row, "userid", 0));
-    
-    cape_udc_add_s_cp  (values, "secret"    , NULL);
-
-    // execute query
-    res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
+    goto exit_and_cleanup;
   }
-  
+
+  res = auth_ui_set__rbac_users (self, adbl_trx, userid, secret, err);
+  if (res)
   {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // unique key
-    cape_udc_add_n     (params, "id"        , cape_udc_get_n (first_row, "usid", 0));
-    
-    cape_udc_add_s_cp  (values, "secret"    , NULL);
-    cape_udc_add_n     (values, "state"     , 2);
-    
-    // execute query
-    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
+    goto exit_and_cleanup;
   }
 
   adbl_trx_commit (&adbl_trx, err);
@@ -669,6 +820,7 @@ exit_and_cleanup:
     cape_log_msg (CAPE_LL_ERROR, "AUTH", "ui set", cape_err_text (err));
   }
   
+  cape_str_del (&h0);
   cape_udc_del (&query_results);
 
   auth_ui_del (p_self);
@@ -687,30 +839,10 @@ int auth_ui_login_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeDatetime* sd = NULL;
   CapeDatetime* td = NULL;
   
-  // do some security checks
-  if (qin->rinfo == NULL)
+  if (!qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
     goto exit_and_cleanup;
-  }
-
-  // check role
-  {
-    CapeUdc role_admin;
-    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
-    
-    if (roles == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing roles");
-      goto exit_and_cleanup;
-    }
-    
-    role_admin = cape_udc_get (roles, "tmpl_edit");
-    if (role_admin == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing role");
-      goto exit_and_cleanup;
-    }
   }
   
   // lp

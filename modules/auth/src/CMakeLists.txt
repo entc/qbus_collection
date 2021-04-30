@@ -11,6 +11,7 @@ SET (QBUS_MODULES_AUTH_SOURCES
   "auth_rinfo.c"
   "auth_perm.c"
   "auth_session.c"
+  "auth_msgs.c"
 )
 
 SET (QBUS_MODULES_AUTH_HEADERS
@@ -21,6 +22,7 @@ SET (QBUS_MODULES_AUTH_HEADERS
   "auth_rinfo.h"
   "auth_perm.h"
   "auth_session.h"
+  "auth_msgs.h"
 )
 
 ADD_EXECUTABLE (qbus_mod_auth ${QBUS_MODULES_AUTH_SOURCES} ${QBUS_MODULES_AUTH_HEADERS})

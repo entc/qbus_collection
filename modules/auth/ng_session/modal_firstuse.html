@@ -1,0 +1,36 @@
+<div class="modal-header">
+  <div class="modal-title">
+    <strong><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{ 'AUTH.FIRSTUSE_MODAL' | transloco }}</strong>
+  </div>
+  <!--
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="modal.dismiss()"><i class="fa fa-times"></i></button>
+  -->
+</div>
+<div class="modal-body" [ngSwitch]="mode">
+
+  <ng-container *ngSwitchCase="0">
+
+    <auth-session-passreset [old]="false" [user]="user" (onChange)="on_password_changed()"></auth-session-passreset>
+
+    <div class="text-right mt-2" *ngIf="mode_next">
+      <button (click)="mode = 1" type="button" class="btn btn-outline-primary btn-block">{{ 'MISC.CONTINUE' | transloco }}</button>
+    </div>
+
+  </ng-container>
+  <ng-container *ngSwitchCase="1">
+
+    <auth-session-msgs></auth-session-msgs>
+
+    <hr>
+
+    <div class="text-right mt-2" *ngIf="mode_next">
+      <button (click)="modal.close ()" type="button" class="btn btn-outline-primary btn-block">{{ 'MISC.DONE' | transloco }}</button>
+    </div>
+
+  </ng-container>
+
+</div>
+<!--
+<div class="modal-footer">
+</div>
+-->
