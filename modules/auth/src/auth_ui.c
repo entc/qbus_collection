@@ -75,56 +75,6 @@ CapeUdc auth_ui_crypt4__extract_from_content (const CapeString content)
 
 //---------------------------------------------------------------------------
 
-int auth_ui_crypt4__fetch_from_db (AuthUI self, const CapeString username, CapeErr err)
-{
-  int res;
-  
-  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-
-  // conditions
-  cape_udc_add_s_cp   (params, "user512"      , username);
-  cape_udc_add_n      (params, "active"       , 1);
-
-  // return values
-  cape_udc_add_n      (values, "id"           , 0);
-  cape_udc_add_s_cp   (values, "secret"       , NULL);
-  
-  // execute the query
-  CapeUdc results = adbl_session_query (self->adbl_session, "q5_users", &params, &values, err);
-  if (results == NULL)
-  {
-    cape_log_msg (CAPE_LL_ERROR, "AUTH", "crypt4", cape_err_text (err));
-
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  CapeUdc first_row = cape_udc_get_first (results);
-  if (first_row == NULL)
-  {
-    cape_log_fmt (CAPE_LL_WARN, "AUTH", "crypt4", "user not found");
-    
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no authentication");
-    goto exit_and_cleanup;
-  }
-
-  // get userid
-  self->userid = cape_udc_get_n (first_row, "id", 0);
-
-  // extract secret
-  self->secret = cape_udc_ext_s (first_row, "secret");
-  
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  cape_udc_del (&results);
-  return res;
-}
-
-//---------------------------------------------------------------------------
-
 int auth_ui_crypt4__compare_password (AuthUI self, const CapeString cha, const CapeString cda, CapeErr err)
 {
   int res;
@@ -171,52 +121,87 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
-int auth_ui_crypt4__check_password (AuthUI self, CapeUdc auth_crypt_credentials, CapeErr err)
+int auth_ui__intern__save_2f_code (AuthUI self, CapeErr err)
+{
+
+  
+}
+
+//---------------------------------------------------------------------------
+
+int auth_ui__intern__get_recipients (AuthUI self, number_t wpid, number_t gpid, CapeUdc* p_recipients, CapeErr err)
 {
   int res;
   
-  const CapeString cid;
-  const CapeString cha;
-  const CapeString cda;
+  const CapeString vsec;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
 
-  // extract into parts
-  cid = cape_udc_get_s (auth_crypt_credentials, "id", NULL);
-  cha = cape_udc_get_s (auth_crypt_credentials, "ha", NULL);
-  cda = cape_udc_get_s (auth_crypt_credentials, "da", NULL);
-
-  if ((NULL == cid) || (NULL == cha) || (NULL == cda))
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
   {
-    cape_log_fmt (CAPE_LL_ERROR, "AUTH", "crypt4", "content has wrong value");
-    
-    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "content has wrong value");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "vault");
     goto exit_and_cleanup;
   }
 
-  res = auth_ui_crypt4__fetch_from_db (self, cid, err);
-  if (res)
   {
-    goto exit_and_cleanup;
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "gpid"         , gpid);
+    
+    cape_udc_add_n      (values, "type"         , 0);
+    cape_udc_add_s_cp   (values, "email"        , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "glob_emails", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    res = qcrypt__decrypt_row_text (vsec, cursor->item, "email", err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
-  res = auth_ui_crypt4__compare_password (self, cha, cda, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
   res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (p_recipients, &query_results);
   
 exit_and_cleanup:
   
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
   return res;
 }
 
 //---------------------------------------------------------------------------
 
-int auth_ui_crypt4 (AuthUI self, const CapeString content, CapeUdc extras, QBusM qout, CapeErr err)
+int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
+  AuthUI self = *p_self;
   
+  const CapeString cid;
+  const CapeString cha;
+  const CapeString cda;
+  CapeUdc first_row;
+  CapeUdc opt_2factor_node;
+  number_t wpid;
+  number_t gpid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
   CapeUdc auth_crypt_credentials = NULL;
   
   // convert from raw input to credentials part
@@ -233,13 +218,142 @@ int auth_ui_crypt4 (AuthUI self, const CapeString content, CapeUdc extras, QBusM
   // a wpid will be added to the authentication credentials
   self->wpid = cape_udc_get_n (auth_crypt_credentials, "wpid", 0);
   
-  // check if given credentials were OK
-  res = auth_ui_crypt4__check_password (self, auth_crypt_credentials, err);
+  // extract into parts
+  cid = cape_udc_get_s (auth_crypt_credentials, "id", NULL);
+  cha = cape_udc_get_s (auth_crypt_credentials, "ha", NULL);
+  cda = cape_udc_get_s (auth_crypt_credentials, "da", NULL);
+  
+  if ((NULL == cid) || (NULL == cha) || (NULL == cda))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "AUTH", "crypt4", "content has wrong value");
+    
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "content has wrong value");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // conditions
+    cape_udc_add_s_cp   (params, "user512"      , cid);
+    cape_udc_add_n      (params, "active"       , 1);
+    
+    if (self->wpid)
+    {
+      cape_udc_add_n      (params, "wpid"       , self->wpid);
+    }
+    
+    // return values
+    cape_udc_add_n      (values, "wpid"         , 0);
+    cape_udc_add_n      (values, "gpid"         , 0);
+
+    cape_udc_add_n      (values, "userid"       , 0);
+    cape_udc_add_s_cp   (values, "secret"       , NULL);
+    
+    cape_udc_add_n      (values, "opt_msgs"     , 0);
+    cape_udc_add_n      (values, "opt_2factor"  , 0);
+    
+    cape_udc_add_s_cp   (values, "code_2factor" , NULL);
+    
+    /*
+     auth_users_secret_view
+     
+     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active, ru.opt_msgs, ru.opt_2factor, ru.code_2factor from rbac_users ru join q5_users qu on qu.id = ru.userid;
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_users_secret_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      cape_log_msg (CAPE_LL_ERROR, "AUTH", "crypt4", cape_err_text (err));
+      
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row == NULL)
+  {
+    cape_log_fmt (CAPE_LL_WARN, "AUTH", "crypt4", "user not found");
+    
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no authentication");
+    goto exit_and_cleanup;
+  }
+  
+  if (cape_udc_size (query_results) > 1)
+  {
+    // TODO: add workspaces here
+    
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too many results for rbac");
+    goto exit_and_cleanup;
+  }
+
+  wpid = cape_udc_get_n (first_row, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no wpid assigned");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (first_row, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no gpid assigned");
+    goto exit_and_cleanup;
+  }
+  
+  opt_2factor_node = cape_udc_get (first_row, "opt_2factor");
+  if (opt_2factor_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no 2factor");
+    goto exit_and_cleanup;
+  }
+  
+  // check the status of the 2factor authentication
+  if (cape_udc_n (opt_2factor_node, 0) == 1)
+  {
+    const CapeString code_2f_from_db = cape_udc_get_s (first_row, "code_2factor", NULL);
+    
+    if (code_2f_from_db)
+    {
+      // check if the code was given by the user
+      
+    }
+    else
+    {
+      qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      {
+        CapeUdc recipients = NULL;
+        
+        res = auth_ui__intern__get_recipients (self, wpid, gpid, &recipients, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
+        
+        cape_udc_add_name (qout->cdata, &recipients, "recipients");
+      }
+      
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2f_code");
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // get userid
+  self->userid = cape_udc_get_n (first_row, "userid", 0);
+  
+  // extract secret
+  self->secret = cape_udc_ext_s (first_row, "secret");
+  
+  res = auth_ui_crypt4__compare_password (self, cha, cda, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  
+
   {
     // use the rinfo classes
     AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->userid, self->wpid);
@@ -256,6 +370,7 @@ int auth_ui_crypt4 (AuthUI self, const CapeString content, CapeUdc extras, QBusM
   
 exit_and_cleanup:
   
+  cape_udc_del (&query_results);
   cape_udc_del (&auth_crypt_credentials);
   return res;
 }
@@ -397,7 +512,7 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
         goto exit_and_cleanup;
       }
       
-      res = auth_ui_crypt4 (self, auth_content, auth_extras, qout, err);
+      res = auth_ui_crypt4 (p_self, auth_content, auth_extras, qin, qout, err);
       goto exit_and_cleanup;
     }
     case 4:
@@ -411,7 +526,7 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 
 exit_and_cleanup:
   
-  if (res == CAPE_ERR_NO_AUTH)
+  if (*p_self && res == CAPE_ERR_NO_AUTH)
   {
     auth_ui__intern__write_log (self, qin->cdata);
   }
@@ -809,12 +924,6 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "userid"       , 0);
     cape_udc_add_s_cp   (values, "secret"       , NULL);
     
-    /*
-     auth_users_secret_view
-     
-     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active from rbac_users ru join q5_users qu on qu.id = ru.userid;
-     */
-    
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "auth_users_secret_view", &params, &values, err);
     if (query_results == NULL)
@@ -1087,6 +1196,173 @@ exit_and_cleanup:
   
   cape_udc_del (&rinfo);
   cape_udc_del (&cdata);
+
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_config_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  number_t gpid;
+  number_t wpid;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config get} missing rinfo");
+    goto exit_and_cleanup;
+  }
+
+  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config get} 'wpid' is missing");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config get} 'gpid' is missing");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"           , wpid);
+    cape_udc_add_n      (params, "gpid"           , gpid);
+    cape_udc_add_n      (values, "id"             , 0);
+    cape_udc_add_n      (values, "opt_msgs"       , 0);
+    cape_udc_add_n      (values, "opt_2factor"    , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      return cape_err_code (err);
+    }
+  }
+
+  first_row = cape_udc_ext_first (query_results);
+  if (first_row == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "{ui config get} entry not found");
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &first_row);
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  cape_udc_del (&first_row);
+
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+  
+  number_t gpid;
+  number_t wpid;
+  CapeUdc opt_msgs_node;
+  CapeUdc opt_2factor_node;
+
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config set} missing rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'wpid' is missing");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'gpid' is missing");
+    goto exit_and_cleanup;
+  }
+
+  // do some security checks
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config set} missing cdata");
+    goto exit_and_cleanup;
+  }
+  
+  opt_msgs_node = cape_udc_get (qin->cdata, "opt_msgs");
+  if (opt_msgs_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'opt_msgs' is missing");
+    goto exit_and_cleanup;
+  }
+
+  opt_2factor_node = cape_udc_get (qin->cdata, "opt_2factor");
+  if (opt_2factor_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'opt_2factor' is missing");
+    goto exit_and_cleanup;
+  }
+
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "wpid"        , wpid);
+    cape_udc_add_n     (params, "gpid"        , gpid);
+
+    cape_udc_add_n     (values, "opt_msgs"    , cape_udc_n (opt_msgs_node, 0));
+    cape_udc_add_n     (values, "opt_2factor" , cape_udc_n (opt_2factor_node, 0));
+
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
 
   auth_ui_del (p_self);
   return res;

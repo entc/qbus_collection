@@ -116,6 +116,32 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_config_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  
+  // run the command
+  return auth_ui_config_get (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  
+  // run the command
+  return auth_ui_config_set (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__gp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -400,6 +426,14 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // change password for an user account
   //   args: usid, password
   qbus_register (qbus, "ui_set"               , ctx, qbus_auth_ui_set, NULL, err);
+
+  // retrieve the config of the ui system
+  //   args:
+  qbus_register (qbus, "ui_config_get"        , ctx, qbus_auth_ui_config_get, NULL, err);
+
+  // set the config
+  //   args: opt_msgs_active, opt_2factor
+  qbus_register (qbus, "ui_config_set"        , ctx, qbus_auth_ui_config_set, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

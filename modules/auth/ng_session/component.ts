@@ -328,7 +328,8 @@ export class AuthSessionRoleDirective {
   msgs_list: AuthMsgsItem[];
   new_item: AuthMsgsItem = null;
 
-  msgs_active: boolean = false;
+  opt_msgs: boolean = false;
+  opt_2factor: boolean = false;
 
   //---------------------------------------------------------------------------
 
@@ -338,7 +339,8 @@ export class AuthSessionRoleDirective {
 
       if (data)
       {
-        this.fetch ();
+        this.fetch_msgs ();
+        this.fetch_config ();
       }
       else
       {
@@ -350,7 +352,7 @@ export class AuthSessionRoleDirective {
 
   //---------------------------------------------------------------------------
 
-  fetch ()
+  fetch_msgs ()
   {
     this.auth_session.json_rpc ('AUTH', 'msgs_get', {}).subscribe ((data: AuthMsgsItem[]) => {
 
@@ -367,9 +369,39 @@ export class AuthSessionRoleDirective {
 
   //---------------------------------------------------------------------------
 
+  fetch_config ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_config_get', {}).subscribe ((data: AuthConfigItem) => {
+
+      this.opt_msgs = (data.opt_msgs > 0);
+      this.opt_2factor = (data.opt_2factor > 0);
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  save_config ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_config_set', {opt_msgs: this.opt_msgs ? 1 : 0, opt_2factor: this.opt_2factor ? 1 : 0}).subscribe (() => {
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
   msgs_active_changed (val: boolean)
   {
-    this.msgs_active = val;
+    this.opt_msgs = val;
+    this.save_config ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  msgs_2factor_changed (val: boolean)
+  {
+    this.opt_2factor = val;
+    this.save_config ();
   }
 
   //---------------------------------------------------------------------------
@@ -393,7 +425,7 @@ export class AuthSessionRoleDirective {
     this.auth_session.json_rpc ('AUTH', 'msgs_add', this.new_item).subscribe (() => {
 
       this.new_item = null;
-      this.fetch ();
+      this.fetch_msgs ();
 
     });
   }
@@ -410,7 +442,7 @@ export class AuthSessionRoleDirective {
   cancel_edit (item: AuthMsgsItem)
   {
     item.mode = 0;
-    this.fetch ();
+    this.fetch_msgs ();
   }
 
   //---------------------------------------------------------------------------
@@ -420,7 +452,7 @@ export class AuthSessionRoleDirective {
     this.auth_session.json_rpc ('AUTH', 'msgs_set', item).subscribe (() => {
 
       item.mode = 0;
-      this.fetch ();
+      this.fetch_msgs ();
 
     });
   }
@@ -439,7 +471,7 @@ export class AuthSessionRoleDirective {
     this.auth_session.json_rpc ('AUTH', 'msgs_rm', item).subscribe (() => {
 
       item.mode = 0;
-      this.fetch ();
+      this.fetch_msgs ();
 
     });
   }
@@ -461,6 +493,12 @@ class AuthMsgsItem
   type: number;
 
   mode: number;
+}
+
+class AuthConfigItem
+{
+  opt_msgs: number;
+  opt_2factor: number;
 }
 
 //=============================================================================

@@ -442,8 +442,41 @@ export class AuthSession
 
       if (error.status == 428)
       {
-        this.show_workspace_selector (error, response);
-        return new Observable<T>();
+        const headers: HttpHeaders = error.headers;
+        const warning = headers.get('warning');
+
+        // the warning returns the error message
+        if (warning)
+        {
+          // split the error message into code and text
+          var i = warning.indexOf(',');
+
+          // retrieve code and text
+          var text = warning.substring(i + 1).trim();
+          var code = Number(warning.substring(0, i));
+
+          if (text == 'vault')
+          {
+            // this will create a new vault entry in the auth module
+
+          }
+          else if (text == 'code_2factor')
+          {
+            // this will display the selection of the recipients
+            // user can enter the code of the 2factor authentication
+
+          }
+          else
+          {
+            this.show_workspace_selector (error, response);
+          }
+
+          return new Observable<T>();
+        }
+        else
+        {
+          return throwError (error);
+        }
       }
       else
       {

@@ -129,7 +129,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "gpid"        , self->gpid);
 
     cape_udc_add_n      (values, "state"       , 0);
-
+    
     cape_udc_add_s_cp   (values, "firstname"   , NULL);
     cape_udc_add_s_cp   (values, "lastname"    , NULL);
     cape_udc_add_s_cp   (values, "workspace"   , NULL);

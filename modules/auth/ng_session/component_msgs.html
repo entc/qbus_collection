@@ -111,4 +111,5 @@
     </table>
 
     <hr>
-    <qbng-switch [val]="msgs_active" (onVal)="msgs_active_changed ($event)">{{ 'AUTH.MSGSACTIVE' | transloco }}</qbng-switch>
+    <qbng-switch [val]="opt_msgs" (onVal)="msgs_active_changed ($event)">{{ 'AUTH.MSGSACTIVE' | transloco }}</qbng-switch>
+    <qbng-switch [val]="opt_2factor" (onVal)="msgs_2factor_changed ($event)">{{ 'AUTH.OPT2FACTOR' | transloco }}</qbng-switch>
