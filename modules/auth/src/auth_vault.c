@@ -97,20 +97,7 @@ int auth_vault_set (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
     return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing secret");
   }
   
-  cape_mutex_lock (self->mutex);
-  
-  {
-    CapeMapNode n = cape_map_find (self->contexts, (void*)wpid);
-    
-    if (n == NULL)
-    {
-      //cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault set", "new vault secret inserted %i = '%s'", wpid, secret);
-      
-      cape_map_insert (self->contexts, (void*)wpid, cape_str_cp (secret));
-    }
-  }
-
-  cape_mutex_unlock (self->mutex);
+  auth_vault__save (self, wpid, secret);
   
   return CAPE_ERR_NONE;
 }
@@ -135,6 +122,28 @@ const CapeString auth_vault__vsec (AuthVault self, number_t wpid)
   cape_mutex_unlock (self->mutex);
 
   return secret;
+}
+
+//-----------------------------------------------------------------------------
+
+void auth_vault__save (AuthVault self, number_t wpid, const CapeString vsec)
+{
+  cape_mutex_lock (self->mutex);
+  
+  {
+    CapeMapNode n = cape_map_find (self->contexts, (void*)wpid);
+    
+    if (n == NULL)
+    {
+      //cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault set", "new vault secret inserted %i = '%s'", wpid, secret);
+      
+      cape_map_insert (self->contexts, (void*)wpid, cape_str_cp (vsec));
+    }
+  }
+  
+  cape_mutex_unlock (self->mutex);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "vault", "value set wpid = %i", wpid);
 }
 
 //-----------------------------------------------------------------------------

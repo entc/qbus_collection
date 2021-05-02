@@ -26,6 +26,8 @@ __CAPE_LIBEX   int          auth_vault_get    (AuthVault, QBusM qin, QBusM qout,
 
 __CAPE_LIBEX   const CapeString   auth_vault__vsec   (AuthVault, number_t wpid);
 
+__CAPE_LIBEX   void               auth_vault__save   (AuthVault, number_t wpid, const CapeString vsec);
+
 //-----------------------------------------------------------------------------
 
 #endif

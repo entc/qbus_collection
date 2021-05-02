@@ -129,22 +129,49 @@ int auth_ui__intern__save_2f_code (AuthUI self, CapeErr err)
 
 //---------------------------------------------------------------------------
 
-int auth_ui__intern__get_recipients (AuthUI self, number_t wpid, number_t gpid, CapeUdc* p_recipients, CapeErr err)
+int auth_ui__intern__get_workspaces (AuthUI self, number_t userid, CapeUdc* p_workspaces, CapeErr err)
 {
   int res;
+
+  // local objects
+  CapeUdc query_results = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "userid"       , userid);
+    
+    cape_udc_add_n      (values, "wpid"         , 0);
+    cape_udc_add_s_cp   (values, "workspace"    , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (p_workspaces, &query_results);
   
-  const CapeString vsec;
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
+int auth_ui__intern__get_recipients (AuthUI self, number_t wpid, number_t gpid, CapeUdc* p_recipients, const CapeString vsec, CapeErr err)
+{
+  int res;
   
   // local objects
   CapeUdc query_results = NULL;
   CapeUdcCursor* cursor = NULL;
-
-  vsec = auth_vault__vsec (self->vault, wpid);
-  if (vsec == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "vault");
-    goto exit_and_cleanup;
-  }
 
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -195,14 +222,18 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   const CapeString cid;
   const CapeString cha;
   const CapeString cda;
+  const CapeString vsec;
   CapeUdc first_row;
   CapeUdc opt_2factor_node;
   number_t wpid;
   number_t gpid;
+  number_t userid;
   
   // local objects
   CapeUdc query_results = NULL;
   CapeUdc auth_crypt_credentials = NULL;
+  CapeString h1 = NULL;
+  CapeString h2 = NULL;
   
   // convert from raw input to credentials part
   auth_crypt_credentials = auth_ui_crypt4__extract_from_content (content);
@@ -250,7 +281,8 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
 
     cape_udc_add_n      (values, "userid"       , 0);
     cape_udc_add_s_cp   (values, "secret"       , NULL);
-    
+    cape_udc_add_s_cp   (values, "secret_vault" , NULL);
+
     cape_udc_add_n      (values, "opt_msgs"     , 0);
     cape_udc_add_n      (values, "opt_2factor"  , 0);
     
@@ -259,7 +291,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     /*
      auth_users_secret_view
      
-     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active, ru.opt_msgs, ru.opt_2factor, ru.code_2factor from rbac_users ru join q5_users qu on qu.id = ru.userid;
+     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active, ru.opt_msgs, ru.opt_2factor, ru.code_2factor, ru.secret secret_vault from rbac_users ru join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -282,9 +314,28 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     goto exit_and_cleanup;
   }
   
+  userid = cape_udc_get_n (first_row, "userid", 0);
+  if (userid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no userid assigned");
+    goto exit_and_cleanup;
+  }
+  
+  // extract secret
+  self->secret = cape_udc_ext_s (first_row, "secret");
+  if (self->secret == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no secret defined");
+    goto exit_and_cleanup;
+  }
+  
   if (cape_udc_size (query_results) > 1)
   {
-    // TODO: add workspaces here
+    res = auth_ui__intern__get_workspaces (self, userid, &(qout->cdata), err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
     
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too many results for rbac");
     goto exit_and_cleanup;
@@ -296,12 +347,59 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no wpid assigned");
     goto exit_and_cleanup;
   }
-
+  
   gpid = cape_udc_get_n (first_row, "gpid", 0);
   if (gpid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no gpid assigned");
     goto exit_and_cleanup;
+  }
+
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
+  {
+    const CapeString vault_password = cape_udc_get_s (auth_crypt_credentials, "vault", NULL);
+    const CapeString vault_secret = cape_udc_get_s (first_row, "secret_vault", NULL);
+    
+    if (vault_password == NULL)
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "no vault found -> missing parameter");
+
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "vault");
+      goto exit_and_cleanup;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "no vault found -> continue with parameter");
+
+    if (vault_secret == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no vault defined");
+      goto exit_and_cleanup;
+    }
+
+    h1 = qcrypt__decrypt (self->secret, vault_password, err);
+    if (h1 == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "wrong vault");
+      goto exit_and_cleanup;
+    }
+    
+    h2 = qcrypt__decrypt (h1, vault_secret, err);
+    if (h2 == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "can't get vault");
+      goto exit_and_cleanup;
+    }
+    
+    // set the vault 
+    auth_vault__save (self->vault, wpid, h2);
+    
+    vsec = auth_vault__vsec (self->vault, wpid);
+    if (vsec == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "error in vault");
+      goto exit_and_cleanup;
+    }
   }
   
   opt_2factor_node = cape_udc_get (first_row, "opt_2factor");
@@ -328,7 +426,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
       {
         CapeUdc recipients = NULL;
         
-        res = auth_ui__intern__get_recipients (self, wpid, gpid, &recipients, err);
+        res = auth_ui__intern__get_recipients (self, wpid, gpid, &recipients, vsec, err);
         if (res)
         {
           goto exit_and_cleanup;
@@ -345,14 +443,13 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   // get userid
   self->userid = cape_udc_get_n (first_row, "userid", 0);
   
-  // extract secret
-  self->secret = cape_udc_ext_s (first_row, "secret");
-  
   res = auth_ui_crypt4__compare_password (self, cha, cda, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
+
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
 
   {
     // use the rinfo classes

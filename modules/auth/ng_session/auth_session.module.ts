@@ -5,7 +5,7 @@ import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
 import { HttpClientModule } from '@angular/common/http';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import { AuthSession, AuthSessionLoginModalComponent, AuthWorkspacesModalComponent, AuthSessionComponentDirective, AuthSessionLoginComponent, AuthFirstuseModalComponent } from '@qbus/auth_session';
+import { AuthSession, AuthSessionLoginModalComponent, AuthWorkspacesModalComponent, Auth2FactorModalComponent, AuthSessionComponentDirective, AuthSessionLoginComponent, AuthFirstuseModalComponent } from '@qbus/auth_session';
 import { AuthSessionMenuComponent, AuthSessionInfoModalComponent, AuthSessionRoleDirective, AuthSessionContentComponent, AuthSessionPassResetComponent, AuthSessionMsgsComponent } from './component';
 import { AuthSessionGuard } from '@qbus/auth_session/route';
 
@@ -14,6 +14,7 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
 @NgModule({
   declarations: [
     AuthWorkspacesModalComponent,
+    Auth2FactorModalComponent,
     AuthFirstuseModalComponent,
     AuthSessionLoginModalComponent,
     AuthSessionMenuComponent,
@@ -39,6 +40,7 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
   ],
   entryComponents: [
     AuthWorkspacesModalComponent,
+    Auth2FactorModalComponent,
     AuthFirstuseModalComponent,
     AuthSessionLoginModalComponent,
     AuthSessionLoginComponent,

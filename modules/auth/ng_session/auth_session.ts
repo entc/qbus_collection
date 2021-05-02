@@ -34,6 +34,7 @@ export class AuthSession
   private user: string = null;
   private pass: string = null;
   private wpid: string = null;
+  private vault: boolean = false;    // special option to summit vault password
 
   // initialize the session emitter
   public session: BehaviorSubject<AuthSessionItem>;
@@ -310,23 +311,30 @@ export class AuthSession
 
   //-----------------------------------------------------------------------------
 
-  private crypt4 (user: string, pass: string, wpid: string): string
+  private crypt4 (user: string, pass: string): string
   {
     var iv: string = this.padding ((new Date).getTime().toString(), 16);
 
     var hash1: string = CryptoJS.SHA256 (user + ":" + pass).toString();
     var hash2: string = CryptoJS.SHA256 (iv + ":" + hash1).toString();
 
-    if (wpid)
+    // default parameters
+    var params = {"ha":iv, "id":CryptoJS.SHA256 (user).toString(), "da":hash2};
+
+    if (this.wpid)
     {
-      // create a Object object as text
-      return JSON.stringify ({"ha":iv, "id":CryptoJS.SHA256 (user).toString(), "da":hash2, "wpid":wpid});
+      params['wpid'] = this.wpid;
     }
-    else
+
+    if (this.vault)
     {
-      // create a Object object as text
-      return JSON.stringify ({"ha":iv, "id":CryptoJS.SHA256 (user).toString(), "da":hash2});
+      // ecrypt password with hash1
+      // hash1 is known to the auth module
+      params['vault'] = CryptoJS.AES.encrypt (pass, hash1, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
     }
+
+    // create a Object object as text
+    return JSON.stringify (params);
   }
 
   //---------------------------------------------------------------------------
@@ -339,7 +347,7 @@ export class AuthSession
     {
       // use the old crypt4 authentication mechanism
       // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, this.wpid)})};
+      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass)})};
     }
     else
     {
@@ -436,6 +444,30 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  private show_2factor_selector (error: HttpErrorResponse, response: EventEmitter<AuthSessionItem>)
+  {
+    this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])}).result.then((result) => {
+
+
+      this.fetch_session (response);
+
+    }, () => {
+
+      this.storage_clear ();
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  private apply_vault (response: EventEmitter<AuthSessionItem>)
+  {
+    this.vault = true;
+    this.fetch_session (response);
+  }
+
+  //---------------------------------------------------------------------------
+
   private handle_error_login<T> (http_request: Observable<T>, response: EventEmitter<AuthSessionItem>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
@@ -457,14 +489,21 @@ export class AuthSession
 
           if (text == 'vault')
           {
-            // this will create a new vault entry in the auth module
-
+            if (this.vault == false)
+            {
+              // this will create a new vault entry in the auth module
+              this.apply_vault (response);
+            }
+            else
+            {
+              return throwError (error);
+            }
           }
-          else if (text == 'code_2factor')
+          else if (text == '2f_code')
           {
             // this will display the selection of the recipients
             // user can enter the code of the 2factor authentication
-
+            this.show_2factor_selector (error, response);
           }
           else
           {
@@ -610,6 +649,23 @@ export class AuthSessionComponentDirective {
   select_workspace (wpid: number)
   {
     this.modal.close (wpid);
+  }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-2factor-modal-component',
+  templateUrl: './modal_2factor.html'
+}) export class Auth2FactorModalComponent {
+
+  public recipients: any;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private response: HttpErrorResponse)
+  {
+    this.recipients = response.error['recipients'];
   }
 }
 
