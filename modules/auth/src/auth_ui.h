@@ -41,6 +41,8 @@ __CAPE_LIBEX   int     auth_ui_config_get  (AuthUI*, QBusM qin, QBusM qout, Cape
 
 __CAPE_LIBEX   int     auth_ui_config_set  (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int     auth_ui_2f_send     (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

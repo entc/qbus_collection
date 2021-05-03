@@ -142,6 +142,19 @@ static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_2f_send (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  
+  // run the command
+  return auth_ui_2f_send (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__gp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -434,6 +447,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // set the config
   //   args: opt_msgs_active, opt_2factor
   qbus_register (qbus, "ui_config_set"        , ctx, qbus_auth_ui_config_set, NULL, err);
+
+  // send the 2factor auth messages
+  //   args:
+  qbus_register (qbus, "ui_2f_send"           , ctx, qbus_auth_ui_2f_send, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

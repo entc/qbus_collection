@@ -90,7 +90,7 @@ export class AuthSession
     this.pass = pass;
 
     // try to get a session
-    this.fetch_session (response);
+    this.fetch_session (response, null);
 
     return response;
   }
@@ -302,6 +302,13 @@ export class AuthSession
   }
 */
 
+  //---------------------------------------------------------------------------
+
+  public json_token_rpc<T> (token: string, qbus_module: string, qbus_method: string, params: object): Observable<T>
+  {
+    return this.http.post<T>('json/' + qbus_module + '/' + qbus_method + '/__P/' + token, JSON.stringify (params));
+  }
+
   //-----------------------------------------------------------------------------
 
   private padding (str: string, max: number): string
@@ -311,7 +318,7 @@ export class AuthSession
 
   //-----------------------------------------------------------------------------
 
-  private crypt4 (user: string, pass: string): string
+  private crypt4 (user: string, pass: string, code: string): string
   {
     var iv: string = this.padding ((new Date).getTime().toString(), 16);
 
@@ -333,13 +340,18 @@ export class AuthSession
       params['vault'] = CryptoJS.AES.encrypt (pass, hash1, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
     }
 
+    if (code)
+    {
+      params['code'] = CryptoJS.SHA256 (code).toString();
+    }
+
     // create a Object object as text
     return JSON.stringify (params);
   }
 
   //---------------------------------------------------------------------------
 
-  public json_crypt4_rpc<T> (qbus_module: string, qbus_method: string, params: object, response: EventEmitter<AuthSessionItem>): Observable<T>
+  public json_crypt4_rpc<T> (qbus_module: string, qbus_method: string, params: object, response: EventEmitter<AuthSessionItem>, code: string): Observable<T>
   {
     var header: object;
 
@@ -347,7 +359,7 @@ export class AuthSession
     {
       // use the old crypt4 authentication mechanism
       // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass)})};
+      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)})};
     }
     else
     {
@@ -359,9 +371,9 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private fetch_session (response: EventEmitter<AuthSessionItem>)
+  private fetch_session (response: EventEmitter<AuthSessionItem>, code: string)
   {
-    this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1}, response).subscribe((data: AuthSessionItem) => {
+    this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1}, response, code).subscribe((data: AuthSessionItem) => {
 
       if (data)
       {
@@ -432,8 +444,9 @@ export class AuthSession
   {
     this.modal_service.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])}).result.then((result) => {
 
+      this.vault = false;
       this.wpid = String(result);
-      this.fetch_session (response);
+      this.fetch_session (response, null);
 
     }, () => {
 
@@ -448,8 +461,8 @@ export class AuthSession
   {
     this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])}).result.then((result) => {
 
-
-      this.fetch_session (response);
+      this.vault = false;
+      this.fetch_session (response, result['code']);
 
     }, () => {
 
@@ -463,7 +476,7 @@ export class AuthSession
   private apply_vault (response: EventEmitter<AuthSessionItem>)
   {
     this.vault = true;
-    this.fetch_session (response);
+    this.fetch_session (response, null);
   }
 
   //---------------------------------------------------------------------------
@@ -496,6 +509,7 @@ export class AuthSession
             }
             else
             {
+              this.vault = false;
               return throwError (error);
             }
           }
@@ -659,14 +673,78 @@ export class AuthSessionComponentDirective {
   templateUrl: './modal_2factor.html'
 }) export class Auth2FactorModalComponent {
 
-  public recipients: any;
+  public mode: number = 0;
+  public recipients: AuthRecipients[];
+  public code: string;
+
+  private token: string;
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, private response: HttpErrorResponse)
+  constructor (public auth_session: AuthSession, public modal: NgbActiveModal, private response: HttpErrorResponse)
   {
     this.recipients = response.error['recipients'];
+
+    if (this.recipients.length > 0)
+    {
+      for (var i in this.recipients)
+      {
+        var item: AuthRecipients = this.recipients[i];
+        item.used = false;
+      }
+
+      this.recipients[0].used = true;
+    }
+
+    this.token = response.error['token'];
   }
+
+  //---------------------------------------------------------------------------
+
+  toogle_used (item: AuthRecipients)
+  {
+    item.used = !item.used;
+  }
+
+  //---------------------------------------------------------------------------
+
+  send ()
+  {
+    var params = [];
+
+    if (this.recipients.length > 0)
+    {
+      for (var i in this.recipients)
+      {
+        var item: AuthRecipients = this.recipients[i];
+        if (item.used) params.push (item.id);
+      }
+    }
+
+    this.auth_session.json_token_rpc (this.token, 'AUTH', 'ui_2f_send', params).subscribe(() => {
+
+      this.mode = 1;
+      this.code = '';
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  login ()
+  {
+    this.modal.close ({code: this.code});
+  }
+}
+
+class AuthRecipients
+{
+  id: number;
+  email: string;
+  type: number;
+
+  // fill be used from the component
+  used: boolean;
 }
 
 //=============================================================================

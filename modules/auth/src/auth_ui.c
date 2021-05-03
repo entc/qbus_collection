@@ -1,5 +1,6 @@
 #include "auth_ui.h"
 #include "auth_rinfo.h"
+#include "auth_perm.h"
 
 // cape includes
 #include <fmt/cape_json.h>
@@ -21,6 +22,7 @@ struct AuthUI_s
   number_t wpid;
   
   CapeString secret;
+  CapeUdc recipients;
 };
 
 //-----------------------------------------------------------------------------
@@ -38,6 +40,7 @@ AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault
   self->wpid = 0;
   
   self->secret = NULL;
+  self->recipients = NULL;
 
   return self;
 }
@@ -51,6 +54,7 @@ void auth_ui_del (AuthUI* p_self)
     AuthUI self = *p_self;
     
     cape_str_del (&(self->secret));
+    cape_udc_del (&(self->recipients));
     
     CAPE_DEL (p_self, struct AuthUI_s);
   }
@@ -179,6 +183,7 @@ int auth_ui__intern__get_recipients (AuthUI self, number_t wpid, number_t gpid, 
     
     cape_udc_add_n      (params, "gpid"         , gpid);
     
+    cape_udc_add_n      (values, "id"           , 0);
     cape_udc_add_n      (values, "type"         , 0);
     cape_udc_add_s_cp   (values, "email"        , NULL);
     
@@ -209,6 +214,107 @@ exit_and_cleanup:
   
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&query_results);
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
+int auth_ui_crypt4__2f_token (AuthUI self, number_t wpid, number_t gpid, number_t userid, CapeString* p_token, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  QBusM ap_qin = qbus_message_new (NULL, NULL);
+  QBusM ap_qout = qbus_message_new (NULL, NULL);
+  
+  AuthPerm ap = auth_perm_new (self->adbl_session, self->vault);
+  CapeString token = NULL;
+  
+  ap_qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_n (ap_qin->rinfo, "wpid", wpid);
+  cape_udc_add_n (ap_qin->rinfo, "gpid", gpid);
+  cape_udc_add_n (ap_qin->rinfo, "userid", userid);
+
+  ap_qin->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  cape_udc_add_n (ap_qin->pdata, "rfid", gpid);
+  
+  {
+    CapeUdc roles = cape_udc_new (CAPE_UDC_NODE, "roles");
+    
+    cape_udc_add_b (roles, "AUTH_2F", TRUE);
+    
+    cape_udc_add (ap_qin->pdata, &roles);
+  }
+  
+  res = auth_perm_set (&ap, ap_qin, ap_qout, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  token = cape_udc_ext_s (ap_qout->cdata, "token");
+  if (token == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't get token");
+    goto exit_and_cleanup;
+  }
+
+  cape_str_replace_mv (p_token, &token);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  auth_perm_del (&ap);
+  
+  qbus_message_del (&ap_qout);
+  qbus_message_del (&ap_qin);
+  
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
+int auth_ui_crypt4__code_remove (AuthUI self, number_t wpid, number_t gpid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "wpid"          , wpid);
+    cape_udc_add_n     (params, "gpid"          , gpid);
+    
+    cape_udc_add_z     (values, "code_2factor");
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
   return res;
 }
 
@@ -417,12 +523,31 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     if (code_2f_from_db)
     {
       // check if the code was given by the user
+      const CapeString code_2f = cape_udc_get_s (auth_crypt_credentials, "code", NULL);
+
+      res = auth_ui_crypt4__code_remove (self, wpid, gpid, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      if (code_2f == NULL)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "2f_secret");
+        goto exit_and_cleanup;
+      }
       
+      if (!cape_str_equal (code_2f_from_db, code_2f))
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code missmatch");
+        goto exit_and_cleanup;
+      }
     }
     else
     {
       qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
       
+      // retrieve the recipients
       {
         CapeUdc recipients = NULL;
         
@@ -435,6 +560,18 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
         cape_udc_add_name (qout->cdata, &recipients, "recipients");
       }
       
+      {
+        CapeString token = NULL;
+        
+        res = auth_ui_crypt4__2f_token (self, wpid, gpid, userid, &token, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
+        
+        cape_udc_add_s_mv (qout->cdata, "token", &token);
+      }
+
       res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2f_code");
       goto exit_and_cleanup;
     }
@@ -1461,6 +1598,183 @@ exit_and_cleanup:
   
   adbl_trx_rollback (&adbl_trx, err);
 
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_2f_send__has (CapeUdc list, number_t id)
+{
+  int ret = FALSE;
+  
+  // local objects
+  CapeUdcCursor* cursor = cape_udc_cursor_new (list, CAPE_DIRECTION_FORW);
+
+  while (cape_udc_cursor_next (cursor))
+  {
+    if (cape_udc_n (cursor->item, 0) == id)
+    {
+      ret = TRUE;
+      goto exit_and_cleanup;
+    }
+  }
+  
+exit_and_cleanup:
+
+  cape_udc_cursor_del (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_2f_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+  
+  number_t wpid;
+  number_t gpid;
+  const CapeString vsec;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  CapeString h1 = NULL;
+  
+  if (!qbus_message_role_has (qin, "AUTH_2F"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "{ui 2f send} missing role");
+    goto exit_and_cleanup;
+  }
+  
+  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui 2f send} 'wpid' is missing");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui 2f send} 'gpid' is missing");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui 2f send} missing cdata");
+    goto exit_and_cleanup;
+  }
+
+  if (cape_udc_type (qin->cdata) != CAPE_UDC_LIST)
+  {
+    res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "{ui 2f send} cdata is not a list");
+    goto exit_and_cleanup;
+  }
+  
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "{ui 2f send} no vault");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "gpid"         , gpid);
+    
+    cape_udc_add_n      (values, "id"           , 0);
+    cape_udc_add_n      (values, "type"         , 0);
+    cape_udc_add_s_cp   (values, "email"        , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "glob_emails", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    if (auth_ui_2f_send__has (qin->cdata, cape_udc_get_n (cursor->item, "id", 0)))
+    {
+      res = qcrypt__decrypt_row_text (vsec, cursor->item, "email", err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui 2f send", "send message to '%s'", cape_udc_get_s (cursor->item, "email", ""));
+    }
+    else
+    {
+      cape_udc_cursor_rm (query_results, cursor);
+    }
+  }
+
+  // transfer ownership
+  cape_udc_replace_mv (&(self->recipients), &query_results);
+  
+  // create code
+  self->secret = cape_str_random (6);
+
+  h1 = qcrypt__hash_sha256__hex_o (self->secret, 6, err);
+  if (h1 == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "{ui 2f send} can't hash code");
+    goto exit_and_cleanup;
+  }
+  
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "wpid"          , wpid);
+    cape_udc_add_n     (params, "gpid"          , gpid);
+    
+    cape_udc_add_s_mv  (values, "code_2factor"  , &h1);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  printf ("CODE: %s\n", self->secret);
+  
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_str_del (&h1);
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  
   auth_ui_del (p_self);
   return res;
 }
