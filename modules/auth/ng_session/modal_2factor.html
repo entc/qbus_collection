@@ -1,0 +1,48 @@
+<div class="modal-header">
+  <div class="modal-title">
+    <strong><i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ 'AUTH.OPT2FACTOR' | transloco }}</strong>
+  </div>
+</div>
+<div class="modal-body" [ngSwitch]="mode">
+
+  <ng-container *ngSwitchCase="0">
+
+    <ul class="list-group">
+      <button type="button" class="list-group-item list-group-item-action" *ngFor="let re of recipients" (click)="toogle_used (re)">
+        <div class="d-flex justify-content-between">
+          <ng-container [ngSwitch]="re.used">
+            <i *ngSwitchCase="true" class="far fa-check-circle"></i>
+            <i *ngSwitchCase="false" class="far fa-circle"></i>
+          </ng-container>
+          <!--
+          <ng-container [ngSwitch]="re.type">
+            <span *ngSwitchCase="1" class="badge badge-secondary"><i class="fa fa-envelope"></i></span>
+            <span *ngSwitchCase="2" class="badge badge-secondary"><i class="fa fa-phone"></i></span>
+          </ng-container>
+          -->
+          {{re.email}}
+        </div>
+      </button>
+    </ul>
+    <hr>
+    <button type="button" class="btn btn-outline-success btn-block" (click)="send ()">{{ 'MISC.CONTINUE' | transloco }}</button>
+
+  </ng-container>
+  <ng-container *ngSwitchCase="1">
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.CODE' | transloco }}</small></span>
+      </div>
+      <input type="text" class="form-control" id="InputPassword" required [(ngModel)]="code">
+    </div>
+
+    <hr>
+    <button type="button" class="btn btn-outline-success btn-block" (click)="login ()">{{ 'AUTH.LOGIN' | transloco }}</button>
+
+  </ng-container>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss ()">{{ 'MISC.CANCEL' | transloco }}</button>
+</div>
