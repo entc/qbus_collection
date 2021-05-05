@@ -17,6 +17,6 @@ h2=`printf %s:%s $iv $h1 | openssl dgst -sha256`
 result=$(curl -i -s \
 	-H "Authorization: Crypt4 {\"ha\":\"$iv\",\"id\":\"$id\",\"da\":\"$h2\"}" \
 	-H "Content-Type: application/json" \
-	127.0.0.1:8090/json/auth/vault_set\
+	$3/json/auth/vault_set\
 	--data "{\"secret\":\"$PASS\"}")
 	
