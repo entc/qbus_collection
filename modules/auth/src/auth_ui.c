@@ -322,6 +322,95 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
+int auth_ui_crypt4__fix_vault (AuthUI self, number_t wpid, number_t gpid, CapeString* p_vault_secret, const CapeString vault_password, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  CapeUdc query_results = NULL;
+  CapeString vault_key = NULL;
+  CapeString h1 = NULL;
+
+  // we can fix the vault if there is only one user defined for that workspace
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "wpid"          , wpid);
+    
+    cape_udc_add_s_cp  (values, "secret"        , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_users_secret_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  if (cape_udc_size (query_results) != 1)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no vault defined");
+    goto exit_and_cleanup;
+  }
+
+  // create a new vault key
+  vault_key = cape_str_uuid ();
+
+  // ecrypt the vault with the vault password
+  h1 = qcrypt__encrypt (vault_password, vault_key, err);
+  if (h1 == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "wpid"          , wpid);
+    cape_udc_add_n     (params, "gpid"          , gpid);
+    
+    cape_udc_add_s_cp  (values, "secret"        , h1);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+  cape_str_replace_mv (p_vault_secret, &h1);
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  cape_str_del (&vault_key);
+  cape_str_del (&h1);
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
 int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -342,6 +431,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   CapeUdc auth_crypt_credentials = NULL;
   CapeString h1 = NULL;
   CapeString h2 = NULL;
+  CapeString vault_secret = NULL;
   
   // convert from raw input to credentials part
   auth_crypt_credentials = auth_ui_crypt4__extract_from_content (content);
@@ -467,7 +557,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   if (vsec == NULL)
   {
     const CapeString vault_password = cape_udc_get_s (auth_crypt_credentials, "vault", NULL);
-    const CapeString vault_secret = cape_udc_get_s (first_row, "secret_vault", NULL);
+    vault_secret = cape_udc_ext_s (first_row, "secret_vault");
     
     if (vault_password == NULL)
     {
@@ -479,12 +569,6 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
 
     cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "no vault found -> continue with parameter");
 
-    if (vault_secret == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no vault defined");
-      goto exit_and_cleanup;
-    }
-
     h1 = qcrypt__decrypt (self->secret, vault_password, err);
     if (h1 == NULL)
     {
@@ -492,6 +576,15 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
       goto exit_and_cleanup;
     }
     
+    if (vault_secret == NULL)
+    {
+      res = auth_ui_crypt4__fix_vault (self, wpid, gpid, &vault_secret, h1, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+
     h2 = qcrypt__decrypt (h1, vault_secret, err);
     if (h2 == NULL)
     {
@@ -606,6 +699,10 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   
 exit_and_cleanup:
   
+  cape_str_del (&vault_secret);
+  cape_str_del (&h1);
+  cape_str_del (&h2);
+
   cape_udc_del (&query_results);
   cape_udc_del (&auth_crypt_credentials);
   return res;
