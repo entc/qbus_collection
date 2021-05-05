@@ -13,6 +13,7 @@
 
 struct AuthUI_s
 {
+  QBus qbus;                       // reference
   AdblSession adbl_session;        // reference
   AuthTokens tokens;               // reference
   AuthVault vault;                 // reference
@@ -27,10 +28,11 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file)
+AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
+  self->qbus = qbus;
   self->adbl_session = adbl_session;
   self->tokens = tokens;
   self->vault = vault;
@@ -1628,6 +1630,60 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_ui_2f_send__next (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL auth_ui_2f_send__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = ptr;
+  
+  if (qin->err)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui_2f_send__next (&self, qin, qout, err);
+
+exit_and_cleanup:
+  
+  auth_ui_del (&self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_2f_send__next (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  // local objects
+  CapeUdc item = cape_udc_ext_first (self->recipients);
+  
+  if (item)
+  {
+    // TODO: send message
+    *p_self = NULL;
+    res = auth_ui_2f_send__on_call (self->qbus, self, qin, qout, err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&item);
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_2f_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -1764,7 +1820,8 @@ int auth_ui_2f_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   printf ("CODE: %s\n", self->secret);
   
   adbl_trx_commit (&adbl_trx, err);
-  res = CAPE_ERR_NONE;
+  
+  res = auth_ui_2f_send__next (p_self, qin, qout, err);
 
 exit_and_cleanup:
   

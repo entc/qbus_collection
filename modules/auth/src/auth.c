@@ -56,7 +56,7 @@ static int __STDCALL qbus_auth_ui_get (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
 
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_get (&auth_ui, qin, qout, err);
@@ -69,7 +69,7 @@ static int __STDCALL qbus_auth_ui_login (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_login (&auth_ui, qin, qout, err);
@@ -82,7 +82,7 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_login_get (&auth_ui, qin, qout, err);
@@ -95,7 +95,7 @@ static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_switch (&auth_ui, qin, qout, err);
@@ -108,7 +108,7 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_set (&auth_ui, qin, qout, err);
@@ -121,7 +121,7 @@ static int __STDCALL qbus_auth_ui_config_get (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_config_get (&auth_ui, qin, qout, err);
@@ -134,7 +134,7 @@ static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_config_set (&auth_ui, qin, qout, err);
@@ -147,7 +147,7 @@ static int __STDCALL qbus_auth_ui_2f_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
   
   // run the command
   return auth_ui_2f_send (&auth_ui, qin, qout, err);
