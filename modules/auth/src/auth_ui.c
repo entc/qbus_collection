@@ -588,7 +588,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     goto exit_and_cleanup;
   }
 
-  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
+  //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
 
   {
     // use the rinfo classes
