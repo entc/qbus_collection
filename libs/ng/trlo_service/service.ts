@@ -1,6 +1,7 @@
 import { Component, Injectable, Injector, Pipe, PipeTransform } from '@angular/core';
 import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
+import { Observable, BehaviorSubject } from 'rxjs';
 
 //-----------------------------------------------------------------------------
 
@@ -12,13 +13,39 @@ export class TrloService
   // -> having a custom pipe?
   public locale: string = 'de-DE';
 
-  constructor()
+  // all available languages apearing in the select
+  public locales = [
+    { label: '🇩🇪(de)', value: 'de-DE' },
+    { label: '🇺🇸(us)', value: 'en-US' }
+  ];
+
+  public lang: BehaviorSubject<string>;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private translocoService: TranslocoService)
   {
   }
 
-  updateLocale (locale: string)
+  //---------------------------------------------------------------------------
+
+  updateLocale (value: string)
   {
-    this.locale = locale;
+    // parse the value
+    const newLocale = value.match(/^[a-zA-Z]{2}/)[0] || 'de';
+
+    // the local local variable
+    this.locale = value;
+
+    // set the language in the i18n service
+    this.translocoService.setActiveLang (newLocale);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public set (locales): void
+  {
+    this.locales = locales;
   }
 }
 
@@ -30,34 +57,22 @@ export class TrloService
   styleUrls: ['./component.scss']
 }) export class TrloServiceComponent {
 
-  // all available languages apearing in the select
-  public locales = [
-    { label: '🇩🇪(de)', value: 'de-DE' },
-    { label: '🇺🇸(us)', value: 'en-US' },
-    { label: '🇫🇷(fr)', value: 'fr-FR' },
-    { label: '🇮🇳(hi)', value: 'hi-IN' },
-    { label: '🇮🇳(ta)', value: 'ta-IN' }
-  ];
+  public locale: BehaviorSubject<string>;
 
   // this member is needed for the select html element
-  public locale: string;
+  public locales;
 
-  constructor (private trlo_service: TrloService, private translocoService: TranslocoService)
+  //---------------------------------------------------------------------------
+
+  constructor (private trlo_service: TrloService)
   {
-    this.locale = trlo_service.locale;
+    this.locales = this.trlo_service.locales;
   }
+
+  //---------------------------------------------------------------------------
 
   updateLocale (value: string)
   {
-    // parse the value
-    const newLocale = value.match(/^[a-zA-Z]{2}/)[0] || 'de';
-
-    // the local local variable
-    this.locale = value;
-
-    // set the language in the i18n service
-    this.translocoService.setActiveLang(newLocale);
-
     // the global locale in the service
     this.trlo_service.updateLocale (value)
   }
@@ -72,8 +87,10 @@ export class TrloPipeLocale implements PipeTransform {
   {
   }
 
-  transform (value: string): string {
+  //---------------------------------------------------------------------------
 
+  transform (value: string): string
+  {
     return formatDate (value, 'short', this.trlo_service.locale);
   }
 }

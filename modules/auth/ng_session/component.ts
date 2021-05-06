@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Directive, Input, Output, ElementRef, TemplateRef, ViewContainerRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 
 //=============================================================================
@@ -501,4 +501,17 @@ class AuthConfigItem
   opt_2factor: number;
 }
 
+//=============================================================================
+
+@Component({
+  selector: 'auth-session-lang',
+  templateUrl: './component_lang.html'
+}) export class AuthSessionLangComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_session: AuthSession, private modal_service: NgbModal)
+  {
+  }
+}
 //=============================================================================

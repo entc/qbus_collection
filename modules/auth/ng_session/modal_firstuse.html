@@ -10,6 +10,8 @@
 
   <ng-container *ngSwitchCase="0">
 
+    <auth-session-lang></auth-session-lang>
+
     <auth-session-passreset [old]="false" [user]="user" (onChange)="on_password_changed()"></auth-session-passreset>
 
     <div class="text-right mt-2" *ngIf="mode_next">

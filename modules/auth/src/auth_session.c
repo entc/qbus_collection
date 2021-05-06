@@ -455,6 +455,10 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
+   AK: timeout must be handled by the client
+   -> it is impossible to sync backend and frontend
+   
   vp = cape_udc_get_n (first_row, "vp", 0);
   if (vp)
   {
@@ -482,25 +486,26 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
+   */
   
   self->wpid = cape_udc_get_n (first_row, "wpid", 0);
   if (self->wpid == 0)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing wpid");
     goto exit_and_cleanup;
   }
   
   self->gpid = cape_udc_get_n (first_row, "gpid", 0);
   if (self->gpid == 0)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing gpid");
     goto exit_and_cleanup;
   }
 
   self->vsec = cape_str_cp (auth_vault__vsec (self->vault, self->wpid));
   if (self->vsec == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing vault");
     goto exit_and_cleanup;
   }
 

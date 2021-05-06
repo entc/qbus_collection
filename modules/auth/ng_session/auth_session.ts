@@ -224,24 +224,30 @@ export class AuthSession
 
     this.session.next (null);
   }
+  //---------------------------------------------------------------------------
+
+  private session_options (): object
+  {
+    var options: object;
+    var sitem: AuthSessionItem = this.session ? this.session.value : null;
+
+    if (sitem)
+    {
+      options = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
+    }
+    else
+    {
+      options = {};
+    }
+
+    return options;
+  }
 
   //---------------------------------------------------------------------------
 
   public json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
-    var header: object;
-    var sitem: AuthSessionItem = this.session ? this.session.value : null;
-
-    if (sitem)
-    {
-      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
-    }
-    else
-    {
-      header = {};
-    }
-
-    return this.handle_error_session<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), header));
+    return this.handle_error_session<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.session_options()));
   }
 
   //---------------------------------------------------------------------------
@@ -267,19 +273,28 @@ export class AuthSession
 
   public rest_GET<T> (path: string, params: object): Observable<T>
   {
-    var header: object;
-    var sitem: AuthSessionItem = this.session ? this.session.value : null;
+    return this.handle_error_session<T> (this.http.get<T>('rest/' + path, this.session_options()));
+  }
 
-    if (sitem)
-    {
-      header = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
-    }
-    else
-    {
-      header = {};
-    }
+  //---------------------------------------------------------------------------
 
-    return this.handle_error_session<T> (this.http.get<T>('rest/' + path, header));
+  public rest_POST<T> (path: string, params: object): Observable<T>
+  {
+    return this.handle_error_session<T> (this.http.post<T>('rest/' + path, JSON.stringify (params), this.session_options()));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public rest_PUT<T> (path: string, params: object): Observable<T>
+  {
+    return this.handle_error_session<T> (this.http.put<T>('rest/' + path, JSON.stringify (params), this.session_options()));
+  }
+
+  //---------------------------------------------------------------------------
+
+  rest_PATCH<T> (path: string, params: object): Observable<T>
+  {
+    return this.handle_error_session<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
 
   //---------------------------------------------------------------------------
