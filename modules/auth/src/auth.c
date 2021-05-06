@@ -28,6 +28,8 @@ struct AuthContext_s
   
   CapeString err_log_file;
   
+  CapeUdc options_2factor;
+  
 }; typedef struct AuthContext_s* AuthContext;
 
 //-------------------------------------------------------------------------------------
@@ -56,7 +58,7 @@ static int __STDCALL qbus_auth_ui_get (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
 
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_get (&auth_ui, qin, qout, err);
@@ -69,7 +71,7 @@ static int __STDCALL qbus_auth_ui_login (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_login (&auth_ui, qin, qout, err);
@@ -82,7 +84,7 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_login_get (&auth_ui, qin, qout, err);
@@ -95,7 +97,7 @@ static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_switch (&auth_ui, qin, qout, err);
@@ -108,7 +110,7 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_set (&auth_ui, qin, qout, err);
@@ -121,7 +123,7 @@ static int __STDCALL qbus_auth_ui_config_get (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_config_get (&auth_ui, qin, qout, err);
@@ -134,7 +136,7 @@ static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_config_set (&auth_ui, qin, qout, err);
@@ -147,7 +149,7 @@ static int __STDCALL qbus_auth_ui_2f_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor);
   
   // run the command
   return auth_ui_2f_send (&auth_ui, qin, qout, err);
@@ -411,6 +413,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   ctx->tokens = auth_tokens_new (ctx->adbl_session, ctx->vault);
   
   ctx->err_log_file = cape_str_cp (qbus_config_s (qbus, "access_denied_log", "access_denied.log"));
+  ctx->options_2factor = qbus_config_node (qbus, "options_2factor");
   
   *p_ptr = ctx;
 

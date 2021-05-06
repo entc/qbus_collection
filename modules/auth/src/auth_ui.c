@@ -18,7 +18,8 @@ struct AuthUI_s
   AuthTokens tokens;               // reference
   AuthVault vault;                 // reference
   const CapeString err_log_file;   // reference
-  
+  CapeUdc options_2factor;         // reference
+
   number_t userid;
   number_t wpid;
   
@@ -28,7 +29,7 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file)
+AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file, CapeUdc options_2factor)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
@@ -1752,6 +1753,42 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+CapeUdc auth_ui_2f_send__find_mappin (CapeUdc mappin, number_t mappin_id)
+{
+  CapeUdc ret = NULL;
+  
+  // local objects
+  CapeUdcCursor* cursor = NULL;
+  
+  if (mappin == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  if (cape_udc_type (mappin) != CAPE_UDC_NODE)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cursor = cape_udc_cursor_new (mappin, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    if (cape_udc_get_n (cursor->item, "key", 0) == mappin_id)
+    {
+      ret = cape_udc_get (cursor->item, "val");
+      goto exit_and_cleanup;
+    }
+  }
+  
+exit_and_cleanup:
+
+  cape_udc_cursor_del (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_2f_send__next (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -1759,12 +1796,83 @@ int auth_ui_2f_send__next (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   // local objects
   CapeUdc item = cape_udc_ext_first (self->recipients);
-  
   if (item)
   {
-    // TODO: send message
-    *p_self = NULL;
-    res = auth_ui_2f_send__on_call (self->qbus, self, qin, qout, err);
+    const CapeString module = NULL;
+    const CapeString method = NULL;
+    CapeUdc params = NULL;
+    CapeUdc merges = NULL;
+    CapeUdc mappin = NULL;
+
+    if (self->options_2factor)
+    {
+      module = cape_udc_get_s (self->options_2factor, "module", NULL);
+      method = cape_udc_get_s (self->options_2factor, "method", NULL);
+
+      // params can contain additional values used in the message body
+      params = cape_udc_get (self->options_2factor, "params");
+      
+      // this will extend the cdata used in the call
+      merges = cape_udc_get (self->options_2factor, "merges");
+      
+      // convert the type value into cdata value
+      mappin = cape_udc_get (self->options_2factor, "mappin");
+    }
+    
+    if (module && method)
+    {
+      // clean up
+      qbus_message_clr (qin, CAPE_UDC_NODE);
+      
+      // recipients
+      {
+        CapeUdc recipients = cape_udc_new (CAPE_UDC_LIST, "recipients");
+        
+        cape_udc_add_s_cp (recipients, NULL, cape_udc_get_s (item, "email", NULL));
+        
+        cape_udc_add (qin->cdata, &recipients);
+      }
+      
+      // params
+      {
+        CapeUdc h = cape_udc_new (CAPE_UDC_NODE, "params");
+        
+        cape_udc_add_s_cp (h, "code", self->secret);
+        
+        if (params)
+        {
+          cape_udc_merge_cp (h, params);
+        }
+        
+        cape_udc_add (qin->cdata, &h);
+      }
+      
+      // mappin
+      {
+        CapeUdc h = auth_ui_2f_send__find_mappin (mappin, cape_udc_get_n (item, "type", 0));
+        
+        if (h)
+        {
+          cape_udc_merge_cp (qin->cdata, h);
+        }
+      }
+      
+      // merges
+      if (merges)
+      {
+        cape_udc_merge_cp (qin->cdata, merges);
+      }
+      
+      // send message to qbus
+      res = qbus_continue (self->qbus, module, method, qin, (void**)p_self, auth_ui_2f_send__on_call, err);
+    }
+    else
+    {
+      *p_self = NULL;
+
+      // do nothing just call the callback
+      auth_ui_2f_send__on_call (self->qbus, self, qin, qout, err);
+    }
   }
   else
   {
