@@ -147,7 +147,7 @@ QCryptAESKeys qcrypt_aes_keys_new__md5_en (const CapeString secret, const EVP_CI
   self->iv = CAPE_ALLOC (EVP_MAX_IV_LENGTH);
   
   {
-    CapeString random_text = cape_str_random (8);
+    CapeString random_text = cape_str_random_s (8);
     
     res = EVP_BytesToKey (cypher, EVP_md5(), (unsigned char*)random_text, (unsigned char*)secret, cape_str_size (secret), rounds, self->key, self->iv);
 

@@ -572,7 +572,7 @@ CapeString cape_str_uuid (void)
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_str_random (number_t len)
+CapeString cape_str_random_s (number_t len)
 {
   number_t i;
   CapeString self = CAPE_ALLOC (len + 1);
@@ -580,6 +580,24 @@ CapeString cape_str_random (number_t len)
   for (i = 0; i < len; i++)
   {
     self[i] = (rand() % 26) + 97;
+  }
+  
+  // set termination
+  self[i] = 0;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_str_random_n (number_t len)
+{
+  number_t i;
+  CapeString self = CAPE_ALLOC (len + 1);
+  
+  for (i = 0; i < len; i++)
+  {
+    self[i] = (rand() % 10) + 48;
   }
   
   // set termination

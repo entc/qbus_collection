@@ -38,6 +38,7 @@ AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, Auth
   self->tokens = tokens;
   self->vault = vault;
   self->err_log_file = err_log_file;
+  self->options_2factor = options_2factor;
   
   self->userid = 0;
   self->wpid = 0;
@@ -1765,7 +1766,7 @@ CapeUdc auth_ui_2f_send__find_mappin (CapeUdc mappin, number_t mappin_id)
     goto exit_and_cleanup;
   }
   
-  if (cape_udc_type (mappin) != CAPE_UDC_NODE)
+  if (cape_udc_type (mappin) != CAPE_UDC_LIST)
   {
     goto exit_and_cleanup;
   }
@@ -1987,7 +1988,7 @@ int auth_ui_2f_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_replace_mv (&(self->recipients), &query_results);
   
   // create code
-  self->secret = cape_str_random (6);
+  self->secret = cape_str_random_n (6);
 
   h1 = qcrypt__hash_sha256__hex_o (self->secret, 6, err);
   if (h1 == NULL)
