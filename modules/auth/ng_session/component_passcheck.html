@@ -1,0 +1,22 @@
+<div class="input-group mb-1">
+  <div class="input-group-prepend">
+    <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
+  </div>
+  <input (blur)="on_change_1 ($event.target.value)" type="password" class="form-control">
+</div>
+
+<div class="input-group mb-1">
+  <div class="input-group-prepend">
+    <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
+  </div>
+  <input (blur)="on_change_2 ($event.target.value)" type="password" class="form-control">
+</div>
+
+<ng-container *ngIf="err">
+
+  <br>
+  <div class="alert alert-danger" role="alert">
+    {{ err | transloco }}
+  </div>
+
+</ng-container>

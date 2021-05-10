@@ -324,6 +324,13 @@ export class AuthSession
     return this.http.post<T>('json/' + qbus_module + '/' + qbus_method + '/__P/' + token, JSON.stringify (params));
   }
 
+  //---------------------------------------------------------------------------
+
+  public json_none_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
+  {
+    return this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params));
+  }
+
   //-----------------------------------------------------------------------------
 
   private padding (str: string, max: number): string
@@ -817,12 +824,14 @@ class AuthRecipients
 
   public user: string;
   public pass: string;
+  public code: string;
 
   public sitem: AuthSessionItem = null;
   public err: boolean = false;
 
   // this will be set from the auth component directive
   public on_dismiss: any;
+  public mode: number = 0;
 
   //---------------------------------------------------------------------------
 
@@ -867,6 +876,66 @@ class AuthRecipients
     this.on_dismiss ();
   }
 
+  //---------------------------------------------------------------------------
+
+  open_forgot_password ()
+  {
+    this.mode = 1;
+  }
+
+  //---------------------------------------------------------------------------
+
+  cancel ()
+  {
+    this.mode = 0;
+    this.err = false;
+  }
+
+  //---------------------------------------------------------------------------
+
+  send_forgot_password ()
+  {
+    this.auth_session.json_none_rpc ('AUTH', 'ui_fp_send', {user: this.user}).subscribe(() => {
+
+      this.mode = 2;
+      this.code = '';
+
+    }, () => {
+
+      this.err = true;
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_check_password (val: string): void
+  {
+    this.pass = val;
+  }
+
+  //---------------------------------------------------------------------------
+
+  code_forgot_password ()
+  {
+    this.auth_session.json_none_rpc ('AUTH', 'ui_set', {pass: this.pass, user: this.user, code: this.code}).subscribe(() => {
+
+      this.mode = 3;
+
+    }, () => {
+
+      this.err = true;
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  done_forgot_password ()
+  {
+    this.mode = 0;
+    this.err = false;
+  }
 }
 
 //=============================================================================

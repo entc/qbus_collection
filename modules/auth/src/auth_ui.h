@@ -21,7 +21,7 @@ struct AuthUI_s; typedef struct AuthUI_s* AuthUI;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthUI  auth_ui_new         (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file, CapeUdc options_2factor);
+__CAPE_LIBEX   AuthUI  auth_ui_new         (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file, CapeUdc options_2factor, CapeUdc options_fp);
 
 __CAPE_LIBEX   void    auth_ui_del         (AuthUI*);
 
@@ -42,6 +42,8 @@ __CAPE_LIBEX   int     auth_ui_config_get  (AuthUI*, QBusM qin, QBusM qout, Cape
 __CAPE_LIBEX   int     auth_ui_config_set  (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_2f_send     (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int     auth_ui_fp_send     (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

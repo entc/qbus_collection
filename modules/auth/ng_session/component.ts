@@ -235,10 +235,9 @@ export class AuthSessionRoleDirective {
   @Output() onChange = new EventEmitter();
 
   public pass_old: string;
-  public pass_new1: string;
-  public pass_new2: string;
-
+  public pass_new: string;
   public err: string = null;
+
   public was_set: boolean = false;
   public user_readonly: boolean = false;
   public user_value: string;
@@ -259,39 +258,16 @@ export class AuthSessionRoleDirective {
 
   //---------------------------------------------------------------------------
 
-  public on_change_1 (val: string)
+  public on_check_password (val: string): void
   {
-    this.pass_new1 = val;
-    this.check_passwords ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  public on_change_2 (val: string)
-  {
-    this.pass_new2 = val;
-    this.check_passwords ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  private check_passwords ()
-  {
-    if (this.pass_new1 && this.pass_new2 && this.pass_new1 != this.pass_new2)
-    {
-      this.err = 'AUTH.PASSMISMATCH';
-    }
-    else
-    {
-      this.err = null;
-    }
+    this.pass_new = val;
   }
 
   //---------------------------------------------------------------------------
 
   public apply ()
   {
-    var params = {secret: this.pass_new1, user: this.user_value};
+    var params = {secret: this.pass_new, user: this.user_value};
 
     if (this.old)
     {
@@ -514,4 +490,57 @@ class AuthConfigItem
   {
   }
 }
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-session-password-checker',
+  templateUrl: './component_passcheck.html'
+}) export class AuthSessionPasscheckComponent {
+
+  public pass_new1: string;
+  public pass_new2: string;
+  public err: string = null;
+
+  @Output() onChange = new EventEmitter();
+
+  //---------------------------------------------------------------------------
+
+  constructor (public auth_session: AuthSession, private modal_service: NgbModal)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_change_1 (val: string)
+  {
+    this.pass_new1 = val;
+    this.check_passwords ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_change_2 (val: string)
+  {
+    this.pass_new2 = val;
+    this.check_passwords ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private check_passwords ()
+  {
+    if (this.pass_new1 && this.pass_new2 && this.pass_new1 != this.pass_new2)
+    {
+      this.err = 'AUTH.PASSMISMATCH';
+      this.onChange.emit (null);
+    }
+    else
+    {
+      this.err = null;
+      this.onChange.emit (this.pass_new1);
+    }
+  }
+}
+
 //=============================================================================

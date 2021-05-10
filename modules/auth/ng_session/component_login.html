@@ -1,8 +1,93 @@
-<ng-container *ngIf="sitem == null">
+<ng-container *ngIf="mode == 0">
+
+  <ng-container *ngIf="sitem == null">
+    <ng-container *ngIf="err == true">
+
+      <div class="alert alert-danger text-center" role="alert">
+        <h2>{{ 'AUTH.ACCESSDENIED' | transloco }}</h2>
+      </div>
+
+      <div class="text-right mt-2">
+        <button (click)="login_again ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'AUTH.LOGINAGAIN' | transloco }}</button>
+      </div>
+
+    </ng-container>
+    <ng-container *ngIf="err == false">
+
+      <div class="input-group mb-1">
+        <div class="input-group-prepend">
+          <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+        </div>
+        <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
+      </div>
+
+      <div class="input-group mb-1">
+        <div class="input-group-prepend">
+          <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+        </div>
+        <input type="password" class="form-control" id="InputPassword" required [(ngModel)]="pass">
+      </div>
+
+      <div class="text-right mt-2">
+        <button (click)="login_submit ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.LOGIN' | transloco }}</button>
+      </div>
+
+      <hr>
+
+      <div class="text-right">
+        <button (click)="open_forgot_password ()" type="button" class="btn btn-link">{{ 'AUTH.PASSFORGOT' | transloco }}</button>
+      </div>
+
+    </ng-container>
+  </ng-container>
+  <ng-container *ngIf="sitem">
+
+    <div class="alert alert-success text-center" role="alert">
+      <h2>{{ 'AUTH.ACCESSGRANTED' | transloco }}</h2>
+    </div>
+    <p>
+      {{ 'AUTH.WELCOME' | transloco }} {{sitem.firstname}} {{sitem.lastname}}
+    </p>
+    <hr>
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.LASTLOGIN' | transloco }}
+        </div>
+        <div class="col text-right width_10em">
+          {{sitem.lt | trlo_locale}}
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.LASTHOST' | transloco }}
+        </div>
+        <div class="col text-right width_10em">
+          {{sitem.remote}}
+        </div>
+    </div>
+    <hr>
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.IDLETIME' | transloco }}
+        </div>
+        <div class="col text-right width_10em">
+          {{sitem.vp}}s
+        </div>
+    </div>
+    <hr>
+    <div class="text-right mt-2">
+      <button (click)="close ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'MISC.CLOSE' | transloco }}</button>
+    </div>
+
+  </ng-container>
+
+</ng-container>
+<ng-container *ngIf="mode == 1">
+
   <ng-container *ngIf="err == true">
 
     <div class="alert alert-danger text-center" role="alert">
-      <h2>{{ 'AUTH.ACCESSDENIED' | transloco }}</h2>
+      {{ 'AUTH.SENDERROR' | transloco }}
     </div>
 
     <div class="text-right mt-2">
@@ -10,7 +95,6 @@
     </div>
 
   </ng-container>
-
   <ng-container *ngIf="err == false">
 
     <div class="input-group mb-1">
@@ -20,56 +104,59 @@
       <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
     </div>
 
-    <div class="input-group mb-1">
-      <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
-      </div>
-      <input type="password" class="form-control" id="InputPassword" required [(ngModel)]="pass">
+    <div class="alert alert-info text-center" role="alert">
+      {{ 'AUTH.INFOFORGOT' | transloco }}
     </div>
 
-    <div class="text-right mt-2">
-      <button (click)="login_submit ()" type="submit" class="btn btn-primary btn-block">{{ 'AUTH.LOGIN' | transloco }}</button>
+    <div class="row">
+      <div class="col-6">
+        <button (click)="cancel ()" type="button" class="btn btn-outline-secondary btn-block">{{ 'MISC.CANCEL' | transloco }}</button>
+      </div>
+      <div class="col-6">
+        <button (click)="send_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.SENDFORGOT' | transloco }}</button>
+      </div>
     </div>
 
   </ng-container>
-</ng-container>
-<ng-container *ngIf="sitem">
 
-  <div class="alert alert-success text-center" role="alert">
-    <h2>{{ 'AUTH.ACCESSGRANTED' | transloco }}</h2>
+</ng-container>
+<ng-container *ngIf="mode == 2">
+
+  <div class="input-group mb-1">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.CODE' | transloco }}</small></span>
+    </div>
+    <input type="text" class="form-control" required [(ngModel)]="code">
   </div>
-  <p>
-    {{ 'AUTH.WELCOME' | transloco }} {{sitem.firstname}} {{sitem.lastname}}
-  </p>
+
   <hr>
-  <div class="row mb-2">
-      <div class="col">
-        {{ 'AUTH.LASTLOGIN' | transloco }}
-      </div>
-      <div class="col text-right width_10em">
-        {{sitem.lt | trlo_locale}}
-      </div>
-  </div>
-  <div class="row mb-2">
-      <div class="col">
-        {{ 'AUTH.LASTHOST' | transloco }}
-      </div>
-      <div class="col text-right width_10em">
-        {{sitem.remote}}
-      </div>
-  </div>
+
+  <auth-session-password-checker (onChange)="on_check_password($event)"></auth-session-password-checker>
+
   <hr>
-  <div class="row mb-2">
-      <div class="col">
-        {{ 'AUTH.IDLETIME' | transloco }}
-      </div>
-      <div class="col text-right width_10em">
-        {{sitem.vp}}s
-      </div>
+
+  <div class="row">
+    <div class="col-6">
+      <button (click)="cancel ()" type="button" class="btn btn-outline-secondary btn-block">{{ 'MISC.CANCEL' | transloco }}</button>
+    </div>
+    <div class="col-6">
+      <button (click)="code_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.APPLY' | transloco }}</button>
+    </div>
   </div>
-  <hr>
-  <div class="text-right mt-2">
-    <button (click)="close ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'MISC.CLOSE' | transloco }}</button>
+
+</ng-container>
+<ng-container *ngIf="mode == 3">
+
+  <div class="alert alert-success" role="alert">
+    {{ 'AUTH.PASSCHANGED' | transloco }}
+  </div>
+
+  <div class="row">
+    <div class="col-6">
+    </div>
+    <div class="col-6">
+      <button (click)="done_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.DONE' | transloco }}</button>
+    </div>
   </div>
 
 </ng-container>

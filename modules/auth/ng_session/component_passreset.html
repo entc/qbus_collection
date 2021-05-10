@@ -23,6 +23,9 @@
 
   </ng-container>
 
+  <auth-session-password-checker (onChange)="on_check_password($event)"></auth-session-password-checker>
+
+  <!--
   <div class="input-group mb-1">
     <div class="input-group-prepend">
       <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
@@ -36,12 +39,7 @@
     </div>
     <input (blur)="on_change_2 ($event.target.value)" type="password" class="form-control">
   </div>
-
-  <hr>
-
-  <div *ngIf="err" class="alert alert-danger" role="alert">
-    {{ err | transloco }}
-  </div>
+  -->
 
   <div class="text-right mt-2">
     <button (click)="apply ()" type="button" class="btn btn-outline-primary btn-block">{{ 'AUTH.CHANGE' | transloco }}</button>
