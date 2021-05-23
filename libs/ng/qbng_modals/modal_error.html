@@ -1,0 +1,13 @@
+  <div class="modal-header border-danger">
+    <div class="modal-title text-danger">
+      <strong><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ 'MISC.ERROR' | transloco }}</strong>
+    </div>
+  </div>
+  <div class="modal-body">
+
+    {{err.text}}
+
+  </div>
+  <div class="modal-footer border-danger">
+    <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.DISMISS' | transloco }}</button>
+  </div>
