@@ -289,6 +289,19 @@ static int __STDCALL qbus_auth_token_del (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_perm_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_perm_add (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_perm_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -514,6 +527,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "invalidateToken"      , ctx, qbus_auth_token_del, NULL, err);
 
   // -------- callback methods --------------------------------------------
+
+  // create a new token
+  //   args: [code], {roles} : pdata
+  qbus_register (qbus, "token_add"            , ctx, qbus_auth_perm_add, NULL, err);
 
   // renew a permanent token
   //   args: [code], {roles} : pdata

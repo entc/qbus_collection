@@ -30,6 +30,38 @@ export class QbngSwitchComponent {
 //-----------------------------------------------------------------------------
 
 @Component({
+  selector: 'qbng-switch-multi',
+  templateUrl: './widget_switch_multi.html'
+})
+export class QbngSwitchMultiComponent {
+
+  @Input('vals') vals: QbngSwitchItem[];
+  @Output('onVal') onChange = new EventEmitter ();
+
+  //-----------------------------------------------------------------------------
+
+  constructor ()
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  switch_changed (item: QbngSwitchItem, switch_value: boolean)
+  {
+    item.switch_val = switch_value;
+    this.onChange.emit (this.vals);
+  }
+}
+
+export class QbngSwitchItem
+{
+  name: string;
+  switch_val: boolean;
+}
+
+//-----------------------------------------------------------------------------
+
+@Component({
   selector: 'qbng-upload',
   templateUrl: './widget_upload.html'
 })
