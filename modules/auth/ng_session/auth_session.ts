@@ -184,7 +184,6 @@ export class AuthSession
   private timer_update ()
   {
     var s: AuthSessionItem = this.session.getValue();
-
     if (s)
     {
       this.timer_idle_countdown = s.vp;
