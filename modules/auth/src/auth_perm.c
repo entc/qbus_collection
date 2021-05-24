@@ -19,7 +19,7 @@ struct AuthPerm_s
 
   number_t wpid;             // rinfo: mandatory
   number_t gpid;             // rinfo: mandatory
-  //number_t usid;             // rinfo: mandatory
+  number_t usid;             // rinfo: mandatory
   number_t rfid;             // input: mandatory
 
   CapeUdc roles;             // input: mandatory
@@ -41,7 +41,7 @@ AuthPerm auth_perm_new (AdblSession adbl_session, AuthVault vault)
   
   self->wpid = 0;
   self->gpid = 0;
-  //self->usid = 0;
+  self->usid = 0;
   self->rfid = 0;
   self->roles = NULL;
   
@@ -97,15 +97,6 @@ int auth_perm__intern__check_input (AuthPerm self, QBusM qin, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  /*
-  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
-  if (self->usid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
-    goto exit_and_cleanup;
-  }
-   */
-   
   // do some security checks
   if (qin->pdata == NULL)
   {
@@ -233,8 +224,13 @@ int auth_perm__intern__encrypt_rinfo (AuthPerm self, QBusM qin, const CapeString
   cape_udc_add_name (rinfo, &(self->roles), "roles");
   cape_udc_add_n (rinfo, "wpid", self->wpid);
   cape_udc_add_n (rinfo, "gpid", self->gpid);
-  //cape_udc_add_n (rinfo, "userid", self->usid);
-
+  
+  // TODO: see depricated but kept for backward compatiblity
+  if (self->usid)
+  {
+    cape_udc_add_n (rinfo, "userid", self->usid);
+  }
+  
   h1 = cape_json_to_s (rinfo);
   if (h1 == NULL)
   {
@@ -376,6 +372,16 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // TODO: depricated -> remove userid
+  // for backward compatibility the userid is still
+  // added to the rinfo for the token object
+  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
+  if (self->usid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
+    goto exit_and_cleanup;
+  }
+  
   // encrypt cdata and rinfo into rinfo and content
   res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
   if (res)
@@ -460,6 +466,16 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   res = auth_perm__intern__check_input (self, qin, err);
   if (res)
   {
+    goto exit_and_cleanup;
+  }
+
+  // TODO: depricated -> remove userid
+  // for backward compatibility the userid is still
+  // added to the rinfo for the token object
+  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
+  if (self->usid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
     goto exit_and_cleanup;
   }
 
