@@ -6,7 +6,7 @@
 
       <ng-container *ngFor="let item of vals">
 
-        <qbng-switch [val]="item.switch" (onVal)="switch_changed (item, $event)">{{item.name}}</qbng-switch>
+        <qbng-switch [val]="item.switch_val" (onVal)="switch_changed (item, $event)">{{item.name}}</qbng-switch>
 
       </ng-container>
 

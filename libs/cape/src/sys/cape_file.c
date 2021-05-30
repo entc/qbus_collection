@@ -703,10 +703,10 @@ number_t cape_fh_write_buf (CapeFileHandle self, const char* bufdat, number_t bu
 struct CapeDirCursor_s
 {
   FTS* tree;
-  
   FTSENT* node;
   
   char* fts_path[2];
+  CapeString current_dir;
 };
 
 //-----------------------------------------------------------------------------
@@ -717,7 +717,10 @@ CapeDirCursor cape_dc_new (const CapeString path, CapeErr err)
   
   self->fts_path[0] = cape_str_cp (path);
   self->fts_path[1] = NULL;
-  
+
+  // save the current directory
+  self->current_dir = cape_fs_path_current (NULL);
+
   self->tree = fts_open (self->fts_path, FTS_PHYSICAL | FTS_XDEV, NULL);
   self->node = NULL;
   
@@ -744,6 +747,10 @@ void cape_dc_del (CapeDirCursor* p_self)
     {
       fts_close (self->tree);
     }
+    
+    // somehow the treesearch changed the current path
+    // set it back
+    chdir (self->current_dir);
     
     CAPE_DEL(p_self, struct CapeDirCursor_s);
   }

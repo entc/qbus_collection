@@ -594,38 +594,11 @@ void qbus_check_param (CapeUdc data, const CapeUdc param)
 
 void qbus_config_load__find_file (QBus self, CapeErr err)
 {
-  CapeString current_folder = cape_fs_path_current (NULL);
   CapeString filename = cape_str_catenate_2 (self->name, ".json");
-  
-  CapeDirCursor dc = cape_dc_new (current_folder, err);
-  
-  if (dc)
-  {
-    while (cape_dc_next (dc))
-    {
-      if (cape_str_compare (filename, cape_dc_name (dc)))
-      {
-        self->config_file = cape_fs_path_current (cape_dc_name (dc));
 
-        cape_log_fmt (CAPE_LL_TRACE, self->name, "config file", "use config: %s", self->config_file);
-      }
-    }
-    
-    cape_dc_del (&dc);
-  }
+  self->config_file = cape_args_config_file ("etc", filename);
   
-  /*
-  if (self->config_file == NULL)
-  {
-    self->config_file = cape_fs_path_current (filename);
-
-    cape_log_fmt (CAPE_LL_TRACE, self->name, "config file", "create config: %s", self->config_file);      
-  }
-  */
-
   cape_str_del (&filename);
-  cape_str_del (&current_folder);
-  
 }
 
 //-----------------------------------------------------------------------------

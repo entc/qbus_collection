@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, Injector } from '@angular/core';
+import { Component, Input, Output, EventEmitter, Injector, OnInit } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 
 //-----------------------------------------------------------------------------
@@ -33,7 +33,7 @@ export class QbngSwitchComponent {
   selector: 'qbng-switch-multi',
   templateUrl: './widget_switch_multi.html'
 })
-export class QbngSwitchMultiComponent {
+export class QbngSwitchMultiComponent implements OnInit {
 
   @Input('vals') vals: QbngSwitchItem[];
   @Output('onVal') onChange = new EventEmitter ();
@@ -42,6 +42,13 @@ export class QbngSwitchMultiComponent {
 
   constructor ()
   {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.onChange.emit (this.vals);
   }
 
   //-----------------------------------------------------------------------------
