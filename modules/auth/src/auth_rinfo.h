@@ -20,7 +20,7 @@ struct AuthRInfo_s; typedef struct AuthRInfo_s* AuthRInfo;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthRInfo  auth_rinfo_new        (AdblSession adbl_session, number_t userid, number_t wpid);
+__CAPE_LIBEX   AuthRInfo  auth_rinfo_new        (AdblSession adbl_session, number_t wpid, number_t gpid);
 
 __CAPE_LIBEX   void       auth_rino_del         (AuthRInfo*);
 

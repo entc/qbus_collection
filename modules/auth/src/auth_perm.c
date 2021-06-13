@@ -372,6 +372,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
   // TODO: depricated -> remove userid
   // for backward compatibility the userid is still
   // added to the rinfo for the token object
@@ -381,6 +382,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
     goto exit_and_cleanup;
   }
+   */
   
   // encrypt cdata and rinfo into rinfo and content
   res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
@@ -469,6 +471,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
   // TODO: depricated -> remove userid
   // for backward compatibility the userid is still
   // added to the rinfo for the token object
@@ -478,6 +481,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
     goto exit_and_cleanup;
   }
+   */
 
   // check extra rfid
   self->rfid = cape_udc_get_n (qin->pdata, "rfid", 0);

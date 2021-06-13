@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import { QbngErrorHolder } from './header';
+import { QbngErrorHolder, QbngOptionHolder } from './header';
 
 //=============================================================================
 
@@ -33,6 +33,27 @@ import { QbngErrorHolder } from './header';
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, public err: QbngErrorHolder)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'qbng-warn-option-modal-component',
+  templateUrl: './modal_warn_option.html'
+}) export class QbngWarnOptionModalComponent implements OnInit {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, public option: QbngOptionHolder)
   {
   }
 

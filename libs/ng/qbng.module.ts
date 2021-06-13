@@ -7,7 +7,7 @@ import { QbngParamsComponent } from './qbng_params/component';
 import { QbngSwitchComponent, QbngSwitchMultiComponent, QbngUploadComponent, QbngUploadModalComponent } from './qbng_widgets/component';
 import { SizeService } from './size_service/service';
 import { SizeDetectorComponent } from './size_service/component';
-import { QbngSuccessModalComponent, QbngErrorModalComponent } from './qbng_modals/component';
+import { QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModalComponent } from './qbng_modals/component';
 
 @NgModule({
   declarations: [
@@ -18,7 +18,8 @@ import { QbngSuccessModalComponent, QbngErrorModalComponent } from './qbng_modal
     QbngUploadModalComponent,
     SizeDetectorComponent,
     QbngSuccessModalComponent,
-    QbngErrorModalComponent
+    QbngErrorModalComponent,
+    QbngWarnOptionModalComponent
   ],
   imports: [
     CommonModule,
@@ -39,7 +40,8 @@ import { QbngSuccessModalComponent, QbngErrorModalComponent } from './qbng_modal
   entryComponents: [
     QbngUploadModalComponent,
     QbngSuccessModalComponent,
-    QbngErrorModalComponent
+    QbngErrorModalComponent,
+    QbngWarnOptionModalComponent
   ]
 })
 export class QbngModule

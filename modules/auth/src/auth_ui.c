@@ -683,14 +683,11 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     }
   }
   
-  // get userid
-  self->userid = cape_udc_get_n (first_row, "userid", 0);
-  
   //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
 
   {
     // use the rinfo classes
-    AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->userid, self->wpid);
+    AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
     
     // fetch all rinfo from database
     res = auth_rinfo_get (&rinfo, qout, err);
@@ -1668,7 +1665,7 @@ int auth_ui_switch (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   {
     // use the rinfo classes
-    AuthRInfo auth_rinfo = auth_rinfo_new (self->adbl_session, 0, wpid);
+    AuthRInfo auth_rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
     
     // fetch all rinfo from database
     res = auth_rinfo_get_gpid (&auth_rinfo, gpid, &rinfo, &cdata, err);

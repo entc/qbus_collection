@@ -118,6 +118,7 @@ __CAPE_LIBEX   number_t           cape_str_wchar_utf8    (wchar_t s, char* bufda
 
                                   /* calculates the distance of two words */
                                   /* the damerau leventshein algorithm is used */
+                                  /* WARNING: this can't handle UTF-8 characters */
 __CAPE_LIBEX   number_t           cape_str_distance      (const CapeString s1, number_t l1, const CapeString s2, number_t l2);
 
 //-----------------------------------------------------------------------------
