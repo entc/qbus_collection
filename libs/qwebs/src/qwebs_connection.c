@@ -702,8 +702,9 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
     self->active = TRUE;
   }
   
-  int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-  
+  //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+  http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+
   //printf ("BYTES PROCESSED: %i\n", bytes_processed);
   
   if (self->parser.http_errno > 0)

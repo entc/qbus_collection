@@ -936,7 +936,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
   if (on_done)
   {
-    res = on_done (qbus, user_ptr, err);
+    on_done (qbus, user_ptr, err);
   }
   
 exit_and_cleanup:

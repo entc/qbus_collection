@@ -565,7 +565,7 @@ exit_and_cleanup:
 int auth_session_roles (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
-  AuthSession self = *p_self;
+  //AuthSession self = *p_self;
 
   // local objects
   CapeUdc roles = NULL;

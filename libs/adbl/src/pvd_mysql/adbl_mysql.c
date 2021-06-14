@@ -417,14 +417,13 @@ number_t __STDCALL adbl_pvd_ins (AdblPvdSession self, const char* table, CapeUdc
   // some prechecks
   if (NULL == p_values)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "values was not provided");
+    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "values was not provided");
     goto exit_and_cleanup;
   }
   
   // some prechecks
   if (0 == cape_udc_size (*p_values))
   {
-    res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
   
@@ -709,14 +708,13 @@ number_t __STDCALL adbl_pvd_ins_or_set (AdblPvdSession self, const char* table, 
   // some prechecks
   if (NULL == p_params)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "params was not provided");
+    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "params was not provided");
     goto exit_and_cleanup;
   }
   
   // some prechecks
   if (0 == cape_udc_size (*p_params))
   {
-    res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
   
@@ -789,7 +787,6 @@ number_t __STDCALL adbl_pvd_ins_or_set (AdblPvdSession self, const char* table, 
 exit_and_cleanup:
   
   adbl_prepare_del (&pre);
-
   cape_mutex_unlock (self->mutex);
 
   return last_insert_id;
