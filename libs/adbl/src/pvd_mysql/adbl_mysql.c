@@ -12,12 +12,6 @@
 
 #include <stdio.h>
 
-// pre-8.0 defines the my_bool variable
-// after 8.0.2 it was re-introduced
-#ifndef my_bool
-typedef char my_bool;
-#endif
-
 //-----------------------------------------------------------------------------
 
 #include <mysql.h>
