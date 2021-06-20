@@ -1873,6 +1873,9 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
 {
   int res;
   
+  const CapeString precondition_node_name = NULL;
+  CapeUdc precondition_node = NULL;
+
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
@@ -1913,6 +1916,9 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
         cape_udc_del (&params);
       }
     }
+    
+    // that's optional
+    precondition_node_name = cape_udc_get_s (self->pdata, "precondition_node", NULL);
   }
   
   if (module == NULL)
@@ -1927,6 +1933,35 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
     goto exit_and_cleanup;
   }
   
+  // check for the list in t_data
+  if (self->tdata)
+  {
+    // optional
+    if (precondition_node_name)
+    {
+      precondition_node = cape_udc_get (self->tdata, precondition_node_name);
+    }
+  }
+
+  // check precondition
+  if (precondition_node)
+  {
+    switch (cape_udc_type (precondition_node))
+    {
+      case CAPE_UDC_LIST:
+      case CAPE_UDC_NODE:
+      {
+        if (cape_udc_size (precondition_node) == 0)
+        {
+          res = CAPE_ERR_EOF;
+          goto exit_and_cleanup;
+        }
+        
+        break;
+      }
+    }
+  }
+
   if (cdata == NULL)
   {
     cape_log_fmt (CAPE_LL_TRACE, "FLOW", "dbw pdata", "module = %s, method = %s, params = none", module, method);
