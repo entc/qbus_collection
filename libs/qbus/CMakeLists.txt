@@ -2,6 +2,13 @@ SUBDIRS(src)
 #SUBDIRS(cli)
 SUBDIRS(app)
 
+if(NOT DEFINED ENV{QBUS_ETC_DIR})
+
+    set(ENV{QBUS_ETC_DIR} "base")
+    message (STATUS "QBUS_ETC_DIR  = ${PROJECT_SOURCE_DIR}/etc/$ENV{QBUS_ETC_DIR}")
+
+endif()
+
 # for docker install
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/libs/qbus/)
 
@@ -9,7 +16,7 @@ INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src DESTINATION ${CMAKE_BINARY_DI
 INSTALL(CODE "execute_process(COMMAND docker image rm qore/qbus:buster)")
 
 # build the docker image
-INSTALL(CODE "execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/docker_build.sh ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR})")
+INSTALL(CODE "execute_process(COMMAND docker build -t qore/qbus:buster -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_INSTALL_PREFIX}/ --build-arg CACHEBUST=0)")
 
 #--------------------- OLD VERSION --------------------------
 
