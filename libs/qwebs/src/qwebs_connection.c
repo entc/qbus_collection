@@ -822,6 +822,7 @@ void qwebs_connection_send (QWebsConnection self, CapeStream* p_stream)
 {
   cape_mutex_lock (self->mutex);
   
+  // TODO: memory leak
   cape_list_push_back (self->send_cache, *p_stream);
   *p_stream = NULL;
 

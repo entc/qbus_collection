@@ -997,7 +997,7 @@ void cape_aio_socket__udp__send (CapeAioSocketUdp self, CapeAioContext aio, cons
   
   const struct hostent* server = gethostbyname (host);
   
-  printf ("SET SEND %i -> %s\n", server->h_length, host);
+  //printf ("SET SEND %i -> %s\n", server->h_length, host);
   
   
   if (server)

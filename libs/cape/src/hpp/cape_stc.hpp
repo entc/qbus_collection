@@ -1085,7 +1085,19 @@ namespace cape
 
   template <> struct UdcTransType<Udc>
   {
-    static void add_cp (CapeUdc obj, const char* name, const Udc& value) { CapeUdc h = cape_udc_cp (value.obj()); cape_udc_add_name (obj, &h, name); }
+    static void add_cp (CapeUdc obj, const char* name, const Udc& value)
+    { 
+      CapeUdc h = cape_udc_cp (value.obj());
+      
+      if (name)
+      {
+        cape_udc_add_name (obj, &h, name); 
+      }      
+      else
+      {
+        cape_udc_add (obj, &h);        
+      }
+    }
     static void add_mv (CapeUdc obj, const char* name, Udc& value)
     { 
       CapeUdc h = value.clone_or_release ();

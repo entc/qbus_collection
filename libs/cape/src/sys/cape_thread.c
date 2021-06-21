@@ -43,6 +43,8 @@ static void* cape_thread_run (void* params)
     }
   }
   
+  cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
+  
   return NULL;
 }
 
