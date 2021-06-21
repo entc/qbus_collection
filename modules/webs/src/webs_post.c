@@ -253,8 +253,8 @@ int webs_post_run (WebsPost* p_self, CapeErr err)
     CapeList url_parts = qwebs_request_clist (self->request);
     if (cape_list_size (url_parts))
     {
-      const CapeString module;
-      const CapeString method;
+      const CapeString module = NULL;
+      const CapeString method = NULL;
       
       CapeListCursor* cursor = cape_list_cursor_create (url_parts, CAPE_DIRECTION_FORW);
       
@@ -270,6 +270,7 @@ int webs_post_run (WebsPost* p_self, CapeErr err)
 
       cape_list_cursor_destroy (&cursor);
 
+      if (module && method)
       {
         int res;
         QBusM msg = qbus_message_new (NULL, NULL);
@@ -299,7 +300,6 @@ int webs_post_run (WebsPost* p_self, CapeErr err)
   }
 
   webs_post_del (p_self);
-  
   return CAPE_ERR_CONTINUE;
 }
 

@@ -6,6 +6,7 @@ import { throwError, of, timer } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
 import * as CryptoJS from 'crypto-js';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 
 //-----------------------------------------------------------------------------
 
@@ -24,6 +25,7 @@ const SESSION_STORAGE_GPID         = 'session_gpid';
 export class AuthSession
 {
   private session_key: string;
+  private session_token: string = null;
   private interval_obj;
   private timer_idle_countdown;
 
@@ -137,6 +139,13 @@ export class AuthSession
     return '';
   }
 
+  //-----------------------------------------------------------------------------
+
+  public set_token (token: string): void
+  {
+    this.session_token = token;
+  }
+
   //---------------------------------------------------------------------------
 
   private timer_set (idle_countdown: number)
@@ -227,6 +236,21 @@ export class AuthSession
 
     this.session.next (null);
   }
+
+  //---------------------------------------------------------------------------
+
+  private session_url (qbus_module: string, qbus_method: string): string
+  {
+    if (this.session_token)
+    {
+      return 'json/' + qbus_module + '/' + qbus_method + '/__P/' + this.session_token;
+    }
+    else
+    {
+      return 'json/' + qbus_module + '/' + qbus_method;
+    }
+  }
+
   //---------------------------------------------------------------------------
 
   private session_options (): object
@@ -250,7 +274,7 @@ export class AuthSession
 
   public json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
   {
-    return this.handle_error_session<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), this.session_options()));
+    return this.handle_error_session<T> (this.http.post<T>(this.session_url (qbus_module, qbus_method), JSON.stringify (params), this.session_options()));
   }
 
   //---------------------------------------------------------------------------
@@ -269,7 +293,7 @@ export class AuthSession
       options = {responseType: 'blob'};
     }
 
-    return this.http.post<string>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), options);
+    return this.http.post<string>(this.session_url (qbus_module, qbus_method), JSON.stringify (params), options);
   }
 
   //---------------------------------------------------------------------------
@@ -576,6 +600,21 @@ export class AuthSession
       }
       else
       {
+        const headers: HttpHeaders = error.headers;
+        const warning = headers.get('warning');
+
+        if (warning)
+        {
+          var i = warning.indexOf(',');
+
+          var eh: QbngErrorHolder = new QbngErrorHolder;
+
+          eh.text = warning.substring(i + 1);
+          eh.code = Number(warning.substring(0, i));
+
+          return throwError (eh);
+        }
+
         return throwError (error);
       }
 

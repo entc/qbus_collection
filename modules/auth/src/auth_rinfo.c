@@ -10,20 +10,20 @@ struct AuthRInfo_s
 {
   AdblSession adbl_session;
   
-  number_t userid;
   number_t wpid;
+  number_t gpid;
 };
 
 //---------------------------------------------------------------------------
 
-AuthRInfo auth_rinfo_new (AdblSession adbl_session, number_t userid, number_t wpid)
+AuthRInfo auth_rinfo_new (AdblSession adbl_session, number_t wpid, number_t gpid)
 {
   AuthRInfo self = CAPE_NEW (struct AuthRInfo_s);
   
   self->adbl_session = adbl_session;
   
-  self->userid = userid;
   self->wpid = wpid;
+  self->gpid = gpid;
   
   return self;
 }
@@ -32,8 +32,10 @@ AuthRInfo auth_rinfo_new (AdblSession adbl_session, number_t userid, number_t wp
 
 void auth_rinfo_del (AuthRInfo* p_self)
 {
-  
-  CAPE_DEL (p_self, struct AuthRInfo_s);
+  if (*p_self)
+  {
+    CAPE_DEL (p_self, struct AuthRInfo_s);
+  }
 }
 
 //---------------------------------------------------------------------------
@@ -88,20 +90,20 @@ void auth_rinfo__workspaces (AuthRInfo self, CapeUdc results, CapeUdc cdata)
 void auth_rinfo__merge (AuthRInfo self, CapeUdc first_row, CapeUdc rinfo)
 {
   // add essentials
-  cape_udc_add_n (rinfo, "userid", self->userid);
   cape_udc_add_n (rinfo, "wpid", self->wpid);
-  
+  cape_udc_add_n (rinfo, "gpid", self->gpid);
+
   // ** add others **
   
   {
-    CapeUdc h = cape_udc_ext (first_row, "gpid");
+    CapeUdc h = cape_udc_ext (first_row, "userid");
     if (h)
     {
       cape_udc_add (rinfo, &h);
     }
     else
     {
-      cape_log_msg (CAPE_LL_WARN, "AUTH", "get rinfo", "result row has no gpid");
+      cape_log_msg (CAPE_LL_WARN, "AUTH", "get rinfo", "result row has no userid");
     }
   }
   
@@ -204,12 +206,12 @@ int auth_rinfo__user_roles (AuthRInfo self, CapeUdc roles, CapeErr err)
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
   
   // conditions
-  cape_udc_add_n      (params, "userid"       , self->userid);
+  cape_udc_add_n      (params, "gpid"        , self->gpid);
   // return values
   cape_udc_add_s_cp   (values, "name"        , NULL);
   
   // execute the query
-  results = adbl_session_query (self->adbl_session, "rbac_roles_view", &params, &values, err);
+  results = adbl_session_query (self->adbl_session, "auth_roles_gpid_view", &params, &values, err);
   if (results == NULL)
   {
     return cape_err_code (err);
@@ -369,11 +371,14 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
   CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
   
-  // conditions
-  cape_udc_add_n      (params, "userid"       , self->userid);
+  // params
+  cape_udc_add_n      (params, "wpid"         , self->wpid);
+  cape_udc_add_n      (params, "gpid"         , self->gpid);
+
   // return values
   cape_udc_add_n      (values, "wpid"         , 0);
   cape_udc_add_n      (values, "gpid"         , 0);
+  cape_udc_add_n      (values, "userid"       , 0);
   cape_udc_add_s_cp   (values, "workspace"    , NULL);
   cape_udc_add_s_cp   (values, "clts"         , NULL);
   cape_udc_add_n      (values, "cltsid"       , 0);
@@ -382,12 +387,6 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
   cape_udc_add_s_cp   (values, "lastname"     , NULL);
   cape_udc_add_s_cp   (values, "token"        , NULL);
   cape_udc_add_s_cp   (values, "secret"       , NULL);
-
-  // optional conditions
-  if (self->wpid)
-  {
-    cape_udc_add_n     (params, "wpid"       , self->wpid);
-  }
 
   // execute the query
   results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);

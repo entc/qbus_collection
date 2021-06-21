@@ -11,6 +11,15 @@
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
 
+//-----------------------------------------------------------------------------
+
+// FIX
+// pre-8.0 defines the my_bool variable
+// after 8.0.2 it was re-introduced
+#ifndef my_bool
+typedef char my_bool;
+#endif
+
 //=============================================================================
 
 struct AdblBindVars_s; typedef struct AdblBindVars_s* AdblBindVars;

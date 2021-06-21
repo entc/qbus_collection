@@ -150,7 +150,7 @@ exit_and_cleanup:
   qwebs_request_send_json (&(self->request), qin->cdata, err);
   webs_json_del (&self);
 
-  return CAPE_ERR_NONE;
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -520,6 +520,10 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
         cape_udc_add_s_cp (msg->pdata, "token", auth_cont);
         
         res = qbus_send (self->qbus, "AUTH", "session_get", msg, self, qbus_webs__auth__on_ui, err);
+        if (res)
+        {
+          
+        }
         
         qbus_message_del (&msg);
         
@@ -657,8 +661,8 @@ int webs_json_run (WebsJson* p_self, CapeErr err)
   
   if (cape_list_size (clist) >= 2)
   {
-    const CapeString module;
-    const CapeString method;
+    const CapeString module = NULL;
+    const CapeString method = NULL;
     
     CapeString token_t = NULL;
     CapeString token_p = NULL;

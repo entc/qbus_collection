@@ -2,6 +2,19 @@
   <div class="col-md-6 col-12">
 
     <div class="form-group">
+      <label>name of the precondition node</label>
+      <div class="input-group">
+        <input type="text" class="form-control" [ngModel]="content.pdata['precondition_node']" (ngModelChange)="on_pdata_change($event, 'precondition_node')">
+      </div>
+    </div>
+
+  </div>
+</div>
+<hr>
+<div class="row">
+  <div class="col-md-6 col-12">
+
+    <div class="form-group">
       <label>value node</label>
       <div class="input-group">
         <input type="text" class="form-control" [ngModel]="content.pdata['value_node']" (ngModelChange)="on_pdata_change($event, 'value_node')">

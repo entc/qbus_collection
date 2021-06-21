@@ -143,10 +143,7 @@ void qflow_del (QFlow* p_self)
 {
   if (*p_self)
   {
-    QFlow self = *p_self;
-    
-    
-    
+    //QFlow self = *p_self;
     
     CAPE_DEL (p_self, struct QFlow_s);
   }

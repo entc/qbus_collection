@@ -7,6 +7,8 @@
 #include "sys/cape_types.h"
 #include "sys/cape_log.h"
 #include "fmt/cape_json.h"
+#include "fmt/cape_args.h"
+#include "sys/cape_file.h"
 
 //-----------------------------------------------------------------------------
 
@@ -24,10 +26,29 @@ AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
   int res;
   AdblPvd pvd;
   
+  // local objects
   CapeDl hlib = cape_dl_new ();
+  
+  CapeString path_current = NULL;
+  CapeString path_resolved = NULL;
 
+  // fetch the current path
+  path_current = cape_fs_path_current (path);
+  if (path_current == NULL)
+  {
+    cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
+    goto exit;
+  }
+  
+  path_resolved = cape_fs_path_resolve (path_current, err);
+  if (path_resolved == NULL)
+  {
+    cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
+    goto exit;
+  }
+  
   // try to load the module
-  res = cape_dl_load (hlib, path, backend, err);
+  res = cape_dl_load (hlib, path_resolved, backend, err);
   if (res)
   {
     goto exit;
@@ -153,8 +174,10 @@ AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
   
 exit:
 
-  cape_dl_del (&hlib);
+  cape_str_del (&path_current);
+  cape_str_del (&path_resolved);
 
+  cape_dl_del (&hlib);
   return NULL;
 }
 
@@ -213,18 +236,28 @@ AdblSession adbl_session_open_file (AdblCtx ctx, const char* config_file, CapeEr
 {
   AdblSession res = NULL;
   
-  CapeUdc connection_properties = cape_json_from_file (config_file, err);
+  // local objects
+  CapeString config = cape_args_config_file ("etc", config_file);
+  CapeUdc connection_properties = NULL;
   
-  // something went wrong?
+  if (config == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "missing config file");
+    goto exit_and_cleanup;
+  }
+  
+  connection_properties = cape_json_from_file (config, err);
   if (connection_properties == NULL)
   {
-    return NULL;
+    goto exit_and_cleanup;
   }
   
   res = adbl_session_open (ctx, connection_properties, err);
   
+exit_and_cleanup:
+
+  cape_str_del (&config);
   cape_udc_del (&connection_properties);
-  
   return res;
 }
 

@@ -822,6 +822,7 @@ CapeString cape_str_trim_utf8 (const CapeString source)
   while (*c)
   {
     clen = cape_str_char__len (*c);
+    
     if (clen > 1)
     {
       int i;
@@ -841,8 +842,17 @@ CapeString cape_str_trim_utf8 (const CapeString source)
       }
       else
       {
-        clen = i - 1;
-        pos_s += clen;        
+        // corrupt UTF-8 character
+        if (i == 1)
+        {
+          clen = 1;
+        }
+        else
+        {
+          clen = i - 1;
+        }
+
+        pos_s += clen;
       }
     }
     else
@@ -1559,6 +1569,97 @@ number_t cape_str_wchar_utf8 (wchar_t wc, char* bufdat)
   }
   
   return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+char* cape_str__search_mget (char* d, number_t row_len, number_t i_t, number_t j_s)
+{
+  return d + i_t * row_len + j_s;
+}
+
+//-----------------------------------------------------------------------------
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
+//-----------------------------------------------------------------------------
+
+number_t cape_str_distance (const CapeString s1, number_t l1, const CapeString s2, number_t l2)
+{
+  number_t ret = l1;
+  int i_t, j_s;
+  
+  number_t h = l1 + 1;
+  number_t w = l2 + 1;
+  
+  number_t n = w * h;
+  
+  // allocate memory for matrix
+  char* d = CAPE_ALLOC (n);
+  
+  // initialize matrix
+  memset (d, 0, n);
+  
+  for (i_t = 0; i_t < h; i_t++)
+  {
+    char* c = cape_str__search_mget (d, w, i_t, 0);
+    *c = i_t;
+  }
+  
+  for (j_s = 0; j_s < w; j_s++)
+  {
+    char* c = cape_str__search_mget (d, w, 0, j_s);
+    *c = j_s;
+  }
+  
+  number_t cost = 0;
+  
+  for (i_t = 1; i_t < h; i_t++)
+  {
+    for (j_s = 1; j_s < w; j_s++)
+    {
+      char* c0 = cape_str__search_mget (d, w, i_t, j_s);
+      char* c1 = cape_str__search_mget (d, w, i_t - 1, j_s);
+      char* c2 = cape_str__search_mget (d, w, i_t, j_s - 1);
+      char* c3 = cape_str__search_mget (d, w, i_t - 1, j_s - 1);
+      
+      const char* a = s1 + i_t - 1;
+      const char* b = s2 + j_s - 1;
+      
+      if (*a == *b)
+      {
+        cost = 0;
+      }
+      else
+      {
+        cost = 1;
+      }
+      
+      *c0 = MIN (*c1 + 1, MIN (*c2 + 1, *c3 + cost));
+      
+      if (i_t > 1 && j_s > 1)
+      {
+        const char* a2 = s1 + i_t - 2;
+        const char* b2 = s2 + j_s - 1;
+        
+        if (*a == *b2 && *a2 == *b)
+        {
+          char* c4 = cape_str__search_mget (d, w, i_t - 2, j_s - 2);
+          
+          *c0 = MIN (*c0, *c4 + 1);
+        }
+      }
+    }
+  }
+  
+  {
+    char* c = cape_str__search_mget (d, w, h - 1, w - 1);
+    ret = *c;
+  }
+  
+  CAPE_FREE (d);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

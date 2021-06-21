@@ -119,6 +119,20 @@ export class FlowFunctionService
       return '';
     }
   }
+
+  //-----------------------------------------------------------------------------
+
+  get_fctid (index: number): number
+  {
+    try
+    {
+      return this.values[index].id;
+    }
+    catch (e)
+    {
+      return 0;
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -337,6 +351,8 @@ export class WidgetItem
 
   on_index_change (index: number)
   {
+    this.modal_step_content.fctid = this.function_service.get_fctid (index);
+
     this.current_index = index;
     this.step_index.emit(index);
   }

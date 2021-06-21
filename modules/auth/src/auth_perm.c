@@ -19,7 +19,7 @@ struct AuthPerm_s
 
   number_t wpid;             // rinfo: mandatory
   number_t gpid;             // rinfo: mandatory
-  //number_t usid;             // rinfo: mandatory
+  number_t usid;             // rinfo: mandatory
   number_t rfid;             // input: mandatory
 
   CapeUdc roles;             // input: mandatory
@@ -41,7 +41,7 @@ AuthPerm auth_perm_new (AdblSession adbl_session, AuthVault vault)
   
   self->wpid = 0;
   self->gpid = 0;
-  //self->usid = 0;
+  self->usid = 0;
   self->rfid = 0;
   self->roles = NULL;
   
@@ -97,15 +97,6 @@ int auth_perm__intern__check_input (AuthPerm self, QBusM qin, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  /*
-  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
-  if (self->usid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
-    goto exit_and_cleanup;
-  }
-   */
-   
   // do some security checks
   if (qin->pdata == NULL)
   {
@@ -113,13 +104,6 @@ int auth_perm__intern__check_input (AuthPerm self, QBusM qin, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  self->rfid = cape_udc_get_n (qin->pdata, "rfid", 0);
-  if (self->rfid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing rfid");
-    goto exit_and_cleanup;
-  }
-  
   self->roles = cape_udc_ext (qin->pdata, "roles");
   if (self->roles == NULL)
   {
@@ -240,8 +224,13 @@ int auth_perm__intern__encrypt_rinfo (AuthPerm self, QBusM qin, const CapeString
   cape_udc_add_name (rinfo, &(self->roles), "roles");
   cape_udc_add_n (rinfo, "wpid", self->wpid);
   cape_udc_add_n (rinfo, "gpid", self->gpid);
-  //cape_udc_add_n (rinfo, "userid", self->usid);
-
+  
+  // TODO: see depricated but kept for backward compatiblity
+  if (self->usid)
+  {
+    cape_udc_add_n (rinfo, "userid", self->usid);
+  }
+  
   h1 = cape_json_to_s (rinfo);
   if (h1 == NULL)
   {
@@ -365,6 +354,105 @@ void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString 
 
 //-----------------------------------------------------------------------------
 
+int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  // local objects
+  CapeString content = NULL;
+  CapeString rinfo = NULL;
+  CapeString token = NULL;
+  AdblTrx trx = NULL;
+
+  // do some security checks
+  res = auth_perm__intern__check_input (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  /*
+  // TODO: depricated -> remove userid
+  // for backward compatibility the userid is still
+  // added to the rinfo for the token object
+  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
+  if (self->usid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
+    goto exit_and_cleanup;
+  }
+   */
+  
+  // encrypt cdata and rinfo into rinfo and content
+  res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // generate the token
+  token = cape_str_uuid ();
+  
+  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (self->token == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    number_t id;
+    
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // insert values
+    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+    
+    // workspace ID
+    cape_udc_add_n      (values, "wpid"         , self->wpid);
+    
+    // add values
+    auth_perm__intern__values (self, values, token, &rinfo, &content);
+    
+    // execute query
+    id = adbl_trx_insert (trx, "auth_perm", &values, err);
+    if (id == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+  // add output
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_s_mv (qout->cdata, "token", &token);
+  
+exit_and_cleanup:
+  
+  cape_str_del (&content);
+  cape_str_del (&rinfo);
+  cape_str_del (&token);
+  
+  adbl_trx_rollback (&trx, err);
+  
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -383,6 +471,27 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
+  // TODO: depricated -> remove userid
+  // for backward compatibility the userid is still
+  // added to the rinfo for the token object
+  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
+  if (self->usid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
+    goto exit_and_cleanup;
+  }
+   */
+
+  // check extra rfid
+  self->rfid = cape_udc_get_n (qin->pdata, "rfid", 0);
+  if (self->rfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing rfid");
+    goto exit_and_cleanup;
+  }
+  
+  // encrypt cdata and rinfo
   res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
   if (res)
   {

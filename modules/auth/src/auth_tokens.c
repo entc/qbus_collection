@@ -79,7 +79,7 @@ void auth_tokens_del (AuthTokens* p_self)
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_add__database (AuthTokens self, number_t userid, number_t wpid, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_add__database (AuthTokens self, number_t wpid, number_t gpid, const CapeString token, QBusM qin, CapeErr err)
 {
   int res;
   
@@ -99,8 +99,8 @@ int auth_tokens_add__database (AuthTokens self, number_t userid, number_t wpid, 
     
     // insert values
     cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
-    cape_udc_add_n      (values, "userid"       , userid);
     cape_udc_add_n      (values, "wpid"         , wpid);
+    cape_udc_add_n      (values, "gpid"         , gpid);
     cape_udc_add_s_cp   (values, "token"        , token);
     
     cape_udc_add_n      (values, "ttype"        , 1);
@@ -183,6 +183,7 @@ int auth_tokens_add (AuthTokens self, QBusM qin, QBusM qout, CapeErr err)
   
   number_t userid;
   number_t wpid;
+  number_t gpid;
   
   const CapeString type = NULL;
   
@@ -195,17 +196,26 @@ int auth_tokens_add (AuthTokens self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  /*
   userid = cape_udc_get_n (qin->rinfo, "userid", 0);
   if (userid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'userid' is empty or missing");
     goto exit_and_cleanup;
   }
+  */
 
   wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
   if (wpid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'wpid' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'gpid' is empty or missing");
     goto exit_and_cleanup;
   }
 
@@ -219,7 +229,7 @@ int auth_tokens_add (AuthTokens self, QBusM qin, QBusM qout, CapeErr err)
 
   if (cape_str_equal (type, "__L"))
   {
-    res = auth_tokens_add__database (self, userid, wpid, uuid, qin, err);
+    res = auth_tokens_add__database (self, wpid, gpid, uuid, qin, err);
   }
   else
   {
@@ -269,13 +279,13 @@ int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBu
   CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
   
-  // return values
+  // conditions
   cape_udc_add_s_cp   (params, "token"       , token);
   
-  // conditions
-  cape_udc_add_n      (values, "userid"      , 0);
+  // return values
   cape_udc_add_n      (values, "wpid"        , 0);
-  
+  cape_udc_add_n      (values, "gpid"        , 0);
+
   // TODO: encrypt content
   cape_udc_add_node   (values, "content"     );
   cape_udc_add_n      (values, "ref"         , 0);
@@ -298,9 +308,9 @@ int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBu
   
   
   {
-    number_t userid;
     number_t wpid;
-    
+    number_t gpid;
+
     CapeUdc row = cape_udc_get_first (results);
     if (row == NULL)
     {
@@ -308,17 +318,17 @@ int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBu
       goto exit_and_cleanup;
     }
     
-    userid = cape_udc_get_n (row, "userid", 0);
-    if (userid == 0)
-    {
-      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "token's userid is invalid");
-      goto exit_and_cleanup;
-    }
-    
     wpid = cape_udc_get_n (row, "wpid", 0);
     if (wpid == 0)
     {
       res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "token's wpid is invalid");
+      goto exit_and_cleanup;
+    }
+
+    gpid = cape_udc_get_n (row, "gpid", 0);
+    if (gpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "token's gpid is invalid");
       goto exit_and_cleanup;
     }
     
@@ -346,7 +356,7 @@ int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBu
     
     {
       // use the rinfo classes
-      AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, userid, wpid);
+      AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
       
       // fetch all rinfo from database
       res = auth_rinfo_get (&rinfo, qin, err);

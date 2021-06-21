@@ -1,0 +1,14 @@
+<div class="modal-header border-warning">
+  <div class="modal-title text-warning">
+    <strong><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ option.header_text | transloco }}</strong>
+  </div>
+</div>
+<div class="modal-body">
+
+  {{ option.body_text | transloco }}
+
+</div>
+<div class="modal-footer border-warning">
+  <button type="button" class="btn btn-outline-warning mr-auto" (click)="modal.close()">{{ option.button_text | transloco }}</button>
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+</div>

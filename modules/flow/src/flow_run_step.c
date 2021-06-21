@@ -131,9 +131,14 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   res = flow_run_dbw_pdata__qbus (dbw, &module, &method, &cdata, &clist, err);
   if (res)
   {
+    if (res == CAPE_ERR_EOF)
+    {
+      res = CAPE_ERR_NONE;
+    }
+    
     goto exit_and_cleanup;
   }
-
+  
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "          call | %s : %s                      |", module, method);
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");

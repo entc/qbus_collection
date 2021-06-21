@@ -1,0 +1,14 @@
+<div class="row mb-2">
+    <div class="col">
+      <ng-content></ng-content>
+    </div>
+    <div class="col text-right">
+
+      <ng-container *ngFor="let item of vals">
+
+        <qbng-switch [val]="item.switch_val" (onVal)="switch_changed (item, $event)">{{item.name}}</qbng-switch>
+
+      </ng-container>
+
+    </div>
+</div>

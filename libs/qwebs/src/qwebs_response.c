@@ -211,7 +211,6 @@ int qwebs_response_file__content (CapeStream s, CapeUdc file_node, int is_encryp
   
   // content
   {
-    int res;
     QWebsFileContext fctx;
     
     fctx.content = c;
@@ -266,6 +265,8 @@ int qwebs_response_file__content (CapeStream s, CapeUdc file_node, int is_encryp
     cape_stream_append_stream (s, c);
   }
 
+  res = CAPE_ERR_NONE;
+  
 exit_and_cleanup:
 
   cape_stream_del (&c);
@@ -301,6 +302,10 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
       cape_err_set (err, CAPE_ERR_WRONG_VALUE, "vsec is not set");
       goto exit_and_cleanup;
     }
+  }
+  else
+  {
+    vsec = NULL;
   }
   
   // BEGIN
