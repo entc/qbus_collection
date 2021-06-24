@@ -6,6 +6,7 @@ $MYSQLDUMP --set-gtid-purged=off -u $1 -p $2 \
 auth_sessions \
 auth_sessions_wp_view \
 auth_users_secret_view \
+auth_roles_gpid_view \
 glob_emails \
 glob_persons \
 q5_users \
