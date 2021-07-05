@@ -24,7 +24,7 @@ INSTALL (TARGETS qbus_mod_webs DESTINATION mods)
 
 
   if(DEFINED ENV{QBUS_ETC_DIR})
-    set(ETCDIR ENV{QBUS_ETC_DIR})
+    set(ETCDIR $ENV{QBUS_ETC_DIR})
   else()
     set(ETCDIR "base")    
   endif()
