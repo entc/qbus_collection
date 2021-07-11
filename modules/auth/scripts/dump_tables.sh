@@ -1,11 +1,14 @@
 #!/bin/bash
 
-MYSQLDUMP="/opt/local/lib/mariadb/bin/mysqldump"
+MYSQLDUMP="mysqldump"
+#MYSQLDUMP="/opt/local/lib/mariadb/bin/mysqldump"
 
-$MYSQLDUMP --set-gtid-purged=off -u $1 -p $2 \
+#$MYSQLDUMP --set-gtid-purged=off -u $1 -p $2 \
+$MYSQLDUMP --single-transaction -u $1 -p $2 \
 auth_sessions \
 auth_sessions_wp_view \
 auth_users_secret_view \
+auth_roles_gpid_view \
 glob_emails \
 glob_persons \
 q5_users \
@@ -18,4 +21,4 @@ rbac_users_view \
 rbac_workspaces \
 rbac_workspaces_roles \
 rbac_workspaces_roles_view \
-> ../../../../var/auth.sql
+| sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' > ../../../../var/auth.sql

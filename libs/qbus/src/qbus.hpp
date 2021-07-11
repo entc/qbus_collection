@@ -26,6 +26,7 @@ namespace qbus
     : m_qbus (qbus)
     , m_qin (qin)
     , m_qout (qout)
+    , m_rinfo_in (qin->rinfo)
     , m_cdata_in (qin->cdata)
     , m_pdata_in (qin->pdata)
     , m_ret (CAPE_ERR_NONE)
@@ -61,6 +62,21 @@ namespace qbus
       }
     }
     
+    cape::Udc& rinfo_valid (int type)
+    {
+      if (m_rinfo_in.empty())
+      {
+        throw std::runtime_error ("no 'cdata'");
+      }
+      
+      if (m_rinfo_in.type() != type)
+      {
+        throw std::runtime_error ("cdata' is not a node");
+      }
+      
+      return m_rinfo_in;
+    }
+
     cape::Udc& cdata () { return m_cdata_in; }
     
     cape::Udc& cdata_valid (int type)
@@ -127,12 +143,12 @@ namespace qbus
     
   private:
     
-    QBus m_qbus;
+    QBus m_qbus;              // reference
+  
+    QBusM m_qin;              // reference
+    QBusM m_qout;             // reference
     
-    QBusM m_qin;
-    
-    QBusM m_qout;
-    
+    cape::Udc m_rinfo_in;
     cape::Udc m_cdata_in;
     cape::Udc m_pdata_in;
     
@@ -302,12 +318,20 @@ namespace qbus
     {
       qbus_message_del (&m_msg);
     }
-    
+
+    void set_rinfo (cape::Udc& rinfo)
+    {
+      if (rinfo.valid() && rinfo.type() == CAPE_UDC_NODE)
+      {
+        m_msg->rinfo = rinfo.clone_or_release();
+      }
+    }
+
     void set_cdata (cape::Udc& cdata)
     {
       if (cdata.valid() && cdata.type() == CAPE_UDC_NODE)
       {
-        m_msg->cdata = cdata.release ();
+        m_msg->cdata = cdata.clone_or_release ();
       }
     }
 
@@ -315,7 +339,7 @@ namespace qbus
     {
       if (pdata.valid() && pdata.type() == CAPE_UDC_NODE)
       {
-        m_msg->pdata = pdata.release ();
+        m_msg->pdata = pdata.clone_or_release ();
       }
     }
 
@@ -323,7 +347,7 @@ namespace qbus
     {
       if (clist.valid() && clist.type() == CAPE_UDC_LIST)
       {
-        m_msg->clist = clist.release ();
+        m_msg->clist = clist.clone_or_release ();
       }
     }
 

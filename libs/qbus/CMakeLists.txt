@@ -2,13 +2,6 @@ SUBDIRS(src)
 #SUBDIRS(cli)
 SUBDIRS(app)
 
-if(NOT DEFINED ENV{QBUS_ETC_DIR})
-
-    set(ENV{QBUS_ETC_DIR} "base")
-    message (STATUS "QBUS_ETC_DIR  = ${PROJECT_SOURCE_DIR}/etc/$ENV{QBUS_ETC_DIR}")
-
-endif()
-
 # for docker install
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/libs/qbus/)
 
