@@ -609,7 +609,7 @@ export class AuthSession
 
           var eh: QbngErrorHolder = new QbngErrorHolder;
 
-          eh.text = warning.substring(i + 1);
+          eh.text = warning.substring(i + 1).trim();
           eh.code = Number(warning.substring(0, i));
 
           return throwError (eh);

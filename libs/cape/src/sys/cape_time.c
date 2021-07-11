@@ -641,12 +641,17 @@ void cape_datetime__add_n (const CapeDatetime* self, number_t period, CapeDateti
 
 int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 {
-  /*
-  CapeString h1 = cape_datetime_s__std (dt1);
-  CapeString h2 = cape_datetime_s__std (dt2);
-  
-  printf ("%s <--> %s\n", h1, h2);
-   */
+  if (dt1 == NULL)
+  {
+    // null is always the smallest
+    return -1;
+  }
+
+  if (dt2 == NULL)
+  {
+    // null is always the smallest
+    return 1;
+  }
   
   if (dt1->year < dt2->year)
   {

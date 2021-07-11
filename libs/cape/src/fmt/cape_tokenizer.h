@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_types.h"
 #include "stc/cape_list.h"
+#include "stc/cape_udc.h"
 #include "stc/cape_str.h"
 
 //-----------------------------------------------------------------------------
@@ -35,6 +36,16 @@ __CAPE_LIBEX   CapeList           cape_tokenizer_str_pos       (const CapeString
                                       -> use this to get utf8 char positions
                                    */
 __CAPE_LIBEX   CapeList           cape_tokenizer_str_utf8_pos  (const CapeString haystack, const CapeString needle);
+
+//-----------------------------------------------------------------------------
+
+                                  /* returns an UDC structure from an option string
+                                   -> input format: "text ((key:val))" which will be parsed
+                                   -> output: {"text": text, "key": val}
+                                   -> returns NULL if parsing returns no results
+                                        -> source text has no (())
+                                   */
+__CAPE_LIBEX   CapeUdc            cape_tokenizer_options (const CapeString source);
 
 //-----------------------------------------------------------------------------
 

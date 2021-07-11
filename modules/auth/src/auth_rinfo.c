@@ -210,6 +210,12 @@ int auth_rinfo__user_roles (AuthRInfo self, CapeUdc roles, CapeErr err)
   // return values
   cape_udc_add_s_cp   (values, "name"        , NULL);
   
+  /*
+   auth_roles_gpid_view
+   
+   select rr.id, ru.gpid, name from rbac_users ru join rbac_users_roles ur on ru.userid = ur.userid join rbac_roles rr on rr.id = ur.roleid;
+   */
+  
   // execute the query
   results = adbl_session_query (self->adbl_session, "auth_roles_gpid_view", &params, &values, err);
   if (results == NULL)
