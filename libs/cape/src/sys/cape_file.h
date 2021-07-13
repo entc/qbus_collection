@@ -47,6 +47,8 @@ __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, Cape
 
 __CAPE_LIBEX   int                cape_fs_path_exists    (const char* path);
 
+__CAPE_LIBEX   int                cape_fs_path_rm        (const char* path, int force_on_none_empty, CapeErr);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                cape_fs_file_del       (const char* path, CapeErr);
@@ -85,6 +87,14 @@ struct CapeDirCursor_s; typedef struct CapeDirCursor_s* CapeDirCursor;
 
 //-----------------------------------------------------------------------------
 
+#define CAPE_DC_TYPE__NONE     0
+#define CAPE_DC_TYPE__FILE     1
+#define CAPE_DC_TYPE__LINK     2
+#define CAPE_DC_TYPE__DIR      3
+#define CAPE_DC_TYPE__ERR      4
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   CapeDirCursor      cape_dc_new            (const CapeString path, CapeErr err);    // returns NULL in case of error
 
 __CAPE_LIBEX   void               cape_dc_del            (CapeDirCursor*);
@@ -94,6 +104,8 @@ __CAPE_LIBEX   int                cape_dc_next           (CapeDirCursor);
 __CAPE_LIBEX   const CapeString   cape_dc_name           (CapeDirCursor);
 
 __CAPE_LIBEX   off_t              cape_dc_size           (CapeDirCursor);
+
+__CAPE_LIBEX   number_t           cape_dc_type           (CapeDirCursor);
 
 //-----------------------------------------------------------------------------
 

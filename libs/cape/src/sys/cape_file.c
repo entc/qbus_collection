@@ -454,6 +454,87 @@ number_t cape_fs_path_size__process_path (DIR* dir, CapeList folders, const char
 }
 */
 
+//--------------------------------------------------------------------------------
+
+int cape_fs_path_rm__os (const char* path, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+  
+  return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
+  return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeDirCursor c = NULL;
+  
+  if (force_on_none_empty)
+  {
+    CapeDirCursor c = cape_dc_new (path, err);
+    if (c == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+    
+    while (cape_dc_next (c))
+    {
+      // determine the node type
+      switch (cape_dc_type (c))
+      {
+        case CAPE_DC_TYPE__FILE:
+        case CAPE_DC_TYPE__LINK:
+        {
+          CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+          
+          res = cape_fs_file_del (path_child, err);
+          
+          cape_str_del (&path_child);
+          
+          if (res)
+          {
+            goto exit_and_cleanup;
+          }
+          
+          break;
+        }
+        case CAPE_DC_TYPE__DIR:
+        {
+          CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+
+          res = cape_fs_path_rm (path_child, TRUE, err);
+
+          cape_str_del (&path_child);
+
+          if (res)
+          {
+            goto exit_and_cleanup;
+          }
+
+          break;
+        }
+      }
+    }
+  }
+  
+  res = cape_fs_path_rm__os (path, err);
+  
+exit_and_cleanup:
+
+  cape_dc_del (&c);
+  return res;
+}
+
 //-----------------------------------------------------------------------------
 
 int cape_fs_file_del (const char* path, CapeErr err)
@@ -793,6 +874,74 @@ off_t cape_dc_size (CapeDirCursor self)
   }
   
   return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_dc_type (CapeDirCursor self)
+{
+  if (self->node)
+  {
+    unsigned short fts_info = self->node->fts_info;
+    
+    /*
+     A regular file
+     */
+    if (fts_info & FTS_F)
+    {
+      return CAPE_DC_TYPE__FILE;
+    }
+    /*
+     A symbolic link
+     */
+    else if (fts_info & FTS_SL)
+    {
+      return CAPE_DC_TYPE__LINK;
+    }
+    /*
+     A symbolic link with a nonexistent target.  The
+     contents of the fts_statp field reference the file
+     characteristic information for the symbolic link
+     itself
+     */
+    else if (fts_info & FTS_SLNONE)
+    {
+      return CAPE_DC_TYPE__FILE;
+    }
+    /*
+     Any FTSENT structure that represents a file type
+     not explicitly described by one of the other
+     fts_info values
+     */
+    else if (fts_info & FTS_DEFAULT)
+    {
+      return CAPE_DC_TYPE__FILE;
+    }
+    /*
+     A directory being visited in postorder.  The
+     contents of the FTSENT structure will be unchanged
+     from when it was returned in preorder, that is,
+     with the fts_info field set to FTS_D
+     */
+    else if (fts_info & FTS_DP)
+    {
+      return CAPE_DC_TYPE__DIR;
+    }
+    /*
+     This is an error return, and the fts_errno field
+     will be set to indicate what caused the error
+     */
+    else if (fts_info & FTS_ERR)
+    {
+      return CAPE_DC_TYPE__ERR;
+    }
+    /*
+     there are more flags
+     man fts
+     */
+  }
+  
+  return CAPE_DC_TYPE__NONE;
 }
 
 //-----------------------------------------------------------------------------
