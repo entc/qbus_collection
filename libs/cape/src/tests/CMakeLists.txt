@@ -13,6 +13,9 @@ target_link_libraries   (ut_stc_udc cape)
 add_executable          (ut_sys_exec ut_sys_exec.c)
 target_link_libraries   (ut_sys_exec cape)
 
+add_executable          (ut_sys_file ut_sys_file.c)
+target_link_libraries   (ut_sys_file cape)
+
 add_executable          (ut_hpp_stc ut_hpp_stc.cc)
 target_link_libraries   (ut_hpp_stc cape)
 

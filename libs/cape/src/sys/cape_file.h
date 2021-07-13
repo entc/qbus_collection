@@ -107,6 +107,11 @@ __CAPE_LIBEX   off_t              cape_dc_size           (CapeDirCursor);
 
 __CAPE_LIBEX   number_t           cape_dc_type           (CapeDirCursor);
 
+                                  /*
+                                   level = 0 is the path itself
+                                   */
+__CAPE_LIBEX   number_t           cape_dc_level          (CapeDirCursor);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   const void*        cape_fs_stdout         (void);
