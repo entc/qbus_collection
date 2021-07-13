@@ -295,43 +295,38 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
 {
   int res;
   CapeString directory = NULL;
+  CapeString path_absolute = cape_fs_path_absolute (path);
   
   // create all path elements
-  CapeList tokens = cape_tokenizer_buf (path, cape_str_size (path), CAPE_FS_FOLDER_SEP);
+  CapeList tokens = cape_tokenizer_buf (path_absolute, cape_str_size (path_absolute), CAPE_FS_FOLDER_SEP);
   
   // iterate through those elements
   CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
   while (cape_list_cursor_next (cursor))
   {
     const CapeString part = cape_list_node_data (cursor->node);
-    
+
+    if (directory)
     {
-      if (directory)
+      // advance which each part
+      CapeString h = cape_fs_path_merge (directory, part);
+      
+      // replace directory (memory safe)
+      cape_str_replace_mv (&directory, &h);
+
+      //printf ("PART: %s\n", directory);
+
+      res = cape_fs_path_create (directory, err);
+      if (res)
       {
-        // For other deeps, check each subdir and create it if not existing
-        CapeString h = cape_fs_path_merge (directory, part);
-        
-        // replace directory (memory safe)
-        cape_str_replace_mv (&directory, &h);
-      }
-      else
-      {
-        directory = cape_str_cp (part);
+        goto exit_and_cleanup;
       }
     }
-    
-    res = cape_fs_path_create (directory, err);
-    if (res)
+    else
     {
-      goto exit_and_cleanup;
+      directory = cape_str_cp (part);
     }
-
-    
-//    printf ("PART: %s\n", directory);
-
-    /*
-     */
-
+   
     /*
     // Root shall exist
     switch (cursor->position)

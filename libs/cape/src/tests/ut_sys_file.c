@@ -32,6 +32,18 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
 
+  res = cape_fs_path_create_x (path_child_folder, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_fs_path_rm (path_test_folder, TRUE, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
