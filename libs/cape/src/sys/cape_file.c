@@ -295,43 +295,38 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
 {
   int res;
   CapeString directory = NULL;
+  CapeString path_absolute = cape_fs_path_absolute (path);
   
   // create all path elements
-  CapeList tokens = cape_tokenizer_buf (path, cape_str_size (path), CAPE_FS_FOLDER_SEP);
+  CapeList tokens = cape_tokenizer_buf (path_absolute, cape_str_size (path_absolute), CAPE_FS_FOLDER_SEP);
   
   // iterate through those elements
   CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
   while (cape_list_cursor_next (cursor))
   {
     const CapeString part = cape_list_node_data (cursor->node);
-    
+
+    if (directory)
     {
-      if (directory)
+      // advance which each part
+      CapeString h = cape_fs_path_merge (directory, part);
+      
+      // replace directory (memory safe)
+      cape_str_replace_mv (&directory, &h);
+
+      //printf ("PART: %s\n", directory);
+
+      res = cape_fs_path_create (directory, err);
+      if (res)
       {
-        // For other deeps, check each subdir and create it if not existing
-        CapeString h = cape_fs_path_merge (directory, part);
-        
-        // replace directory (memory safe)
-        cape_str_replace_mv (&directory, &h);
-      }
-      else
-      {
-        directory = cape_str_cp (part);
+        goto exit_and_cleanup;
       }
     }
-    
-    res = cape_fs_path_create (directory, err);
-    if (res)
+    else
     {
-      goto exit_and_cleanup;
+      directory = cape_str_cp (part);
     }
-
-    
-//    printf ("PART: %s\n", directory);
-
-    /*
-     */
-
+   
     /*
     // Root shall exist
     switch (cursor->position)
@@ -453,6 +448,102 @@ number_t cape_fs_path_size__process_path (DIR* dir, CapeList folders, const char
   return total_size;
 }
 */
+
+//--------------------------------------------------------------------------------
+
+int cape_fs_path_rm__os (const char* path, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+  
+  return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
+  return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeDirCursor c = NULL;
+  
+  if (force_on_none_empty)
+  {
+    CapeDirCursor c = cape_dc_new (path, err);
+    if (c == NULL)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't find directory '%s': %s", path, cape_err_text (err));
+      
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    while (cape_dc_next (c))
+    {
+      if (cape_dc_level (c))
+      {
+        // determine the node type
+        switch (cape_dc_type (c))
+        {
+          case CAPE_DC_TYPE__FILE:
+          case CAPE_DC_TYPE__LINK:
+          {
+            CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+            
+            res = cape_fs_file_del (path_child, err);
+            
+            if (res)
+            {
+              cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't remove file '%s': %s", path_child, cape_err_text (err));
+            }
+            
+            cape_str_del (&path_child);
+            
+            if (res)
+            {
+              goto exit_and_cleanup;
+            }
+            
+            break;
+          }
+          case CAPE_DC_TYPE__DIR:
+          {
+            CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+            
+            res = cape_fs_path_rm (path_child, TRUE, err);
+            
+            if (res)
+            {
+              cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't remove dir '%s': %s", path_child, cape_err_text (err));
+            }
+            
+            cape_str_del (&path_child);
+            
+            if (res)
+            {
+              goto exit_and_cleanup;
+            }
+            
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  res = cape_fs_path_rm__os (path, err);
+  
+exit_and_cleanup:
+
+  cape_dc_del (&c);
+  return res;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -758,7 +849,7 @@ void cape_dc_del (CapeDirCursor* p_self)
 
 //-----------------------------------------------------------------------------
 
-int  cape_dc_next (CapeDirCursor self)
+int cape_dc_next (CapeDirCursor self)
 {
   self->node = fts_read (self->tree);
   
@@ -786,13 +877,55 @@ off_t cape_dc_size (CapeDirCursor self)
 {
   if (self->node)
   {
-    if (self->node->fts_info & FTS_F)
+    if (self->node->fts_info == FTS_F)
     {
       return self->node->fts_statp->st_size;
     }
   }
   
   return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_dc_level (CapeDirCursor self)
+{
+  if (self->node)
+  {
+    return self->node->fts_level;
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_dc_type (CapeDirCursor self)
+{
+  if (self->node)
+  {
+    unsigned short fts_info = self->node->fts_info;
+    
+//    printf ("%i FTS_DEFAULT=%i, FTS_F=%i, FTS_SL=%i, FTS_DP=%i\n", fts_info, fts_info & FTS_DEFAULT, fts_info & FTS_F, fts_info & FTS_SL, fts_info & FTS_DP);
+
+    switch (self->node->fts_info)
+    {
+      case FTS_DP:
+      {
+        return CAPE_DC_TYPE__DIR;
+      }
+      case FTS_F:
+      {
+        return CAPE_DC_TYPE__FILE;
+      }
+      case FTS_SL:
+      {
+        return CAPE_DC_TYPE__LINK;
+      }
+    }
+  }
+  
+  return CAPE_DC_TYPE__NONE;
 }
 
 //-----------------------------------------------------------------------------

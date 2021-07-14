@@ -1094,7 +1094,7 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      flow_process_view
      
-     create view flow_process_view as select ps.id, ps.wpid, ps.wfid, ps.active, ps.refid, ps.sync, ws.id wsid, ws.tag, ws.log, ps.t_data tdata from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step;
+     select ps.id, ps.wpid, ps.wfid, ps.active, ps.refid, ps.sync, ws.id wsid, ws.tag, ws.log, ps.t_data tdata from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step;
      */
     
     query_results = adbl_session_query (self->adbl_session, "flow_process_view", &params, &values, err);

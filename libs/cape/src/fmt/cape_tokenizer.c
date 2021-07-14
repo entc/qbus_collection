@@ -235,3 +235,235 @@ CapeList cape_tokenizer_str_utf8_pos (const CapeString haystack, const CapeStrin
 }
 
 //-----------------------------------------------------------------------------------------------------------
+
+#define CAPE_TOPTIONS_STATE__TEXT    0
+#define CAPE_TOPTIONS_STATE__OPTION  2
+#define CAPE_TOPTIONS_STATE__IN      3
+#define CAPE_TOPTIONS_STATE__OUT     4
+
+//-----------------------------------------------------------------------------------------------------------
+
+void cape_tokenizer_options__append (const char* pos_key, const char* pos_val, const char* pos, CapeUdc* p_ret)
+{
+  CapeUdc ret = *p_ret;
+  
+  if (pos_key && pos_val)
+  {
+    CapeString key1 = cape_str_sub (pos_key, pos_val - pos_key - 1);
+    CapeString val1 = cape_str_sub (pos_val, pos - pos_val);
+    
+    CapeString key2 = cape_str_trim_utf8 (key1);
+    CapeString val2 = cape_str_trim_utf8 (val1);
+    
+    if (cape_str_not_empty (key2))
+    {
+      if (ret == NULL)
+      {
+        ret = cape_udc_new (CAPE_UDC_NODE, NULL);
+      }
+
+      {
+        char* pos_end = NULL;
+        
+        // test if we can convert it into a number
+        number_t h = strtol (val2, &pos_end, 10);
+        
+        if ((pos_end == NULL) || (pos_end == val2))
+        {
+          cape_udc_add_s_mv (ret, key2, &val2);
+        }
+        else
+        {
+          cape_udc_add_n (ret, key2, h);
+        }
+      }
+    }
+    
+    cape_str_del (&key2);
+    cape_str_del (&val2);
+    cape_str_del (&key1);
+    cape_str_del (&val1);
+  }
+  
+  *p_ret = ret;
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
+CapeUdc cape_tokenizer_options (const CapeString source)
+{
+  CapeUdc ret = NULL;
+
+  const char* pos;
+  int state = CAPE_TOPTIONS_STATE__TEXT;
+  
+  const char* pos_text = NULL;
+  const char* pos_option_key = NULL;
+  const char* pos_option_val = NULL;
+
+  // iterate through
+  for (pos = source; *pos; pos++)
+  {
+    // checks for the state engine
+    switch (*pos)
+    {
+      case '(':
+      {
+        switch (state)
+        {
+          case CAPE_TOPTIONS_STATE__TEXT:
+          {
+            state = CAPE_TOPTIONS_STATE__IN;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OPTION:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__IN:
+          {
+            state = CAPE_TOPTIONS_STATE__OPTION;
+
+            pos_text = pos - 1;
+            pos_option_key = pos + 1;
+
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OUT:
+          {
+            state = CAPE_TOPTIONS_STATE__OPTION;
+            break;
+          }
+        }
+        
+        break;
+      }
+      case ')':
+      {
+        switch (state)
+        {
+          case CAPE_TOPTIONS_STATE__TEXT:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OPTION:
+          {
+            state = CAPE_TOPTIONS_STATE__OUT;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__IN:
+          {
+            state = CAPE_TOPTIONS_STATE__TEXT;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OUT:
+          {
+            state = CAPE_TOPTIONS_STATE__TEXT;
+
+            cape_tokenizer_options__append (pos_option_key, pos_option_val, pos - 1, &ret);
+            break;
+          }
+        }
+
+        break;
+      }
+      case ':':
+      {
+        switch (state)
+        {
+          case CAPE_TOPTIONS_STATE__IN:
+          {
+            state = CAPE_TOPTIONS_STATE__TEXT;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__TEXT:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OUT:
+          {
+            state = CAPE_TOPTIONS_STATE__OPTION;
+            pos_option_val = pos + 1;
+
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OPTION:
+          {
+            pos_option_val = pos + 1;
+
+            break;
+          }
+        }
+        
+        break;
+      }
+      case ',':
+      {
+        switch (state)
+        {
+          case CAPE_TOPTIONS_STATE__IN:
+          {
+            state = CAPE_TOPTIONS_STATE__TEXT;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__TEXT:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OUT:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OPTION:
+          {
+            cape_tokenizer_options__append (pos_option_key, pos_option_val, pos, &ret);
+            pos_option_key = pos + 1;
+            break;
+          }
+        }
+        
+        break;
+      }
+      default:
+      {
+        switch (state)
+        {
+          case CAPE_TOPTIONS_STATE__TEXT:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OPTION:
+          {
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__IN:
+          {
+            state = CAPE_TOPTIONS_STATE__TEXT;
+            break;
+          }
+          case CAPE_TOPTIONS_STATE__OUT:
+          {
+            state = CAPE_TOPTIONS_STATE__OPTION;
+            break;
+          }
+        }
+
+        break;
+      }
+    }
+  }
+  
+  if (pos_text && ret)
+  {
+    CapeString h1 = cape_str_sub (source, pos_text - source);
+    CapeString h2 = cape_str_trim_utf8 (h1);
+
+    cape_udc_add_s_mv (ret, "_", &h2);
+    
+    cape_str_del (&h1);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------------------------------------

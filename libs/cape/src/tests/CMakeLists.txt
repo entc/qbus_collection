@@ -13,6 +13,9 @@ target_link_libraries   (ut_stc_udc cape)
 add_executable          (ut_sys_exec ut_sys_exec.c)
 target_link_libraries   (ut_sys_exec cape)
 
+add_executable          (ut_sys_file ut_sys_file.c)
+target_link_libraries   (ut_sys_file cape)
+
 add_executable          (ut_hpp_stc ut_hpp_stc.cc)
 target_link_libraries   (ut_hpp_stc cape)
 
@@ -34,5 +37,5 @@ target_link_libraries   (ut_sys_queue cape)
 add_executable          (ut_fmt_template ut_fmt_template.c)
 target_link_libraries   (ut_fmt_template cape)
 
-add_executable          (ut_sys_file ut_sys_file.c)
-target_link_libraries   (ut_sys_file cape)
+add_executable          (ut_fmt_tokenizer ut_fmt_tokenizer.c)
+target_link_libraries   (ut_fmt_tokenizer cape)
