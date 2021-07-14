@@ -33,3 +33,6 @@ target_link_libraries   (ut_sys_queue cape)
 
 add_executable          (ut_fmt_template ut_fmt_template.c)
 target_link_libraries   (ut_fmt_template cape)
+
+add_executable          (ut_sys_file ut_sys_file.c)
+target_link_libraries   (ut_sys_file cape)
