@@ -79,9 +79,20 @@ __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char c);
 
+                                  /*
+                                  removes invalid UTF-8 characters
+                                   */
 __CAPE_LIBEX   CapeString         cape_str_sanitize_utf8 (const CapeString source);
 
+                                  /*
+                                  converts UTF-8 into human readable characters
+                                   */
 __CAPE_LIBEX   CapeString         cape_str_to_word       (const CapeString source);
+
+                                  /*
+                                  converts UTF-8 into Latin-1 (ISO-8859-1)
+                                   */
+__CAPE_LIBEX   CapeString         cape_str_to_latin1     (const CapeString source);
 
 __CAPE_LIBEX   CapeString         cape_str_cp_replaced   (const CapeString source, const CapeString seek, const CapeString replace_with);
 

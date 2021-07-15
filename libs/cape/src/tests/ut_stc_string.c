@@ -35,7 +35,15 @@ int main (int argc, char *argv[])
 
     cape_str_del (&s);
   }
-  
+
+  {
+    CapeString s = cape_str_to_latin1 ("Esslingen-Nürtingen");
+    
+    printf ("T5 = '%s'\n", s);
+    
+    cape_str_del (&s);
+  }
+
   {
     const char* h1 = "M\u00FCnchen 10";
     const char* h2 = "Muenchen 10";
@@ -66,6 +74,8 @@ int main (int argc, char *argv[])
     printf ("COMP1 %s <> %s = %i\n", h1, h2, strcmp (h1, h2));
   }
 
+  
+  
   
   
   return 0;
