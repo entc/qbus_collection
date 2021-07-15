@@ -27,6 +27,12 @@
 
 #elif defined __BSD_OS
 
+#if defined __APPLE__
+
+#include <copyfile.h>
+
+#endif
+
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
@@ -496,7 +502,7 @@ int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
           {
             CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
             
-            res = cape_fs_file_del (path_child, err);
+            res = cape_fs_file_rm (path_child, err);
             
             if (res)
             {
@@ -547,12 +553,127 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_file_del (const char* path, CapeErr err)
+int cape_fs_file_rm (const char* path, CapeErr err)
 {
+#ifdef __WINDOWS_OS
+
+  if (0 != _unlink (path))
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
   if (-1 == unlink (path))
   {
     return cape_err_lastOSError (err);
   }
+
+#endif
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_mv__cp_rm (const char* source, const char* destination, CapeErr err)
+{
+  int res;
+  
+  // first copy the file
+  res = cape_fs_file_cp (source, destination, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = cape_fs_file_rm (source, err);
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+
+  if (!MoveFile (source, destination))
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
+  if (0 != rename (source, destination))
+  {
+    int err_no = errno;
+    
+    // check for a specific error
+    // -> the source and target files are not on the same filesystem
+    // -> we still can try to copy and remove the file in sequence
+    if (err_no == EXDEV)
+    {
+      return cape_fs_file_mv__cp_rm (source, destination, err);
+    }
+    else
+    {
+      return cape_err_lastOSError (err);
+    }
+  }
+  
+#endif
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+  
+  if (!CopyFile (source, destination, TRUE))
+  {
+    return cape_err_lastOSError (err);
+  }
+
+#elif defined __APPLE_CC__
+  
+  if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
+  // TODO: add checkings
+  int sfd = open (source, O_RDONLY, 0);
+  int dfd = open (destination, O_WRONLY | O_CREAT /*| O_TRUNC/*/, 0644);
+  
+  // struct required, rationale: function stat() exists also
+  struct stat stat_source;
+  fstat(sfd, &stat_source);
+  
+  off_t offset = 0;
+  while (offset < stat_source.st_size)
+  {
+    ssize_t bytes_written = sendfile (dfd, sfd, offset, stat_source.st_size - offset);
+    
+    if (bytes_written == -1)
+    {
+      break;
+    }
+    
+    offset = offset + bytes_written;
+  }
+  
+  close (sfd);
+  close (dfd);
+  
+#endif
   
   return CAPE_ERR_NONE;
 }

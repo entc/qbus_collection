@@ -46,7 +46,7 @@ static void __STDCALL webs__files__on_del (void* ptr)
 {
   CapeString file = ptr;
   
-  cape_fs_file_del (file, NULL);
+  cape_fs_file_rm (file, NULL);
   
   cape_str_del (&file);
 }

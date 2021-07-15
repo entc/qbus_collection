@@ -51,8 +51,24 @@ __CAPE_LIBEX   int                cape_fs_path_rm        (const char* path, int 
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int                cape_fs_file_del       (const char* path, CapeErr);
+                                  /*
+                                  removes a file from the filesystem, returns a cape error
+                                   */
+__CAPE_LIBEX   int                cape_fs_file_rm        (const char* path, CapeErr);
 
+                                  /*
+                                  moves a file, returns a cape error
+                                   */
+__CAPE_LIBEX   int                cape_fs_file_mv        (const char* source, const char* destination, CapeErr);
+
+                                  /*
+                                  copies a file, returns a cape error
+                                   */
+__CAPE_LIBEX   int                cape_fs_file_cp        (const char* source, const char* destination, CapeErr);
+
+                                  /*
+                                  returns the size of a file, please check err for errors
+                                   */
 __CAPE_LIBEX   off_t              cape_fs_file_size      (const char* path, CapeErr);
 
 //-----------------------------------------------------------------------------
