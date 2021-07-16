@@ -44,4 +44,10 @@ __CAPE_LIBEX  int            qcrypt_file_finalize       (QCryptFile, CapeErr err
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX  int            qcrypt__decrypt_file       (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err);
+
+__CAPE_LIBEX  int            qcrypt__encrypt_file       (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 #endif

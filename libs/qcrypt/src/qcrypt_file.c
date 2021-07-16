@@ -86,8 +86,6 @@ exit_and_cleanup:
 
 struct QCryptDecrypt_s
 {
-  CapeString file;
-  
   QDecryptAES dec;
   
   CapeFileHandle fh;
@@ -103,11 +101,8 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
 {
   QCryptDecrypt self = CAPE_NEW (struct QCryptDecrypt_s);
 
-  // create the file name
-  self->file = cape_fs_path_merge (path, file);
-  
   // create the file handle
-  self->fh = cape_fh_new (NULL, self->file);
+  self->fh = cape_fh_new (path, file);
   
   // create the buffer
   self->product = cape_stream_new ();
@@ -133,7 +128,6 @@ void qcrypt_decrypt_del (QCryptDecrypt* p_self)
     cape_stream_del (&(self->product));
     
     cape_fh_del (&(self->fh));
-    cape_str_del (&(self->file));
     
     CAPE_DEL (p_self, struct QCryptDecrypt_s);
   }
@@ -338,3 +332,108 @@ exit:
 
 //-----------------------------------------------------------------------------
 
+int qcrypt__decrypt_file (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (10000);
+  CapeFileHandle fh = cape_fh_new (NULL, dest);
+  QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+
+  res = qcrypt_decrypt_open (decrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = cape_fh_open (fh, O_CREAT | O_WRONLY | O_TRUNC, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  while (TRUE)
+  {
+    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, 10000);
+    if (bytes_decrypted)
+    {
+      cape_fh_write_buf (fh, buffer, bytes_decrypted);
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  qcrypt_decrypt_del (&decrypt);
+  CAPE_FREE (buffer);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__encrypt_file (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (10000);
+  CapeFileHandle fh = cape_fh_new (NULL, dest);
+  QCryptFile encrypt = qcrypt_file_new (dest);
+
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = qcrypt_file_encrypt (encrypt, vsec, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, 10000);
+    if (bytes_read > 0)
+    {
+      res = qcrypt_file_write (encrypt, buffer, bytes_read, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  res = qcrypt_file_finalize (encrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  qcrypt_file_del (&encrypt);
+  CAPE_FREE (buffer);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
