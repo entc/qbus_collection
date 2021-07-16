@@ -48,6 +48,8 @@ __CAPE_LIBEX  int            qcrypt__decrypt_file       (const CapeString source
 
 __CAPE_LIBEX  int            qcrypt__encrypt_file       (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err);
 
+__CAPE_LIBEX  CapeString     qcrypt__hash_md5_file      (const CapeString source, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

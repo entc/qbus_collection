@@ -10,6 +10,23 @@
 
 //-----------------------------------------------------------------------------
 
+#if defined __WINDOWS_OS
+
+#include <windows.h>
+#include <wincrypt.h>
+#pragma comment (lib, "Crypt32.lib")
+
+#else
+
+#include <openssl/md5.h>
+
+#endif
+
+// define the buffer size for read and write operations on a file
+#define QCRYPT_BUFFER_SIZE  10000
+
+//-----------------------------------------------------------------------------
+
 int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr, fct_cape_fs_file_load cb, CapeErr err)
 {
   int res;
@@ -19,7 +36,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   QDecryptAES dec = NULL;
   
   // buffers
-  char* buffer = CAPE_ALLOC (10000);
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
   CapeStream outb = cape_stream_new ();
 
   res = cape_fh_open (fh, O_RDONLY, err);
@@ -33,7 +50,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   
   while (TRUE)
   {
-    number_t bytes_read = cape_fh_read_buf (fh, buffer, 10000);
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
     if (bytes_read > 0)
     {
       res = qdecrypt_aes_process (dec, buffer, bytes_read, err);
@@ -337,7 +354,7 @@ int qcrypt__decrypt_file (const CapeString source, const CapeString dest, const 
   int res;
   
   // local objects
-  char* buffer = CAPE_ALLOC (10000);
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
   CapeFileHandle fh = cape_fh_new (NULL, dest);
   QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
   
@@ -357,7 +374,7 @@ int qcrypt__decrypt_file (const CapeString source, const CapeString dest, const 
   
   while (TRUE)
   {
-    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, 10000);
+    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, QCRYPT_BUFFER_SIZE);
     if (bytes_decrypted)
     {
       cape_fh_write_buf (fh, buffer, bytes_decrypted);
@@ -386,7 +403,7 @@ int qcrypt__encrypt_file (const CapeString source, const CapeString dest, const 
   int res;
   
   // local objects
-  char* buffer = CAPE_ALLOC (10000);
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
   CapeFileHandle fh = cape_fh_new (NULL, dest);
   QCryptFile encrypt = qcrypt_file_new (dest);
 
@@ -404,7 +421,7 @@ int qcrypt__encrypt_file (const CapeString source, const CapeString dest, const 
   
   while (TRUE)
   {
-    number_t bytes_read = cape_fh_read_buf (fh, buffer, 10000);
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
     if (bytes_read > 0)
     {
       res = qcrypt_file_write (encrypt, buffer, bytes_read, err);
@@ -434,6 +451,76 @@ exit_and_cleanup:
   CAPE_FREE (buffer);
 
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
+{
+  int res;
+  CapeString ret = NULL;
+  
+  MD5_CTX ctx;
+  unsigned char c[MD5_DIGEST_LENGTH];
+
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+  
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // init the MD5 content
+  MD5_Init (&ctx);
+
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      MD5_Update (&ctx, buffer, bytes_read);
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  // the result will be stored in an array of short values
+  MD5_Final (c, &ctx);
+
+  // convert the md5 result into a hex-string
+  {
+    number_t i;
+    number_t l = MD5_DIGEST_LENGTH * 2;  // for each short -> 2x hex char
+    
+    char* buf_hex = CAPE_ALLOC (l + 1); // add an extra byte for termination
+    
+    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+    {
+      // print for each charater the hex presentation
+      snprintf ((char*)buf_hex + (i * 2), 4, "%02x", c[i]);
+    }
+    
+    buf_hex[l] = '\0';
+    
+    // create the string object
+    // -> in order to keep malloc/free within the borders of a library
+    // -> the malloc must be done with a cape function
+    ret = cape_str_cp (buf_hex);
+    
+    CAPE_FREE (buf_hex);
+  }
+  
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  CAPE_FREE (buffer);
+
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
