@@ -73,6 +73,10 @@ __CAPE_LIBEX   CapeString         cape_str_catenate_2    (const CapeString, cons
 
 __CAPE_LIBEX   CapeString         cape_str_catenate_3    (const CapeString, const CapeString, const CapeString);
 
+__CAPE_LIBEX   CapeString         cape_str_lpad          (const CapeString, char padding_char, number_t max_length);
+
+__CAPE_LIBEX   CapeString         cape_str_rpad          (const CapeString, char padding_char, number_t max_length);
+
 __CAPE_LIBEX   CapeString         cape_str_trim_utf8     (const CapeString);
 
 __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char l, char r);
