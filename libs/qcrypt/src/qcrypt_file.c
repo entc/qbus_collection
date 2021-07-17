@@ -282,7 +282,7 @@ int qcrypt_file_encrypt (QCryptFile self, const CapeString vsec, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = cape_fh_open (self->fh, O_WRONLY | O_TRUNC | O_CREAT, err);
+  res = cape_fh_open (self->fh, O_CREAT | O_WRONLY | O_TRUNC, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -404,7 +404,7 @@ int qcrypt__encrypt_file (const CapeString source, const CapeString dest, const 
   
   // local objects
   char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
-  CapeFileHandle fh = cape_fh_new (NULL, dest);
+  CapeFileHandle fh = cape_fh_new (NULL, source);
   QCryptFile encrypt = qcrypt_file_new (dest);
 
   res = cape_fh_open (fh, O_RDONLY, err);
