@@ -1076,7 +1076,14 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           }
           default:
           {
-            return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state in ':' = %i, key = %s", state, cape_stream_get (self->keyElement->stream));
+            if (self->keyElement)
+            {
+              return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state in ':' = %i, key = %s", state, cape_stream_get (self->keyElement->stream));
+            }
+            else
+            {
+              return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state in ':' = %i", state);
+            }
           }
         }
         break;

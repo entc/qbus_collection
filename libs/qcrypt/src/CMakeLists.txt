@@ -33,4 +33,5 @@ install (TARGETS qcrypt DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
+SUBDIRS(tests)
 

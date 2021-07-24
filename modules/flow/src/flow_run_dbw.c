@@ -1606,8 +1606,8 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
   int res;
   FlowRunDbw self = *p_self;
   
-  number_t psid;
-  number_t wfid;
+  number_t psid = 0;
+  number_t wfid = 0;
 
   // local objects
   FlowRunDbw dbw_cloned = NULL;

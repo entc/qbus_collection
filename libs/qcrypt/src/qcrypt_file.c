@@ -7,6 +7,7 @@
 #include <sys/cape_file.h>
 #include <fmt/cape_json.h>
 #include <stc/cape_str.h>
+#include <stc/cape_cursor.h>
 
 //-----------------------------------------------------------------------------
 
@@ -358,7 +359,7 @@ int qcrypt__decrypt_file (const CapeString source, const CapeString dest, const 
   CapeFileHandle fh = cape_fh_new (NULL, dest);
   QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
   
-  cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+  //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
 
   res = qcrypt_decrypt_open (decrypt, err);
   if (res)
@@ -449,6 +450,132 @@ exit_and_cleanup:
   cape_fh_del (&fh);
   qcrypt_file_del (&encrypt);
   CAPE_FREE (buffer);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__decrypt_json (const CapeString source, CapeUdc* p_content, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
+  CapeStream data = cape_stream_new ();
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+  
+  res = qcrypt_decrypt_open (decrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  while (TRUE)
+  {
+    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_decrypted)
+    {
+      cape_stream_append_buf (data, buffer, bytes_decrypted);
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  *p_content = cape_json_from_buf (cape_stream_data (data), cape_stream_size (data));
+  if (*p_content == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_PARSER, "can't deserialze json stream");
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_stream_del (&data);
+  qcrypt_decrypt_del (&decrypt);
+  CAPE_FREE (buffer);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__encrypt_json (const CapeUdc content, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeCursor cursor = cape_cursor_new ();
+  QCryptFile encrypt = qcrypt_file_new (dest);
+  CapeStream source = NULL;
+  CapeString data = NULL;
+  
+  res = qcrypt_file_encrypt (encrypt, vsec, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // serialize the object
+  source = cape_json_to_stream (content);
+  if (source == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize UDC object");
+    goto exit_and_cleanup;
+  }
+  
+  cape_cursor_set (cursor, cape_stream_data (source), cape_stream_size (source));
+  
+  while (TRUE)
+  {
+    number_t tail = cape_cursor_tail (cursor);
+    
+    if (tail < QCRYPT_BUFFER_SIZE)
+    {
+      cape_str_del (&data);
+      data = cape_cursor_scan_s (cursor, tail);
+
+      res = qcrypt_file_write (encrypt, data, tail, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      break;
+    }
+    else
+    {
+      cape_str_del (&data);
+      data = cape_cursor_scan_s (cursor, QCRYPT_BUFFER_SIZE);
+      
+      res = qcrypt_file_write (encrypt, data, QCRYPT_BUFFER_SIZE, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = qcrypt_file_finalize (encrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  qcrypt_file_del (&encrypt);
+  cape_stream_del (&source);
+  cape_cursor_del (&cursor);
+  cape_str_del (&data);
 
   return res;
 }

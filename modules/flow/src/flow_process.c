@@ -1692,6 +1692,7 @@ int flow_process_step__sync_rm (FlowProcess self, AdblTrx trx, number_t wsid, Ca
     query_results = adbl_session_query (self->adbl_session, "proc_task_sync", &params, &values, err);
     if (query_results == NULL)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }

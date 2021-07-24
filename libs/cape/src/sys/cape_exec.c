@@ -207,7 +207,8 @@ int cape_exec_run (CapeExec self, const char* executable, CapeErr err)
   int res;
   pid_t pid;
   
-  int outfd[2], errfd[2];
+  // initialize file descriptors
+  int outfd[2] = {-1, -1}, errfd[2] = {-1, -1};
   
   if (pipe (outfd) == -1)
   {
