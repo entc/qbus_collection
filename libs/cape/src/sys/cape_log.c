@@ -4,8 +4,10 @@
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
 #include "sys/cape_time.h"
+#include "stc/cape_str.h"
 
 const void* CAPE_LOG_OUT_FD = NULL;
+static CapeLogLevel g_log_level = CAPE_LL_TRACE;
 
 //-----------------------------------------------------------------------------
 
@@ -38,11 +40,55 @@ static const char* msg_matrix[7] = { "___", "FAT", "ERR", "WRN", "INF", "DBG", "
 
 //-----------------------------------------------------------------------------
 
+void cape_log_set_level (CapeLogLevel log_level)
+{
+  g_log_level = log_level;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeLogLevel cape_log_level_from_s (const char* log_level_as_text, CapeLogLevel alt)
+{
+  CapeLogLevel ret = alt;
+  
+  if (log_level_as_text)
+  {
+    if (cape_str_compare (log_level_as_text, "fatal"))
+    {
+      ret = CAPE_LL_FATAL;
+    }
+    else if (cape_str_compare (log_level_as_text, "error"))
+    {
+      ret = CAPE_LL_ERROR;
+    }
+    else if (cape_str_compare (log_level_as_text, "warn"))
+    {
+      ret = CAPE_LL_WARN;
+    }
+    else if (cape_str_compare (log_level_as_text, "info"))
+    {
+      ret = CAPE_LL_INFO;
+    }
+    else if (cape_str_compare (log_level_as_text, "debug"))
+    {
+      ret = CAPE_LL_DEBUG;
+    }
+    else if (cape_str_compare (log_level_as_text, "trace"))
+    {
+      ret = CAPE_LL_TRACE;
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const char* msg)
 {
   char buffer [2050];
-  
-  if (lvl > 6)
+
+  if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
   {
     return;
   }
@@ -97,8 +143,12 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
 void cape_log_fmt (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
 {
   char buffer [1002];
-  
   va_list ptr;
+  
+  if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
+  {
+    return;
+  }
   
   va_start(ptr, format);
   
