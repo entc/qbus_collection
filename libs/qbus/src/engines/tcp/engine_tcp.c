@@ -6,7 +6,7 @@
 #include "sys/cape_log.h"
 
 // qbus core
-#include "qbus_core.h"
+#include "qbus_connection.h"
 
 //-----------------------------------------------------------------------------
 

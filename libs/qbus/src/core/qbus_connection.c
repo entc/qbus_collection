@@ -1,4 +1,4 @@
-#include "qbus_core.h"
+#include "qbus_connection.h"
 #include "qbus_frame.h"
 
 // cape includes

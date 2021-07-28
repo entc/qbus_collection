@@ -1,5 +1,5 @@
-#ifndef __QBUS__CORE__H
-#define __QBUS__CORE__H 1
+#ifndef __QBUS__CONNECTION__H
+#define __QBUS__CONNECTION__H 1
 
 #include "qbus_frame.h"
 #include "qbus_route.h"
