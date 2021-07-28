@@ -184,7 +184,7 @@ void cape_map_del_node (CapeMap self, CapeMapNode* pself)
 {
   CapeMapNode n = *pself;
   
-  if (self->del_fct)
+  if (self->del_fct && n)
   {
     self->del_fct (n->key, n->val);
   }

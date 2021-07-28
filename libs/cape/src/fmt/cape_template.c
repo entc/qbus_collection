@@ -41,6 +41,7 @@ struct CapeTemplateCB_s
   fct_cape_template__on_text on_text;
   fct_cape_template__on_file on_file;
   fct_cape_template__on_pipe on_pipe;
+  fct_cape_template__on_tag on_tag;
   
 }; typedef struct CapeTemplateCB_s* CapeTemplateCB;
 
@@ -1104,6 +1105,11 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
             CapeUdc item = cape_template__seek_item (node_stack, name);
             if (item)
             {
+              if (cb->on_tag)
+              {
+                cb->on_tag (cb->ptr, name);
+              }
+              
               switch (cape_udc_type (item))
               {
                 case CAPE_UDC_LIST:
@@ -1709,7 +1715,7 @@ int cape_template_compile_str (CapeTemplate self, const char* content, CapeErr e
 
 //-----------------------------------------------------------------------------
 
-int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text on_text, fct_cape_template__on_file on_file, fct_cape_template__on_pipe on_pipe, CapeErr err)
+int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_template__on_text on_text, fct_cape_template__on_file on_file, fct_cape_template__on_pipe on_pipe, fct_cape_template__on_tag on_tag, CapeErr err)
 {
   int res;
   struct CapeTemplateCB_s cb;
@@ -1725,6 +1731,7 @@ int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_te
   cb.on_file = on_file;
   cb.on_pipe = on_pipe;
   cb.on_text = on_text;
+  cb.on_tag = on_tag;
   
   res = cape_template_part_apply (self->root_part, node_stack, &cb, 0, err);
 
@@ -1876,7 +1883,7 @@ int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template
     goto exit_and_cleanup;
   }
 
-  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, err);
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1896,7 +1903,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_template_run (const CapeString s, CapeUdc node, fct_cape_template__on_pipe on_pipe, CapeErr err)
+CapeString cape_template_run (const CapeString s, CapeUdc node, fct_cape_template__on_pipe on_pipe, fct_cape_template__on_tag on_tag, CapeErr err)
 {
   CapeString ret = NULL;
   int res;
@@ -1911,7 +1918,7 @@ CapeString cape_template_run (const CapeString s, CapeUdc node, fct_cape_templat
     goto exit_and_cleanup;
   }
 
-  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, err);
+  res = cape_template_apply (tmpl, node, stream, cape_eval__on_text, NULL, on_pipe, on_tag, err);
   if (res)
   {
     goto exit_and_cleanup;

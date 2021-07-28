@@ -603,7 +603,7 @@ void qbus_config_load__find_file (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void qbus_config_load (QBus self)
+void qbus_config_load__local (QBus self)
 {
   CapeErr err = cape_err_new ();
 
@@ -627,6 +627,24 @@ void qbus_config_load (QBus self)
     cape_log_msg (CAPE_LL_ERROR, self->name, "config load", cape_err_text (err));
   }
   
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_config_load__global (QBus self)
+{
+  // local objects
+  CapeErr err = cape_err_new ();
+  CapeString global_config_file = cape_args_config_file ("etc", "qbus_default.json");
+
+  if (global_config_file)
+  {
+    // try to load
+    self->config = cape_json_from_file (global_config_file, err);
+  }
+  
+  cape_str_del (&global_config_file);
   cape_err_del (&err);
 }
 
@@ -831,14 +849,22 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     cape_udc_merge_mv (params, &args);  
   }
   
-  // load config
-  qbus_config_load (qbus);
+  // load config from local file
+  qbus_config_load__local (qbus);
 
   if (qbus->config)
   {
-    cape_udc_merge_cp (params, qbus->config);  
+    cape_udc_merge_mv (params, &(qbus->config));
   }
   
+  // load config from a global file
+  qbus_config_load__global (qbus);
+
+  if (qbus->config)
+  {
+    cape_udc_merge_mv (params, &(qbus->config));
+  }
+
   // filelogging
   {
     CapeUdc arg_l = cape_udc_get (params, "l");

@@ -7,6 +7,24 @@
 #include <sys/cape_file.h>
 #include <fmt/cape_json.h>
 #include <stc/cape_str.h>
+#include <stc/cape_cursor.h>
+
+//-----------------------------------------------------------------------------
+
+#if defined __WINDOWS_OS
+
+#include <windows.h>
+#include <wincrypt.h>
+#pragma comment (lib, "Crypt32.lib")
+
+#else
+
+#include <openssl/md5.h>
+
+#endif
+
+// define the buffer size for read and write operations on a file
+#define QCRYPT_BUFFER_SIZE  10000
 
 //-----------------------------------------------------------------------------
 
@@ -19,7 +37,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   QDecryptAES dec = NULL;
   
   // buffers
-  char* buffer = CAPE_ALLOC (10000);
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
   CapeStream outb = cape_stream_new ();
 
   res = cape_fh_open (fh, O_RDONLY, err);
@@ -33,7 +51,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   
   while (TRUE)
   {
-    number_t bytes_read = cape_fh_read_buf (fh, buffer, 10000);
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
     if (bytes_read > 0)
     {
       res = qdecrypt_aes_process (dec, buffer, bytes_read, err);
@@ -86,8 +104,6 @@ exit_and_cleanup:
 
 struct QCryptDecrypt_s
 {
-  CapeString file;
-  
   QDecryptAES dec;
   
   CapeFileHandle fh;
@@ -103,11 +119,8 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
 {
   QCryptDecrypt self = CAPE_NEW (struct QCryptDecrypt_s);
 
-  // create the file name
-  self->file = cape_fs_path_merge (path, file);
-  
   // create the file handle
-  self->fh = cape_fh_new (NULL, self->file);
+  self->fh = cape_fh_new (path, file);
   
   // create the buffer
   self->product = cape_stream_new ();
@@ -133,7 +146,6 @@ void qcrypt_decrypt_del (QCryptDecrypt* p_self)
     cape_stream_del (&(self->product));
     
     cape_fh_del (&(self->fh));
-    cape_str_del (&(self->file));
     
     CAPE_DEL (p_self, struct QCryptDecrypt_s);
   }
@@ -271,7 +283,7 @@ int qcrypt_file_encrypt (QCryptFile self, const CapeString vsec, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = cape_fh_open (self->fh, O_WRONLY | O_TRUNC | O_CREAT, err);
+  res = cape_fh_open (self->fh, O_CREAT | O_WRONLY | O_TRUNC, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -338,3 +350,304 @@ exit:
 
 //-----------------------------------------------------------------------------
 
+int qcrypt__decrypt_file (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  CapeFileHandle fh = cape_fh_new (NULL, dest);
+  QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+
+  res = qcrypt_decrypt_open (decrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = cape_fh_open (fh, O_CREAT | O_WRONLY | O_TRUNC, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  while (TRUE)
+  {
+    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_decrypted)
+    {
+      cape_fh_write_buf (fh, buffer, bytes_decrypted);
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  qcrypt_decrypt_del (&decrypt);
+  CAPE_FREE (buffer);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__encrypt_file (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+  QCryptFile encrypt = qcrypt_file_new (dest);
+
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = qcrypt_file_encrypt (encrypt, vsec, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      res = qcrypt_file_write (encrypt, buffer, bytes_read, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  res = qcrypt_file_finalize (encrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  qcrypt_file_del (&encrypt);
+  CAPE_FREE (buffer);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__decrypt_json (const CapeString source, CapeUdc* p_content, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
+  CapeStream data = cape_stream_new ();
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+  
+  res = qcrypt_decrypt_open (decrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  while (TRUE)
+  {
+    number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_decrypted)
+    {
+      cape_stream_append_buf (data, buffer, bytes_decrypted);
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  *p_content = cape_json_from_buf (cape_stream_data (data), cape_stream_size (data));
+  if (*p_content == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_PARSER, "can't deserialze json stream");
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_stream_del (&data);
+  qcrypt_decrypt_del (&decrypt);
+  CAPE_FREE (buffer);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qcrypt__encrypt_json (const CapeUdc content, const CapeString dest, const CapeString vsec, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeCursor cursor = cape_cursor_new ();
+  QCryptFile encrypt = qcrypt_file_new (dest);
+  CapeStream source = NULL;
+  CapeString data = NULL;
+  
+  res = qcrypt_file_encrypt (encrypt, vsec, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // serialize the object
+  source = cape_json_to_stream (content);
+  if (source == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize UDC object");
+    goto exit_and_cleanup;
+  }
+  
+  cape_cursor_set (cursor, cape_stream_data (source), cape_stream_size (source));
+  
+  while (TRUE)
+  {
+    number_t tail = cape_cursor_tail (cursor);
+    
+    if (tail < QCRYPT_BUFFER_SIZE)
+    {
+      cape_str_del (&data);
+      data = cape_cursor_scan_s (cursor, tail);
+
+      res = qcrypt_file_write (encrypt, data, tail, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      break;
+    }
+    else
+    {
+      cape_str_del (&data);
+      data = cape_cursor_scan_s (cursor, QCRYPT_BUFFER_SIZE);
+      
+      res = qcrypt_file_write (encrypt, data, QCRYPT_BUFFER_SIZE, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  res = qcrypt_file_finalize (encrypt, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  qcrypt_file_del (&encrypt);
+  cape_stream_del (&source);
+  cape_cursor_del (&cursor);
+  cape_str_del (&data);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
+{
+  int res;
+  CapeString ret = NULL;
+  
+  MD5_CTX ctx;
+  unsigned char c[MD5_DIGEST_LENGTH];
+
+  // local objects
+  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+  
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // init the MD5 content
+  MD5_Init (&ctx);
+
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      MD5_Update (&ctx, buffer, bytes_read);
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  // the result will be stored in an array of short values
+  MD5_Final (c, &ctx);
+
+  // convert the md5 result into a hex-string
+  {
+    number_t i;
+    number_t l = MD5_DIGEST_LENGTH * 2;  // for each short -> 2x hex char
+    
+    char* buf_hex = CAPE_ALLOC (l + 1); // add an extra byte for termination
+    
+    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+    {
+      // print for each charater the hex presentation
+      snprintf ((char*)buf_hex + (i * 2), 4, "%02x", c[i]);
+    }
+    
+    buf_hex[l] = '\0';
+    
+    // create the string object
+    // -> in order to keep malloc/free within the borders of a library
+    // -> the malloc must be done with a cape function
+    ret = cape_str_cp (buf_hex);
+    
+    CAPE_FREE (buf_hex);
+  }
+  
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  CAPE_FREE (buffer);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------

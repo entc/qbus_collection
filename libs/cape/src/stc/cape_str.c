@@ -802,6 +802,58 @@ CapeString cape_str_catenate_c (const CapeString s1, char c, const CapeString s2
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_lpad (const CapeString source, char padding_char, number_t max_length)
+{
+  CapeString ret = CAPE_ALLOC (max_length + 1);
+  number_t len = strlen (source);
+  
+  if (len < max_length)
+  {
+    number_t delta = max_length - len;
+    
+    memset (ret, padding_char, delta);
+    memcpy (ret + delta, source, len);
+    
+    ret[max_length] = '\0';
+  }
+  else
+  {
+    memcpy (ret, source + len - max_length, max_length);
+
+    ret[max_length] = '\0';
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_str_rpad (const CapeString source, char padding_char, number_t max_length)
+{
+  CapeString ret = CAPE_ALLOC (max_length + 1);
+  number_t len = strlen (source);
+  
+  if (len < max_length)
+  {
+    number_t delta = max_length - len;
+    
+    memcpy (ret, source, len);
+    memset (ret + len, padding_char, delta);
+    
+    ret[max_length] = '\0';
+  }
+  else
+  {
+    memcpy (ret, source, max_length);
+    
+    ret[max_length] = '\0';
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_trim_utf8 (const CapeString source)
 {
   const unsigned char* c = (const unsigned char*)source;

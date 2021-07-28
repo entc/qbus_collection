@@ -9,6 +9,7 @@
 #include "sys/cape_err.h"
 #include "sys/cape_file.h"
 #include "stc/cape_str.h"
+#include "stc/cape_udc.h"
 
 //-----------------------------------------------------------------------------
 
@@ -41,6 +42,33 @@ __CAPE_LIBEX  int            qcrypt_file_encrypt        (QCryptFile, const CapeS
 __CAPE_LIBEX  int            qcrypt_file_write          (QCryptFile, const char* bufdat, number_t buflen, CapeErr err);
 
 __CAPE_LIBEX  int            qcrypt_file_finalize       (QCryptFile, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+                             /*
+                              decrypts a file and creates a new file with the decrypted content
+                              */
+__CAPE_LIBEX  int            qcrypt__decrypt_file       (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err);
+
+                             /*
+                              encrypts a file and creates a new file with the encrypted content
+                              */
+__CAPE_LIBEX  int            qcrypt__encrypt_file       (const CapeString source, const CapeString dest, const CapeString vsec, CapeErr err);
+
+                             /*
+                              decrypts the UDC object from a file
+                              */
+__CAPE_LIBEX  int            qcrypt__decrypt_json       (const CapeString source, CapeUdc* p_content, const CapeString vsec, CapeErr err);
+
+                             /*
+                              encrypts the UDC object into a file
+                              */
+__CAPE_LIBEX  int            qcrypt__encrypt_json       (const CapeUdc content, const CapeString dest, const CapeString vsec, CapeErr err);
+
+                             /*
+                              calculates the md5 checksum from a file
+                              */
+__CAPE_LIBEX  CapeString     qcrypt__hash_md5_file      (const CapeString source, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

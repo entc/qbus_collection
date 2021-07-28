@@ -566,6 +566,17 @@ CapeString cape_json_to_s_max (const CapeUdc source, number_t max_item_size)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_json_to_stream (const CapeUdc source)
+{
+  CapeStream stream = cape_stream_new ();
+  
+  cape_json_fill (stream, source, 0);
+
+  return stream;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL cape_json_from_file__on_load (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
 {
   int res = cape_parser_json_process (ptr, bufdat, buflen, err);

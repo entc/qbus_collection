@@ -74,9 +74,35 @@ int main (int argc, char *argv[])
     printf ("COMP1 %s <> %s = %i\n", h1, h2, strcmp (h1, h2));
   }
 
-  
-  
-  
+  // padding
+  {
+    CapeString p1 = cape_str_rpad ("432", '0', 10);
+    printf ("P1: '%s'\n", p1);
+    
+    cape_str_del (&p1);
+  }
+
+  {
+    CapeString p1 = cape_str_lpad ("432", '0', 10);
+    printf ("P2: '%s'\n", p1);
+    
+    cape_str_del (&p1);
+  }
+
+  {
+    CapeString p1 = cape_str_rpad ("1234567890", '0', 5);
+    printf ("P3: '%s'\n", p1);
+    
+    cape_str_del (&p1);
+  }
+
+  {
+    CapeString p1 = cape_str_lpad ("1234567890", '0', 5);
+    printf ("P4: '%s'\n", p1);
+    
+    cape_str_del (&p1);
+  }
+
   
   return 0;
 }

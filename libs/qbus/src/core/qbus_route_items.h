@@ -1,7 +1,7 @@
 #ifndef __QBUS__ROUTE_ITEMS__H
 #define __QBUS__ROUTE_ITEMS__H 1
 
-#include "qbus_core.h"
+#include "qbus_connection.h"
 
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"

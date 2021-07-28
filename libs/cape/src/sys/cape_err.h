@@ -31,6 +31,7 @@
 #define CAPE_ERR_NO_CONTENT         20
 #define CAPE_ERR_PRESENT            21
 #define CAPE_ERR_OUT_OF_BOUNDS      22
+#define CAPE_ERR_VALIDATION         23
 
 //=============================================================================
 

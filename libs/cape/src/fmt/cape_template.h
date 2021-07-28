@@ -18,6 +18,7 @@ struct CapeTemplate_s; typedef struct CapeTemplate_s* CapeTemplate;
 typedef int    (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* text);
 typedef int    (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file, number_t flags, CapeErr err);
 typedef char*  (__STDCALL *fct_cape_template__on_pipe) (const char* name, const char* pipe, const char* value);
+typedef void   (__STDCALL *fct_cape_template__on_tag) (void* ptr, const char* tag);
 
 //-----------------------------------------------------------------------------
 
@@ -29,11 +30,14 @@ __CAPE_LIBEX   void           cape_template_del            (CapeTemplate*);
 
 __CAPE_LIBEX   int            cape_template_compile_file   (CapeTemplate, const char* path, const char* name, const char* lang, CapeErr);
 
+                              /*
+                               compiles the template
+                               */
 __CAPE_LIBEX   int            cape_template_compile_str    (CapeTemplate, const char* content, CapeErr);
 
-__CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, fct_cape_template__on_pipe, CapeErr);
+__CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, fct_cape_template__on_pipe, fct_cape_template__on_tag, CapeErr);
 
-__CAPE_LIBEX   CapeString     cape_template_run            (const CapeString s, CapeUdc node, fct_cape_template__on_pipe, CapeErr);
+__CAPE_LIBEX   CapeString     cape_template_run            (const CapeString s, CapeUdc node, fct_cape_template__on_pipe, fct_cape_template__on_tag, CapeErr);
 
 //-----------------------------------------------------------------------------
 

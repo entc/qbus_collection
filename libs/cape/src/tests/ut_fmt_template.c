@@ -126,7 +126,7 @@ int main (int argc, char *argv[])
   }
   
   {
-    CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, err);
+    CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);
 
     if (h)
     {
@@ -145,7 +145,7 @@ int main (int argc, char *argv[])
     
     cape_udc_add_n (n, "val", 123);
     
-    CapeString h = cape_template_run ("{{$math{val - 0.2}|decimal:1%,%2}}", n, NULL, err);
+    CapeString h = cape_template_run ("{{$math{val - 0.2}|decimal:1%,%2}}", n, NULL, NULL, err);
 
     if (h)
     {
@@ -166,7 +166,7 @@ int main (int argc, char *argv[])
     
     cape_udc_add_d (n, "date", &dt);
     
-    CapeString h = cape_template_run ("{{$date{date + D14}|date:%d.%m.%Y}}", n, NULL, err);
+    CapeString h = cape_template_run ("{{$date{date + D14}|date:%d.%m.%Y}}", n, NULL, NULL, err);
     
     if (h)
     {
@@ -190,7 +190,7 @@ int main (int argc, char *argv[])
 
     cape_udc_add_name (n1, &n2, "sub");
     
-    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, NULL, err);
+    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, NULL, NULL, err);
 
     if (h)
     {

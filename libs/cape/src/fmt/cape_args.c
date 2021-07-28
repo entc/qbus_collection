@@ -67,7 +67,7 @@ CapeString cape_args_config_file__folder (const CapeString folder, const CapeStr
   
   if (resolved)
   {
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "find config", "scan: %s", resolved);
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "find config", "scan: %s", resolved);
     
     dc = cape_dc_new (resolved, err);
     if (dc)
