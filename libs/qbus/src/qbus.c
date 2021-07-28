@@ -868,10 +868,40 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   // filelogging
   {
     CapeUdc arg_l = cape_udc_get (params, "l");
-    if (arg_l)
+   
+    if (arg_l) switch (cape_udc_type (arg_l))
     {
-      log = cape_log_new (cape_udc_s (arg_l, NULL));
+      case CAPE_UDC_STRING:
+      {
+        log = cape_log_new (cape_udc_s (arg_l, NULL));
+        break;
+      }
     }
+  }
+  
+  // debug output
+  {
+    // use this as default
+    CapeLogLevel log_level = CAPE_LL_INFO;
+    
+    CapeUdc arg_d = cape_udc_get (params, "d");
+    
+    if (arg_d) switch (cape_udc_type (arg_d))
+    {
+      case CAPE_UDC_STRING:
+      {
+        log_level = cape_log_level_from_s (cape_udc_s (arg_d, NULL), log_level);
+        break;
+      }
+      case CAPE_UDC_NUMBER:
+      {
+        log_level = cape_udc_n (arg_d, log_level);
+        break;
+      }
+    }
+    
+    // adjust the global log level
+    cape_log_set_level (log_level);
   }
   
   // debug
