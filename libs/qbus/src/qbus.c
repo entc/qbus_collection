@@ -603,8 +603,9 @@ void qbus_config_load__find_file (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void qbus_config_load__local (QBus self)
+CapeUdc qbus_config_load__local (QBus self)
 {
+  CapeUdc ret = NULL;
   CapeErr err = cape_err_new ();
 
   // create or find the config file
@@ -613,14 +614,9 @@ void qbus_config_load__local (QBus self)
   if (self->config_file)
   {
     // try to load
-    self->config = cape_json_from_file (self->config_file, err);
+    ret = cape_json_from_file (self->config_file, err);
   }
   
-  if (self->config == NULL)
-  {
-    self->config = cape_udc_new (CAPE_UDC_NODE, NULL);
-  }
-
   if (cape_err_code (err))
   {
     // dump error text
@@ -628,12 +624,15 @@ void qbus_config_load__local (QBus self)
   }
   
   cape_err_del (&err);
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_config_load__global (QBus self)
+CapeUdc qbus_config_load__global (QBus self)
 {
+  CapeUdc ret = NULL;
+
   // local objects
   CapeErr err = cape_err_new ();
   CapeString global_config_file = cape_args_config_file ("etc", "qbus_default.json");
@@ -641,11 +640,19 @@ void qbus_config_load__global (QBus self)
   if (global_config_file)
   {
     // try to load
-    self->config = cape_json_from_file (global_config_file, err);
+    ret = cape_json_from_file (global_config_file, err);
   }
   
+  if (cape_err_code (err))
+  {
+    // dump error text
+    cape_log_msg (CAPE_LL_ERROR, self->name, "config load", cape_err_text (err));
+  }
+
   cape_str_del (&global_config_file);
   cape_err_del (&err);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -809,11 +816,10 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   CapeErr err = cape_err_new ();
   CapeFileLog log = NULL;
 
-  QBus qbus = NULL;
+  QBus self = NULL;
 
   CapeUdc bind = NULL;
   CapeUdc remotes = NULL;
-  CapeUdc params = NULL;
   CapeUdc args = NULL;
   
   void* user_ptr= NULL;
@@ -839,35 +845,39 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   module_name = cape_udc_get_s (args, "n", name);
   
   // start a new qbus instance
-  qbus = qbus_new (module_name);
+  self = qbus_new (module_name);
   
   // create params
-  params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  self->config = cape_udc_new (CAPE_UDC_NODE, NULL);
   
   if (args)
   {
-    cape_udc_merge_mv (params, &args);  
+    cape_udc_merge_mv (self->config, &args);
   }
   
-  // load config from local file
-  qbus_config_load__local (qbus);
-
-  if (qbus->config)
   {
-    cape_udc_merge_mv (params, &(qbus->config));
+    // load config from local file
+    CapeUdc config_part = qbus_config_load__local (self);
+
+    if (config_part)
+    {
+      cape_udc_merge_mv (self->config, &config_part);
+    }
   }
-  
-  // load config from a global file
-  qbus_config_load__global (qbus);
 
-  if (qbus->config)
   {
-    cape_udc_merge_mv (params, &(qbus->config));
+    // load config from a global file
+    CapeUdc config_part = qbus_config_load__global (self);
+
+    if (config_part)
+    {
+      cape_udc_merge_mv (self->config, &config_part);
+    }
   }
 
   // filelogging
   {
-    CapeUdc arg_l = cape_udc_get (params, "log_file");
+    CapeUdc arg_l = cape_udc_get (self->config, "log_file");
    
     if (arg_l) switch (cape_udc_type (arg_l))
     {
@@ -884,7 +894,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     // use this as default
     CapeLogLevel log_level = CAPE_LL_INFO;
     
-    CapeUdc arg_d = cape_udc_get (params, "log_level");
+    CapeUdc arg_d = cape_udc_get (self->config, "log_level");
     
     if (arg_d) switch (cape_udc_type (arg_d))
     {
@@ -906,7 +916,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
   // debug
   {
-    CapeString h = cape_json_to_s (params);
+    CapeString h = cape_json_to_s (self->config);
     
     cape_log_fmt (CAPE_LL_INFO, name, "qbus_instance", "params: %s", h);
     
@@ -915,7 +925,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
   // check for remotes
   {
-    CapeUdc arg_r = cape_udc_get (params, "d");
+    CapeUdc arg_r = cape_udc_get (self->config, "d");
     if (arg_r)
     {
       remotes = cape_udc_new (CAPE_UDC_LIST, NULL);
@@ -926,7 +936,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
       
   // check for binds
   {
-    CapeUdc arg_b = cape_udc_get (params, "b");
+    CapeUdc arg_b = cape_udc_get (self->config, "b");
     if (arg_b)
     {
       bind = cape_udc_new (CAPE_UDC_LIST, NULL);
@@ -938,7 +948,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   cape_log_msg (CAPE_LL_TRACE, name, "qbus_instance", "arguments parsed");
   
   // open the operating system AIO/event subsystem
-  res = cape_aio_context_open (qbus->aio, err);
+  res = cape_aio_context_open (self->aio, err);
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "instance", "error in initialization: %s", cape_err_text(err));    
@@ -947,7 +957,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
   if (on_init)
   {
-    res = on_init (qbus, ptr, &user_ptr, err);
+    res = on_init (self, ptr, &user_ptr, err);
   }
 
   if (res)
@@ -957,7 +967,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   }
   
   // save the config back
-  qbus_config_save (qbus);
+  qbus_config_save (self);
   
   cape_log_msg (CAPE_LL_TRACE, name, "qbus_instance", "start main loop");
 
@@ -983,7 +993,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);    
 
     // *** main loop ***
-    qbus_wait__intern (qbus, bind, remotes, err);
+    qbus_wait__intern (self, bind, remotes, err);
     
     tcsetattr(STDIN_FILENO, TCSANOW, &saved);
   }
@@ -992,16 +1002,15 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
   if (on_done)
   {
-    on_done (qbus, user_ptr, err);
+    on_done (self, user_ptr, err);
   }
   
 exit_and_cleanup:
   
   cape_udc_del (&bind);
   cape_udc_del (&remotes);
-  cape_udc_del (&params);
   
-  qbus_del (&qbus);
+  qbus_del (&self);
   
   cape_err_del (&err);
   cape_log_del (&log);
