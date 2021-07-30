@@ -20,6 +20,8 @@ __CAPE_LIBEX   QBusRoute         qbus_route_new           (QBus qbus, const Cape
 
 __CAPE_LIBEX   void              qbus_route_del           (QBusRoute*);
 
+__CAPE_LIBEX   int               qbus_route_init          (QBusRoute, number_t threads, CapeErr);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void              qbus_route_conn_reg      (QBusRoute, QBusConnection);
@@ -53,12 +55,6 @@ __CAPE_LIBEX   void              qbus_route_rm_on_change      (QBusRoute, void* 
 __CAPE_LIBEX   void              qbus_route_run_on_change     (QBusRoute, CapeUdc* p_modules);
 
 __CAPE_LIBEX   void              qbus_route_methods           (QBusRoute, const char* module, void* ptr, fct_qbus_on_methods);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   void              qbus_route_on_msg_forward    (QBusRoute, QBusFrame* p_frame, void** p_qbus_fd);
-
-__CAPE_LIBEX   void              qbus_route_on_msg_methods    (QBusRoute, QBusFrame* p_frame, void** p_qbus_methods);
 
 //=============================================================================
 

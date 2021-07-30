@@ -73,13 +73,26 @@ void qbus_method_del (QBusMethod* p_self)
 
 //-----------------------------------------------------------------------------
 
+number_t qbus_method_type (QBusMethod self)
+{
+  return self->type;
+}
+
+//-----------------------------------------------------------------------------
+
+void* qbus_method_ptr (QBusMethod self)
+{
+  return self->ptr;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_method_continue (QBusMethod self, CapeString* p_chain_key, CapeString* p_chain_sender, CapeUdc* p_rinfo)
 {
   cape_str_replace_mv (&(self->chain_key), p_chain_key);
   cape_str_replace_mv (&(self->chain_sender), p_chain_sender);
   
-  self->rinfo = *p_rinfo;
-  *p_rinfo = NULL;
+  self->rinfo = cape_udc_mv (p_rinfo);
 }
 
 //-----------------------------------------------------------------------------
@@ -112,30 +125,11 @@ int qbus_method_call_request (QBusMethod self, QBus qbus, QBusFrame frame, CapeE
 
 //-----------------------------------------------------------------------------
 
-int qbus_method_call_request__msg (QBusMethod self, QBus qbus, QBusM qin, QBusM qout, CapeErr err)
-{
-  int res = CAPE_ERR_NONE;
-  
-  if (self->onMsg)
-  {
-    // call the original callback
-    res = self->onMsg (qbus, self->ptr, qin, qout, err);
-  }
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusRoute route, QBusFrame frame_original, CapeErr err)
+int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusRoute route, QBusM qin, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   
   QBusM qout = NULL;
-  QBusM qin = NULL;
-  
-  // convert the frame content into the input message (expensive)
-  qin = qbus_frame_qin (frame_original);
   
   if (qin->rinfo == NULL)
   {
@@ -171,7 +165,6 @@ int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusR
   }
   
   // cleanup
-  qbus_message_del (&qin);
   qbus_message_del (&qout);
   
   return res;
@@ -179,38 +172,24 @@ int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusR
 
 //-----------------------------------------------------------------------------
 
-int qbus_method_call_response__response (QBusMethod self, QBus qbus, QBusRoute route, QBusFrame frame, CapeErr err)
-{
-  int res;
-  
-  // convert the frame content into the input message (expensive)
-  QBusM qin = qbus_frame_qin (frame);
-  
-  // call the original callback
-  res = self->onMsg (qbus, self->ptr, qin, NULL, err);
-  
-  // cleanup
-  qbus_message_del (&qin);
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBusFrame frame, CapeErr err)
+int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBusM qin, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   
   if (self->onMsg)
   {
+    
     if (self->chain_key)
     {
-      return qbus_method_call_response__continue_chain (self, qbus, route, frame, err);
+      printf ("CONT CHK: %s\n", self->chain_key);
+      
+      res = qbus_method_call_response__continue_chain (self, qbus, route, qin, err);
     }
     else
     {
-      return qbus_method_call_response__response (self, qbus, route, frame, err);
-    }
+      // call the original callback
+      res = self->onMsg (qbus, self->ptr, qin, NULL, err);
+    }    
   }
   
   return res;
@@ -252,37 +231,6 @@ void qbus_method_handle_request (QBusMethod self, QBus qbus, QBusRoute route, QB
 
 void qbus_method_handle_response (QBusMethod self, QBus qbus, QBusRoute route, QBusFrame* p_frame)
 {
-  switch (self->type)
-  {
-    case QBUS_METHOD_TYPE__REQUEST:
-    {
-      // this should not happen
-      
-      break;
-    }
-    case QBUS_METHOD_TYPE__RESPONSE:
-    {
-      CapeErr err = cape_err_new ();
-      
-      qbus_method_call_response (self, qbus, route, *p_frame, err);
-      
-      cape_err_del (&err);
-      
-      break;
-    }
-    case QBUS_METHOD_TYPE__FORWARD:
-    {
-      qbus_route_on_msg_forward (route, p_frame, &(self->ptr));
-      
-      break;
-    }
-    case QBUS_METHOD_TYPE__METHODS:
-    {
-      qbus_route_on_msg_methods (route, p_frame, &(self->ptr));
-      
-      break;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -297,7 +245,12 @@ int qbus_method_local (QBusMethod self, QBus qbus, QBusRoute route, QBusM msg, Q
     {
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call method '%s'", method);
       
-      res = qbus_method_call_request__msg (self, qbus, msg, qout, err);
+      if (self->onMsg)
+      {
+        // call the original callback
+        res = self->onMsg (qbus, self->ptr, msg, qout, err);
+      }
+
       break;
     }
     default:

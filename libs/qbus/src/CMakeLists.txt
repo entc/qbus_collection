@@ -5,6 +5,7 @@ SUBDIRS(core)
 SUBDIRS(adapter/java)
 SUBDIRS(adapter/python)
 SUBDIRS(engines/tcp)
+SUBDIRS(tests)
 
 set(WSRV_SOURCES
   qbus.c

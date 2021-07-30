@@ -279,8 +279,6 @@ int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
     qbus_add_remote_ports (self, remotes);
   }
   
-  // TODO: run in several threads
-  
   // wait infinite and let the AIO subsystem handle all events
   res = cape_aio_context_wait (self->aio, err);
   
@@ -293,6 +291,12 @@ int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
 {
   int res;
   
+  res = qbus_route_init (self->route, 4, err);
+  if (res)
+  {
+    return res;
+  }
+
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
   if (res)
@@ -945,6 +949,12 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     goto exit_and_cleanup;
   }
   
+  res = qbus_route_init (qbus->route, 4, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   if (on_init)
   {
     res = on_init (qbus, ptr, &user_ptr, err);

@@ -26,6 +26,10 @@ __CAPE_LIBEX   void              qbus_method_del              (QBusMethod*);
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   number_t          qbus_method_type             (QBusMethod);
+
+__CAPE_LIBEX   void*             qbus_method_ptr              (QBusMethod);
+
 __CAPE_LIBEX   void              qbus_method_continue         (QBusMethod, CapeString* p_chain_key, CapeString* p_chain_sender, CapeUdc* p_rinfo);
 
 __CAPE_LIBEX   void              qbus_method_handle_request   (QBusMethod, QBus qbus, QBusRoute route, QBusConnection conn, const CapeString ident, QBusFrame* p_frame);
@@ -33,6 +37,8 @@ __CAPE_LIBEX   void              qbus_method_handle_request   (QBusMethod, QBus 
 __CAPE_LIBEX   void              qbus_method_handle_response  (QBusMethod, QBus qbus, QBusRoute route, QBusFrame* p_frame);
 
 __CAPE_LIBEX   int               qbus_method_local            (QBusMethod, QBus qbus, QBusRoute route, QBusM msg, QBusM qout, const CapeString method, CapeErr err);
+
+__CAPE_LIBEX   int               qbus_method_call_response    (QBusMethod, QBus qbus, QBusRoute route, QBusM qin, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
