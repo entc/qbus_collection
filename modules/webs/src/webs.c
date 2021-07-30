@@ -201,10 +201,13 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // local objects
   CapeUdc sites = cape_udc_cp (qbus_config_node (qbus, "sites"));
   
-  const CapeString site = qbus_config_s (qbus, "site", "public");
-  if (cape_str_not_empty (site))
+  if (sites)
   {
-    cape_udc_add_s_cp (sites, "/", site);
+    const CapeString site = qbus_config_s (qbus, "site", "public");
+    if (cape_str_not_empty (site))
+    {
+      cape_udc_add_s_cp (sites, "/", site);
+    }
   }
   
   const CapeString host = qbus_config_s (qbus, "host", "127.0.0.1");

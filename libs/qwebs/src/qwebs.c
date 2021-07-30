@@ -145,9 +145,12 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   
   self->sites = cape_map_new (NULL, qwebs__intern__on_sites_del, NULL);
 
-  // convert site into a map
-  // -> map can be altered later to fit more needs
-  qwebs__internal__convert_sites (self, sites);
+  if (sites)
+  {
+    // convert site into a map
+    // -> map can be altered later to fit more needs
+    qwebs__internal__convert_sites (self, sites);
+  }
   
   self->encoder = qwebs_encode_new ();
 
