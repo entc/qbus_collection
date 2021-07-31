@@ -1,26 +1,166 @@
-#include <aio/cape_aio_sock.h>
+#include <qbus.h>
+
+// cape includes
 #include <sys/cape_log.h>
-#include <sys/cape_socket.h>
-#include <sys/cape_time.h>
+#include <sys/cape_thread.h>
 
-//-----------------------------------------------------------------------------
+// linux includes
+#include <signal.h>
+#include <unistd.h>
 
-void __STDCALL cape_aio_socket__on_pong (void* ptr, CapeAioSocketIcmp self, number_t ms_second, int timeout)
+static int g_running = TRUE;
+
+//-------------------------------------------------------------------------------------
+
+struct QbusTestRequest_s
 {
+  QBus qbus;              // reference
   
+  CapeString content;
   
+}; typedef struct QbusTestRequest_s* QbusTestRequest;
+
+//-------------------------------------------------------------------------------------
+
+QbusTestRequest qbus_test_request_new (QBus qbus)
+{
+  QbusTestRequest self = CAPE_NEW (struct QbusTestRequest_s);
+  
+  self->qbus = qbus;
+  self->content = NULL;
+  
+  return self;
+}
+
+//-------------------------------------------------------------------------------------
+
+void qbus_test_request_del (QbusTestRequest* p_self)
+{
+  if (*p_self)
+  {
+    QbusTestRequest self = *p_self;
+    
+    cape_str_del (&(self->content));
+    
+    CAPE_DEL (p_self, struct QbusTestRequest_s);
+  }
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_test_request__test1__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  QbusTestRequest self = ptr;
+  
+  if (qin->err)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  qbus_test_request_del (&self);
+  return res;
+}
+
+//-------------------------------------------------------------------------------------
+
+int qbus_test_request__test1 (QbusTestRequest* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  QbusTestRequest self = *p_self;
+  
+  // clean up
+  qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
+  res = qbus_continue (self->qbus, "TEST", "method2", qin, (void**)p_self, qbus_test_request__test1__on, err);
+
+exit_and_cleanup:
+  
+  qbus_test_request_del (p_self);
+  return res;
+}
+
+//-------------------------------------------------------------------------------------
+
+int qbus_test_request__test2 (QbusTestRequest* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  qbus_test_request_del (p_self);
+  return res;
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_test1 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  // create a temporary object
+  QbusTestRequest obj = qbus_test_request_new (qbus);
+  
+  // run the command
+  return qbus_test_request__test1 (&obj, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_test2 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  // create a temporary object
+  QbusTestRequest obj = qbus_test_request_new (qbus);
+  
+  // run the command
+  return qbus_test_request__test2 (&obj, qin, qout, err);
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL cape_aio_socket__clt__on_done (void* ptr, void* userdata)
+struct TriggerContext
 {
-  if (userdata)
-  { 
-    CapeString h = userdata;
-    
-    cape_str_del (&h);
+  QBus qbus;
+  number_t cnt;
+};
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_trigger_thread (void* ptr)
+{
+  struct TriggerContext* ctx = ptr;
+  
+  // local objects
+  QBusM qin = qbus_message_new (NULL, NULL);
+  CapeErr err = cape_err_new ();
+  
+  qbus_send (ctx->qbus, "TEST", "method1", qin, ptr, qbus_trigger_thread__on, err);
+  
+  cape_err_del (&err);
+  qbus_message_del (&qin);
+  
+  ctx->cnt++;
+  
+  if (ctx->cnt > 10000)
+  {
+    kill (getpid(), SIGINT);
   }
+  
+  printf ("CNT: %lu\n", ctx->cnt);
+  
+  return g_running;
 }
 
 //-----------------------------------------------------------------------------
@@ -28,71 +168,32 @@ void __STDCALL cape_aio_socket__clt__on_done (void* ptr, void* userdata)
 int main (int argc, char *argv[])
 {
   int res;
+  struct TriggerContext ctx;
   
   CapeErr err = cape_err_new ();
   
-  // create a new aio context for all events
-  CapeAioContext aio = cape_aio_context_new (); 
+  // local objects
+  QBus qbus = qbus_new ("test");
+  CapeThread trigger_thread = cape_thread_new ();
+  
+  qbus_register (qbus, "method1"      , NULL, qbus_test1, NULL, err);
+  qbus_register (qbus, "method2"      , NULL, qbus_test2, NULL, err);
+  
+  // initialize
+  ctx.qbus = qbus;
+  ctx.cnt = 0;
+  
+  cape_thread_start (trigger_thread, qbus_trigger_thread, &ctx);
+  
+  qbus_wait (qbus, NULL, NULL, 2, err);
+  
+  g_running = FALSE;
+  
+  cape_thread_join (trigger_thread);
 
-  // start the AIO event handling
-  res = cape_aio_context_open (aio, err);
-  if (res)
-  {
-    cape_log_msg (CAPE_LL_ERROR, "TEST", "aio sock", cape_err_text (err));
-    return 1;
-  }
+  qbus_del (&qbus);
+  cape_thread_del (&trigger_thread);
 
-  // add standard interupt methods
-  res = cape_aio_context_set_interupts (aio, TRUE, TRUE, err);
-  if (res)
-  {
-    cape_log_msg (CAPE_LL_ERROR, "TEST", "aio sock", cape_err_text (err));
-    return 1;
-  }
-  
-  // server socket
-  
-  {
-    CapeAioSocketIcmp aio_handle;
-
-    void* icmp_handle = cape_sock__icmp__new (err);    
-    if (icmp_handle == NULL)
-    {
-      cape_log_msg (CAPE_LL_ERROR, "TEST", "aio sock", cape_err_text (err));
-      return 1;      
-    }
-    
-    aio_handle = cape_aio_socket__icmp__new (icmp_handle); 
-    
-    cape_aio_socket__icmp__cb (aio_handle, aio, cape_aio_socket__on_pong, NULL);   
-    
-    cape_aio_socket__icmp__ping (aio_handle, aio, "127.0.0.1", 1000);
-    
-    cape_aio_socket__icmp__add (&aio_handle, aio);
-  }
-    
-  {
-    number_t m = 8000;
-    int i = 0;
-  
-    CapeStopTimer st = cape_stoptimer_new ();
-    
-    cape_stoptimer_start (st);
-    
-    // loop processing all events
-    for (i = 0; i < m && cape_aio_context_next (aio, -1, err) == CAPE_ERR_NONE; i++)
-    {
-    }
-  
-    cape_stoptimer_stop (st);
-    
-    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "aio sock", "transfered %li messages in %5.3f milliseconds", m, cape_stoptimer_get (st));
-    
-    cape_stoptimer_del (&st);
-  }
-  
-  cape_aio_context_del (&aio);
-  
   cape_err_del (&err);
   
   return 0;

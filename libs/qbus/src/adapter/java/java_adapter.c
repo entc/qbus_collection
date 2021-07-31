@@ -63,7 +63,8 @@ void JNICALL Java_QBus_qbwait (JNIEnv* env, jobject o, jlong ptr, jstring bind, 
     printf ("R: %s\n", h);
   }
   
-  qbus_wait (qbus, bind_udc, remote_udc, err);
+  // use 4 workers
+  qbus_wait (qbus, bind_udc, remote_udc, 4, err);
   
   cape_udc_del (&bind_udc);
   cape_udc_del (&remote_udc);

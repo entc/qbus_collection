@@ -16,7 +16,7 @@ __CAPE_LIBEX   QBus               qbus_new               (const char* module);
 
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
-__CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, CapeUdc remotes, CapeErr);
+__CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, CapeUdc remotes, number_t workers, CapeErr);
 
 //-----------------------------------------------------------------------------
 

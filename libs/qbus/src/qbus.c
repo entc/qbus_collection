@@ -287,11 +287,11 @@ int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
+int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr err)
 {
   int res;
   
-  res = qbus_route_init (self->route, 4, err);
+  res = qbus_route_init (self->route, workers, err);
   if (res)
   {
     return res;
@@ -959,7 +959,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     goto exit_and_cleanup;
   }
   
-  res = qbus_route_init (qbus->route, 4, err);
+  res = qbus_route_init (self->route, 4, err);
   if (res)
   {
     goto exit_and_cleanup;

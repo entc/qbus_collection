@@ -111,7 +111,7 @@ PyObject* py_object_qbus_wait (PyObject_QBus* self, PyObject* args, PyObject* kw
   }
   
   {
-    int res = qbus_wait (self->qbus, cape_arg1, cape_arg2, err);
+    int res = qbus_wait (self->qbus, cape_arg1, cape_arg2, 4, err);
     if (res)
     {
       printf ("ERROR: %s\n", cape_err_text (err));
