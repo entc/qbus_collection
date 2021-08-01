@@ -157,6 +157,9 @@ int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusR
       // use the correct chain key
       cape_str_replace_cp (&(qout->chain_key), self->chain_key);
       
+      // use the correct sender
+      cape_str_replace_cp (&(qout->sender), self->chain_sender);
+      
       // send the response
       qbus_route_response (route, self->chain_sender, qout, err);
       
@@ -172,13 +175,12 @@ int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusR
 
 //-----------------------------------------------------------------------------
 
-int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBusM qin, CapeErr err)
+int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBusM qin, QBusM qout, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   
   if (self->onMsg)
   {
-    
     if (self->chain_key)
     {
       printf ("CONT CHK: %s\n", self->chain_key);
@@ -188,7 +190,7 @@ int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBus
     else
     {
       // call the original callback
-      res = self->onMsg (qbus, self->ptr, qin, NULL, err);
+      res = self->onMsg (qbus, self->ptr, qin, qout, err);
     }    
   }
   

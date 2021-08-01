@@ -38,7 +38,7 @@ __CAPE_LIBEX   void              qbus_method_handle_response  (QBusMethod, QBus 
 
 __CAPE_LIBEX   int               qbus_method_local            (QBusMethod, QBus qbus, QBusRoute route, QBusM msg, QBusM qout, const CapeString method, CapeErr err);
 
-__CAPE_LIBEX   int               qbus_method_call_response    (QBusMethod, QBus qbus, QBusRoute route, QBusM qin, CapeErr err);
+__CAPE_LIBEX   int               qbus_method_call_response    (QBusMethod, QBus qbus, QBusRoute route, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

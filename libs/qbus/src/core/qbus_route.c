@@ -518,7 +518,7 @@ void qbus_route__response__method (QBusRoute self, QBusMethod qmeth, QBusFrame* 
       // convert the frame content into the input message (expensive)
       QBusM qin = qbus_frame_qin (*p_frame);
 
-      qbus_method_call_response (qmeth, self->qbus, self, qin, err);
+      qbus_method_call_response (qmeth, self->qbus, self, qin, NULL, err);
       
       qbus_message_del (&qin);
       cape_err_del (&err);
@@ -542,8 +542,9 @@ void qbus_route__response__method (QBusRoute self, QBusMethod qmeth, QBusFrame* 
 
 //-----------------------------------------------------------------------------
 
-void qbus_route__find_chain (QBusRoute self, const CapeString chain_key, QBusFrame* p_frame)
+QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
 {
+  QBusMethod ret = NULL;
   CapeMapNode n;
   
   printf ("RESP CHK: %s\n", chain_key);
@@ -558,20 +559,15 @@ void qbus_route__find_chain (QBusRoute self, const CapeString chain_key, QBusFra
   }
   
   cape_mutex_unlock (self->chain_mutex);
-  
+
   if (n)
   {
-    QBusMethod qmeth = cape_map_node_value (n);
+    ret = cape_map_node_value (n);
     
-    qbus_route__response__method (self, qmeth, p_frame);
-    
-    // cleanup
-    cape_map_del_node (self->chains, &n);
+    cape_map_node_del (&n);
   }
-  else
-  {
-    
-  }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -584,7 +580,18 @@ void qbus_route_on_msg_response (QBusRoute self, QBusFrame* p_frame)
   
   if (chain_key)
   {
-    qbus_route__find_chain (self, chain_key, p_frame);
+    QBusMethod qmeth = qbus_route__find_chain (self, chain_key);
+
+    if (qmeth)
+    {
+      qbus_route__response__method (self, qmeth, p_frame);
+
+      qbus_method_del (&qmeth);
+    }
+    else
+    {
+      
+    }
   }
 }
 
@@ -769,7 +776,7 @@ void qbus_route_no_route (QBusRoute self, const char* module, const char* method
 
 //-----------------------------------------------------------------------------
 
-void qbus_route__add_to_chain (QBusRoute self, void* ptr, fct_qbus_onMessage onMsg, CapeString* p_last_chainkey, CapeString* p_next_chainkey, CapeString* p_sender, CapeUdc* p_rinfo)
+void qbus_route__add_to_chain (QBusRoute self, void* ptr, fct_qbus_onMessage onMsg, CapeString* p_last_chainkey, CapeString* p_next_chainkey, CapeString* p_last_sender, CapeUdc* p_rinfo)
 {
   QBusMethod qmeth = qbus_method_new (QBUS_METHOD_TYPE__RESPONSE, ptr, onMsg, NULL);
   
@@ -777,7 +784,7 @@ void qbus_route__add_to_chain (QBusRoute self, void* ptr, fct_qbus_onMessage onM
   {
     //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "add chainkey '%s' for continue", msg->chain_key);
     
-    qbus_method_continue (qmeth, p_last_chainkey, p_sender, p_rinfo);
+    qbus_method_continue (qmeth, p_last_chainkey, p_last_sender, p_rinfo);
   }
   
   cape_mutex_lock (self->chain_mutex);
@@ -823,10 +830,14 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
   QBusM qout = qbus_message_new (NULL, NULL);
   
   CapeString last_chain_key = cape_str_mv (&(msg->chain_key));
+  CapeString last_sender = cape_str_mv (&(msg->sender));
+  
   CapeString next_chain_key = cape_str_uuid ();
+  CapeString next_sender = cape_str_cp (self->name);
   
   // set next chain key
   msg->chain_key = cape_str_cp (next_chain_key);
+  msg->sender = cape_str_cp (next_sender);
   
   // debug
   {
@@ -858,6 +869,16 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
     cape_str_del(&h);
   }
   
+  {
+    CapeString last_chain_key_copy = cape_str_cp (last_chain_key);
+    CapeString next_chain_key_copy = cape_str_cp (next_chain_key);
+    CapeString last_sender_copy = cape_str_cp (last_sender);
+    
+    CapeUdc rinfo_copy = cape_udc_cp (msg->rinfo);
+    
+    qbus_route__add_to_chain (self, ptr, onMsg, &last_chain_key_copy, &next_chain_key_copy, &last_sender_copy, &rinfo_copy);
+  }
+
   res = qbus_method_local (qmeth, self->qbus, self, msg, qout, method_origin, err);
   
   switch (res)
@@ -869,7 +890,6 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
       // this request shall not continue and another request was created instead
       // we need to add the callback and ptr to the chains list, for response
       // -> don't consider qout
-      qbus_route__add_to_chain (self, ptr, onMsg, &last_chain_key, &next_chain_key, &(msg->sender), &(msg->rinfo));
       
       break;
     }
@@ -886,17 +906,26 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
         err = cape_err_new ();
       }
       
+      // correct chain parameters
+      cape_str_replace_cp (&(qout->chain_key), last_chain_key);
+      cape_str_replace_cp (&(qout->sender), last_sender);
+
+      // add rinfo
+      cape_udc_replace_cp (&(qout->rinfo), msg->rinfo);
+      
       {
+        // create a method object to re-use existing functionality
         QBusMethod qmeth_next = qbus_method_new (QBUS_METHOD_TYPE__RESPONSE, ptr, onMsg, NULL);
 
-        qbus_method_call_response (qmeth_next, self->qbus, self, qout, err);
+        // provide the last chain key to handle the return chain traversal path
+        qbus_method_continue (qmeth_next, &last_chain_key, &last_sender, &(msg->rinfo));
+        
+        // this requests ends here, now send the results back
+        qbus_method_call_response (qmeth_next, self->qbus, self, qout, NULL, err);
         
         qbus_method_del (&qmeth_next);
       }
-      
-      // this requests ends here, now send the results back
-      //qbus_route_request__local_response (self, msg, qout, ptr, onMsg);
-      
+
       break;
     }
   }
@@ -905,6 +934,8 @@ exit_and_cleanup:
   
   // cleanup
   cape_str_replace_mv (&(msg->chain_key), &last_chain_key);
+  cape_str_replace_mv (&(msg->sender), &last_sender);
+  
   qbus_message_del (&qout);
   cape_err_del (&err);
 }
@@ -919,7 +950,7 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
     
     qbus_route_request__local_request (self, method, msg, ptr, onMsg);
     
-    return CAPE_ERR_NONE;
+    return CAPE_ERR_CONTINUE;
   }
   else
   {
@@ -942,26 +973,70 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
 
 //-----------------------------------------------------------------------------
 
+void qbus_route_response__local (QBusRoute self, QBusM msg)
+{
+  if (msg->chain_key)
+  {
+    QBusMethod qmeth = qbus_route__find_chain (self, msg->chain_key);
+    
+    if (qmeth)
+    {
+      switch (qbus_method_type (qmeth))
+      {
+        case QBUS_METHOD_TYPE__RESPONSE:
+        {
+          CapeErr err = cape_err_new ();
+          
+          qbus_method_call_response (qmeth, self->qbus, self, msg, NULL, err);
+          
+          cape_err_del (&err);
+          
+          break;
+        }
+      }
+      
+      qbus_method_del (&qmeth);
+    }
+    else
+    {
+      cape_log_msg (CAPE_LL_WARN, "QBUS", "response", "chain key was not found in local response");
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_response (QBusRoute self, const char* module, QBusM msg, CapeErr err)
 {
   if (module)
   {
-    QBusConnection const conn = qbus_route_module_find (self, module);
-    if (conn)
+    if (cape_str_compare (module, self->name))
     {
-      // create a new frame
-      QBusFrame frame = qbus_frame_new ();
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "response", "execute local response on '%s'", module);
       
-      // add default content
-      qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_RES, msg->chain_key, module, NULL, self->name);
-      
-      // add message content
-      qbus_frame_set_qmsg (frame, msg, err);
-      
-      // finally send the frame
-      qbus_connection_send (conn, &frame);
-      
+      qbus_route_response__local (self, msg);
+
       return;
+    }
+    else
+    {
+      QBusConnection const conn = qbus_route_module_find (self, module);
+      if (conn)
+      {
+        // create a new frame
+        QBusFrame frame = qbus_frame_new ();
+        
+        // add default content
+        qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_RES, msg->chain_key, module, NULL, self->name);
+        
+        // add message content
+        qbus_frame_set_qmsg (frame, msg, err);
+        
+        // finally send the frame
+        qbus_connection_send (conn, &frame);
+        
+        return;
+      }
     }
   }
   
