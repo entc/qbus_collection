@@ -130,7 +130,7 @@ void qbus_route_items_nodes_remove_all (QBusRouteItems self, QBusConnection conn
     
     if (conn_remote == conn)
     {
-      printf ("ROUTE NODES: remove %s\n", (CapeString)cape_map_node_key (cursor->node));
+      //printf ("ROUTE NODES: remove %s\n", (CapeString)cape_map_node_key (cursor->node));
       
       cape_map_cursor_erase (self->routes_node, cursor);      
     }
@@ -257,7 +257,7 @@ void qbus_route_items_rm (QBusRouteItems self, const CapeString module)
       // remove all indirect nodes with this connection
       qbus_route_items_nodes_remove_all (self, conn);
 
-      printf ("qbus connection removed: %s\n", module);
+      //printf ("qbus connection removed: %s\n", module);
       
       // remove the connection
       cape_map_erase (self->routes_direct, n);

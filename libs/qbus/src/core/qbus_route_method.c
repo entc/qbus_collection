@@ -183,8 +183,6 @@ int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBus
   {
     if (self->chain_key)
     {
-      printf ("CONT CHK: %s\n", self->chain_key);
-      
       res = qbus_method_call_response__continue_chain (self, qbus, route, qin, err);
     }
     else

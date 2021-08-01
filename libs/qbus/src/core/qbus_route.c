@@ -547,8 +547,6 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
   QBusMethod ret = NULL;
   CapeMapNode n;
   
-  printf ("RESP CHK: %s\n", chain_key);
-  
   cape_mutex_lock (self->chain_mutex);
   
   n = cape_map_find (self->chains, (void*)chain_key);
@@ -839,16 +837,6 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
   msg->chain_key = cape_str_cp (next_chain_key);
   msg->sender = cape_str_cp (next_sender);
   
-  // debug
-  {
-    if (last_chain_key)
-    {
-      printf ("LAST CHK: %s\n", last_chain_key);
-    }
-  }
-
-  printf ("NEXT CHK: %s\n", next_chain_key);
-
   // set default message type
   qout->mtype = QBUS_MTYPE_JSON;
   
@@ -859,16 +847,7 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
   {
     goto exit_and_cleanup;
   }
-  
-  if (msg->cdata)
-  {
-    CapeString h = cape_json_to_s (msg->cdata);
     
-    printf ("MSG CDATA: %s\n", h);
-    
-    cape_str_del(&h);
-  }
-  
   {
     CapeString last_chain_key_copy = cape_str_cp (last_chain_key);
     CapeString next_chain_key_copy = cape_str_cp (next_chain_key);
