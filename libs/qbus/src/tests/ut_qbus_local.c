@@ -391,6 +391,11 @@ static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, Q
 
 exit_and_cleanup:
   
+  if (cape_err_code (err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "MAIN", "on main", cape_err_text (err));
+  }
+
   return res;
 }
 

@@ -162,7 +162,7 @@ int qbus_method_call_response__continue_chain (QBusMethod self, QBus qbus, QBusR
       
       // send the response
       qbus_route_response (route, self->chain_sender, qout, err);
-      
+
       break;
     }
   }
@@ -187,6 +187,9 @@ int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBus
     }
     else
     {
+      // replace rinfo
+      cape_udc_replace_mv (&(qin->rinfo), &(self->rinfo));
+      
       // call the original callback
       res = self->onMsg (qbus, self->ptr, qin, qout, err);
     }    
