@@ -319,7 +319,11 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 //-----------------------------------------------------------------------------
 
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
-{  
+{
+  // correct chain key
+  // -> the key for the start must be NULL
+  cape_str_del (&(msg->chain_key));
+  
   qbus_route_request (self->route, module, method, msg, ptr, onMsg, FALSE, err);
 
   return CAPE_ERR_NONE;
@@ -468,6 +472,28 @@ void qbus_message_del (QBusM* p_self)
   cape_str_del (&(self->sender));
   
   CAPE_DEL (p_self, struct QBusMessage_s);
+}
+
+//-----------------------------------------------------------------------------
+
+QBusM qbus_message_data_mv (QBusM source)
+{
+  QBusM self = CAPE_NEW (struct QBusMessage_s);
+
+  self->chain_key = cape_str_cp (source->chain_key);
+  self->sender = cape_str_cp (source->sender);
+
+  // move the objects
+  self->cdata = cape_udc_mv (&(source->cdata));
+  self->pdata = cape_udc_mv (&(source->pdata));
+  self->clist = cape_udc_mv (&(source->clist));
+  self->rinfo = cape_udc_mv (&(source->rinfo));
+  self->files = cape_udc_mv (&(source->files));
+  
+  self->err = NULL;
+  self->mtype = source->mtype;
+  
+  return self;
 }
 
 //-----------------------------------------------------------------------------

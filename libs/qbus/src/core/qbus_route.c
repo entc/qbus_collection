@@ -861,7 +861,11 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
     cape_str_del (&last_chain_key_copy);
   }
 
+  
+  
   res = qbus_method_local (qmeth, self->qbus, self, msg, qout, method_origin, err);
+  
+  
   
   switch (res)
   {
@@ -922,7 +926,17 @@ exit_and_cleanup:
   qbus_message_del (&qout);
   cape_err_del (&err);
 }
- 
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t pos)
+{
+  
+  //qbus_route_request__local_request (self, method, msg, ptr, onMsg);
+  
+
+}
+
 //-----------------------------------------------------------------------------
 
 int qbus_route_request (QBusRoute self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, int cont, CapeErr err)
@@ -931,7 +945,13 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
     
-    qbus_route_request__local_request (self, method, msg, ptr, onMsg);
+    QBusM qin = qbus_message_data_mv (msg);
+
+    qbus_route_request__local_request (self, method, qin, ptr, onMsg);
+
+    qbus_message_del (&qin);
+    
+    //cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, void* ptr, 0);
     
     return CAPE_ERR_CONTINUE;
   }
