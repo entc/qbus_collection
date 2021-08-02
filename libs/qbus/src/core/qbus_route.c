@@ -831,11 +831,10 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
   CapeString last_sender = cape_str_mv (&(msg->sender));
   
   CapeString next_chain_key = cape_str_uuid ();
-  CapeString next_sender = cape_str_cp (self->name);
   
   // set next chain key
   msg->chain_key = cape_str_cp (next_chain_key);
-  msg->sender = cape_str_cp (next_sender);
+  msg->sender = cape_str_cp (self->name);
   
   // set default message type
   qout->mtype = QBUS_MTYPE_JSON;
@@ -850,12 +849,16 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
     
   {
     CapeString last_chain_key_copy = cape_str_cp (last_chain_key);
-    CapeString next_chain_key_copy = cape_str_cp (next_chain_key);
     CapeString last_sender_copy = cape_str_cp (last_sender);
     
     CapeUdc rinfo_copy = cape_udc_cp (msg->rinfo);
     
-    qbus_route__add_to_chain (self, ptr, onMsg, &last_chain_key_copy, &next_chain_key_copy, &last_sender_copy, &rinfo_copy);
+    qbus_route__add_to_chain (self, ptr, onMsg, &last_chain_key_copy, &next_chain_key, &last_sender_copy, &rinfo_copy);
+    
+    cape_udc_del (&rinfo_copy);
+    
+    cape_str_del (&last_sender_copy);
+    cape_str_del (&last_chain_key_copy);
   }
 
   res = qbus_method_local (qmeth, self->qbus, self, msg, qout, method_origin, err);
@@ -911,7 +914,8 @@ void qbus_route_request__local_request (QBusRoute self, const char* method_origi
   
 exit_and_cleanup:
   
-  // cleanup
+  cape_str_del (&next_chain_key);
+  
   cape_str_replace_mv (&(msg->chain_key), &last_chain_key);
   cape_str_replace_mv (&(msg->sender), &last_sender);
   
