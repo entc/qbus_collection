@@ -560,9 +560,11 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
 
   if (n)
   {
-    ret = cape_map_node_value (n);
-    
-    cape_map_node_del (&n);
+    // removes the value from the map-node
+    ret = cape_map_node_mv (n);
+
+    // free memory and the node key
+    cape_map_del_node (self->chains, &n);
   }
   
   return ret;
@@ -927,14 +929,30 @@ exit_and_cleanup:
   cape_err_del (&err);
 }
 
+struct QbusRouteWorkerCtx_s
+{
+  QBusRoute route;   // reference
+  QBusM qin;
+  
+  CapeString method;
+
+  void* ptr;
+  fct_qbus_onMessage onMsg;
+  
+}; typedef struct QbusRouteWorkerCtx_s* QbusRouteWorkerCtx;
+
 //-----------------------------------------------------------------------------
 
 void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t pos)
 {
+  QbusRouteWorkerCtx ctx = ptr;
   
-  //qbus_route_request__local_request (self, method, msg, ptr, onMsg);
-  
+  qbus_route_request__local_request (ctx->route, ctx->method, ctx->qin, ctx->ptr, ctx->onMsg);
+    
+  cape_str_del (&(ctx->method));
+  qbus_message_del (&(ctx->qin));
 
+  CAPE_DEL (&ctx, struct QbusRouteWorkerCtx_s);
 }
 
 //-----------------------------------------------------------------------------
@@ -945,13 +963,19 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
     
-    QBusM qin = qbus_message_data_mv (msg);
-
-    qbus_route_request__local_request (self, method, qin, ptr, onMsg);
-
-    qbus_message_del (&qin);
+    QbusRouteWorkerCtx ctx = CAPE_NEW (struct QbusRouteWorkerCtx_s);
     
-    //cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, void* ptr, 0);
+    ctx->route = self;
+    
+    ctx->qin = qbus_message_data_mv (msg);
+    ctx->method = cape_str_cp (method);
+    
+    ctx->ptr = ptr;
+    ctx->onMsg = onMsg;
+    
+    //qbus_route_request__local_request (self, method, qin, ptr, onMsg);
+
+    cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, ctx, 0);
     
     return CAPE_ERR_CONTINUE;
   }

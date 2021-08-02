@@ -70,6 +70,8 @@ __CAPE_LIBEX   void              cape_map_node_set          (CapeMapNode, void*)
 
 __CAPE_LIBEX   void              cape_map_node_del          (CapeMapNode*);               // don't calls the onDestroy method, only releases the memory
 
+__CAPE_LIBEX   void*             cape_map_node_mv           (CapeMapNode);                // returns the value and replace it with NULL
+
 //-----------------------------------------------------------------------------
 
 typedef void (__STDCALL *fct_cape_map__on_clone) (void* key_original, void* val_original, void** key_clone, void** val_clone);

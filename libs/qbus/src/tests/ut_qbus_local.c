@@ -418,10 +418,11 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   cape_err_del (&err);
   qbus_message_del (&qin);
   
-  /*
+  
+  
   ctx->cnt++;
   
-  if (ctx->cnt > 10000)
+  if (ctx->cnt > 100000)
   {
     kill (getpid(), SIGINT);
   }
@@ -429,12 +430,15 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   printf ("CNT: %lu\n", ctx->cnt);
   
   return g_running;
-   */
-
-  // terminate qbus
+   
+/*
+ *  //cape_thread_sleep (100);
+ *
+ *  // terminate qbus
   kill (getpid(), SIGINT);
 
   return FALSE;
+  */
 }
 
 //-----------------------------------------------------------------------------
@@ -461,7 +465,7 @@ int main (int argc, char *argv[])
   
   cape_thread_start (trigger_thread, qbus_trigger_thread, &ctx);
   
-  qbus_wait (qbus, NULL, NULL, 2, err);
+  qbus_wait (qbus, NULL, NULL, 30, err);
   
   g_running = FALSE;
   

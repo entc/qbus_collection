@@ -53,22 +53,22 @@ QBusMethod qbus_method_new (int type, void* ptr, fct_qbus_onMessage onMsg, fct_q
 
 void qbus_method_del (QBusMethod* p_self)
 {
-  QBusMethod self = *p_self;
-  
-  if (self->onRm)
+  if (*p_self)
   {
-    self->onRm (self->ptr);
-  }
-  
-  if (self->rinfo)
-  {
+    QBusMethod self = *p_self;
+    
+    if (self->onRm)
+    {
+      self->onRm (self->ptr);
+    }
+    
     cape_udc_del (&(self->rinfo));
-  }
-  
-  cape_str_del (&(self->chain_key));
-  cape_str_del (&(self->chain_sender));
-  
-  CAPE_DEL (p_self, struct QBusMethod_s);
+    
+    cape_str_del (&(self->chain_key));
+    cape_str_del (&(self->chain_sender));
+    
+    CAPE_DEL (p_self, struct QBusMethod_s);
+  }  
 }
 
 //-----------------------------------------------------------------------------

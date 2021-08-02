@@ -103,6 +103,16 @@ void cape_map_node_set (CapeMapNode self, void* val)
 
 //-----------------------------------------------------------------------------
 
+void* cape_map_node_mv (CapeMapNode self)
+{
+  void* ret = self->val;
+  self->val = NULL;
+  
+  return ret;  
+}
+
+//-----------------------------------------------------------------------------
+
 CapeMapNode cape_map_node_next (CapeMapNode n)
 {
   CapeMapNode ret = n;
