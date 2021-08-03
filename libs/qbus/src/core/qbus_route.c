@@ -929,15 +929,21 @@ exit_and_cleanup:
   cape_err_del (&err);
 }
 
+//-----------------------------------------------------------------------------
+
 struct QbusRouteWorkerCtx_s
 {
   QBusRoute route;   // reference
   QBusM qin;
   
+  CapeString module;
   CapeString method;
 
   void* ptr;
   fct_qbus_onMessage onMsg;
+  
+  QBusConnection conn;
+  int cont;
   
 }; typedef struct QbusRouteWorkerCtx_s* QbusRouteWorkerCtx;
 
@@ -949,9 +955,27 @@ void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t po
   
   qbus_route_request__local_request (ctx->route, ctx->method, ctx->qin, ctx->ptr, ctx->onMsg);
     
+  cape_str_del (&(ctx->module));
   cape_str_del (&(ctx->method));
+
   qbus_message_del (&(ctx->qin));
 
+  CAPE_DEL (&ctx, struct QbusRouteWorkerCtx_s);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_route_request__remote_request__worker (void* ptr, number_t pos)
+{
+  QbusRouteWorkerCtx ctx = ptr;
+
+  qbus_route_conn_request (ctx->route, ctx->conn, ctx->module, ctx->method, ctx->qin, ctx->ptr, ctx->onMsg, ctx->cont);
+  
+  cape_str_del (&(ctx->module));
+  cape_str_del (&(ctx->method));
+
+  qbus_message_del (&(ctx->qin));
+  
   CAPE_DEL (&ctx, struct QbusRouteWorkerCtx_s);
 }
 
@@ -966,12 +990,16 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
     QbusRouteWorkerCtx ctx = CAPE_NEW (struct QbusRouteWorkerCtx_s);
     
     ctx->route = self;
-    
     ctx->qin = qbus_message_data_mv (msg);
+    
+    ctx->module = NULL;
     ctx->method = cape_str_cp (method);
     
     ctx->ptr = ptr;
     ctx->onMsg = onMsg;
+    
+    ctx->conn = NULL;
+    ctx->cont = FALSE;
     
     //qbus_route_request__local_request (self, method, qin, ptr, onMsg);
 
@@ -985,7 +1013,23 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
     
     if (conn)
     {
-      qbus_route_conn_request (self, conn, module, method, msg, ptr, onMsg, cont);
+      QbusRouteWorkerCtx ctx = CAPE_NEW (struct QbusRouteWorkerCtx_s);
+      
+      ctx->route = self;
+      ctx->qin = qbus_message_data_mv (msg);
+
+      ctx->module = cape_str_cp (module);
+      ctx->method = cape_str_cp (method);
+      
+      ctx->ptr = ptr;
+      ctx->onMsg = onMsg;
+      
+      ctx->conn = conn;
+      ctx->cont = cont;
+
+      cape_queue_add (self->queue, NULL, qbus_route_request__remote_request__worker, NULL, ctx, 0);
+
+      //qbus_route_conn_request (self, conn, module, method, msg, ptr, onMsg, cont);
       
       return CAPE_ERR_CONTINUE;
     }
