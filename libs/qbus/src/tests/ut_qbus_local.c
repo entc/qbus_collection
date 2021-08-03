@@ -75,7 +75,7 @@ static int __STDCALL qbus_test_request__test1__on_complex (QBus qbus, void* ptr,
   {
     CapeString h = cape_json_to_s (qin->cdata);
     
-    printf ("ON COMPLEX: %s\n", h);
+    //printf ("ON COMPLEX: %s\n", h);
     
     cape_str_del (&h);
   }
@@ -122,7 +122,7 @@ static int __STDCALL qbus_test_request__test1__on_simple (QBus qbus, void* ptr, 
   {
     CapeString h = cape_json_to_s (qin->cdata);
     
-    printf ("ON SIMPLE: %s\n", h);
+    //printf ("ON SIMPLE: %s\n", h);
     
     cape_str_del (&h);
   }
@@ -361,6 +361,10 @@ struct TriggerContext
   number_t cnt;
 };
 
+//-----------------------------------------------------------------------------
+
+static number_t diff = 0;
+
 //-------------------------------------------------------------------------------------
 
 static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
@@ -382,7 +386,7 @@ static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, Q
   {
     CapeString h = cape_json_to_s (qin->cdata);
     
-    printf ("ON MAIN: %s\n", h);
+    //printf ("ON MAIN: %s\n", h);
     
     cape_str_del (&h);
   }
@@ -395,6 +399,8 @@ exit_and_cleanup:
   {
     cape_log_msg (CAPE_LL_ERROR, "MAIN", "on main", cape_err_text (err));
   }
+  
+  diff--;
 
   return res;
 }
@@ -415,20 +421,25 @@ int __STDCALL qbus_trigger_thread (void* ptr)
 
   qbus_send (ctx->qbus, "TEST", "main", qin, ptr, qbus_trigger_thread__on, err);
   
+  diff++;
+  
   cape_err_del (&err);
   qbus_message_del (&qin);
   
-  
+  if (diff > 100)
+  {
+    // this allow a context switch
+    cape_thread_sleep (0);
+  }
   
   ctx->cnt++;
   
-  if (ctx->cnt > 100000)
+  if (ctx->cnt > 100000000)
   {
-    kill (getpid(), SIGINT);
+    printf ("CNT: %lu\n", ctx->cnt);
+    kill (getpid(), SIGINT);    
   }
-  
-  printf ("CNT: %lu\n", ctx->cnt);
-  
+    
   return g_running;
    
 /*
@@ -459,6 +470,8 @@ int main (int argc, char *argv[])
   qbus_register (qbus, "complex"     , NULL, qbus_method_complex, NULL, err);
   qbus_register (qbus, "complex_l2"  , NULL, qbus_method_complex_l2, NULL, err);
 
+  cape_log_set_level (CAPE_LL_INFO);
+  
   // initialize
   ctx.qbus = qbus;
   ctx.cnt = 0;
@@ -476,6 +489,7 @@ int main (int argc, char *argv[])
 
   cape_err_del (&err);
   
+  printf ("done\n");
   return 0;
 }
 
