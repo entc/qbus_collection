@@ -18,10 +18,10 @@
 #include <stdlib.h>
 #include <linux/limits.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <dirent.h>
 #include <fts.h>
+#include <sys/stat.h>
 
 #define CAPE_FS_FOLDER_SEP   '/'
 
@@ -44,6 +44,10 @@
 #define CAPE_FS_FOLDER_SEP   '/'
 
 #endif
+
+//-----------------------------------------------------------------------------
+
+#define CAPE_BUFFER_SIZE 10000
 
 //-----------------------------------------------------------------------------
 
@@ -300,6 +304,8 @@ int cape_fs_path_create (const char* path, CapeErr err)
 int cape_fs_path_create_x (const char* path, CapeErr err)
 {
   int res;
+
+  // local objects
   CapeString directory = NULL;
   CapeString path_absolute = cape_fs_path_absolute (path);
   
@@ -331,56 +337,8 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
     else
     {
       directory = cape_str_cp (part);
-    }
-   
-    /*
-    // Root shall exist
-    switch (cursor->position)
-    {
-      case 0:
-      {
-        // Nothing to do
-        break;
-      }
-      case 1:
-      {
-        {
-          // First subdir under root shall exist
-          CapeString h = cape_str_cp ((const char*)cape_list_node_data (cursor->node));
-
-          // replace directory (memory safe)
-          cape_str_replace_mv (&directory, &h);
-        }
-
-        break;
-      }
-      default:
-      {
-        {
-          // For other deeps, check each subdir and create it if not existing
-          CapeString h = cape_fs_path_merge (directory, (const char*)cape_list_node_data (cursor->node));
-          
-          // replace directory (memory safe)
-          cape_str_replace_mv (&directory, &h);
-        }
-        
-        //if (!cape_fs_path_resolve (directory, err))
-        {
-          //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "directory create x", "Subdirectory %s doesn't exist, create it!", directory);
-    
-          // we can try to create it
-          res = cape_fs_path_create (directory, err);
-          if (res)
-          {
-            goto exit_and_cleanup;
-          }
-        } // End if cape_fs_path_resolve
-
-        break;
-      }
-    }
-     */
-  } // End while
+    }   
+  }
          
   res = CAPE_ERR_NONE;
   
@@ -389,6 +347,7 @@ exit_and_cleanup:
   cape_list_cursor_destroy (&cursor);
   cape_list_del (&tokens);
   
+  cape_str_del (&path_absolute);
   cape_str_del (&directory);
   
   return res;
@@ -481,7 +440,7 @@ int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
   
   if (force_on_none_empty)
   {
-    CapeDirCursor c = cape_dc_new (path, err);
+    c = cape_dc_new (path, err);
     if (c == NULL)
     {
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't find directory '%s': %s", path, cape_err_text (err));
@@ -640,42 +599,80 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
     return cape_err_lastOSError (err);
   }
 
+  return CAPE_ERR_NONE;
+  
 #elif defined __APPLE_CC__
   
   if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
   {
     return cape_err_lastOSError (err);
   }
-  
-#elif defined __LINUX_OS || defined __BSD_OS
 
-  // TODO: add checkings
-  int sfd = open (source, O_RDONLY, 0);
-  int dfd = open (destination, O_WRONLY | O_CREAT /*| O_TRUNC/*/, 0644);
+  return CAPE_ERR_NONE;
   
-  // struct required, rationale: function stat() exists also
-  struct stat stat_source;
-  fstat(sfd, &stat_source);
+#else
+
+  int res;
   
-  off_t offset = 0;
-  while (offset < stat_source.st_size)
+  // local objects
+  char* buffer = NULL;
+  CapeFileHandle fh_s = cape_fh_new (NULL, source);
+  CapeFileHandle fh_d = cape_fh_new (NULL, destination);
+  
+  res = cape_fh_open (fh_s, O_RDONLY, err);
+  if (res)
   {
-    ssize_t bytes_written = sendfile (dfd, sfd, offset, stat_source.st_size - offset);
-    
-    if (bytes_written == -1)
-    {
-      break;
-    }
-    
-    offset = offset + bytes_written;
+    goto exit_and_cleanup;
+  }
+
+  res = cape_fh_open (fh_d, O_WRONLY | O_CREAT, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
   }
   
-  close (sfd);
-  close (dfd);
+  buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
   
-#endif
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh_s, buffer, CAPE_BUFFER_SIZE);
+    
+    if (bytes_read > 0)
+    {
+      number_t bytes_written = 0;
+      
+      while (bytes_written < bytes_read)
+      {
+        bytes_written = cape_fh_write_buf (fh_d, buffer + bytes_written, bytes_read - bytes_written);
+        
+        if (bytes_written <= 0)
+        {
+          res = cape_err_lastOSError (err);
+          goto exit_and_cleanup;
+        }
+      }
+    }
+    else
+    {
+      break;
+    }    
+  }
+    
+  res = CAPE_ERR_NONE;
   
-  return CAPE_ERR_NONE;
+exit_and_cleanup:
+  
+  cape_fh_del (&fh_d);
+  cape_fh_del (&fh_s);
+  
+  if (buffer)
+  {
+    CAPE_FREE (buffer);
+  }
+  
+  return res;
+  
+#endif  
 }
 
 //-----------------------------------------------------------------------------
@@ -737,6 +734,7 @@ int cape_fs_file_load (const CapeString path, const CapeString file, void* ptr, 
   // local objects
   CapeFileHandle fh = cape_fh_new (path, file);
   number_t bytes_read;
+  char* buffer = NULL;
   
   // try to open
   res = cape_fh_open (fh, O_RDONLY, err);
@@ -746,9 +744,9 @@ int cape_fs_file_load (const CapeString path, const CapeString file, void* ptr, 
   }
   
   {
-    char buffer [1024];
+    buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
     
-    for (bytes_read = cape_fh_read_buf (fh, buffer, 1024); bytes_read > 0; bytes_read = cape_fh_read_buf (fh, buffer, 1024))
+    for (bytes_read = cape_fh_read_buf (fh, buffer, CAPE_BUFFER_SIZE); bytes_read > 0; bytes_read = cape_fh_read_buf (fh, buffer, CAPE_BUFFER_SIZE))
     {
       res = fct (ptr, buffer, bytes_read, err);
       if (res)
@@ -759,6 +757,11 @@ int cape_fs_file_load (const CapeString path, const CapeString file, void* ptr, 
   }
   
 exit_and_cleanup:
+  
+  if (buffer)
+  {
+    CAPE_FREE (buffer);
+  }
   
   cape_fh_del (&fh);
   return res;
@@ -963,6 +966,7 @@ void cape_dc_del (CapeDirCursor* p_self)
     // somehow the treesearch changed the current path
     // set it back
     chdir (self->current_dir);
+    cape_str_del (&(self->current_dir));
     
     CAPE_DEL(p_self, struct CapeDirCursor_s);
   }

@@ -6,9 +6,16 @@
 
 int main (int argc, char *argv[])
 {
+  int res;
+  CapeErr err = cape_err_new ();
+  
+  // local objects
+  CapeUdc t1 = NULL;
+  CapeUdc t2 = NULL;
+  CapeUdc t3 = NULL;
+  
   {
-    CapeUdc t1 = cape_tokenizer_options ("Hello World ((a:12,b:\"Frank\"))");
-
+    t1 = cape_tokenizer_options ("Hello World ((a:12,b:\"Frank\"))");
     if (t1)
     {
       CapeString h = cape_json_to_s (t1);
@@ -24,8 +31,7 @@ int main (int argc, char *argv[])
   }
 
   {
-    CapeUdc t2 = cape_tokenizer_options ("Hello World");
-    
+    t2 = cape_tokenizer_options ("Hello World");
     if (t2)
     {
       // failed
@@ -37,8 +43,7 @@ int main (int argc, char *argv[])
   }
 
   {
-    CapeUdc t3 = cape_tokenizer_options ("Hello ((a:6789)) World");
-    
+    t3 = cape_tokenizer_options ("Hello ((a:6789)) World");
     if (t3)
     {
       CapeString h = cape_json_to_s (t3);
@@ -51,6 +56,21 @@ int main (int argc, char *argv[])
     {
     }
   }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
 
-  return 0;
+  if (res)
+  {
+    printf ("ERROR: %s\n", cape_err_text (err));
+  }
+
+  cape_udc_del (&t1);
+  cape_udc_del (&t2);
+  cape_udc_del (&t3);
+  
+  cape_err_del (&err);
+  
+  return res;
 }
