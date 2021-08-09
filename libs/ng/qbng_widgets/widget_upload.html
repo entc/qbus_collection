@@ -1,4 +1,4 @@
-<label class="btn btn-primary mb-0" for="my-file-selector">
-    <input id="my-file-selector" type="file" class="d-none" (change)="handle_updload($event)">
+<label class="btn btn-primary mb-0" [attr.for]="upload_id">
+    <input [attr.id]="upload_id" type="file" class="d-none" (change)="handle_updload($event)">
     <ng-content></ng-content>
 </label>

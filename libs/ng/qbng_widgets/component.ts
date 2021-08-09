@@ -79,10 +79,13 @@ export class QbngUploadComponent {
   @Input('mimes') mimes: string[];
   @Output('onFile') onChange = new EventEmitter ();
 
+  public upload_id: string;
+
   //-----------------------------------------------------------------------------
 
   constructor (private modal_service: NgbModal)
   {
+    this.upload_id = 'upload-' + Math.round(Math.random() * 10000);
   }
 
   //-----------------------------------------------------------------------------

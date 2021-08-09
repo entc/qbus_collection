@@ -359,7 +359,7 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
 {
   WebsJson self = *p_self;
 
-  //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "got info, continue with module = %s, method = %s", self->module, self->method);
+  cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "got info, continue with module = %s, method = %s", self->module, self->method);
 
   webs__check_body (self);
   

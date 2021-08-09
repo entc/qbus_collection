@@ -187,8 +187,11 @@ int qbus_method_call_response (QBusMethod self, QBus qbus, QBusRoute route, QBus
     }
     else
     {
-      // replace rinfo
-      cape_udc_replace_mv (&(qin->rinfo), &(self->rinfo));
+      if (self->rinfo)
+      {
+        // replace rinfo
+        cape_udc_replace_mv (&(qin->rinfo), &(self->rinfo));
+      }
       
       // call the original callback
       res = self->onMsg (qbus, self->ptr, qin, qout, err);
