@@ -126,8 +126,6 @@ export class AuthService
       }
       else
       {
-console.log(error);
-
         return throwError (error);
       }
     }));

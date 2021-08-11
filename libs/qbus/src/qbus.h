@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
+#include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
 
 //=============================================================================
@@ -37,6 +38,8 @@ struct QBusMessage_s
   CapeUdc rinfo;
   
   CapeUdc files;    // if the content is too big, payload is stored in temporary files
+  
+  CapeStream blob;  // binary blob within the CapeStream
   
   CapeErr err;
   

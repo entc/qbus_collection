@@ -42,8 +42,8 @@ export class Graph {
   {
     const dom_el = this.el_dom.nativeElement;
 
-    dom_el.style.width = String(width) + "px";
-    dom_el.style.height = String(height) + "px";
+  //  dom_el.style.width = String(width) + "px";
+  //  dom_el.style.height = String(height) + "px";
 
     this.option_mv_x = move_x;
     this.option_mv_y = move_y;
@@ -381,6 +381,28 @@ export class Graph {
   public on_mv (cb): void
   {
     this.on_mv_cb = cb;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public set_background_image (data)
+  {
+    this.clear ();
+
+    const dom_el = this.el_dom.nativeElement;
+
+    // create a blob
+    var blob = new Blob([data]);
+
+    // create an URL to display the blob
+    const fileURL = URL.createObjectURL(blob);
+
+    var image = new Image();
+    image.src = fileURL;
+
+    // add class
+    this.rd.appendChild (dom_el, image);
+    this.rd.setStyle (image, 'width', '100%');
   }
 
   //-----------------------------------------------------------------------------
