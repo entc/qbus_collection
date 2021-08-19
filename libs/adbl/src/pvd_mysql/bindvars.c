@@ -110,7 +110,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         }
         else
         {
-          bind->buffer_type = MYSQL_TYPE_STRING;
+          bind->buffer_type = MYSQL_TYPE_NULL;
           bind->buffer = NULL;
           bind->buffer_length = 0;
           bind->is_null = NULL;
@@ -198,7 +198,7 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         }
         else
         {
-          bind->buffer_type = MYSQL_TYPE_DATETIME;
+          bind->buffer_type = MYSQL_TYPE_NULL;
           bind->buffer = NULL;
           bind->buffer_length = 0;
           bind->is_null = NULL;

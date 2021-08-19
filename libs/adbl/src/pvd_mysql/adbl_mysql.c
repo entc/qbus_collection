@@ -599,7 +599,13 @@ int __STDCALL adbl_pvd_set (AdblPvdSession self, const char* table, CapeUdc* p_p
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "params was not provided");
     goto exit_and_cleanup;
   }
-  
+
+  if (NULL == *p_params)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "params was NULL");
+    goto exit_and_cleanup;
+  }
+
   // some prechecks
   if (0 == cape_udc_size (*p_params))
   {
@@ -613,7 +619,14 @@ int __STDCALL adbl_pvd_set (AdblPvdSession self, const char* table, CapeUdc* p_p
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "values was not provided");
     goto exit_and_cleanup;
   }
-  
+
+  // some prechecks
+  if (NULL == *p_values)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "values was NULL");
+    goto exit_and_cleanup;
+  }
+
   // some prechecks
   if (0 == cape_udc_size (*p_values))
   {
