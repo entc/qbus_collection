@@ -256,6 +256,10 @@ int qbus_method_local (QBusMethod self, QBus qbus, QBusRoute route, QBusM msg, Q
         // call the original callback
         res = self->onMsg (qbus, self->ptr, msg, qout, err);
       }
+      else
+      {
+        res = CAPE_ERR_NONE;
+      }
 
       break;
     }

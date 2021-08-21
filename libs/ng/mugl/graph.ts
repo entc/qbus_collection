@@ -1,13 +1,14 @@
-import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2 } from '@angular/core';
+import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2, HostListener } from '@angular/core';
 
 export class Graph {
 
   private on_delete_cb;
   private on_mv_cb;
   private on_edit_cb;
-  private mouse_button_down: boolean;
 
-  private btn_mv_active: any;
+  private btn_mv_active: GraphBox = null;
+  private btn_mv_w: number;
+  private btn_mv_h: number;
   private action_ref: number;
 
   private mv_x: number;
@@ -18,6 +19,8 @@ export class Graph {
   private option_mv_x: boolean;
   private option_mv_y: boolean;
 
+  private boxes: GraphBox[] = [];
+
   //-----------------------------------------------------------------------------
 
   constructor (private el_dom: ElementRef, private el_box: TemplateRef<any>, private rd: Renderer2)
@@ -25,12 +28,10 @@ export class Graph {
     this.on_delete_cb = undefined;
     this.on_mv_cb = undefined;
     this.on_edit_cb = undefined;
-    this.mouse_button_down = false;
 
-    this.btn_mv_active = undefined;
     this.action_ref = 0;
 
-    this.grid = 10;
+    this.grid = 1;
 
     this.option_mv_x = false;
     this.option_mv_y = false;
@@ -65,6 +66,39 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  public refresh ()
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    // get the top and left coordinates of the box element
+    var elem_rect = dom_el.getBoundingClientRect ();
+
+    this.boxes.forEach ((box: GraphBox) => this.adjust_box (box, elem_rect));
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private adjust_box (box: GraphBox, elem_rect)
+  {
+    // change position
+    this.rd.setStyle (box.dom_box, 'left', (elem_rect.width * box.x / 100) + 'px');
+    this.rd.setStyle (box.dom_box, 'top', (elem_rect.height * box.y / 100) + 'px');
+
+    // change dimension
+    this.rd.setStyle (box.dom_box, 'width', (elem_rect.width * box.w / 100) + 'px');
+    this.rd.setStyle (box.dom_box, 'height', (elem_rect.height * box.h / 100) + 'px');
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box_set_coordinates (box: GraphBox, x: number, y: number, elem_rect)
+  {
+    box.x = x / elem_rect.width * 100;
+    box.y = y / elem_rect.height * 100;
+  }
+
+  //-----------------------------------------------------------------------------
+
   private calc_coordinates (ex: number, ey: number): {x: number, y: number}
   {
     const dom_el = this.el_dom.nativeElement;
@@ -75,56 +109,120 @@ export class Graph {
     var gx = Math.round((ex - this.mv_x) / this.grid);
     var gy = Math.round((ey - this.mv_y) / this.grid);
 
-    return {x: (gx * this.grid), y: (gy * this.grid)};
+    var x = (gx * this.grid);
+    var y = (gy * this.grid);
+
+    // check boundaries
+    if (x < 0)
+    {
+      x = 0;
+    }
+
+    if (y < 0)
+    {
+      y = 0;
+    }
+
+    if (x > elem_rect.width - this.btn_mv_w)
+    {
+      x = elem_rect.width - this.btn_mv_w;
+    }
+
+    if (y > elem_rect.height - this.btn_mv_h)
+    {
+      y = elem_rect.height - this.btn_mv_h;
+    }
+
+    return {x: x, y: y};
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private handle_move_start (event, dom_el, box: GraphBox)
+  {
+    if (event.which === 1)
+    {
+      event.preventDefault();
+
+      //this.action_ref = id;
+      this.btn_mv_active = box;
+
+      // get the top and left coordinates of the box element
+      var el_rect = dom_el.getBoundingClientRect ();
+
+      // get the top and left coordinates of the box element
+      var box_rect = box.dom_box.getBoundingClientRect ();
+
+      // calculate the delta to the current mouse position
+      this.mv_x = event.clientX + el_rect.left - box_rect.left;
+      this.mv_y = event.clientY + el_rect.top - box_rect.top;
+
+      this.btn_mv_w = box_rect.width;
+      this.btn_mv_h = box_rect.height;
+
+      console.log('x = ' + event.clientX);
+      console.log('y = ' + event.clientY);
+
+      console.log('x = ' + this.mv_x + ', bx = ' + box_rect.left + ', ex = ' + el_rect.left);
+      console.log('y = ' + this.mv_y + ', by = ' + box_rect.top + ', ey = ' + el_rect.top);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private handle_move (event)
+  {
+    if (this.btn_mv_active)
+    {
+      const v = this.calc_coordinates (event.clientX, event.clientY);
+
+      if (this.option_mv_x)
+      {
+        // change X position
+        this.rd.setStyle (this.btn_mv_active.dom_box, 'left', '' + v.x + 'px');
+      }
+
+      if (this.option_mv_y)
+      {
+        // change Y position
+        this.rd.setStyle (this.btn_mv_active.dom_box, 'top', '' + v.y + 'px');
+      }
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private handle_move_end (event)
+  {
+    if (event.which === 1 && this.btn_mv_active)
+    {
+      const dom_el = this.el_dom.nativeElement;
+
+      // get the top and left coordinates of the box element
+      var elem_rect = dom_el.getBoundingClientRect ();
+
+      const v = this.calc_coordinates (event.clientX, event.clientY);
+
+      this.box_set_coordinates (this.btn_mv_active, v.x, v.y, elem_rect);
+
+      if (this.on_mv_cb)
+      {
+        this.on_mv_cb (this.btn_mv_active);
+      }
+
+      this.btn_mv_active = null;
+    }
   }
 
   //-----------------------------------------------------------------------------
 
   private init__events (dom_el): void
   {
-    this.rd.listen (dom_el, 'mousemove', (event) => {
+    this.rd.listen (dom_el, 'mousemove', (event) => this.handle_move(event));
+    this.rd.listen (dom_el, 'touchmove', (event) => this.handle_move(event));
 
-      if (this.mouse_button_down)
-      {
-        if (this.btn_mv_active)
-        {
-          const v = this.calc_coordinates (event.clientX, event.clientY);
-
-          if (this.option_mv_x)
-          {
-            // change X position
-            this.rd.setStyle (this.btn_mv_active, 'left', '' + v.x + 'px');
-          }
-          if (this.option_mv_y)
-          {
-            // change Y position
-            this.rd.setStyle (this.btn_mv_active, 'top', '' + v.y + 'px');
-          }
-        }
-      }
-
-    });
-
-    this.rd.listen (dom_el, 'mouseup', (event) => {
-
-      if (event.which === 1 && this.mouse_button_down)
-      {
-        this.mouse_button_down = false;
-
-        if (this.btn_mv_active)
-        {
-          if (this.on_mv_cb)
-          {
-            const v = this.calc_coordinates (event.clientX, event.clientY);
-
-            this.on_mv_cb (this.action_ref, v.x, v.y);
-          }
-
-          this.btn_mv_active = false;
-        }
-      }
-
-    });
+    this.rd.listen (dom_el, 'mouseup', (event) => this.handle_move_end(event));
+    this.rd.listen (dom_el, 'touchend', (event) => this.handle_move_end(event));
   }
 
   //-----------------------------------------------------------------------------
@@ -183,39 +281,21 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  private add_mv (dom_el, box: GraphBox)
+  {
+    this.rd.listen (box.dom_box, 'mousedown', (event) => this.handle_move_start(event, dom_el, box));
+    this.rd.listen (box.dom_box, 'touchstart', (event) => this.handle_move_start(event, dom_el, box));
+  }
+
+  //-----------------------------------------------------------------------------
+
   private add_box__append_button_mv (dom_el, dom_box, id: number, width: number, height: number, x: number, y: number)
   {
     let dom_btn = this.rd.createElement('button');
 
     this.rd.setProperty (dom_btn, 'innerHTML', '<i class="fa fa-arrows-alt"></i>');
 
-    this.rd.listen (dom_btn, 'mousedown', (event) => {
-
-      if (event.which === 1)
-      {
-        this.mouse_button_down = true;
-
-        this.btn_mv_active = dom_box;
-        this.action_ref = id;
-
-        // get the top and left coordinates of the box element
-        var el_rect = dom_el.getBoundingClientRect ();
-
-        // get the top and left coordinates of the box element
-        var box_rect = dom_box.getBoundingClientRect ();
-
-        // calculate the delta to the current mouse position
-        this.mv_x = event.clientX + el_rect.left - box_rect.left;
-        this.mv_y = event.clientY + el_rect.top - box_rect.top;
-
-        console.log('x = ' + event.clientX);
-        console.log('y = ' + event.clientY);
-
-        console.log('x = ' + this.mv_x + ', bx = ' + box_rect.left + ', ex = ' + el_rect.left);
-        console.log('y = ' + this.mv_y + ', by = ' + box_rect.top + ', ey = ' + el_rect.top);
-      }
-
-    });
+    this.add_mv (dom_btn, dom_box);
 
     // add class
     this.rd.addClass (dom_btn, 'box-button-mv');
@@ -312,37 +392,38 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-    let width = 100;
-    let height = 120;
-
-    let dom_box = this.rd.createElement('div');
-
-    this.rd.setProperty (dom_box, 'id', 'G_' + id);
-
     x = ((x == null) ? 0 : x);
     y = ((y == null) ? 0 : y);
 
-    // change position
-    this.rd.setStyle (dom_box, 'left', x + 'px');
-    this.rd.setStyle (dom_box, 'top', y + 'px');
+    var box: GraphBox = new GraphBox;
+    box.id = id;
+    box.x = x;
+    box.y = y;
+    box.w = 10;
+    box.h = 20;
+    box.dom_box = this.rd.createElement('div');
 
-    // change position
-    this.rd.setStyle (dom_box, 'width', width + 'px');
-    this.rd.setStyle (dom_box, 'height', height + 'px');
+    this.boxes.push (box);
+
+    this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
+
+    this.adjust_box (box, elem_rect);
 
     // add class
-    this.rd.addClass(dom_box, 'box-el');
+    this.rd.addClass(box.dom_box, 'box-el');
 
     // add all internal elements
-    this.add_box__append_interieur (dom_box);
+    this.add_box__append_interieur (box.dom_box);
 
     // add all small buttons visible by hover
-    this.add_box__append_button_ed (dom_box, id, user_obj, width, height);
-    this.add_box__append_button_rm (dom_box, id, width, height);
-    this.add_box__append_button_mv (dom_el, dom_box, id, width, height, x, y);
+    //this.add_box__append_button_ed (dom_box, id, user_obj, width, height);
+    //this.add_box__append_button_rm (dom_box, id, width, height);
+    //this.add_box__append_button_mv (dom_el, dom_box, id, width, height, x, y);
 
-    this.set_box_attributes (dom_box, names, colors);
-    this.rd.appendChild (dom_el, dom_box);
+    this.add_mv (dom_el, box);
+
+    this.set_box_attributes (box.dom_box, names, colors);
+    this.rd.appendChild (dom_el, box.dom_box);
 
     // create a new element from the given template
     /*
@@ -385,7 +466,7 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  public set_background_image (data)
+  public set_background_image (data, cb)
   {
     this.clear ();
 
@@ -398,13 +479,34 @@ export class Graph {
     const fileURL = URL.createObjectURL(blob);
 
     var image = new Image();
+
+    image.onload = cb;
     image.src = fileURL;
 
     // add class
     this.rd.appendChild (dom_el, image);
     this.rd.setStyle (image, 'width', '100%');
+
+/*
+    let unlistener = this.rd.listen (image, 'onload', (event) => {
+
+      unlistener ();
+
+    });
+    */
   }
 
   //-----------------------------------------------------------------------------
 
+}
+
+export class GraphBox
+{
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+
+  id: number;
+  dom_box;
 }
