@@ -73,12 +73,12 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-    this.boxes.forEach ((box: GraphBox) => this.adjust_box (box, elem_rect));
+    this.boxes.forEach ((box: GraphBox) => this.box__adjust (box, elem_rect));
   }
 
   //-----------------------------------------------------------------------------
 
-  private adjust_box (box: GraphBox, elem_rect)
+  private box__adjust (box: GraphBox, elem_rect)
   {
     // change position
     this.rd.setStyle (box.dom_box, 'left', (elem_rect.width * box.x / 100) + 'px');
@@ -87,6 +87,11 @@ export class Graph {
     // change dimension
     this.rd.setStyle (box.dom_box, 'width', (elem_rect.width * box.w / 100) + 'px');
     this.rd.setStyle (box.dom_box, 'height', (elem_rect.height * box.h / 100) + 'px');
+
+    if (box.div_nw)
+    {
+      this.box__resize_buttons__adjust (box, box.dom_box.getBoundingClientRect ());
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -138,10 +143,19 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private handle_move_start (event, dom_el, box: GraphBox)
+  private box__enable (event, dom_el, box: GraphBox)
   {
     if (event.which === 1)
     {
+      console.log('box enable: ', box.x);
+
+      this.boxes.forEach ((box_loop: GraphBox) => {
+
+        this.box__dissable (box_loop)
+
+      });
+
+      this.rd.addClass (box.dom_box, 'box-el-enabled');
       event.preventDefault();
 
       //this.action_ref = id;
@@ -160,11 +174,13 @@ export class Graph {
       this.btn_mv_w = box_rect.width;
       this.btn_mv_h = box_rect.height;
 
+/*
       console.log('x = ' + event.clientX);
       console.log('y = ' + event.clientY);
 
       console.log('x = ' + this.mv_x + ', bx = ' + box_rect.left + ', ex = ' + el_rect.left);
       console.log('y = ' + this.mv_y + ', by = ' + box_rect.top + ', ey = ' + el_rect.top);
+      */
     }
   }
 
@@ -281,34 +297,6 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private add_mv (dom_el, box: GraphBox)
-  {
-    this.rd.listen (box.dom_box, 'mousedown', (event) => this.handle_move_start(event, dom_el, box));
-    this.rd.listen (box.dom_box, 'touchstart', (event) => this.handle_move_start(event, dom_el, box));
-  }
-
-  //-----------------------------------------------------------------------------
-
-  private add_box__append_button_mv (dom_el, dom_box, id: number, width: number, height: number, x: number, y: number)
-  {
-    let dom_btn = this.rd.createElement('button');
-
-    this.rd.setProperty (dom_btn, 'innerHTML', '<i class="fa fa-arrows-alt"></i>');
-
-    this.add_mv (dom_btn, dom_box);
-
-    // add class
-    this.rd.addClass (dom_btn, 'box-button-mv');
-
-    // set position
-    this.rd.setStyle (dom_btn, 'top', (height - 24) + 'px');
-    this.rd.setStyle (dom_btn, 'left', (width - 24) + 'px');
-
-    this.rd.appendChild (dom_box, dom_btn);
-  }
-
-  //-----------------------------------------------------------------------------
-
   private set_box_attributes (dom_box, names: object, colors: object)
   {
     let dom_head_elements = dom_box.querySelectorAll('.box-el-head');
@@ -385,6 +373,100 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  private box__dissable__remove (box: GraphBox, div_el: any): any
+  {
+    if (div_el)
+    {
+      this.rd.removeChild (box.dom_box, div_el);
+    }
+
+    return null;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__dissable (box: GraphBox): void
+  {
+    this.rd.removeClass (box.dom_box, 'box-el-enabled');
+
+    box.div_ne = this.box__dissable__remove (box, box.div_ne);
+    box.div_nw = this.box__dissable__remove (box, box.div_nw);
+    box.div_n  = this.box__dissable__remove (box, box.div_n);
+    box.div_w  = this.box__dissable__remove (box, box.div_w);
+    box.div_e  = this.box__dissable__remove (box, box.div_e);
+    box.div_s  = this.box__dissable__remove (box, box.div_s);
+    box.div_se = this.box__dissable__remove (box, box.div_se);
+    box.div_sw = this.box__dissable__remove (box, box.div_sw);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__resize_buttons__adjust (box: GraphBox, elem_rect: any): void
+  {
+    this.rd.setStyle (box.div_nw, 'left', 0 - 5 + 'px');
+    this.rd.setStyle (box.div_nw, 'top' , 0 - 5 + 'px');
+
+    this.rd.setStyle (box.div_ne, 'left', elem_rect.width - 5 + 'px');
+    this.rd.setStyle (box.div_ne, 'top' , 0 - 5 + 'px');
+
+    this.rd.setStyle (box.div_n, 'left', elem_rect.width / 2 - 5 + 'px');
+    this.rd.setStyle (box.div_n, 'top' , 0 - 5 + 'px');
+
+    this.rd.setStyle (box.div_e, 'left', elem_rect.width - 5 + 'px');
+    this.rd.setStyle (box.div_e, 'top' , elem_rect.height / 2 - 5 + 'px');
+
+    this.rd.setStyle (box.div_w, 'left', 0 - 5 + 'px');
+    this.rd.setStyle (box.div_w, 'top' , elem_rect.height / 2 - 5 + 'px');
+
+    this.rd.setStyle (box.div_s, 'left', elem_rect.width / 2 - 5 + 'px');
+    this.rd.setStyle (box.div_s, 'top' , elem_rect.height - 5 + 'px');
+
+    this.rd.setStyle (box.div_sw, 'left', 0 - 5 + 'px');
+    this.rd.setStyle (box.div_sw, 'top' , elem_rect.height - 5 + 'px');
+
+    this.rd.setStyle (box.div_se, 'left', elem_rect.width - 5 + 'px');
+    this.rd.setStyle (box.div_se, 'top' , elem_rect.height - 5 + 'px');
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__activate_resize_buttons__append (box: GraphBox, div_class: string): any
+  {
+    let div = this.rd.createElement('div');
+
+    this.rd.addClass (div, 'box-el-resize');
+    this.rd.addClass (div, 'box-el-nw');
+
+    this.rd.appendChild (box.dom_box, div);
+
+    return div;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__activate_resize_buttons (box: GraphBox): void
+  {
+    console.log('resize button');
+
+    {
+      // get the top and left coordinates of the box element
+      var elem_rect = box.dom_box.getBoundingClientRect ();
+
+      box.div_nw = this.box__activate_resize_buttons__append (box, 'box-el-nw');
+      box.div_ne = this.box__activate_resize_buttons__append (box, 'box-el-ne');
+      box.div_n  = this.box__activate_resize_buttons__append (box, 'box-el-n');
+      box.div_e  = this.box__activate_resize_buttons__append (box, 'box-el-e');
+      box.div_w  = this.box__activate_resize_buttons__append (box, 'box-el-w');
+      box.div_s  = this.box__activate_resize_buttons__append (box, 'box-el-s');
+      box.div_sw = this.box__activate_resize_buttons__append (box, 'box-el-sw');
+      box.div_se = this.box__activate_resize_buttons__append (box, 'box-el-se');
+
+      this.box__resize_buttons__adjust (box, elem_rect);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
   public add_box (id: number, x: number, y: number, names: object, colors: object, user_obj: any): void
   {
     const dom_el = this.el_dom.nativeElement;
@@ -402,12 +484,21 @@ export class Graph {
     box.w = 10;
     box.h = 20;
     box.dom_box = this.rd.createElement('div');
+    box.div_n = null;
 
     this.boxes.push (box);
 
     this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
+    this.rd.listen (box.dom_box, 'click', (event) => {
 
-    this.adjust_box (box, elem_rect);
+      this.box__activate_resize_buttons (box);
+
+    });
+
+    this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__enable(event, dom_el, box));
+    this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__enable(event, dom_el, box));
+
+    this.box__adjust (box, elem_rect);
 
     // add class
     this.rd.addClass(box.dom_box, 'box-el');
@@ -420,7 +511,6 @@ export class Graph {
     //this.add_box__append_button_rm (dom_box, id, width, height);
     //this.add_box__append_button_mv (dom_el, dom_box, id, width, height, x, y);
 
-    this.add_mv (dom_el, box);
 
     this.set_box_attributes (box.dom_box, names, colors);
     this.rd.appendChild (dom_el, box.dom_box);
@@ -483,9 +573,20 @@ export class Graph {
     image.onload = cb;
     image.src = fileURL;
 
+    this.rd.addClass (image, 'paper-image');
+    this.rd.setStyle (image, 'width', '100%');
+
+    this.rd.listen (image, 'mousedown', (event) => {
+
+      if (event.which === 1)
+      {
+        this.boxes.forEach ((box: GraphBox) => this.box__dissable (box));
+      }
+
+    });
+
     // add class
     this.rd.appendChild (dom_el, image);
-    this.rd.setStyle (image, 'width', '100%');
 
 /*
     let unlistener = this.rd.listen (image, 'onload', (event) => {
@@ -509,4 +610,14 @@ export class GraphBox
 
   id: number;
   dom_box;
+
+  // resize divs
+  div_nw: any;
+  div_ne: any;
+  div_n: any;
+  div_e: any;
+  div_w: any;
+  div_s: any;
+  div_sw: any;
+  div_se: any;
 }
