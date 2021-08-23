@@ -1,4 +1,4 @@
-import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2, HostListener } from '@angular/core';
+import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2, HostListener, EventEmitter } from '@angular/core';
 
 //-----------------------------------------------------------------------------
 
@@ -141,82 +141,6 @@ export class Graph {
 
       this.box__move__on_activate (event, box);
     }
-  }
-
-  //-----------------------------------------------------------------------------
-
-  private set_box_attributes (dom_box, names: object, colors: object)
-  {
-    let dom_head_elements = dom_box.querySelectorAll('.box-el-head');
-
-    if (dom_head_elements.length > 0)
-    {
-      const dom_head = dom_head_elements[0];
-
-      this.rd.setProperty (dom_head, 'innerHTML', names['head']);
-
-      if (colors)
-      {
-        const color_head = colors['head'];
-        if (color_head)
-        {
-          this.rd.setStyle (dom_head, 'color', color_head);
-        }
-      }
-    }
-
-    let dom_body_elements = dom_box.querySelectorAll('.box-el-body');
-
-    if (dom_body_elements.length > 0)
-    {
-      const dom_body = dom_body_elements[0];
-
-      this.rd.setProperty (dom_body, 'innerHTML', names['body']);
-
-      if (colors)
-      {
-        const color_body = colors['body'];
-        if (color_body)
-        {
-          this.rd.setStyle (dom_body, 'color', color_body);
-        }
-      }
-    }
-
-    let dom_foot_elements = dom_box.querySelectorAll('.box-el-foot');
-
-    if (dom_foot_elements.length > 0)
-    {
-      const dom_foot = dom_foot_elements[0];
-
-      this.rd.setProperty (dom_foot, 'innerHTML', names['foot']);
-
-      if (colors)
-      {
-        const color_foot = colors['foot'];
-        if (color_foot)
-        {
-          this.rd.setStyle (dom_foot, 'color', color_foot);
-        }
-      }
-    }
-  }
-
-  //-----------------------------------------------------------------------------
-
-  private add_box__append_interieur (dom_box)
-  {
-    let dom_head = this.rd.createElement('div');
-    this.rd.addClass(dom_head, 'box-el-head');
-    this.rd.appendChild (dom_box, dom_head);
-
-    let dom_body = this.rd.createElement('div');
-    this.rd.addClass(dom_body, 'box-el-body');
-    this.rd.appendChild (dom_box, dom_body);
-
-    let dom_foot = this.rd.createElement('div');
-    this.rd.addClass(dom_foot, 'box-el-foot');
-    this.rd.appendChild (dom_box, dom_foot);
   }
 
   //-----------------------------------------------------------------------------
@@ -433,6 +357,8 @@ export class Graph {
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
+
+    box.view.detectChanges();
   }
 
   //-----------------------------------------------------------------------------
@@ -461,7 +387,7 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  public add_box (id: number, x: number, y: number, w: number, h: number, names: object): void
+  public add_box (id: number, x: number, y: number, w: number, h: number): GraphBox
   {
     const dom_el = this.el_dom.nativeElement;
 
@@ -471,12 +397,8 @@ export class Graph {
     x = ((x == null) ? 0 : x);
     y = ((y == null) ? 0 : y);
 
-    var box: GraphBox = new GraphBox;
-    box.id = id;
-    box.x = x;
-    box.y = y;
-    box.w = w;
-    box.h = h;
+    var box: GraphBox = new GraphBox (id, x, y, w, h);
+
     box.dom_box = this.rd.createElement('div');
     box.div_n = null;
 
@@ -493,28 +415,19 @@ export class Graph {
     // add class
     this.rd.addClass(box.dom_box, 'box-el');
 
-    // add all internal elements
-    this.add_box__append_interieur (box.dom_box);
-
     //this.set_box_attributes (box.dom_box, names, colors);
     this.rd.appendChild (dom_el, box.dom_box);
 
     // create a new element from the given template
-    /*
-    let ref_view = this.el_box.createEmbeddedView (null);
+    // -> pass the box as context
+    box.view = this.el_box.createEmbeddedView (box.ctx);
 
     // retrieve the dom native element
-    var dom_ref = ref_view.rootNodes[0];
+    var dom_ref = box.view.rootNodes[0];
 
-    this.rd.appendChild (dom_box, dom_ref);
-    */
-  }
+    this.rd.appendChild (box.dom_box, dom_ref);
 
-  //-----------------------------------------------------------------------------
-
-  public set_box (id: number, names: object, colors: object): void
-  {
-    this.set_box_attributes (document.getElementById('G_' + id), names, colors);
+    return box;
   }
 
   //-----------------------------------------------------------------------------
@@ -672,12 +585,6 @@ class GraphRect
 
 export class GraphBox
 {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-
-  id: number;
   dom_box;
 
   // resize divs
@@ -698,4 +605,35 @@ export class GraphBox
   ev_tm;
   ev_mu;
   ev_te;
+
+  // internal use
+  view: EmbeddedViewRef<GraphContext> = null;
+  ctx: GraphContext = new GraphContext (null);
+
+  //---------------------------------------------------------------------------
+
+  constructor (public id: number, public x: number, public y: number, public w: number, public h: number)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public set (data)
+  {
+    this.ctx.$implicit = data;
+
+    if (this.view)
+    {
+      // call this (now sure why)
+      // -> without the call the context will not be displayed
+      this.view.detectChanges();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+class GraphContext
+{
+    constructor (public $implicit: any) { }
 }
