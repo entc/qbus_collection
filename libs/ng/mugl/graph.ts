@@ -24,7 +24,8 @@ export class Graph {
   private mv_x: number;
   private mv_y: number;
 
-  private grid: number;
+  private grid_x: number;
+  private grid_y: number;
 
   private option_mv_x: boolean;
   private option_mv_y: boolean;
@@ -41,7 +42,8 @@ export class Graph {
 
     this.action_ref = 0;
 
-    this.grid = 1;
+    this.grid_x = 1;
+    this.grid_y = 1;
 
     this.option_mv_x = false;
     this.option_mv_y = false;
@@ -63,6 +65,14 @@ export class Graph {
 
     dom_el.style.width = String(width) + "px";
     dom_el.style.height = String(height) + "px";
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public set_grid (x: number, y: number)
+  {
+    this.grid_x = x;
+    this.grid_y = y;
   }
 
   //-----------------------------------------------------------------------------
@@ -252,7 +262,7 @@ export class Graph {
 
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-    rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, mx, my, sx, sy);
+    rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -281,7 +291,7 @@ export class Graph {
 
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-      rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, mx, my, sx, sy);
+      rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
 
       this.box_set_size (box, rect.x, rect.y, rect.w, rect.h, elem_rect);
     }
@@ -380,8 +390,8 @@ export class Graph {
     box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__move__on_move (event, box));
     box.ev_tm = this.rd.listen (dom_el, 'touchmove', (event) => this.box__move__on_move (event, box));
 
-    box.ev_mu = this.rd.listen (dom_el, 'mouseup', (event) => this.box__move__on_mouseup (event, box));
-    box.ev_te = this.rd.listen (dom_el, 'touchend', (event) => this.box__move__on_mouseup (event, box));
+    box.ev_mu = this.rd.listen (document, 'mouseup', (event) => this.box__move__on_mouseup (event, box));
+    box.ev_te = this.rd.listen (document, 'touchend', (event) => this.box__move__on_mouseup (event, box));
   }
 
   //-----------------------------------------------------------------------------
@@ -396,7 +406,7 @@ export class Graph {
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
     // do a simple move transformation
-    rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect);
+    rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -422,9 +432,14 @@ export class Graph {
 
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-      rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect);
+      rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
+
+      this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
+      this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
 
       this.box_set_coordinates (box, rect.x, rect.y, elem_rect);
+
+      this.box__enable__append_buttons (box);
     }
   }
 
@@ -509,7 +524,7 @@ export class Graph {
     this.box__adjust (box, elem_rect);
 
     this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
-    this.rd.listen (box.dom_box, 'click', (event) => this.box__enable__append_buttons (box));
+    //this.rd.listen (box.dom_box, 'click', (event) => this.box__enable__append_buttons (box));
 
     this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__enable(event, dom_el, box));
     this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__enable(event, dom_el, box));
@@ -617,25 +632,25 @@ class GraphRect
 
   //---------------------------------------------------------------------------
 
-  public move (x: number, y: number, elem_rect)
+  public move (x: number, y: number, elem_rect, grid_x: number, grid_y: number)
   {
-    this.x = this.x + x;
-    this.y = this.y + y;
+    this.x = Math.floor ((this.x + x) / grid_x) * grid_x;
+    this.y = Math.floor ((this.y + y) / grid_y) * grid_y;
 
     this.check_borders (elem_rect);
   }
 
   //---------------------------------------------------------------------------
 
-  public resize (x: number, y: number, elem_rect, mx: number, my: number, sx: number, sy: number)
+  public resize (x: number, y: number, elem_rect, grid_x: number, grid_y: number, mx: number, my: number, sx: number, sy: number)
   {
-    this.x = this.x + x * mx;
-    this.y = this.y + y * my;
+    this.x = Math.floor ((this.x + x * mx) / grid_x) * grid_x;
+    this.y = Math.floor ((this.y + y * my) / grid_y) * grid_y;
 
     this.check_borders (elem_rect);
 
-    this.w = this.w + x * sx;
-    this.h = this.h + y * sy;
+    this.w = Math.floor ((this.w + x * sx) / grid_x) * grid_x;
+    this.h = Math.floor ((this.h + y * sy) / grid_y) * grid_y;
 
     this.check_size ();
   }
