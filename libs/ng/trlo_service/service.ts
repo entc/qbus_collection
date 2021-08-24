@@ -11,7 +11,7 @@ export class TrloService
   // TODO: this must be available from everywhere
   // -> is this possible?
   // -> having a custom pipe?
-  public locale: string = 'de-DE';
+  public locale: string = 'en-US';
 
   // all available languages apearing in the select
   public locales = [
@@ -32,13 +32,13 @@ export class TrloService
   updateLocale (value: string)
   {
     // parse the value
-    const newLocale = value.match(/^[a-zA-Z]{2}/)[0] || 'de';
+    const newLocale = value.match(/^[a-zA-Z]{2}/)[0] || 'en';
 
     // the local local variable
     this.locale = value;
 
     // set the language in the i18n service
-    this.translocoService.setActiveLang (newLocale);
+    this.translocoService.setActiveLang ('en-US');
   }
 
   //---------------------------------------------------------------------------

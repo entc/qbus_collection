@@ -1,5 +1,5 @@
 import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2 } from '@angular/core';
-import { Graph } from './graph';
+import { Graph, GraphBox } from './graph';
 
 export class Timeline {
 
@@ -100,10 +100,16 @@ export class TimelinePart {
     if (!this.graph)
     {
       this.graph = new Graph (el_dom, el_box, rd);
-      this.graph.init (600, 140, true, false);
+
+      this.graph.init (true, false);
+
+      // set a static dimension of the field
+      this.graph.set_dim (600, 140);
     }
 
-    this.graph.add_box (0, 0, 0, {head: this.description, body: 'test', foot: 'test'}, {head: '#ccc', body: '#eee', foot: '#ccc'}, null);
+    var box: GraphBox = this.graph.add_box (0, 0, 0, 10, 10, null, null);
+
+    box.set ({head: this.description, body: 'test', foot: 'test'});
   }
 
 }

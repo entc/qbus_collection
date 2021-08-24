@@ -49,15 +49,20 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  public init (width: number = 800, height: number = 600, move_x: boolean = true, move_y: boolean = true): void
+  public init (move_x: boolean = true, move_y: boolean = true): void
+  {
+    this.option_mv_x = move_x;
+    this.option_mv_y = move_y;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public set_dim (width: number, height: number)
   {
     const dom_el = this.el_dom.nativeElement;
 
-  //  dom_el.style.width = String(width) + "px";
-  //  dom_el.style.height = String(height) + "px";
-
-    this.option_mv_x = move_x;
-    this.option_mv_y = move_y;
+    dom_el.style.width = String(width) + "px";
+    dom_el.style.height = String(height) + "px";
   }
 
   //-----------------------------------------------------------------------------
@@ -455,22 +460,32 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  public get_box (sync): GraphBox
+  {
+    // this is not very efficient
+    // -> TODO: replace this with some kind of other algorithm
+    var index: number = this.boxes.findIndex ((box: GraphBox) => sync (box));
+
+    if (index == -1)
+    {
+      return null;
+    }
+    else
+    {
+      return this.boxes[index];
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
   public add_box (id: number, x: number, y: number, w: number, h: number, user_data: any, sync): GraphBox
   {
     if (sync)
     {
-      // this is not very efficient
-      // -> TODO: replace this with some kind of other algorithm
-      var index: number = this.boxes.findIndex ((box: GraphBox) => sync (box));
+      var box: GraphBox = this.get_box (sync);
 
-      if (index == -1)
+      if (box)
       {
-
-      }
-      else
-      {
-        var box: GraphBox = this.boxes[index];
-
         box.synced = true;
         return box;
       }
