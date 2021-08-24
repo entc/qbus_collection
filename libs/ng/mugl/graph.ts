@@ -5,6 +5,9 @@ import { ElementRef, TemplateRef, EmbeddedViewRef, Renderer2, HostListener, Even
 const GRAPH_RESIZE_AREA       = 30;
 const GRAPH_RESIZE_AREA__HALF = GRAPH_RESIZE_AREA / 2;
 
+const GRAPH_OPTION_AREA       = 24;
+const GRAPH_OPTION_AREA__HALF = GRAPH_OPTION_AREA / 2;
+
 //-----------------------------------------------------------------------------
 
 export class Graph {
@@ -96,6 +99,7 @@ export class Graph {
     if (box.div_nw)
     {
       this.box__resize_buttons__adjust (box, new GraphRect (box.x, box.y, box.w, box.h, elem_rect));
+      this.box__option_buttons__adjust (box, new GraphRect (box.x, box.y, box.w, box.h, elem_rect));
     }
   }
 
@@ -180,8 +184,8 @@ export class Graph {
     this.rd.setStyle (box.div_nw, 'left', String(rect.x - GRAPH_RESIZE_AREA__HALF) + 'px');
     this.rd.setStyle (box.div_nw, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
 
-    this.rd.setStyle (box.div_ne, 'left', String(rect.x + rect.w - GRAPH_RESIZE_AREA__HALF) + 'px');
-    this.rd.setStyle (box.div_ne, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
+    //this.rd.setStyle (box.div_ne, 'left', String(rect.x + rect.w - GRAPH_RESIZE_AREA__HALF) + 'px');
+    //this.rd.setStyle (box.div_ne, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
 
     this.rd.setStyle (box.div_n, 'left', String(rect.x + rect.w / 2 - GRAPH_RESIZE_AREA__HALF) + 'px');
     this.rd.setStyle (box.div_n, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
@@ -198,8 +202,8 @@ export class Graph {
     this.rd.setStyle (box.div_sw, 'left', rect.x - GRAPH_RESIZE_AREA__HALF + 'px');
     this.rd.setStyle (box.div_sw, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
 
-    this.rd.setStyle (box.div_se, 'left', rect.x + rect.w - GRAPH_RESIZE_AREA__HALF + 'px');
-    this.rd.setStyle (box.div_se, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
+    //this.rd.setStyle (box.div_se, 'left', rect.x + rect.w - GRAPH_RESIZE_AREA__HALF + 'px');
+    //this.rd.setStyle (box.div_se, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
   }
 
   //-----------------------------------------------------------------------------
@@ -251,6 +255,7 @@ export class Graph {
     this.rd.setStyle (box.dom_box, 'height', '' + rect.h + 'px');
 
     this.box__resize_buttons__adjust (box, rect);
+    this.box__option_buttons__adjust (box, rect);
   }
 
   //-----------------------------------------------------------------------------
@@ -279,7 +284,7 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private box__activate_resize_buttons__append (box: GraphBox, dom_el, cursor_class: string, mx: number, my: number, sx: number, sy: number): any
+  private box__resize__append_button (box: GraphBox, dom_el, cursor_class: string, mx: number, my: number, sx: number, sy: number): any
   {
     let div_outer = this.rd.createElement('div');
     let div_inner = this.rd.createElement('div');
@@ -300,25 +305,58 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private box__resize__activate (box: GraphBox): void
+  private box__option_buttons__adjust (box: GraphBox, rect: GraphRect): void
+  {
+    this.rd.setStyle (box.div_ne, 'left', String(rect.x + rect.w - GRAPH_OPTION_AREA__HALF) + 'px');
+    this.rd.setStyle (box.div_ne, 'top' , String(rect.y - GRAPH_OPTION_AREA - 2) + 'px');
+
+    this.rd.setStyle (box.div_se, 'left', String(rect.x + rect.w - GRAPH_OPTION_AREA__HALF) + 'px');
+    this.rd.setStyle (box.div_se, 'top' , String(rect.y + rect.h + 2) + 'px');
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__option__append_button (box: GraphBox, dom_el, cursor_class: string, icon: string, cb): any
+  {
+    let div_outer = this.rd.createElement('div');
+
+    this.rd.addClass (div_outer, 'box-el-option');
+    this.rd.setStyle (div_outer, 'cursor', cursor_class);
+
+    this.rd.setProperty (div_outer, 'innerHTML', '<i class="fa fa-' + icon + '"></i>');
+
+    this.rd.appendChild (dom_el, div_outer);
+
+    this.rd.listen (div_outer, 'click', (event) => cb ? cb (box) : null);
+
+    return div_outer;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__enable__append_buttons (box: GraphBox): void
   {
     const dom_el = this.el_dom.nativeElement;
 
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-    box.div_nw = this.box__activate_resize_buttons__append (box, dom_el, 'nw-resize', 1, 1, -1, -1);
-    box.div_ne = this.box__activate_resize_buttons__append (box, dom_el, 'ne-resize', 0, 1, 1, -1);
-    box.div_n  = this.box__activate_resize_buttons__append (box, dom_el, 'n-resize', 0, 1, 0, -1);
-    box.div_e  = this.box__activate_resize_buttons__append (box, dom_el, 'e-resize', 0, 0, 1, 0);
-    box.div_w  = this.box__activate_resize_buttons__append (box, dom_el, 'w-resize', 1, 0, -1, 0);
-    box.div_s  = this.box__activate_resize_buttons__append (box, dom_el, 's-resize', 0, 0, 0, 1);
-    box.div_sw = this.box__activate_resize_buttons__append (box, dom_el, 'sw-resize', 1, 0, -1, 1);
-    box.div_se = this.box__activate_resize_buttons__append (box, dom_el, 'se-resize', 0, 0, 1, 1);
+    box.div_nw = this.box__resize__append_button (box, dom_el, 'nw-resize', 1, 1, -1, -1);
+    //box.div_ne = this.box__resize__append_button (box, dom_el, 'ne-resize', 0, 1, 1, -1);
+    box.div_n  = this.box__resize__append_button (box, dom_el, 'n-resize', 0, 1, 0, -1);
+    box.div_e  = this.box__resize__append_button (box, dom_el, 'e-resize', 0, 0, 1, 0);
+    box.div_w  = this.box__resize__append_button (box, dom_el, 'w-resize', 1, 0, -1, 0);
+    box.div_s  = this.box__resize__append_button (box, dom_el, 's-resize', 0, 0, 0, 1);
+    box.div_sw = this.box__resize__append_button (box, dom_el, 'sw-resize', 1, 0, -1, 1);
+    //box.div_se = this.box__resize__append_button (box, dom_el, 'se-resize', 0, 0, 1, 1);
+
+    box.div_ne = this.box__option__append_button (box, dom_el, 'hand', 'times', this.on_delete_cb);
+    box.div_se = this.box__option__append_button (box, dom_el, 'hand', 'pen', this.on_edit_cb);
 
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
     this.box__resize_buttons__adjust (box, rect);
+    this.box__option_buttons__adjust (box, rect);
   }
 
   //-----------------------------------------------------------------------------
@@ -387,8 +425,57 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  public add_box (id: number, x: number, y: number, w: number, h: number): GraphBox
+  public add_box__reset_sync ()
   {
+    // set the sync var for all boxes to false
+    // -> boxes which remain false might be removed
+    this.boxes.forEach ((box: GraphBox) => box.synced = false);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public add_box__remove_sync ()
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    var i = this.boxes.length;
+    while (i--)
+    {
+      var box: GraphBox = this.boxes[i];
+
+      if (box.synced == false)
+      {
+        this.box__dissable (box);
+        this.rd.removeChild (dom_el, box.dom_box);
+
+        this.boxes.splice(i, 1);
+      }
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public add_box (id: number, x: number, y: number, w: number, h: number, user_data: any, sync): GraphBox
+  {
+    if (sync)
+    {
+      // this is not very efficient
+      // -> TODO: replace this with some kind of other algorithm
+      var index: number = this.boxes.findIndex ((box: GraphBox) => sync (box));
+
+      if (index == -1)
+      {
+
+      }
+      else
+      {
+        var box: GraphBox = this.boxes[index];
+
+        box.synced = true;
+        return box;
+      }
+    }
+
     const dom_el = this.el_dom.nativeElement;
 
     // get the top and left coordinates of the box element
@@ -397,7 +484,7 @@ export class Graph {
     x = ((x == null) ? 0 : x);
     y = ((y == null) ? 0 : y);
 
-    var box: GraphBox = new GraphBox (id, x, y, w, h);
+    var box: GraphBox = new GraphBox (id, x, y, w, h, user_data);
 
     box.dom_box = this.rd.createElement('div');
     box.div_n = null;
@@ -407,7 +494,7 @@ export class Graph {
     this.box__adjust (box, elem_rect);
 
     this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
-    this.rd.listen (box.dom_box, 'click', (event) => this.box__resize__activate (box));
+    this.rd.listen (box.dom_box, 'click', (event) => this.box__enable__append_buttons (box));
 
     this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__enable(event, dom_el, box));
     this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__enable(event, dom_el, box));
@@ -455,8 +542,6 @@ export class Graph {
 
   public set_background_image (data, cb)
   {
-    this.clear ();
-
     const dom_el = this.el_dom.nativeElement;
 
     // create a blob
@@ -610,9 +695,11 @@ export class GraphBox
   view: EmbeddedViewRef<GraphContext> = null;
   ctx: GraphContext = new GraphContext (null);
 
+  synced: boolean;
+
   //---------------------------------------------------------------------------
 
-  constructor (public id: number, public x: number, public y: number, public w: number, public h: number)
+  constructor (public id: number, public x: number, public y: number, public w: number, public h: number, public user_data: any)
   {
   }
 
