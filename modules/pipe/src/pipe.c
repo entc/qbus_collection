@@ -21,10 +21,10 @@
 struct PipeContext_s
 {
   pcre* re;
-  
+
   CapeString module;
   CapeString method;
-  
+
 }; typedef struct PipeContext_s* PipeContext;
 
 //-------------------------------------------------------------------------------------
@@ -34,12 +34,12 @@ void pipe_context_del (PipeContext* p_self)
   if (*p_self)
   {
     PipeContext self = *p_self;
-    
+
     if (self->re)
     {
       pcre_free(self->re);
     }
-    
+
     cape_str_del (&(self->module));
     cape_str_del (&(self->method));
 
@@ -49,15 +49,10 @@ void pipe_context_del (PipeContext* p_self)
 
 //-------------------------------------------------------------------------------------
 
-void __STDCALL qbus_pipe__on_read (void* ptr, CapeAioFileReader freader, const char* bufdat, number_t buflen)
+int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeErr err)
 {
-  PipeContext self = ptr;
-  
-  // local objects
-  CapeErr err = cape_err_new();
-  
   int ovector [MSGD_REGEX_SUBSTR_MAXAMOUNT];
-  
+
   int rc = pcre_exec (self->re, NULL, bufdat, buflen, 0, 0, ovector, MSGD_REGEX_SUBSTR_MAXAMOUNT);
   if (rc < 0)
   {
@@ -72,10 +67,21 @@ void __STDCALL qbus_pipe__on_read (void* ptr, CapeAioFileReader freader, const c
       default                      : return cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "unknown error");
     }
   }
+}
 
-  
+//-------------------------------------------------------------------------------------
+
+void __STDCALL qbus_pipe__on_read (void* ptr, CapeAioFileReader freader, const char* bufdat, number_t buflen)
+{
+  PipeContext self = ptr;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+
+  qbus_pipe__re (self, bufdat, buflen, err);
+
 exit_and_cleanup:
-  
+
   cape_err_del (&err);
 }
 
@@ -88,13 +94,13 @@ static int __STDCALL qbus_pipe_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   const CapeString path = qbus_config_s (qbus, "path", "/tmp");
   const CapeString name = qbus_config_s (qbus, "name", "qmod_pipe");
   const CapeString regex = qbus_config_s (qbus, "regex", ":(.*): to=(.*), relay");
-  
+
   const char* error;
   int erroffset;
 
   // local objects
   PipeContext self = CAPE_NEW (struct PipeContext_s);
-  
+
   self->module = cape_str_cp (qbus_config_s (qbus, "module", NULL));
   self->method = cape_str_cp (qbus_config_s (qbus, "method", NULL));
 
@@ -111,29 +117,29 @@ static int __STDCALL qbus_pipe_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-  
+
   {
     CapeAioFileReader file_reader = cape_aio_freader_new (handle, self, qbus_pipe__on_read);
 
     if (!cape_aio_freader_add (&file_reader, qbus_aio (qbus)))
     {
-      
+
     }
   }
-  
+
   res = CAPE_ERR_NONE;
-  
+
   // transfer ownership
   *p_ptr = self;
   self = NULL;
-  
+
 exit_and_cleanup:
-  
+
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "PIPE", "init", "can't initialize: %s", cape_err_text (err));
   }
-  
+
   pipe_context_del (&self);
   return res;
 }

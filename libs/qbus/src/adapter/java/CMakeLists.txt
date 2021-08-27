@@ -2,7 +2,7 @@ find_package(Java COMPONENTS Development QUIET)
 #find_package(Java)
 find_package(JNI)
 
-IF(JAVA_FOUND)
+IF(JAVA_INCLUDE_PATH)
 
 message(STATUS "JNI_INCLUDE_DIRS = ${JNI_INCLUDE_DIRS}")
 
@@ -33,4 +33,3 @@ INSTALL (TARGETS qbus_adapter_java DESTINATION lib)
 #----------------------------------------------------------------------------------
 
 ENDIF()
-
