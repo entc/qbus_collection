@@ -13,11 +13,3 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 ARG CACHEBUST=1
-
-#ADD . /opt/mods/
-#RUN ls /opt/mods/
-#RUN cat /opt/mods/adbl_default.json
-
-#ADD . /opt/modules/
-#RUN ls /opt/modules/
-#RUN cat /opt/modules/adbl_default.json
