@@ -34,11 +34,13 @@ export class TrloService
     // parse the value
     const newLocale = value.match(/^[a-zA-Z]{2}/)[0] || 'en';
 
+    console.log('set active language: ' + newLocale + ' with locale: ' + value);
+
     // the local local variable
     this.locale = value;
 
     // set the language in the i18n service
-    this.translocoService.setActiveLang ('en-US');
+    this.translocoService.setActiveLang (newLocale);
   }
 
   //---------------------------------------------------------------------------
@@ -46,6 +48,13 @@ export class TrloService
   public set (locales): void
   {
     this.locales = locales;
+  }
+
+  //---------------------------------------------------------------------------
+
+  public format_date (date_in_iso: string, format_type: string): string
+  {
+    return formatDate (date_in_iso, format_type, this.locale);
   }
 }
 
@@ -91,6 +100,6 @@ export class TrloPipeLocale implements PipeTransform {
 
   transform (value: string): string
   {
-    return formatDate (value, 'short', this.trlo_service.locale);
+    return this.trlo_service.format_date (value, 'short');
   }
 }

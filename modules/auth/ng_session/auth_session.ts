@@ -253,10 +253,27 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  private session_get_token (): AuthSessionItem
+  {
+    if (this.session_token)
+    {
+      return null;
+    }
+
+    if (this.session)
+    {
+      return this.session.value;
+    }
+
+    return null;
+  }
+
+  //---------------------------------------------------------------------------
+
   private session_options (): object
   {
     var options: object;
-    var sitem: AuthSessionItem = this.session ? this.session.value : null;
+    var sitem: AuthSessionItem = this.session_get_token ();
 
     if (sitem)
     {
@@ -282,7 +299,7 @@ export class AuthSession
   public json_rpc_blob (qbus_module: string, qbus_method: string, params: object): Observable<string>
   {
     var options: object;
-    var sitem: AuthSessionItem = this.session ? this.session.value : null;
+    var sitem: AuthSessionItem = this.session_get_token ();
 
     if (sitem)
     {

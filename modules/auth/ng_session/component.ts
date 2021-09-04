@@ -162,11 +162,15 @@ export class AuthSessionRoleDirective {
 
   private permissions: Array<string>;
   private roles: object;
+  private enabled: boolean = false;
 
   //---------------------------------------------------------------------------
 
   constructor (private auth_session: AuthSession, private element: ElementRef, private templateRef: TemplateRef<any>, private viewContainer: ViewContainerRef)
   {
+    this.enabled = false;
+    this.roles = null;
+
     this.auth_session.roles.subscribe ((roles: object) => {
 
       this.roles = roles;
@@ -179,6 +183,7 @@ export class AuthSessionRoleDirective {
   @Input () set authSessionRole (val: Array<string>)
   {
     this.permissions = val;
+    this.enabled = true;
     this.updateView ();
   }
 
@@ -186,9 +191,25 @@ export class AuthSessionRoleDirective {
 
   private updateView ()
   {
-    if (this.auth_session.contains_role__or (this.roles, this.permissions))
+    if (this.enabled && this.roles)
     {
-      this.viewContainer.createEmbeddedView(this.templateRef);
+      if (this.permissions)
+      {
+        if (this.auth_session.contains_role__or (this.roles, this.permissions))
+        {
+          this.viewContainer.clear();
+          this.viewContainer.createEmbeddedView(this.templateRef);
+        }
+        else
+        {
+          this.viewContainer.clear();
+        }
+      }
+      else
+      {
+        this.viewContainer.clear();
+        this.viewContainer.createEmbeddedView(this.templateRef);
+      }
     }
     else
     {

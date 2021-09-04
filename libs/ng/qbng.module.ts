@@ -25,7 +25,7 @@ import { QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModal
     CommonModule,
     FormsModule,
     NgbModule,
-    TrloModule
+    TrloModule,
   ],
   providers: [
     SizeService
