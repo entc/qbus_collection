@@ -166,6 +166,16 @@ int main (int argc, char *argv[])
   }
 
   {
+    res = cape_eval_b ("{{extras.val1}} I [678, 1234]", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T12: %i\n", ret);
+  }
+
+  {
     CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);
 
     if (h)

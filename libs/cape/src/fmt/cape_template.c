@@ -366,6 +366,59 @@ int cape__evaluate_expression__smaller_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
+CapeList cape__evaluate_expression__list (const CapeString source)
+{
+  CapeList ret = NULL;
+  
+  number_t pos;
+  number_t len;
+
+  if (cape_str_next (source, '[', &pos) && cape_str_next (source, ']', &len))
+  {
+    ret = cape_tokenizer_buf (source + pos + 1, len - pos - 1, ',');
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression__in (const CapeString left, const CapeString right)
+{
+  int ret = FALSE;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  CapeList right_list = cape__evaluate_expression__list (r_trimmed);
+  
+  if (right_list)
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (right_list, CAPE_DIRECTION_FORW);
+    
+    while (cape_list_cursor_next (cursor))
+    {
+      CapeString h = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
+      
+      ret = ret || cape_str_equal (l_trimmed, h);
+
+      cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [left in right]: %s in %s -> %i", l_trimmed, h, ret);
+
+      cape_str_del (&h);
+    }
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+  
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+
+  cape_list_del (&right_list);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
 {
   // set the original as UTC
@@ -1856,6 +1909,10 @@ int cape__evaluate_expression__single (const CapeString expression)
   else if (cape_tokenizer_split (expression, '<', &left, &right))
   {
     ret = cape__evaluate_expression__smaller_than (left, right);
+  }
+  else if (cape_tokenizer_split (expression, 'I', &left, &right))
+  {
+    ret = cape__evaluate_expression__in (left, right);
   }
   else
   {
