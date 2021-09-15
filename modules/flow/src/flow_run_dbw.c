@@ -7,6 +7,7 @@
 #include <fmt/cape_json.h>
 #include <stc/cape_list.h>
 #include <fmt/cape_tokenizer.h>
+#include <fmt/cape_template.h>
 
 //-----------------------------------------------------------------------------
 
@@ -2912,6 +2913,40 @@ exit_and_cleanup:
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&query_results);
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_dbw_condition (FlowRunDbw self)
+{
+  if (self->pdata)
+  {
+    const CapeString condition = cape_udc_get_s (self->pdata, "cond", NULL);
+    
+    if (cape_str_not_empty (condition))
+    {
+      if (self->tdata)
+      {
+        int ret, res;
+        CapeErr err = cape_err_new ();
+        
+        res = cape_eval_b (condition, self->tdata, &ret, NULL, err);
+
+        printf ("COND: %i\n", ret);
+
+        cape_err_del (&err);
+
+        if (res)
+        {
+          return TRUE;
+        }
+
+        return ret;
+      }
+    }
+  }
+  
+  return TRUE;
 }
 
 //-----------------------------------------------------------------------------

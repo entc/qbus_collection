@@ -30,6 +30,7 @@
 #define FORMAT_TYPE_ENCRYPTED   2
 #define FORMAT_TYPE_DECIMAL     3
 #define FORMAT_TYPE_PIPE        4
+#define FORMAT_TYPE_SUBSTR      5
 
 //-----------------------------------------------------------------------------
 
@@ -81,6 +82,11 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     if (cape_str_equal (h, "date"))
     {
       self->format_type = FORMAT_TYPE_DATE;
+      self->eval = cape_str_trim_utf8 (f2);
+    }
+    else if (cape_str_equal (h, "substr"))
+    {
+      self->format_type = FORMAT_TYPE_SUBSTR;
       self->eval = cape_str_trim_utf8 (f2);
     }
     else if (cape_str_equal (h, "decimal"))
@@ -360,6 +366,59 @@ int cape__evaluate_expression__smaller_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
+CapeList cape__evaluate_expression__list (const CapeString source)
+{
+  CapeList ret = NULL;
+  
+  number_t pos;
+  number_t len;
+
+  if (cape_str_next (source, '[', &pos) && cape_str_next (source, ']', &len))
+  {
+    ret = cape_tokenizer_buf (source + pos + 1, len - pos - 1, ',');
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression__in (const CapeString left, const CapeString right)
+{
+  int ret = FALSE;
+  
+  CapeString l_trimmed = cape_str_trim_utf8 (left);
+  CapeString r_trimmed = cape_str_trim_utf8 (right);
+
+  CapeList right_list = cape__evaluate_expression__list (r_trimmed);
+  
+  if (right_list)
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (right_list, CAPE_DIRECTION_FORW);
+    
+    while (cape_list_cursor_next (cursor))
+    {
+      CapeString h = cape_str_trim_utf8 (cape_list_node_data (cursor->node));
+      
+      ret = ret || cape_str_equal (l_trimmed, h);
+
+      cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template cmp", "expression [left in right]: %s in %s -> %i", l_trimmed, h, ret);
+
+      cape_str_del (&h);
+    }
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+  
+  cape_str_del (&l_trimmed);
+  cape_str_del (&r_trimmed);
+
+  cape_list_del (&right_list);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
 {
   // set the original as UTC
@@ -417,6 +476,42 @@ int cape_template_part_eval_datetime_item (CapeTemplatePart self, CapeUdc item, 
       }
     }
   }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_part_eval_substr (CapeTemplatePart self, const CapeString value, CapeTemplateCB cb, CapeErr err)
+{
+  CapeList tokens = cape_tokenizer_buf (self->eval, cape_str_size (self->eval), '%');
+  
+  if (cape_list_size (tokens) == 2)
+  {
+    number_t pos = 0;
+    number_t len = 0;
+    
+    CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+
+    cape_list_cursor_next (cursor);
+    pos = cape_str_to_n (cape_list_node_data (cursor->node));
+
+    cape_list_cursor_next (cursor);
+    len = cape_str_to_n (cape_list_node_data (cursor->node));
+
+    CapeString val = cape_str_sub (value + pos, len);
+    
+    if (cb->on_text)
+    {
+      cb->on_text (cb->ptr, val);
+    }
+
+    cape_str_del (&val);
+    
+    cape_list_cursor_destroy (&cursor);
+  }
+  
+  cape_list_del (&tokens);
   
   return CAPE_ERR_NONE;
 }
@@ -509,6 +604,10 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
         }
         
         break;
+      }
+      case FORMAT_TYPE_SUBSTR:
+      {
+        return cape_template_part_eval_substr (self, text, cb, err);
       }
       case FORMAT_TYPE_DATE:
       {
@@ -644,7 +743,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
 
 int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = []", cape_udc_name (item));
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = [%i]", cape_udc_name (item), cape_udc_n (item, 0));
 
   switch (self->format_type)
   {
@@ -752,10 +851,10 @@ int cape_template_part_eval_bool (CapeTemplatePart self, CapeList node_stack, Ca
 
 //-----------------------------------------------------------------------------
 
-CapeUdc cape_template__seek_item (CapeList node_stack, const CapeString name)
+CapeUdc cape_template__seek_item__from_stack (CapeList node_stack, const CapeString name)
 {
   CapeUdc ret = NULL;
-  
+
   // local objects
   CapeListCursor* cursor = cape_list_cursor_create (node_stack, CAPE_DIRECTION_PREV);
   
@@ -773,10 +872,39 @@ CapeUdc cape_template__seek_item (CapeList node_stack, const CapeString name)
       goto exit_and_cleanup;
     }
   }
- 
+  
 exit_and_cleanup:
   
   cape_list_cursor_destroy (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_template__seek_item (CapeList node_stack, const CapeString name)
+{
+  CapeUdc ret = NULL;
+  CapeUdc sub = NULL;
+  
+  // split the name into its parts
+  CapeList name_parts = cape_tokenizer_buf (name, cape_str_size (name), '.');
+  CapeListCursor* name_parts_cursor = cape_list_cursor_create (name_parts, CAPE_DIRECTION_FORW);
+
+  if (cape_list_cursor_next (name_parts_cursor))
+  {
+    sub = cape_template__seek_item__from_stack (node_stack, cape_list_node_data (name_parts_cursor->node));
+  }
+
+  while (sub && cape_list_cursor_next (name_parts_cursor))
+  {
+    sub = cape_udc_get (sub, cape_list_node_data (name_parts_cursor->node));
+  }
+  
+  ret = sub;
+  
+  cape_list_cursor_destroy (&name_parts_cursor);
+  cape_list_del (&name_parts);
+
   return ret;
 }
 
@@ -1782,6 +1910,10 @@ int cape__evaluate_expression__single (const CapeString expression)
   {
     ret = cape__evaluate_expression__smaller_than (left, right);
   }
+  else if (cape_tokenizer_split (expression, 'I', &left, &right))
+  {
+    ret = cape__evaluate_expression__in (left, right);
+  }
   else
   {
     ret = cape_str_not_empty (expression);
@@ -1791,6 +1923,20 @@ int cape__evaluate_expression__single (const CapeString expression)
   cape_str_del (&right);
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape__evaluate_expression_not (const CapeString expression)
+{
+  if (cape_str_begins (expression, "NOT "))
+  {
+    return !cape__evaluate_expression__single (expression + 4);
+  }
+  else
+  {
+    return cape__evaluate_expression__single (expression);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1810,7 +1956,7 @@ int cape__evaluate_expression_or (const CapeString expression)
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
     while (cape_list_cursor_next (cursor))
     {
-      ret = cape__evaluate_expression__single (cape_list_node_data (cursor->node));
+      ret = cape__evaluate_expression_not (cape_list_node_data (cursor->node));
       if (ret == TRUE)
       {
         goto exit_and_cleanup;
@@ -1819,7 +1965,7 @@ int cape__evaluate_expression_or (const CapeString expression)
   }
   else
   {
-    ret = cape__evaluate_expression__single (expression);
+    ret = cape__evaluate_expression_not (expression);
   }
   
 exit_and_cleanup:

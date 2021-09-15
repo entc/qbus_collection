@@ -34,6 +34,16 @@ int main (int argc, char *argv[])
   cape_udc_add_b (values, "val_bool_true", TRUE);
   cape_udc_add_b (values, "val_bool_false", FALSE);
 
+  // subnode
+  {
+    CapeUdc extras = cape_udc_new (CAPE_UDC_NODE, "extras");
+    
+    cape_udc_add_n    (extras, "val1", 1234);
+    cape_udc_add_s_cp (extras, "val2", "4567890");
+    
+    cape_udc_add (values, &extras);
+  }
+  
   {
     res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, NULL, err);
     if (res)
@@ -124,7 +134,47 @@ int main (int argc, char *argv[])
     
     printf ("T9: %i\n", ret);
   }
-  
+
+  {
+    res = cape_eval_b ("{{extras.val1}} = 1234", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T10: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{val_bool_true}} = TRUE AND NOT {{extras.val1}} = 0001 AND NOT {{extras.val1}} = 0002", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T11: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{extras.val2|substr:2%3}} = 678", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T11: %i\n", ret);
+  }
+
+  {
+    res = cape_eval_b ("{{extras.val1}} I [678, 1234]", values, &ret, main__on_pipe, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+    
+    printf ("T12: %i\n", ret);
+  }
+
   {
     CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);
 

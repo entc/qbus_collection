@@ -123,6 +123,8 @@ __CAPE_LOCAL   int          flow_run_dbw_wait__init          (FlowRunDbw, CapeEr
                             /* check for a wait item */
 __CAPE_LOCAL   int          flow_run_dbw_wait__check_item    (FlowRunDbw, const CapeString uuid, const CapeString code, CapeErr err);
 
+__CAPE_LOCAL   int          flow_run_dbw_condition           (FlowRunDbw);
+
 //-----------------------------------------------------------------------------
 // sync tools
 

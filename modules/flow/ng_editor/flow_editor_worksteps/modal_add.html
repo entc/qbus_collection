@@ -24,7 +24,17 @@
             </select>
           </div>
         </div>
+
+        <div class="col-md-6 col-12">
+          <div class="form-group">
+            <label>{{ 'FLOW.WSCONDITION' | transloco }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata['cond']" name="step_cond">
+            </div>
+          </div>
+        </div>
       </div>
+
 
       <div class="alert alert-info" role="alert">
 

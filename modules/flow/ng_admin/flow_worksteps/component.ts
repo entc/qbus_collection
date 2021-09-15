@@ -141,6 +141,7 @@ export class IWorkstep {
   public sqtid: number;
   public fctid: number;
   public name: string;
+  public cond: string;
   public pdata = {};
 
 }
