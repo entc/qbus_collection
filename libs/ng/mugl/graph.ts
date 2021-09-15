@@ -16,6 +16,7 @@ export class Graph {
   private on_mv_cb;
   private on_edit_cb;
   private on_dbclick_cb;
+  private on_box_enabled_cb;
 
   private btn_mv_active: GraphBox = null;
   private btn_mv_w: number;
@@ -198,6 +199,11 @@ export class Graph {
 
     // set the enabled class
     this.rd.addClass (box.dom_box, 'box-el-enabled');
+
+    if (this.on_box_enabled_cb)
+    {
+      this.on_box_enabled_cb (box);
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -228,6 +234,11 @@ export class Graph {
     box.div_s  = this.box__dissable__remove (dom_el, box.div_s);
     box.div_se = this.box__dissable__remove (dom_el, box.div_se);
     box.div_sw = this.box__dissable__remove (dom_el, box.div_sw);
+
+    if (this.on_box_enabled_cb)
+    {
+      this.on_box_enabled_cb (null);
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -707,6 +718,32 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  public add_conn (id: number, box1: GraphBox, user_data: any, sync)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    let svg = this.rd.createElement('svg');
+
+    this.rd.setProperty (svg, 'innerHTML', '<rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />');
+
+    this.rd.appendChild (dom_el, svg);
+
+
+    // get the top and left coordinates of the box element
+    var elem_rect = box1.dom_box.getBoundingClientRect ();
+
+    // add class
+    this.rd.addClass (svg, 'conn-el');
+
+    this.rd.setStyle (svg, 'left', '' + elem_rect.left + 'px');
+    this.rd.setStyle (svg, 'top', '' + elem_rect.top + 'px');
+    this.rd.setStyle (svg, 'width', '' + 100 + 'px');
+    this.rd.setStyle (svg, 'height', '' + 100 + 'px');
+
+  }
+
+  //-----------------------------------------------------------------------------
+
   public on_edit (cb): void
   {
     this.on_edit_cb = cb;
@@ -731,6 +768,13 @@ export class Graph {
   public on_dbclick (cb): void
   {
     this.on_dbclick_cb = cb;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_box_enabled (cb): void
+  {
+    this.on_box_enabled_cb = cb;
   }
 
   //-----------------------------------------------------------------------------
