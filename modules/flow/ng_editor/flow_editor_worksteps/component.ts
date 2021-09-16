@@ -226,8 +226,9 @@ export class FlowWorkstepsComponent implements OnInit
 
       const step_name = result.name;
       const step_fctid = Number (result.fctid);
+      const pdata = result.pdata;
 
-      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: result.pdata}).subscribe(() => {
+      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: pdata}).subscribe(() => {
 
         this.workflow_get ();
       });

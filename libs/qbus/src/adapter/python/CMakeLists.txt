@@ -24,17 +24,12 @@ IF(Python3_FOUND)
 
   add_library             (qbus_adapter_python SHARED ${ADAPTER_PYTHON_SOURCES} ${ADAPTER_PYTHON_HEADERS})
   target_link_libraries   (qbus_adapter_python cape qbus ${Python3_LIBRARIES})
-  set_target_properties   (qbus_adapter_python PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
-  INSTALL (TARGETS qbus_adapter_python DESTINATION lib)
-
-  INSTALL(CODE "execute_process( \
-    COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    /lib/libqbus_adapter_python.so.1.0.1 \
-    ${CMAKE_INSTALL_PREFIX}/modules/qbus.so \
-  )"
-)
-  # for docker
-#INSTALL (TARGETS qbus_adapter_python DESTINATION docker/dbuild/mods)
+  # python loads a module always without the lib prefix and with the suffix
+  # regardless on which platform it runs
+  # -> default settings will be overidden
+  set_target_properties   (qbus_adapter_python PROPERTIES OUTPUT_NAME qbus)
+  set_target_properties   (qbus_adapter_python PROPERTIES SUFFIX .so)
+  set_target_properties   (qbus_adapter_python PROPERTIES PREFIX "")
 
 ENDIF()

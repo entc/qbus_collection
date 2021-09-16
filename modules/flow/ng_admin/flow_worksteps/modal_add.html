@@ -25,6 +25,14 @@
             </select>
           </div>
         </div>
+        <div class="col-sm-6">
+          <div class="form-group">
+            <label>{{ 'FLOW.WSCONDITION' | transloco }}</label>
+            <div class="input-group">
+              <input type="text" class="form-control" [(ngModel)] = "modal_step_content.cond" name="step_cond">
+            </div>
+          </div>
+        </div>
       </div>
 
       <div [ngSwitch]="modal_step_content.fctid">

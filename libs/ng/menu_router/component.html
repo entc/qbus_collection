@@ -1,0 +1,53 @@
+<ng-container *ngIf="mobile_size == true">
+
+  <div class="fixed-top p-1">
+    <button type="button" class="btn btn-primary" (click)="open_menu()">menu</button>
+  </div>
+
+  <div class="container-fluid">
+
+    <router-outlet></router-outlet>
+
+  </div>
+
+</ng-container>
+<ng-container *ngIf="mobile_size == false">
+
+  <div class="nav-page">
+    <div class="nav-sidebar-15em">
+
+      <div class="ml-2">
+
+        <ng-container *ngFor="let submenu of menu_structure">
+
+          <ng-container *authSessionRole="submenu.auth">
+
+            <div class="text-muted text-right mt-2" *ngIf="submenu.name">
+              {{ submenu.name | transloco }}
+            </div>
+
+            <div class="list-group mt-2">
+
+              <ng-container *ngFor="let item of submenu.items">
+
+                <a *authSessionRole="item.auth" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="list-group-item list-group-item-action">
+                  <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
+                </a>
+
+              </ng-container>
+
+            </div>
+
+          </ng-container>
+
+        </ng-container>
+
+      </div>
+
+    </div>
+    <div class="nav-page-content pl-4 pr-4">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+</ng-container>

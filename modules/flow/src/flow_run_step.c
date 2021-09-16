@@ -747,6 +747,13 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run step", "run step with action = %i, fctid = %i, wpid = %i", action, flow_run_dbw_fctid_get (*p_dbw), cape_udc_get_n (rinfo, "wpid", 0));
   }
   
+  // check for condition
+  if (flow_run_dbw_condition (*p_dbw) == FALSE)
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
   switch (flow_run_dbw_fctid_get (*p_dbw))
   {
     case 3:    // call another module's method (syncron)

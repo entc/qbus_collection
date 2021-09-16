@@ -15,6 +15,8 @@ export class Graph {
   private on_delete_cb;
   private on_mv_cb;
   private on_edit_cb;
+  private on_dbclick_cb;
+  private on_box_enabled_cb;
 
   private btn_mv_active: GraphBox = null;
   private btn_mv_w: number;
@@ -24,12 +26,14 @@ export class Graph {
   private mv_x: number;
   private mv_y: number;
 
-  private grid: number;
+  private grid_x: number;
+  private grid_y: number;
 
   private option_mv_x: boolean;
   private option_mv_y: boolean;
 
   private boxes: GraphBox[] = [];
+  private layer: any;
 
   //-----------------------------------------------------------------------------
 
@@ -41,18 +45,60 @@ export class Graph {
 
     this.action_ref = 0;
 
-    this.grid = 1;
+    this.grid_x = 1;
+    this.grid_y = 1;
 
     this.option_mv_x = false;
     this.option_mv_y = false;
+
+    this.layer = null;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public layer__disable_boxes (event): void
+  {
+    if (event.which === 1)
+    {
+      this.boxes.forEach ((box: GraphBox) => this.box__dissable (box));
+    }
   }
 
   //-----------------------------------------------------------------------------
 
   public init (move_x: boolean = true, move_y: boolean = true): void
   {
+    const dom_el = this.el_dom.nativeElement;
+
     this.option_mv_x = move_x;
     this.option_mv_y = move_y;
+
+    this.layer = this.rd.createElement('div');
+
+    // set the enabled class
+    this.rd.addClass (this.layer, 'paper-el');
+
+    // register events for this layer
+    this.rd.listen (this.layer, 'mousedown', (event) => this.layer__disable_boxes (event));
+    this.rd.listen (this.layer, 'touchstart', (event) => this.layer__disable_boxes (event));
+
+    this.rd.listen (this.layer, 'dblclick', (event) => {
+
+      if (this.on_dbclick_cb)
+      {
+        // get the top and left coordinates of the box element
+        var elem_rect = dom_el.getBoundingClientRect ();
+
+        var x: number = (event.clientX - elem_rect.left) / elem_rect.width * 100;
+        var y: number = (event.clientY - elem_rect.top) / elem_rect.height * 100;
+
+        this.on_dbclick_cb (x, y);
+      }
+
+    });
+
+    // add class
+    this.rd.appendChild (dom_el, this.layer);
   }
 
   //-----------------------------------------------------------------------------
@@ -63,6 +109,14 @@ export class Graph {
 
     dom_el.style.width = String(width) + "px";
     dom_el.style.height = String(height) + "px";
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public set_grid (x: number, y: number)
+  {
+    this.grid_x = x;
+    this.grid_y = y;
   }
 
   //-----------------------------------------------------------------------------
@@ -138,17 +192,17 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private box__enable (event, dom_el, box: GraphBox)
+  private box__enable (box: GraphBox)
   {
-    if (event.which === 1)
+    // disable all other boxes
+    this.boxes.forEach ((box_loop: GraphBox) => this.box__dissable (box_loop));
+
+    // set the enabled class
+    this.rd.addClass (box.dom_box, 'box-el-enabled');
+
+    if (this.on_box_enabled_cb)
     {
-      // disable all other boxes
-      this.boxes.forEach ((box_loop: GraphBox) => this.box__dissable (box_loop));
-
-      // set the enabled class
-      this.rd.addClass (box.dom_box, 'box-el-enabled');
-
-      this.box__move__on_activate (event, box);
+      this.on_box_enabled_cb (box);
     }
   }
 
@@ -180,6 +234,11 @@ export class Graph {
     box.div_s  = this.box__dissable__remove (dom_el, box.div_s);
     box.div_se = this.box__dissable__remove (dom_el, box.div_se);
     box.div_sw = this.box__dissable__remove (dom_el, box.div_sw);
+
+    if (this.on_box_enabled_cb)
+    {
+      this.on_box_enabled_cb (null);
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -217,33 +276,21 @@ export class Graph {
   {
     if (event.which === 1)
     {
-      this.box__resize__on_activate (event, box, mx, my, sx, sy);
+      const dom_el = this.el_dom.nativeElement;
+
+      // prevent any other events outside the box
+      event.preventDefault();
+
+      box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__resize__on_mousemove (event, box, mx, my, sx, sy));
+      box.ev_mu = this.rd.listen (document, 'mouseup', (event) => this.box__resize__on_mouseup (event, box, mx, my, sx, sy));
+
+      box.init_move__mouse_event (event);
     }
   }
 
   //-----------------------------------------------------------------------------
 
-  private box__resize__on_activate (event, box: GraphBox, mx: number, my: number, sx: number, sy: number)
-  {
-    const dom_el = this.el_dom.nativeElement;
-
-    // prevent any other events outside the box
-    event.preventDefault();
-
-    // calculate the delta to the current mouse position
-    box.mv_x = event.clientX;
-    box.mv_y = event.clientY;
-
-    box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__resize__on_move (event, box, mx, my, sx, sy));
-    box.ev_tm = this.rd.listen (dom_el, 'touchmove', (event) => this.box__resize__on_move (event, box, mx, my, sx, sy));
-
-    box.ev_mu = this.rd.listen (dom_el, 'mouseup', (event) => this.box__resize__on_mouseup (event, box, mx, my, sx, sy));
-    box.ev_te = this.rd.listen (dom_el, 'touchend', (event) => this.box__resize__on_mouseup (event, box, mx, my, sx, sy));
-  }
-
-  //-----------------------------------------------------------------------------
-
-  private box__resize__on_move (event, box: GraphBox, mx: number, my: number, sx: number, sy: number)
+  private box__resize__on_mousemove (event, box: GraphBox, mx: number, my: number, sx: number, sy: number)
   {
     const dom_el = this.el_dom.nativeElement;
 
@@ -252,7 +299,7 @@ export class Graph {
 
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-    rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, mx, my, sx, sy);
+    rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -275,16 +322,77 @@ export class Graph {
       var elem_rect = dom_el.getBoundingClientRect ();
 
       box.ev_mm();
-      box.ev_tm();
       box.ev_mu();
-      box.ev_te();
 
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-      rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, mx, my, sx, sy);
+      rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
 
       this.box_set_size (box, rect.x, rect.y, rect.w, rect.h, elem_rect);
     }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__resize__on_touchdown (event, box: GraphBox, div_el: any, mx: number, my: number, sx: number, sy: number)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    // prevent the scrolling
+    box.ev_to = this.rd.listen (document.body, 'touchmove', (event) => event.preventDefault());
+
+    // prevent any other events outside the box
+    event.preventDefault();
+
+    box.ev_tm = this.rd.listen (dom_el, 'touchmove', (event) => this.box__resize__on_touchmove (event, box, mx, my, sx, sy));
+    box.ev_te = this.rd.listen (document, 'touchend', (event) => this.box__resize__on_touchup (event, box, mx, my, sx, sy));
+
+    box.init_move__touch_event (event);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__resize__on_touchmove (event, box: GraphBox, mx: number, my: number, sx: number, sy: number)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    // get the top and left coordinates of the box element
+    var elem_rect = dom_el.getBoundingClientRect ();
+
+    var touch = event.touches[0] || event.changedTouches[0];
+
+    var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
+
+    rect.resize (touch.pageX - box.mv_x, touch.pageY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
+
+    this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
+    this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
+    this.rd.setStyle (box.dom_box, 'width', '' + rect.w + 'px');
+    this.rd.setStyle (box.dom_box, 'height', '' + rect.h + 'px');
+
+    this.box__resize_buttons__adjust (box, rect);
+    this.box__option_buttons__adjust (box, rect);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__resize__on_touchup (event, box: GraphBox, mx: number, my: number, sx: number, sy: number)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    // get the top and left coordinates of the box element
+    var elem_rect = dom_el.getBoundingClientRect ();
+
+    box.ev_tm();
+    box.ev_te();
+
+    var touch = event.touches[0] || event.changedTouches[0];
+
+    var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
+
+    rect.resize (touch.pageX - box.mv_x, touch.pageY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
+
+    this.box_set_size (box, rect.x, rect.y, rect.w, rect.h, elem_rect);
   }
 
   //-----------------------------------------------------------------------------
@@ -300,7 +408,7 @@ export class Graph {
     this.rd.appendChild (dom_el, div_outer);
 
     this.rd.listen (div_outer, 'mousedown', (event) => this.box__resize__on_mousedown (event, box, dom_el, mx, my, sx, sy));
-    this.rd.listen (div_outer, 'touchstart', (event) => this.box__resize__on_mousedown (event, box, dom_el, mx, my, sx, sy));
+    this.rd.listen (div_outer, 'touchstart', (event) => this.box__resize__on_touchdown (event, box, dom_el, mx, my, sx, sy));
 
     this.rd.appendChild (div_outer, div_inner);
     this.rd.addClass (div_inner, 'box-el-resize-inner');
@@ -366,27 +474,27 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  private box__move__on_activate (event, box: GraphBox)
+  private box__move__on_mousedown (event, dom_el, box: GraphBox)
   {
-    const dom_el = this.el_dom.nativeElement;
+    if (event.which === 1)  // only react on left mouse button
+    {
+      // enable the box
+      this.box__enable (box);
 
-    // prevent any other events outside the box
-    event.preventDefault();
+      // prevent any other events outside the box
+      event.preventDefault();
 
-    // calculate the delta to the current mouse position
-    box.mv_x = event.clientX;
-    box.mv_y = event.clientY;
+      // add temporary listeners
+      box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__move__on_mousemove (event, box));
+      box.ev_mu = this.rd.listen (document, 'mouseup', (event) => this.box__move__on_mouseup (event, box));
 
-    box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__move__on_move (event, box));
-    box.ev_tm = this.rd.listen (dom_el, 'touchmove', (event) => this.box__move__on_move (event, box));
-
-    box.ev_mu = this.rd.listen (dom_el, 'mouseup', (event) => this.box__move__on_mouseup (event, box));
-    box.ev_te = this.rd.listen (dom_el, 'touchend', (event) => this.box__move__on_mouseup (event, box));
+      box.init_move__mouse_event (event);
+    }
   }
 
   //-----------------------------------------------------------------------------
 
-  private box__move__on_move (event, box: GraphBox)
+  private box__move__on_mousemove (event, box: GraphBox)
   {
     const dom_el = this.el_dom.nativeElement;
 
@@ -396,7 +504,7 @@ export class Graph {
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
     // do a simple move transformation
-    rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect);
+    rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -408,7 +516,7 @@ export class Graph {
 
   private box__move__on_mouseup (event, box: GraphBox)
   {
-    if (event.which === 1)
+    if (event.which === 1)  // only react on left mouse button
     {
       const dom_el = this.el_dom.nativeElement;
 
@@ -416,15 +524,92 @@ export class Graph {
       var elem_rect = dom_el.getBoundingClientRect ();
 
       box.ev_mm();
-      box.ev_tm();
       box.ev_mu();
-      box.ev_te();
 
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
-      rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect);
+      rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
+
+      this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
+      this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
 
       this.box_set_coordinates (box, rect.x, rect.y, elem_rect);
+
+      this.box__enable__append_buttons (box);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__move__on_touchstart (event, dom_el, box: GraphBox)
+  {
+    // enable the box
+    this.box__enable (box);
+
+    // prevent the scrolling
+    box.ev_to = this.rd.listen (document.body, 'touchmove', (event) => event.preventDefault());
+
+    // prevent any other events outside the box
+    event.preventDefault();
+
+    box.ev_tm = this.rd.listen (dom_el, 'touchmove', (event) => this.box__move__on_touchmove (event, box));
+    box.ev_te = this.rd.listen (document, 'touchend', (event) => this.box__move__on_touchup (event, box));
+
+    box.init_move__touch_event (event);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__move__on_touchmove (event, box: GraphBox)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    // get the top and left coordinates of the box element
+    var elem_rect = dom_el.getBoundingClientRect ();
+
+    var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
+
+    var touch = event.touches[0] || event.changedTouches[0];
+
+    // do a simple move transformation
+    rect.move (touch.pageX - box.mv_x, touch.pageY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
+
+    this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
+    this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
+
+    box.view.detectChanges();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box__move__on_touchup (event, box: GraphBox)
+  {
+    //if (event.which === 1)
+    {
+      const dom_el = this.el_dom.nativeElement;
+
+      console.log('touch up');
+
+      box.ev_to();
+
+      // get the top and left coordinates of the box element
+      var elem_rect = dom_el.getBoundingClientRect ();
+
+      box.ev_tm();
+      box.ev_te();
+
+      var touch = event.touches[0] || event.changedTouches[0];
+
+      var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
+
+      rect.move (touch.pageX - box.mv_x, touch.pageY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
+
+      this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
+      this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
+
+      this.box_set_coordinates (box, rect.x, rect.y, elem_rect);
+
+      this.box__enable__append_buttons (box);
     }
   }
 
@@ -509,10 +694,9 @@ export class Graph {
     this.box__adjust (box, elem_rect);
 
     this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
-    this.rd.listen (box.dom_box, 'click', (event) => this.box__enable__append_buttons (box));
 
-    this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__enable(event, dom_el, box));
-    this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__enable(event, dom_el, box));
+    this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__move__on_mousedown (event, dom_el, box));
+    this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__move__on_touchstart (event, dom_el, box));
 
     // add class
     this.rd.addClass(box.dom_box, 'box-el');
@@ -530,6 +714,32 @@ export class Graph {
     this.rd.appendChild (box.dom_box, dom_ref);
 
     return box;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public add_conn (id: number, box1: GraphBox, user_data: any, sync)
+  {
+    const dom_el = this.el_dom.nativeElement;
+
+    let svg = this.rd.createElement('svg');
+
+    this.rd.setProperty (svg, 'innerHTML', '<rect width="300" height="100" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />');
+
+    this.rd.appendChild (dom_el, svg);
+
+
+    // get the top and left coordinates of the box element
+    var elem_rect = box1.dom_box.getBoundingClientRect ();
+
+    // add class
+    this.rd.addClass (svg, 'conn-el');
+
+    this.rd.setStyle (svg, 'left', '' + elem_rect.left + 'px');
+    this.rd.setStyle (svg, 'top', '' + elem_rect.top + 'px');
+    this.rd.setStyle (svg, 'width', '' + 100 + 'px');
+    this.rd.setStyle (svg, 'height', '' + 100 + 'px');
+
   }
 
   //-----------------------------------------------------------------------------
@@ -555,6 +765,20 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  public on_dbclick (cb): void
+  {
+    this.on_dbclick_cb = cb;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_box_enabled (cb): void
+  {
+    this.on_box_enabled_cb = cb;
+  }
+
+  //-----------------------------------------------------------------------------
+
   public set_background_image (data, cb)
   {
     const dom_el = this.el_dom.nativeElement;
@@ -573,17 +797,8 @@ export class Graph {
     this.rd.addClass (image, 'paper-image');
     this.rd.setStyle (image, 'width', '100%');
 
-    this.rd.listen (image, 'mousedown', (event) => {
-
-      if (event.which === 1)
-      {
-        this.boxes.forEach ((box: GraphBox) => this.box__dissable (box));
-      }
-
-    });
-
     // add class
-    this.rd.appendChild (dom_el, image);
+    this.rd.appendChild (this.layer, image);
 
 /*
     let unlistener = this.rd.listen (image, 'onload', (event) => {
@@ -617,25 +832,25 @@ class GraphRect
 
   //---------------------------------------------------------------------------
 
-  public move (x: number, y: number, elem_rect)
+  public move (x: number, y: number, elem_rect, grid_x: number, grid_y: number)
   {
-    this.x = this.x + x;
-    this.y = this.y + y;
+    this.x = Math.floor ((this.x + x) / grid_x) * grid_x;
+    this.y = Math.floor ((this.y + y) / grid_y) * grid_y;
 
     this.check_borders (elem_rect);
   }
 
   //---------------------------------------------------------------------------
 
-  public resize (x: number, y: number, elem_rect, mx: number, my: number, sx: number, sy: number)
+  public resize (x: number, y: number, elem_rect, grid_x: number, grid_y: number, mx: number, my: number, sx: number, sy: number)
   {
-    this.x = this.x + x * mx;
-    this.y = this.y + y * my;
+    this.x = Math.floor ((this.x + x * mx) / grid_x) * grid_x;
+    this.y = Math.floor ((this.y + y * my) / grid_y) * grid_y;
 
     this.check_borders (elem_rect);
 
-    this.w = this.w + x * sx;
-    this.h = this.h + y * sy;
+    this.w = Math.floor ((this.w + x * sx) / grid_x) * grid_x;
+    this.h = Math.floor ((this.h + y * sy) / grid_y) * grid_y;
 
     this.check_size ();
   }
@@ -706,6 +921,8 @@ export class GraphBox
   ev_mu;
   ev_te;
 
+  ev_to;
+
   // internal use
   view: EmbeddedViewRef<GraphContext> = null;
   ctx: GraphContext = new GraphContext (null);
@@ -731,6 +948,27 @@ export class GraphBox
       this.view.detectChanges();
     }
   }
+
+  //---------------------------------------------------------------------------
+
+  public init_move__mouse_event (event)
+  {
+    this.mv_x = event.clientX;
+    this.mv_y = event.clientY;
+  }
+
+  //---------------------------------------------------------------------------
+
+  public init_move__touch_event (event)
+  {
+    var touch = event.touches[0] || event.changedTouches[0];
+
+    // calculate the delta to the current mouse position
+    this.mv_x = touch.pageX;
+    this.mv_y = touch.pageY;
+  }
+
+  //---------------------------------------------------------------------------
 }
 
 //-----------------------------------------------------------------------------

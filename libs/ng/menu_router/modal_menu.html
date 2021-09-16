@@ -1,0 +1,30 @@
+  <div class="modal-body">
+
+    <ng-container *ngFor="let submenu of menu_structure">
+
+      <ng-container *authSessionRole="submenu.auth">
+
+        <div class="text-muted text-right mt-2" *ngIf="submenu.name">
+          {{ submenu.name | transloco }}
+        </div>
+
+        <div class="list-group mt-2">
+
+          <ng-container *ngFor="let item of submenu.items">
+
+            <a (click)="follow_route(item.link)" *authSessionRole="item.auth" class="list-group-item list-group-item-action">
+              <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
+            </a>
+
+          </ng-container>
+
+        </div>
+
+      </ng-container>
+
+    </ng-container>
+
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.BACK' | transloco }}</button>
+  </div>
