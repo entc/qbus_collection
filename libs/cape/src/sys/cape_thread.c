@@ -14,6 +14,12 @@
 
 #include "sys/cape_types.h"
 
+#if defined __BSD_OS
+
+#include <sys/sysctl.h>
+
+#endif
+
 //-----------------------------------------------------------------------------------
 
 struct CapeThread_s
@@ -231,4 +237,52 @@ void cape_thread_sleep (unsigned long milliseconds)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_thread_concurrency ()
+{
+#if defined __LINUX_OS
+  
+  return sysconf (_SC_NPROCESSORS_ONLN);
+  
+#elif defined __BSD_OS
+  
+  int mib[4];
+  int number_of_cpus;
+  size_t len = sizeof(number_of_cpus);
+  
+  /* set the mib for hw.ncpu */
+  mib[0] = CTL_HW;
+  mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+  
+  /* get the number of CPUs from the system */
+  sysctl (mib, 2, &number_of_cpus, &len, NULL, 0);
+  
+  if (number_of_cpus < 1)
+  {
+    mib[1] = HW_NCPU;
+    sysctl (mib, 2, &number_of_cpus, &len, NULL, 0);
+    
+    if (number_of_cpus < 1)
+    {
+      number_of_cpus = 1;
+    }
+  }
+  
+  return number_of_cpus;
+  
+#elif defined _WIN64 || defined _WIN32
+
+  SYSTEM_INFO sysinfo;
+
+  GetSystemInfo(&sysinfo);
+
+  return sysinfo.dwNumberOfProcessors;
+
+#else
+  
+  return 1;
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
 

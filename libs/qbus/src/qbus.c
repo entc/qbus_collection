@@ -26,6 +26,7 @@
 #include "fmt/cape_json.h"
 #include "fmt/cape_tokenizer.h"
 #include "sys/cape_btrace.h"
+#include "sys/cape_thread.h"
 
 // engines
 #include "../engines/tcp/engine_tcp.h"
@@ -695,19 +696,19 @@ CapeUdc qbus_config_load__global (QBus self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_config_save (QBus self)
+void qbus_config_save (QBus self, CapeUdc config)
 {
   // try to load
-  if (self->config && cape_udc_size (self->config))
+  if (self->config && cape_udc_size (config))
   {
     int res;
     CapeErr err = cape_err_new ();
     
-    res = cape_json_to_file (self->config_file, self->config, err);
+    res = cape_json_to_file (self->config_file, config, err);
     if (res)
     {
       // dump error text
-      cape_log_msg (CAPE_LL_ERROR, self->name, "config save", cape_err_text (err));      
+      cape_log_fmt (CAPE_LL_ERROR, self->name, "config save: %s", cape_err_text (err), self->config_file);
     }
     
     cape_err_del (&err);
@@ -899,6 +900,9 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
     if (config_part)
     {
+      // save the config back
+      qbus_config_save (self, config_part);
+
       cape_udc_merge_mv (self->config, &config_part);
     }
   }
@@ -993,7 +997,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     goto exit_and_cleanup;
   }
   
-  res = qbus_route_init (self->route, 4, err);
+  res = qbus_route_init (self->route, cape_udc_get_n (self->config, "threads", cape_thread_concurrency () * 2), err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1009,9 +1013,6 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "instance", "error in initialization: %s", cape_err_text(err));    
     goto exit_and_cleanup;
   }
-  
-  // save the config back
-  qbus_config_save (self);
   
   cape_log_msg (CAPE_LL_TRACE, name, "qbus_instance", "start main loop");
 
