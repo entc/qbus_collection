@@ -20,7 +20,7 @@ __CAPE_LIBEX   void              qbus_route_items_del     (QBusRouteItems*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void              qbus_route_items_add        (QBusRouteItems, const CapeString module, QBusConnection conn, CapeUdc*);
+__CAPE_LIBEX   void              qbus_route_items_add        (QBusRouteItems, const CapeString module_name, const CapeString module_uuid, QBusConnection conn, CapeUdc*);
 
 __CAPE_LIBEX   QBusConnection    qbus_route_items_get        (QBusRouteItems, const CapeString module);
 

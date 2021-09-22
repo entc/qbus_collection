@@ -61,6 +61,7 @@ struct QBusRoute_s
   QBus qbus;   // reference 
   
   CapeString name;
+  CapeString uuid;
   
   CapeMap methods;
   
@@ -100,6 +101,8 @@ QBusRoute qbus_route_new (QBus qbus, const CapeString name)
   self->qbus = qbus;
   
   self->name = cape_str_cp (name);
+  self->uuid = cape_str_uuid ();
+  
   self->methods = cape_map_new (NULL, qbus_route_methods_del, NULL);
   
   self->chain_mutex = cape_mutex_new ();
@@ -124,6 +127,8 @@ void qbus_route_del (QBusRoute* p_self)
   cape_queue_del (&(self->queue));
   
   cape_str_del (&(self->name));
+  cape_str_del (&(self->uuid));
+
   cape_map_del (&(self->methods));
   
   cape_mutex_del (&(self->chain_mutex));
@@ -151,13 +156,14 @@ int qbus_route_init (QBusRoute self, number_t threads, CapeErr err)
 void qbus_route_conn_reg (QBusRoute self, QBusConnection conn)
 {
   // log
-  cape_log_msg (CAPE_LL_TRACE, "QBUS", "conn reg", "new connection");
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "establish a new connection to QBUS as: %s  = %s", self->name, self->uuid);
   
   // send first frame
   {
     QBusFrame frame = qbus_frame_new ();
-        
-    qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_REQ, NULL, NULL, NULL, self->name);
+    
+    // CH01: replace self->name with self->uuid and add name as module
+    qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_REQ, NULL, self->name, NULL, self->uuid);
     
     // finally send the frame
     qbus_connection_send (conn, &frame);
@@ -189,7 +195,7 @@ void qbus_route_send_updates (QBusRoute self, QBusConnection conn_origin)
         CapeString h = cape_json_to_s (route_nodes);
         
         // log
-        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "route update", "send route update: %s -> %s", h, qbus_connection_get (conn));
+        //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "route update", "send route update: %s -> %s", h, qbus_connection_get (conn));
         
         cape_str_del(&h);
       }
@@ -252,8 +258,26 @@ void qbus_route_on_route_request (QBusRoute self, QBusConnection conn, QBusFrame
 
   QBusFrame frame = *p_frame;
   
-  qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->name);
-    
+  const CapeString module = qbus_frame_get_module (frame);
+  const CapeString sender = qbus_frame_get_sender (frame);
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
+
+  if (cape_str_empty (module))
+  {
+    // old version
+    qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->name);
+  }
+  else
+  {
+    // reset the type and the sender
+    qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->uuid);
+
+    // reset the module
+    // -> module is used as name for the module
+    qbus_frame_set_module__cp (frame, self->name);
+  }
+  
   route_nodes = qbus_route_items_nodes (self->route_items);
 
   if (route_nodes)
@@ -272,7 +296,21 @@ void qbus_route_on_route_response (QBusRoute self, QBusConnection conn, QBusFram
 {
   CapeUdc route_nodes = qbus_frame_get_udc (frame);
   
-  qbus_route_items_add (self->route_items, qbus_frame_get_sender (frame), conn, &route_nodes);
+  const CapeString module = qbus_frame_get_module (frame);
+  const CapeString sender = qbus_frame_get_sender (frame);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "retrieve node info: module = %s, sender = %s", module, sender);
+
+  if (cape_str_equal (self->name, module))
+  {
+    // support old version
+    // -> old version has a simple relay mechanism
+    qbus_route_items_add (self->route_items, sender, NULL, conn, &route_nodes);
+  }
+  else
+  {
+    qbus_route_items_add (self->route_items, module, sender, conn, &route_nodes);
+  }
   
   // tell the others the new nodes
   qbus_route_send_updates (self, conn);  

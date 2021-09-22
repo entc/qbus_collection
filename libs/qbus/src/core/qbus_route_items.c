@@ -5,6 +5,7 @@
 #include <sys/cape_mutex.h>
 #include <stc/cape_map.h>
 #include <fmt/cape_json.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -141,18 +142,37 @@ void qbus_route_items_nodes_remove_all (QBusRouteItems self, QBusConnection conn
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_items_add (QBusRouteItems self, const CapeString module_origin, QBusConnection conn, CapeUdc* p_nodes)
+void qbus_route_items_add (QBusRouteItems self, const CapeString module_name, const CapeString module_uuid, QBusConnection conn, CapeUdc* p_nodes)
 {
   cape_mutex_lock (self->mutex);
   
   {
-    CapeString module = cape_str_cp (module_origin);
+    CapeString module = cape_str_cp (module_name);
     
     cape_str_to_upper (module);
     
-    cape_map_insert (self->routes_direct, (void*)module, (void*)conn);
+    CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
     
-    qbus_connection_set (conn, module);
+    if (n)
+    {
+      if (module_uuid)
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "route context", "detected doublicate entry for %s = %s", module, module_uuid);
+
+        
+      }
+      else
+      {
+        cape_log_msg (CAPE_LL_ERROR, "QBUS", "route context", "doublicate module names are not allowed for none uuid modules");
+      }
+    }
+    else
+    {
+      cape_map_insert (self->routes_direct, (void*)module, (void*)conn);
+    }
+    
+    // in the old version the module_uuid is NULL
+    qbus_connection_set (conn, module, module_uuid);
   }
   
   if (*p_nodes)

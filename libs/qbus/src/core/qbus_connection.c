@@ -20,8 +20,9 @@ struct QBusConnection_s
   
   fct_qbus_connection_mark fct_mark;
 
-  CapeString ident;
-  
+  CapeString module_name;
+  CapeString module_uuid;
+
   // income
   
   QBusFrame frame;
@@ -53,8 +54,10 @@ QBusConnection qbus_connection_new (QBusRoute route, number_t channels)
   self->frame = qbus_frame_new ();
   
   self->route = route;
-  self->ident = NULL;
   
+  self->module_name = NULL;
+  self->module_uuid = NULL;
+
   return self;
 }
 
@@ -71,8 +74,9 @@ void qbus_connection_del (QBusConnection* p_self)
   
   qbus_frame_del (&(self->frame));
   
-  cape_str_del (&(self->ident));
-  
+  cape_str_del (&(self->module_name));
+  cape_str_del (&(self->module_uuid));
+
   CAPE_DEL (p_self, struct QBusConnection_s);
 }
 
@@ -96,16 +100,17 @@ void qbus_connection_reg (QBusConnection self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_connection_set (QBusConnection self, const CapeString ident)
+void qbus_connection_set (QBusConnection self, const CapeString module_name, const CapeString module_uuid)
 {
-  cape_str_replace_cp (&(self->ident), ident);
+  cape_str_replace_cp (&(self->module_name), module_name);
+  cape_str_replace_cp (&(self->module_uuid), module_uuid);
 }
 
 //-----------------------------------------------------------------------------
 
 const CapeString qbus_connection_get (QBusConnection self)
 {
-  return self->ident;  
+  return self->module_name;  
 }
 
 //-----------------------------------------------------------------------------
