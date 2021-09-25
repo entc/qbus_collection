@@ -9,12 +9,283 @@
 
 //-----------------------------------------------------------------------------
 
+struct QBusRouteDirectConn_s
+{
+  QBusConnection conn;
+  number_t rr_current;
+  
+}; typedef struct QBusRouteDirectConn_s* QBusRouteDirectConn;
+
+//-----------------------------------------------------------------------------
+
+QBusRouteDirectConn qbus_route_direct_conn_new (QBusConnection conn, number_t rr_context)
+{
+  QBusRouteDirectConn self = CAPE_NEW (struct QBusRouteDirectConn_s);
+  
+  self->conn = conn;
+  self->rr_current = rr_context;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_direct_conn_del (QBusRouteDirectConn* p_self)
+{
+  if (*p_self)
+  {
+    QBusRouteDirectConn self = *p_self;
+    
+    CAPE_DEL (p_self, struct QBusRouteDirectConn_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+struct QBusRouteDirectContext_s
+{
+  // store the connection by uuid
+  CapeMap connections;
+  
+  // store the connection if there is no uuid
+  // -> old version of QBUS protocol and will be depricated soon
+  QBusRouteDirectConn rdn;
+  
+  number_t rr_context;
+  
+}; typedef struct QBusRouteDirectContext_s* QBusRouteDirectContext;
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_route_direct_context__connections__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QBusRouteDirectConn h = val; qbus_route_direct_conn_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+QBusRouteDirectContext qbus_route_direct_context_new (void)
+{
+  QBusRouteDirectContext self = CAPE_NEW (struct QBusRouteDirectContext_s);
+  
+  self->connections = cape_map_new (NULL, qbus_route_direct_context__connections__on_del, NULL);
+  self->rdn = NULL;
+  self->rr_context = 0;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_direct_context_del (QBusRouteDirectContext* p_self)
+{
+  if (*p_self)
+  {
+    QBusRouteDirectContext self = *p_self;
+    
+    cape_map_del (&(self->connections));
+    qbus_route_direct_conn_del (&(self->rdn));
+    
+    CAPE_DEL (p_self, struct QBusRouteDirectContext_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_direct_context_add (QBusRouteDirectContext self, const CapeString module_uuid, QBusConnection conn)
+{
+  if (module_uuid)
+  {
+    QBusRouteDirectConn rdn = qbus_route_direct_conn_new (conn, self->rr_context);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "route context", "add connection to pool for %s", module_uuid);
+    
+    // lets have another map to sort out all uuids
+    cape_map_insert (self->connections, (void*)cape_str_cp (module_uuid), (void*)rdn);
+  }
+  else
+  {
+    if (self->rdn)
+    {
+      cape_log_msg (CAPE_LL_ERROR, "QBUS", "route context", "doublicate module names are not allowed for none uuid modules");
+    }
+    else
+    {
+      self->rdn = qbus_route_direct_conn_new (conn, self->rr_context);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+QBusRouteDirectConn qbus_route_direct_context__round_robin__next (QBusRouteDirectContext self)
+{
+  QBusRouteDirectConn ret = NULL;
+  
+  // local objects
+  CapeMapCursor* cursor = NULL;
+  
+  if (self->rdn)
+  {
+    QBusRouteDirectConn rdn = self->rdn;
+    
+    if (rdn->rr_current < self->rr_context)
+    {
+      rdn->rr_current = self->rr_context;
+      
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] (old version)", rdn->rr_current);
+
+      ret = rdn;
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cursor = cape_map_cursor_create (self->connections, CAPE_DIRECTION_FORW);
+
+  while (cape_map_cursor_next (cursor))
+  {
+    QBusRouteDirectConn rdn = cape_map_node_value (cursor->node);
+
+    if (rdn->rr_current < self->rr_context)
+    {
+      rdn->rr_current = self->rr_context;
+
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] in the pool = %s", rdn->rr_current, cape_map_node_key (cursor->node));
+
+      ret = rdn;
+      goto exit_and_cleanup;
+    }
+  }
+  
+exit_and_cleanup:
+  
+  cape_map_cursor_destroy (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+QBusRouteDirectConn qbus_route_direct_context__round_robin (QBusRouteDirectContext self)
+{
+  QBusRouteDirectConn ret = NULL;
+  
+  ret = qbus_route_direct_context__round_robin__next (self);
+
+  if (ret == NULL)
+  {
+    self->rr_context++;
+
+    ret = qbus_route_direct_context__round_robin__next (self);
+  }
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+QBusConnection qbus_route_direct_context_get (QBusRouteDirectContext self)
+{
+  QBusConnection ret = NULL;
+  
+  QBusRouteDirectConn rdn = qbus_route_direct_context__round_robin (self);
+  if (rdn)
+  {
+    ret = rdn->conn;
+  }
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+QBusConnection qbus_route_direct_context_rm (QBusRouteDirectContext self, const CapeString module_uuid)
+{
+  QBusConnection ret = NULL;
+
+  if (cape_str_empty (module_uuid))
+  {
+    if (self->rdn)
+    {
+      QBusRouteDirectConn rdn = self->rdn;
+
+      ret = rdn->conn;
+      
+      qbus_route_direct_conn_del (&(self->rdn));
+    }
+  }
+  else
+  {
+    CapeMapNode n = cape_map_find (self->connections, (void*)module_uuid);
+    
+    if (n)
+    {
+      QBusRouteDirectConn rdn = cape_map_node_value (n);
+
+      ret = rdn->conn;
+      
+      // remove the connection
+      cape_map_erase (self->connections, n);
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_route_direct_context_is_empty (QBusRouteDirectContext self)
+{
+  return (cape_map_size (self->connections) == 0) && (self->rdn == NULL);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_direct_context__internal__append (CapeList conns, QBusConnection conn, QBusConnection exception)
+{
+  if (conn != exception)
+  {
+    cape_list_push_back (conns, (void*)conn);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_direct_context__append_connections (QBusRouteDirectContext self, CapeList conns, QBusConnection exception)
+{
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_create (self->connections, CAPE_DIRECTION_FORW);
+  
+  // check for the old version
+  if (self->rdn)
+  {
+    QBusRouteDirectConn rdn = self->rdn;
+
+    qbus_route_direct_context__internal__append (conns, rdn->conn, exception);
+  }
+  
+  // append all connection to conns
+  while (cape_map_cursor_next (cursor))
+  {
+    QBusRouteDirectConn rdn = cape_map_node_value (cursor->node);
+
+    qbus_route_direct_context__internal__append (conns, rdn->conn, exception);
+  }
+  
+  cape_map_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusRouteItems_s
 {
   CapeMutex mutex;
   
   CapeMap routes_direct;
-
   CapeMap routes_node;
 };
 
@@ -24,6 +295,9 @@ void __STDCALL qbus_route_routes_direct_del (void* key, void* val)
 {
   {
     CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QBusRouteDirectContext h = val; qbus_route_direct_context_del (&h);
   }
 }
 
@@ -152,28 +426,26 @@ void qbus_route_items_add (QBusRouteItems self, const CapeString module_name, co
     cape_str_to_upper (module);
     
     CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
-    
     if (n)
     {
-      if (module_uuid)
-      {
-        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "route context", "detected doublicate entry for %s = %s", module, module_uuid);
-
-        
-      }
-      else
-      {
-        cape_log_msg (CAPE_LL_ERROR, "QBUS", "route context", "doublicate module names are not allowed for none uuid modules");
-      }
+      QBusRouteDirectContext rdc = cape_map_node_value (n);
+      
+      qbus_route_direct_context_add (rdc, module_uuid, conn);
     }
     else
     {
-      cape_map_insert (self->routes_direct, (void*)module, (void*)conn);
+      QBusRouteDirectContext rdc = qbus_route_direct_context_new ();
+      
+      qbus_route_direct_context_add (rdc, module_uuid, conn);
+
+      cape_map_insert (self->routes_direct, (void*)module, (void*)rdc);
     }
     
     // in the old version the module_uuid is NULL
     qbus_connection_set (conn, module, module_uuid);
   }
+  
+exit_and_cleanup:
   
   if (*p_nodes)
   {
@@ -187,45 +459,30 @@ void qbus_route_items_add (QBusRouteItems self, const CapeString module_name, co
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_items_update (QBusRouteItems self, const CapeString module_origin, CapeUdc* p_nodes)
+void qbus_route_items_update (QBusRouteItems self, QBusConnection conn, CapeUdc* p_nodes)
 {
-  CapeString module = cape_str_cp (module_origin);
-  
-  cape_str_to_upper (module);
-
   cape_mutex_lock (self->mutex);
   
   // direct
+  qbus_route_items_nodes_remove_all (self, conn);
+  
+  if (*p_nodes)
   {
-    CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
-    if (n)
-    {
-      QBusConnection conn = cape_map_node_value (n);
-      
-      qbus_route_items_nodes_remove_all (self, conn);
-      
-      if (*p_nodes)
-      {
-        qbus_route_items_nodes_add (self, conn, *p_nodes);
-      }
-    }
+    qbus_route_items_nodes_add (self, conn, *p_nodes);
   }
   
-  cape_str_del (&module);
-  
   cape_mutex_unlock (self->mutex);
-  
   cape_udc_del (p_nodes);
 }
 
 //-----------------------------------------------------------------------------
 
-QBusConnection qbus_route_items_get (QBusRouteItems self, const CapeString module_origin)
+QBusConnection qbus_route_items_get (QBusRouteItems self, const CapeString module_name, const CapeString module_uuid)
 {
   QBusConnection ret = NULL;
   
-  CapeString module = cape_str_cp (module_origin);
-  
+  // convert module name into capital letters
+  CapeString module = cape_str_cp (module_name);
   cape_str_to_upper (module);
   
   cape_mutex_lock (self->mutex);
@@ -235,27 +492,29 @@ QBusConnection qbus_route_items_get (QBusRouteItems self, const CapeString modul
     CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
     if (n)
     {
-      ret = cape_map_node_value (n);
+      QBusRouteDirectContext rdc = cape_map_node_value (n);
       
-      goto exit_and_cleanup;
+      ret = qbus_route_direct_context_get (rdc);
+      if (ret)
+      {
+        goto exit_and_cleanup;
+      }
     }
   }
+  
   // node
   {
     CapeMapNode n = cape_map_find (self->routes_node, (void*)module);    
     if (n)
     {
       ret = cape_map_node_value (n);
-      
       goto exit_and_cleanup;
     }
   }
   
-  
 exit_and_cleanup:
 
   cape_str_del (&module);
-
   cape_mutex_unlock (self->mutex);
 
   return ret;
@@ -263,25 +522,33 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_items_rm (QBusRouteItems self, const CapeString module)
+void qbus_route_items_rm (QBusRouteItems self, const CapeString module_name, const CapeString module_uuid)
 {
   cape_mutex_lock (self->mutex);
   
   {
-    CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
+    CapeMapNode n = cape_map_find (self->routes_direct, (void*)module_name);
     
     if (n)
     {
-      QBusConnection conn = cape_map_node_value (n);
+      QBusRouteDirectContext rdc = cape_map_node_value (n);
+
+      QBusConnection conn = qbus_route_direct_context_rm (rdc, module_uuid);
       
-      // remove all indirect nodes with this connection
-      qbus_route_items_nodes_remove_all (self, conn);
+      if (conn)
+      {
+        // remove all indirect nodes with this connection
+        qbus_route_items_nodes_remove_all (self, conn);
+      }
 
       //printf ("qbus connection removed: %s\n", module);
       
-      // remove the connection
-      cape_map_erase (self->routes_direct, n);
-    }      
+      if (qbus_route_direct_context_is_empty (rdc))
+      {
+        // remove the connection
+        cape_map_erase (self->routes_direct, n);
+      }
+    }
   }
   
   cape_mutex_unlock (self->mutex);
@@ -301,7 +568,7 @@ CapeUdc qbus_route_items_nodes (QBusRouteItems self)
     
     while (cape_map_cursor_next (cursor))
     {
-      cape_udc_add_s_cp (nodes, NULL, cape_map_node_key (cursor->node));      
+      cape_udc_add_s_cp (nodes, NULL, cape_map_node_key (cursor->node));
     }
     
     cape_map_cursor_destroy (&cursor);
@@ -338,12 +605,9 @@ CapeList qbus_route_items_conns (QBusRouteItems self, QBusConnection exception)
     
     while (cape_map_cursor_next (cursor))
     {
-      QBusConnection conn = cape_map_node_value (cursor->node);
-      
-      if (conn != exception)
-      {
-        cape_list_push_back (conns, (void*)conn);
-      }
+      QBusRouteDirectContext rdc = cape_map_node_value (cursor->node);
+
+      qbus_route_direct_context__append_connections (rdc, conns, exception);
     }
     
     cape_map_cursor_destroy (&cursor);

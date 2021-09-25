@@ -220,14 +220,15 @@ void qbus_route_send_updates (QBusRoute self, QBusConnection conn_origin)
 
 void qbus_route_conn_rm (QBusRoute self, QBusConnection conn)
 {
-  const CapeString module = qbus_connection_get (conn);
-  
+  const CapeString module_name = qbus_connection__name (conn);
+  const CapeString module_uuid = qbus_connection__uuid (conn);
+
   // log
   cape_log_msg (CAPE_LL_TRACE, "QBUS", "conn reg", "connection dropped");
   
-  if (module)
+  if (module_name)
   {
-    qbus_route_items_rm (self->route_items, module);    
+    qbus_route_items_rm (self->route_items, module_name, module_uuid);
   }
   else
   {
@@ -247,7 +248,7 @@ void qbus_route_conn_rm (QBusRoute self, QBusConnection conn)
 
 QBusConnection const qbus_route_module_find (QBusRoute self, const char* module_origin)
 {
-  return qbus_route_items_get (self->route_items, module_origin);
+  return qbus_route_items_get (self->route_items, module_origin, NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -326,15 +327,18 @@ void qbus_route_on_route_response (QBusRoute self, QBusConnection conn, QBusFram
 
 void qbus_route_on_route_update (QBusRoute self, QBusConnection conn, QBusFrame frame)
 {
-  const CapeString module = qbus_connection_get (conn);
-  
-  if (module)
+  const CapeString module_name = qbus_connection__name (conn);
+  const CapeString module_uuid = qbus_connection__uuid (conn);
+
+  if (module_name)
   {
     CapeUdc route_nodes = qbus_frame_get_udc (frame);
 
     if (route_nodes)
     {
-      qbus_route_items_update (self->route_items, module, &route_nodes);
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "update route items %s = %s", module_name, module_uuid);
+      
+      qbus_route_items_update (self->route_items, conn, &route_nodes);
     }
 
     {
@@ -462,7 +466,7 @@ void qbus_route_on_msg_request (QBusRoute self, QBusConnection conn, QBusFrame* 
   else  // the message was not send to us -> forward it 
   {
     // try to find a connection which might reach the destination module
-    QBusConnection conn_forward = qbus_route_items_get (self->route_items, module);
+    QBusConnection conn_forward = qbus_route_items_get (self->route_items, module, NULL);
     if (conn_forward)
     {
       qbus_route_on_msg_foward (self, conn_forward, p_frame);
@@ -494,7 +498,7 @@ void qbus_route_on_msg_forward (QBusRoute self, QBusFrame* p_frame, void* ptr)
   QBusForwardData* qbus_fd = ptr;
   
   // try to find a connection which might reach the destination module
-  QBusConnection conn_forward = qbus_route_items_get (self->route_items, qbus_fd->sender);
+  QBusConnection conn_forward = qbus_route_items_get (self->route_items, qbus_fd->sender, NULL);
   if (conn_forward)
   {
     qbus_frame_set_chainkey (frame, &(qbus_fd->chain_key));
@@ -698,7 +702,7 @@ void qbus_route_on_route_methods_request (QBusRoute self, QBusConnection conn, Q
   else  // the message was not send to us -> forward it 
   {
     // try to find a connection which might reach the destination module
-    QBusConnection conn_forward = qbus_route_items_get (self->route_items, module);
+    QBusConnection conn_forward = qbus_route_items_get (self->route_items, module, NULL);
     if (conn_forward)
     {
       qbus_route_on_msg_foward (self, conn_forward, p_frame);

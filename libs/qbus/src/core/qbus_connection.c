@@ -108,9 +108,16 @@ void qbus_connection_set (QBusConnection self, const CapeString module_name, con
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_connection_get (QBusConnection self)
+const CapeString qbus_connection__name (QBusConnection self)
 {
-  return self->module_name;  
+  return self->module_name;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qbus_connection__uuid (QBusConnection self)
+{
+  return self->module_uuid;
 }
 
 //-----------------------------------------------------------------------------

@@ -35,7 +35,11 @@ __CAPE_LIBEX   void              qbus_connection_reg      (QBusConnection);
 
 __CAPE_LIBEX   void              qbus_connection_set      (QBusConnection, const CapeString module_name, const CapeString module_uuid);
 
-__CAPE_LIBEX   const CapeString  qbus_connection_get      (QBusConnection);
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   const CapeString  qbus_connection__name    (QBusConnection);
+
+__CAPE_LIBEX   const CapeString  qbus_connection__uuid    (QBusConnection);
 
 //-----------------------------------------------------------------------------
 

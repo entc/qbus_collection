@@ -22,11 +22,11 @@ __CAPE_LIBEX   void              qbus_route_items_del     (QBusRouteItems*);
 
 __CAPE_LIBEX   void              qbus_route_items_add        (QBusRouteItems, const CapeString module_name, const CapeString module_uuid, QBusConnection conn, CapeUdc*);
 
-__CAPE_LIBEX   QBusConnection    qbus_route_items_get        (QBusRouteItems, const CapeString module);
+__CAPE_LIBEX   QBusConnection    qbus_route_items_get        (QBusRouteItems, const CapeString module_name, const CapeString module_uuid);
 
-__CAPE_LIBEX   void              qbus_route_items_rm         (QBusRouteItems, const CapeString module);
+__CAPE_LIBEX   void              qbus_route_items_rm         (QBusRouteItems, const CapeString module_name, const CapeString module_uuid);
 
-__CAPE_LIBEX   void              qbus_route_items_update     (QBusRouteItems, const CapeString module, CapeUdc*);
+__CAPE_LIBEX   void              qbus_route_items_update     (QBusRouteItems, QBusConnection conn, CapeUdc*);
 
 __CAPE_LIBEX   CapeUdc           qbus_route_items_nodes      (QBusRouteItems);
 
