@@ -116,6 +116,13 @@ void qbus_frame_set_sender (QBusFrame self, CapeString* p_sender)
 
 //-----------------------------------------------------------------------------
 
+void qbus_frame_set_module__cp (QBusFrame self, CapeString module)
+{
+  cape_str_replace_cp (&(self->module), module);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_frame_set (QBusFrame self, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender)
 {
   self->ftype = ftype;

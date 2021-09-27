@@ -5,6 +5,9 @@ SET(CMAKE_BUILD_TYPE Release)                                   # build type
 add_executable          (ut_fmt_json ut_fmt_json.c)
 target_link_libraries   (ut_fmt_json cape)
 
+add_executable          (ut_stc_map ut_stc_map.c)
+target_link_libraries   (ut_stc_map cape)
+
 add_executable          (ut_stc_string ut_stc_string.c)
 target_link_libraries   (ut_stc_string cape)
 
