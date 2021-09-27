@@ -21,6 +21,7 @@ endif()
   )
 
   SET (CORE_HEADERS
+    adbl_mysql.h
     bindvars.h
     prepare.h
   )

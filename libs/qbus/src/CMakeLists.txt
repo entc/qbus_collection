@@ -14,6 +14,7 @@ set(WSRV_SOURCES
 set(WSRV_HEADERS
   qbus.h
   qbus.hpp
+  qbus_types.h
 )
 
 #----------------------------------------------------------------------------------
@@ -30,3 +31,8 @@ INSTALL (TARGETS qbus DESTINATION lib)
 INSTALL (TARGETS qbus DESTINATION lib)
 
 #----------------------------------------------------------------------------------
+
+# set for later
+SET (ENV{QBUS_PVD_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/engines)
+
+SUBDIRS(pvd_tcp)

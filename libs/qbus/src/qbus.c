@@ -1,5 +1,6 @@
 #include "qbus.h" 
 #include "qbus_route.h"
+#include "qbus_types.h"
 
 // c includes
 #include <stdlib.h>
@@ -20,7 +21,9 @@
 #include "sys/cape_log.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
+#include "sys/cape_dl.h"
 #include "stc/cape_str.h"
+#include "stc/cape_map.h"
 #include "aio/cape_aio_sock.h"
 #include "fmt/cape_args.h"
 #include "fmt/cape_json.h"
@@ -30,6 +33,127 @@
 
 // engines
 #include "../engines/tcp/engine_tcp.h"
+
+//-----------------------------------------------------------------------------
+
+struct QBusEngine_s
+{
+  // stores the function pointers
+  QbusPvd functions;
+  CapeDl hlib;
+  
+}; typedef struct QBusEngine_s* QBusEngine;
+
+//-----------------------------------------------------------------------------
+
+QBusEngine qbus_engine_new ()
+{
+  QBusEngine self = CAPE_NEW(struct QBusEngine_s);
+
+  memset (&(self->functions), 0, sizeof(QbusPvd));
+  self->hlib = cape_dl_new ();
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engine_del (QBusEngine* p_self)
+{
+  if (*p_self)
+  {
+    QBusEngine self = *p_self;
+
+    cape_dl_del (&(self->hlib));
+    
+    CAPE_DEL (p_self, struct QBusEngine_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString name, CapeErr err)
+{
+  int res;
+  
+  CapeString path_current = NULL;
+  CapeString path_resolved = NULL;
+  CapeString pvd_name = NULL;
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "try to load engine = %s", name);
+
+  // fetch the current path
+  path_current = cape_fs_path_current (path);
+  if (path_current == NULL)
+  {
+    res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
+    goto exit_and_cleanup;
+  }
+  
+  path_resolved = cape_fs_path_resolve (path_current, err);
+  if (path_resolved == NULL)
+  {
+    res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
+    goto exit_and_cleanup;
+  }
+  
+  pvd_name = cape_str_catenate_2 ("qbus_pvd_", name);
+  
+  // try to load the module
+  res = cape_dl_load (self->hlib, path_resolved, pvd_name, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
+  if (self->functions.pvd_ctx_new == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "functions mapped = %s", name);
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_str_del (&path_current);
+  cape_str_del (&path_resolved);
+  cape_str_del (&pvd_name);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+QbusPvdCtx qbus_engine_ctx_new (QBusEngine self, CapeAioContext aio, CapeUdc options, CapeErr err)
+{
+  QbusPvdCtx ret = NULL;
+  
+  if (self->functions.pvd_ctx_new)
+  {
+    ret = self->functions.pvd_ctx_new (aio, options, err);
+  }
+  else
+  {
+    cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engines__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QBusEngine h = val; qbus_engine_del (&h);
+  }
+}
 
 //-----------------------------------------------------------------------------
 
@@ -51,6 +175,8 @@ struct QBus_s
   CapeUdc config;
   
   CapeString config_file;
+  
+  CapeMap engines;
 };
 
 //-----------------------------------------------------------------------------
@@ -72,7 +198,9 @@ QBus qbus_new (const char* module_origin)
   
   self->config = NULL;
   self->config_file = NULL;
-    
+  
+  self->engines = cape_map_new (NULL, qbus_engines__on_del, NULL);
+  
   return self;
 }
 
@@ -93,6 +221,8 @@ void qbus_del (QBus* p_self)
   
   cape_udc_del (&(self->config));
   cape_str_del (&(self->config_file));
+  
+  cape_map_del (&(self->engines));
   
   CAPE_DEL (p_self, struct QBus_s);
 }
@@ -152,13 +282,52 @@ void qbus_add_income_port (QBus self, CapeUdc bind)
 
 //-----------------------------------------------------------------------------
 
-void qbus_add_remote_port (QBus self, CapeUdc remote)
+QBusEngine qbus_load_engine (QBus self, const CapeString path, const CapeString name, CapeErr err)
 {
+  QBusEngine ret = NULL;
+  
+  CapeMapNode n = cape_map_find (self->engines, (void*)name);
+  if (n)
+  {
+    ret = cape_map_node_value (n);
+  }
+  else
+  {
+    ret = qbus_engine_new ();
+
+    // try to load the engine
+    // -> returns a cape error code
+    if (qbus_engine_load (ret, path, name, err))
+    {
+      // cleanup
+      qbus_engine_del (&ret);
+    }
+    else
+    {
+      // append the engine to the engines map
+      cape_map_insert (self->engines, (void*)cape_str_cp (name), ret);
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
+{
+  int res;
+  
+  {
+    CapeString h = cape_json_to_s (remote);
+    
+    printf ("REMOTE: %s\n", h);
+  }
   const CapeString type = cape_udc_get_s (remote, "type", NULL);
   
   if (type == NULL)
   {
-    return;
+    return CAPE_ERR_NONE;
   }
   
   if (strcmp (type, "pipe") == 0)
@@ -172,7 +341,7 @@ void qbus_add_remote_port (QBus self, CapeUdc remote)
       
     }
     
-    return;
+    return CAPE_ERR_NONE;
   }
   
   if (strcmp (type, "socket") == 0)
@@ -199,8 +368,34 @@ void qbus_add_remote_port (QBus self, CapeUdc remote)
       }
     }
     
-    return;
-  }  
+    return CAPE_ERR_NONE;
+  }
+
+  QBusEngine engine = qbus_load_engine (self, "qbus", "tcp", err);
+
+  if (engine == NULL)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in loading the engine = %s", "tcp");
+
+    res = cape_err_code (err);
+  }
+  else
+  {
+    QbusPvdCtx ctx = qbus_engine_ctx_new (engine, self->aio, NULL, err);
+    
+    if (ctx)
+    {
+      res = CAPE_ERR_NONE;
+    }
+    else
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", "tcp");
+      
+      res = cape_err_code (err);
+    }
+  }
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -232,29 +427,42 @@ void qbus_add_income_ports (QBus self, CapeUdc binds)
 
 //-----------------------------------------------------------------------------
 
-void qbus_add_remote_ports (QBus self, CapeUdc remotes)
+int qbus_add_remote_ports (QBus self, CapeUdc remotes, CapeErr err)
 {
+  int res;
+  
+  // local objects
+  CapeUdcCursor* cursor = NULL;
+  
   switch (cape_udc_type (remotes))
   {
     case CAPE_UDC_LIST:
     {
-      CapeUdcCursor* cursor = cape_udc_cursor_new (remotes, CAPE_DIRECTION_FORW);
+      cursor = cape_udc_cursor_new (remotes, CAPE_DIRECTION_FORW);
       
       while (cape_udc_cursor_next (cursor))
       {
-        qbus_add_remote_port (self, cursor->item);
+        res = qbus_add_remote_port (self, cursor->item, err);
+        if (res)
+        {
+          goto exit_and_cleanup;
+        }
       }
       
-      cape_udc_cursor_del (&cursor);
-      
+      res = CAPE_ERR_NONE;
       break;
     }
     case CAPE_UDC_NODE:
     {
-      qbus_add_remote_port (self, remotes);
+      res = qbus_add_remote_port (self, remotes, err);
       break;
     }
   }
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -267,7 +475,7 @@ int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
   res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
   if (res)
   {
-    return res;
+    goto exit_and_cleanup;
   }
   
   if (binds)
@@ -277,11 +485,22 @@ int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
   
   if (remotes)
   {
-    qbus_add_remote_ports (self, remotes);
+    res = qbus_add_remote_ports (self, remotes, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
   }
   
   // wait infinite and let the AIO subsystem handle all events
   res = cape_aio_context_wait (self->aio, err);
+  
+exit_and_cleanup:
+  
+  if (res)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "wait", "runtime error: %s", cape_err_text (err));
+  }
   
   return res;
 }
@@ -609,6 +828,12 @@ void qbus_check_param (CapeUdc data, const CapeUdc param)
 {
   switch (cape_udc_type (param))
   {
+    case CAPE_UDC_NODE:
+    {
+      CapeUdc h = cape_udc_cp (param);
+      cape_udc_add (data, &h);
+      break;
+    }
     case CAPE_UDC_LIST:
     {
       CapeUdcCursor* cursor = cape_udc_cursor_new (param, CAPE_DIRECTION_FORW);
