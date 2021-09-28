@@ -111,7 +111,37 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
   {
     goto exit_and_cleanup;
   }
-  
+
+  self->functions.pvd_ctx_del = cape_dl_funct (self->hlib, "qbus_pvd_ctx_del", err);
+  if (self->functions.pvd_ctx_del == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_ctx_add = cape_dl_funct (self->hlib, "qbus_pvd_ctx_add", err);
+  if (self->functions.pvd_ctx_add == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_ctx_rm = cape_dl_funct (self->hlib, "qbus_pvd_ctx_rm", err);
+  if (self->functions.pvd_ctx_rm == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_listen = cape_dl_funct (self->hlib, "qbus_pvd_listen", err);
+  if (self->functions.pvd_listen == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_reconnect = cape_dl_funct (self->hlib, "qbus_pvd_reconnect", err);
+  if (self->functions.pvd_reconnect == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "functions mapped = %s", name);
 
   res = CAPE_ERR_NONE;
@@ -141,6 +171,63 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine self, CapeAioContext aio, CapeUdc opt
   }
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void* __STDCALL qbus_engine_conn__factory_on_new (void* user_ptr)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engine_conn__factory_on_del (void** object_ptr)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void* __STDCALL qbus_engine_conn__on_connection (void* object_ptr)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+QbusPvdConn qbus_engine_conn_new (QBusEngine self, QbusPvdCtx ctx, CapeUdc options, CapeErr err)
+{
+  QbusPvdConn ret = NULL;
+  
+  if (self->functions.pvd_ctx_add)
+  {
+    ret = self->functions.pvd_ctx_add (ctx, options, self, qbus_engine_conn__factory_on_new, qbus_engine_conn__factory_on_del, qbus_engine_conn__on_connection);
+  }
+  else
+  {
+    cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_engine_reconnect (QBusEngine self, QbusPvdConn conn, CapeErr err)
+{
+  int res;
+  
+  if (self->functions.pvd_reconnect)
+  {
+    res = self->functions.pvd_reconnect (conn, err);
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface can't reconnect");
+  }
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -282,7 +369,7 @@ void qbus_add_income_port (QBus self, CapeUdc bind)
 
 //-----------------------------------------------------------------------------
 
-QBusEngine qbus_load_engine (QBus self, const CapeString path, const CapeString name, CapeErr err)
+QBusEngine qbus_load_engine__library (QBus self, const CapeString path, const CapeString name, CapeErr err)
 {
   QBusEngine ret = NULL;
   
@@ -314,15 +401,58 @@ QBusEngine qbus_load_engine (QBus self, const CapeString path, const CapeString 
 
 //-----------------------------------------------------------------------------
 
+typedef struct {
+  
+  QbusPvdConn conn;
+  QBusEngine engine;
+  
+} QbusEngineResult;
+
+//-----------------------------------------------------------------------------
+
+int qbus_load_engine (QBus self, const CapeString name, CapeUdc remote, QbusEngineResult* result, CapeErr err)
+{
+  int res;
+  const CapeString path = "qbus";
+
+  // local objects
+  QbusPvdCtx ctx = NULL;
+
+  // load and register the engine
+  result->engine = qbus_load_engine__library (self, path, name, err);
+  if (result->engine == NULL)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in loading the engine = %s", name);
+    
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // TODO: save the context into a list
+  ctx = qbus_engine_ctx_new (result->engine, self->aio, NULL, err);
+  if (ctx == NULL)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", name);
+    
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  result->conn = qbus_engine_conn_new (result->engine, ctx, remote, err);
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
 {
   int res;
   
-  {
-    CapeString h = cape_json_to_s (remote);
-    
-    printf ("REMOTE: %s\n", h);
-  }
   const CapeString type = cape_udc_get_s (remote, "type", NULL);
   
   if (type == NULL)
@@ -343,8 +473,7 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
     
     return CAPE_ERR_NONE;
   }
-  
-  if (strcmp (type, "socket") == 0)
+  else if (strcmp (type, "socket") == 0)
   {
     // check if we have host and port
     const CapeString host = cape_udc_get_s (remote, "host", NULL);
@@ -370,30 +499,20 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
     
     return CAPE_ERR_NONE;
   }
-
-  QBusEngine engine = qbus_load_engine (self, "qbus", "tcp", err);
-
-  if (engine == NULL)
+  else if (strcmp (type, "tcp") == 0)
   {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in loading the engine = %s", "tcp");
-
-    res = cape_err_code (err);
-  }
-  else
-  {
-    QbusPvdCtx ctx = qbus_engine_ctx_new (engine, self->aio, NULL, err);
+    QbusEngineResult result;
     
-    if (ctx)
+    res = qbus_load_engine (self, "tcp", remote, &result, err);
+    if (res)
     {
-      res = CAPE_ERR_NONE;
+      goto exit_and_cleanup;
     }
-    else
-    {
-      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", "tcp");
-      
-      res = cape_err_code (err);
-    }
+
+    res = qbus_engine_reconnect (result.engine, result.conn, err);
   }
+  
+exit_and_cleanup:
   
   return res;
 }

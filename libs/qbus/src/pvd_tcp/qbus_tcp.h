@@ -13,9 +13,9 @@ __CAPE_LIBEX  QbusPvdCtx   __STDCALL qbus_pvd_ctx_new       (CapeAioContext, Cap
 
 __CAPE_LIBEX  int          __STDCALL qbus_pvd_ctx_del       (QbusPvdCtx*);
 
-__CAPE_LIBEX  QbusPvdConn  __STDCALL qbus_pvd_new           (QbusPvdCtx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new, fct_qbus_pvd_factory__on_del, fct_qbus_pvd_cb__on_connection);
+__CAPE_LIBEX  QbusPvdConn  __STDCALL qbus_pvd_ctx_add       (QbusPvdCtx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new, fct_qbus_pvd_factory__on_del, fct_qbus_pvd_cb__on_connection);
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_del           (QbusPvdConn*);
+__CAPE_LIBEX  void         __STDCALL qbus_pvd_ctx_rm        (QbusPvdCtx, QbusPvdConn);
 
 __CAPE_LIBEX  int          __STDCALL qbus_pvd_listen        (QbusPvdConn, CapeErr);
 

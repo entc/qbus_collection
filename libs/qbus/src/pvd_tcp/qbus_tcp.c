@@ -87,59 +87,39 @@ void __attribute__ ((destructor)) library_fini (void)
 struct QbusPvdCtx_s
 {
   CapeAioContext aio;
-  
+  CapeList connections;
 };
-
-//------------------------------------------------------------------------------------------------------
-
-QbusPvdCtx qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
-{
-  QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
-
-  self->aio = aio;
-  
-  return self;
-}
-
-//------------------------------------------------------------------------------------------------------
-
-int qbus_pvd_ctx_del (QbusPvdCtx* p_self)
-{
-  if (*p_self)
-  {
-    QbusPvdCtx self = *p_self;
-    
-    CAPE_DEL (p_self, struct QbusPvdCtx_s);
-  }
-}
 
 //------------------------------------------------------------------------------------------------------
 
 struct QbusPvdConn_s
 {
   QbusPvdCtx ctx;        // reference
-
+  
   void* user_data;
   fct_qbus_pvd_factory__on_new factory_on_new;
   fct_qbus_pvd_factory__on_del factory_on_del;
   fct_qbus_pvd_cb__on_connection on_connection_established;
   
+  CapeString host;
+  number_t port;
+  
+  // this might go into a extra struct
+  CapeAioSocket aio_socket;
+
   void* user_object;
   fct_cape_aio_socket_onSent on_sent;
   fct_cape_aio_socket_onRecv on_recv;
-  
-  CapeString host;
-  number_t port;
 };
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdConn qbus_pvd_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
+QbusPvdConn qbus_pvd_conn_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
 {
   QbusPvdConn self = CAPE_NEW (struct QbusPvdConn_s);
   
   self->ctx = ctx;
-
+  
   // default callbacks for creating an external connection object
   self->user_data = user_ptr;
   self->factory_on_new = on_new;
@@ -153,18 +133,26 @@ QbusPvdConn qbus_pvd_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, fct_q
   self->host = cape_str_cp (cape_udc_get_s (options, "host", "127.0.0.1"));
   self->port = cape_udc_get_n (options, "port", 33340);
   
+  self->aio_socket = NULL;
+  
   return self;
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_del (QbusPvdConn* p_self)
+void qbus_pvd_conn_del (QbusPvdConn* p_self)
 {
   if (*p_self)
   {
     QbusPvdConn self = *p_self;
     
     cape_str_del (&(self->host));
+    
+    if (self->aio_socket)
+    {
+      // close the socket
+      cape_aio_socket_close (self->aio_socket, self->ctx->aio);
+    }
     
     CAPE_DEL (p_self, struct QbusPvdConn_s);
   }
@@ -375,9 +363,12 @@ int qbus_pvd_reconnect (QbusPvdConn self, CapeErr err)
     }
 
     CapeAioSocket s = cape_aio_socket_new (sock);
+    
+    // store the socket handler for disconnect
+    self->aio_socket = s;
+
     // set callbacks
     // we can use the event handler directly
-    
     cape_aio_socket_callback (s, self, qbus_pvd_reconnect__on_sent, qbus_pvd_reconnect__on_recv, qbus_pvd_reconnect__on_done);
     
     // set qbus connection callbacks
@@ -401,6 +392,71 @@ void qbus_pvd_cb_raw_set (QbusPvdConn self, fct_cape_aio_socket_onSent on_sent, 
 {
   self->on_sent = on_sent;
   self->on_recv = on_recv;
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void __STDCALL qbus_pvd_ctx__connections__on_del (void* ptr)
+{
+  QbusPvdConn h = ptr; qbus_pvd_conn_del (&h);
+}
+
+//------------------------------------------------------------------------------------------------------
+
+QbusPvdCtx qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
+{
+  QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
+  
+  self->aio = aio;
+  self->connections = cape_list_new (qbus_pvd_ctx__connections__on_del);
+  
+  return self;
+}
+
+//------------------------------------------------------------------------------------------------------
+
+int qbus_pvd_ctx_del (QbusPvdCtx* p_self)
+{
+  if (*p_self)
+  {
+    QbusPvdCtx self = *p_self;
+
+    cape_list_del (&(self->connections));
+    
+    CAPE_DEL (p_self, struct QbusPvdCtx_s);
+  }
+}
+
+//------------------------------------------------------------------------------------------------------
+
+QbusPvdConn qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
+{
+  QbusPvdConn ret = qbus_pvd_conn_new (self, options, user_ptr, on_new, on_del, on_connection);
+  
+  // store this object in connections
+  cape_list_push_back (self->connections, ret);
+  
+  return ret;
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdConn conn)
+{
+  CapeListCursor* cursor = cape_list_cursor_create (self->connections, CAPE_DIRECTION_FORW);
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    QbusPvdConn conn_loop = cape_list_node_data (cursor->node);
+    
+    if (conn_loop == conn)
+    {
+      cape_list_cursor_erase (self->connections, cursor);
+      break;
+    }
+  }
+  
+  cape_list_cursor_destroy (&cursor);
 }
 
 //------------------------------------------------------------------------------------------------------
