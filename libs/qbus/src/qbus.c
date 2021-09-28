@@ -1,5 +1,6 @@
 #include "qbus.h" 
 #include "qbus_route.h"
+#include "qbus_connection.h"
 #include "qbus_types.h"
 
 // c includes
@@ -38,6 +39,8 @@
 
 struct QBusEngine_s
 {
+  QBusRoute route;    // reference
+  
   // stores the function pointers
   QbusPvd functions;
   CapeDl hlib;
@@ -46,10 +49,12 @@ struct QBusEngine_s
 
 //-----------------------------------------------------------------------------
 
-QBusEngine qbus_engine_new ()
+QBusEngine qbus_engine_new (QBusRoute route)
 {
   QBusEngine self = CAPE_NEW(struct QBusEngine_s);
 
+  self->route = route;
+  
   memset (&(self->functions), 0, sizeof(QbusPvd));
   self->hlib = cape_dl_new ();
   
@@ -142,6 +147,24 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
     goto exit_and_cleanup;
   }
 
+  self->functions.pvd_send = cape_dl_funct (self->hlib, "qbus_pvd_send", err);
+  if (self->functions.pvd_send == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_mark = cape_dl_funct (self->hlib, "qbus_pvd_mark", err);
+  if (self->functions.pvd_mark == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_cb_raw_set = cape_dl_funct (self->hlib, "qbus_pvd_cb_raw_set", err);
+  if (self->functions.pvd_cb_raw_set == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "functions mapped = %s", name);
 
   res = CAPE_ERR_NONE;
@@ -175,23 +198,80 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine self, CapeAioContext aio, CapeUdc opt
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qbus_engine_conn__factory_on_new (void* user_ptr)
+void __STDCALL qbus_engine_conn__send (void* ptr1, void* ptr2, const char* bufdat, number_t buflen, void* userdata)
 {
-  
+  QBusEngine self = ptr1;
+  QbusPvdPhyConnection phy_connection = ptr2;
+
+  if (self->functions.pvd_send)
+  {
+    self->functions.pvd_send (phy_connection, bufdat, buflen, userdata);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__factory_on_del (void** object_ptr)
+void __STDCALL qbus_engine_conn__mark (void* ptr1, void* ptr2)
 {
+  QBusEngine self = ptr1;
+  QbusPvdPhyConnection phy_connection = ptr2;
+
+  if (self->functions.pvd_mark)
+  {
+    self->functions.pvd_mark (phy_connection);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engine_conn__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
+{
+  qbus_connection_onSent (ptr, userdata);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engine_conn__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
+{
+  qbus_connection_onRecv (ptr, bufdat, buflen);
+}
+
+//-----------------------------------------------------------------------------
+
+void* __STDCALL qbus_engine_conn__factory_on_new (void* user_ptr, QbusPvdPhyConnection phy_connection)
+{
+  QBusEngine self = user_ptr;
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "new connection was established");
+
+  QBusConnection ret = qbus_connection_new (self->route, 0);
+
+  if (self->functions.pvd_cb_raw_set)
+  {
+    self->functions.pvd_cb_raw_set (phy_connection, qbus_engine_conn__on_sent, qbus_engine_conn__on_recv);
+  }
+  
+  qbus_connection_cb (ret, self, phy_connection, qbus_engine_conn__send, qbus_engine_conn__mark);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engine_conn__factory_on_del (void** p_object_ptr)
+{
+  qbus_connection_del ((QBusConnection*)p_object_ptr);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "a connection was dropped");
 }
 
 //-----------------------------------------------------------------------------
 
 void* __STDCALL qbus_engine_conn__on_connection (void* object_ptr)
 {
+  qbus_connection_reg (object_ptr);
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "connection ready for handshake");
 }
 
 //-----------------------------------------------------------------------------
@@ -380,7 +460,7 @@ QBusEngine qbus_load_engine__library (QBus self, const CapeString path, const Ca
   }
   else
   {
-    ret = qbus_engine_new ();
+    ret = qbus_engine_new (self->route);
 
     // try to load the engine
     // -> returns a cape error code

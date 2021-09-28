@@ -11,9 +11,12 @@
 
 typedef struct QbusPvdCtx_s* QbusPvdCtx;
 typedef struct QbusPvdConn_s* QbusPvdConn;
+typedef struct QbusPvdPhyConnection_s* QbusPvdPhyConnection;
+
+//-----------------------------------------------------------------------------
 
                      /* factory callback to create an user defined object to handle the upper layer logic */
-typedef void*        (__STDCALL *fct_qbus_pvd_factory__on_new)   (void* user_ptr);
+typedef void*        (__STDCALL *fct_qbus_pvd_factory__on_new)   (void* user_ptr, QbusPvdPhyConnection phy_connection);
 
                      /* factory callback to release the upper layer object */
 typedef void         (__STDCALL *fct_qbus_pvd_factory__on_del)   (void** object_ptr);
@@ -37,7 +40,11 @@ typedef int          (__STDCALL *fct_qbus_pvd_reconnect)    (QbusPvdConn, CapeEr
 
 //-----------------------------------------------------------------------------
 
-typedef void         (__STDCALL *fct_qbus_pvd_cb_raw_set)   (QbusPvdConn, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
+typedef void         (__STDCALL *fct_qbus_pvd_send)         (QbusPvdPhyConnection, const char* bufdat, number_t buflen, void* userdata);
+
+typedef void         (__STDCALL *fct_qbus_pvd_mark)         (QbusPvdPhyConnection);
+
+typedef void         (__STDCALL *fct_qbus_pvd_cb_raw_set)   (QbusPvdPhyConnection, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
 
 //-----------------------------------------------------------------------------
 
@@ -50,6 +57,10 @@ typedef struct
   fct_qbus_pvd_listen          pvd_listen;
   fct_qbus_pvd_reconnect       pvd_reconnect;
 
+  fct_qbus_pvd_send            pvd_send;
+  fct_qbus_pvd_mark            pvd_mark;
+  fct_qbus_pvd_cb_raw_set      pvd_cb_raw_set;
+  
 } QbusPvd;
 
 //-----------------------------------------------------------------------------

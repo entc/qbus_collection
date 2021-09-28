@@ -23,7 +23,11 @@ __CAPE_LIBEX  int          __STDCALL qbus_pvd_reconnect     (QbusPvdConn, CapeEr
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_cb_raw_set    (QbusPvdConn, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
+__CAPE_LIBEX  void         __STDCALL qbus_pvd_send          (QbusPvdPhyConnection, const char* bufdat, number_t buflen, void* userdata);
+
+__CAPE_LIBEX  void         __STDCALL qbus_pvd_mark          (QbusPvdPhyConnection);
+
+__CAPE_LIBEX  void         __STDCALL qbus_pvd_cb_raw_set    (QbusPvdPhyConnection, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
 
 //-----------------------------------------------------------------------------
 
