@@ -9,25 +9,25 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX  QbusPvdCtx   __STDCALL qbus_pvd_ctx_new       (CapeAioContext, CapeUdc options, CapeErr);
+__CAPE_LIBEX  QbusPvdCtx     __STDCALL qbus_pvd_ctx_new       (CapeAioContext, CapeUdc options, CapeErr);
 
-__CAPE_LIBEX  int          __STDCALL qbus_pvd_ctx_del       (QbusPvdCtx*);
+__CAPE_LIBEX  int            __STDCALL qbus_pvd_ctx_del       (QbusPvdCtx*);
 
-__CAPE_LIBEX  QbusPvdConn  __STDCALL qbus_pvd_ctx_add       (QbusPvdCtx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new, fct_qbus_pvd_factory__on_del, fct_qbus_pvd_cb__on_connection);
+__CAPE_LIBEX  QbusPvdEntity  __STDCALL qbus_pvd_ctx_add       (QbusPvdCtx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new, fct_qbus_pvd_factory__on_del, fct_qbus_pvd_cb__on_connection);
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_ctx_rm        (QbusPvdCtx, QbusPvdConn);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_ctx_rm        (QbusPvdCtx, QbusPvdEntity);
 
-__CAPE_LIBEX  int          __STDCALL qbus_pvd_listen        (QbusPvdConn, CapeErr);
+__CAPE_LIBEX  int            __STDCALL qbus_pvd_listen        (QbusPvdEntity, CapeErr);
 
-__CAPE_LIBEX  int          __STDCALL qbus_pvd_reconnect     (QbusPvdConn, CapeErr);
+__CAPE_LIBEX  int            __STDCALL qbus_pvd_reconnect     (QbusPvdEntity, CapeErr);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_send          (QbusPvdPhyConnection, const char* bufdat, number_t buflen, void* userdata);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_send          (QbusPvdConnection, const char* bufdat, number_t buflen, void* userdata);
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_mark          (QbusPvdPhyConnection);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_mark          (QbusPvdConnection);
 
-__CAPE_LIBEX  void         __STDCALL qbus_pvd_cb_raw_set    (QbusPvdPhyConnection, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_cb_raw_set    (QbusPvdConnection, fct_cape_aio_socket_onSent, fct_cape_aio_socket_onRecv);
 
 //-----------------------------------------------------------------------------
 

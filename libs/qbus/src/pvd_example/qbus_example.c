@@ -92,14 +92,14 @@ struct QbusPvdCtx_s
 
 //------------------------------------------------------------------------------------------------------
 
-CapeAioContext qbus_pvd_conn_aio (QbusPvdConn self);
-void qbus_pvd_internal__on_done (QbusPvdConn self, void** p_user_object);
+CapeAioContext qbus_pvd_conn_aio (QbusPvdEntity self);
+void qbus_pvd_internal__on_done (QbusPvdEntity self, void** p_user_object);
 
 //------------------------------------------------------------------------------------------------------
 
-struct QbusPvdPhyConnection_s
+struct QbusPvdConnection_s
 {
-  QbusPvdConn conn;     // reference
+  QbusPvdEntity conn;     // reference
   CapeAioSocket aio_socket;
   
   void* user_object;
@@ -110,9 +110,9 @@ struct QbusPvdPhyConnection_s
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdPhyConnection qbus_pvd_phy_connection_new (QbusPvdConn conn)
+QbusPvdConnection qbus_pvd_phy_connection_new (QbusPvdEntity conn)
 {
-  QbusPvdPhyConnection self = CAPE_NEW (struct QbusPvdPhyConnection_s);
+  QbusPvdConnection self = CAPE_NEW (struct QbusPvdConnection_s);
   
   self->conn = conn;
   self->aio_socket = NULL;
@@ -126,11 +126,11 @@ QbusPvdPhyConnection qbus_pvd_phy_connection_new (QbusPvdConn conn)
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_phy_connection_del (QbusPvdPhyConnection* p_self)
+void qbus_pvd_phy_connection_del (QbusPvdConnection* p_self)
 {
   if (*p_self)
   {
-    QbusPvdPhyConnection self = *p_self;
+    QbusPvdConnection self = *p_self;
     
     if (self->aio_socket)
     {
@@ -141,27 +141,27 @@ void qbus_pvd_phy_connection_del (QbusPvdPhyConnection* p_self)
     // call the destruction methods related to the user object
     qbus_pvd_internal__on_done (self->conn, &(self->user_object));
     
-    CAPE_DEL (p_self, struct QbusPvdPhyConnection_s);
+    CAPE_DEL (p_self, struct QbusPvdConnection_s);
   }
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_send (QbusPvdPhyConnection self, const char* bufdat, number_t buflen, void* userdata)
+void qbus_pvd_send (QbusPvdConnection self, const char* bufdat, number_t buflen, void* userdata)
 {
   cape_aio_socket_send (self->aio_socket, qbus_pvd_conn_aio (self->conn), bufdat, buflen, userdata);
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_mark (QbusPvdPhyConnection self)
+void qbus_pvd_mark (QbusPvdConnection self)
 {
   cape_aio_socket_markSent (self->aio_socket, qbus_pvd_conn_aio (self->conn));
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_cb_raw_set (QbusPvdPhyConnection self, fct_cape_aio_socket_onSent on_sent, fct_cape_aio_socket_onRecv on_recv)
+void qbus_pvd_cb_raw_set (QbusPvdConnection self, fct_cape_aio_socket_onSent on_sent, fct_cape_aio_socket_onRecv on_recv)
 {
   self->on_sent = on_sent;
   self->on_recv = on_recv;
@@ -169,7 +169,7 @@ void qbus_pvd_cb_raw_set (QbusPvdPhyConnection self, fct_cape_aio_socket_onSent 
 
 //------------------------------------------------------------------------------------------------------
 
-struct QbusPvdConn_s
+struct QbusPvdEntity_s
 {
   QbusPvdCtx ctx;        // reference
   
@@ -188,14 +188,14 @@ struct QbusPvdConn_s
 
 void __STDCALL qbus_pvd_conn__phy_connections__on_del (void* ptr)
 {
-  QbusPvdPhyConnection h = ptr; qbus_pvd_phy_connection_del (&h);
+  QbusPvdConnection h = ptr; qbus_pvd_phy_connection_del (&h);
 }
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdConn qbus_pvd_conn_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
+QbusPvdEntity qbus_pvd_conn_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
 {
-  QbusPvdConn self = CAPE_NEW (struct QbusPvdConn_s);
+  QbusPvdEntity self = CAPE_NEW (struct QbusPvdEntity_s);
   
   self->ctx = ctx;
   
@@ -215,22 +215,22 @@ QbusPvdConn qbus_pvd_conn_new (QbusPvdCtx ctx, CapeUdc options, void* user_ptr, 
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_conn_del (QbusPvdConn* p_self)
+void qbus_pvd_conn_del (QbusPvdEntity* p_self)
 {
   if (*p_self)
   {
-    QbusPvdConn self = *p_self;
+    QbusPvdEntity self = *p_self;
     
     cape_str_del (&(self->host));
     cape_list_del (&(self->phy_connections));
     
-    CAPE_DEL (p_self, struct QbusPvdConn_s);
+    CAPE_DEL (p_self, struct QbusPvdEntity_s);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-CapeAioContext qbus_pvd_conn_aio (QbusPvdConn self)
+CapeAioContext qbus_pvd_conn_aio (QbusPvdEntity self)
 {
   return self->ctx->aio;
 }
@@ -251,7 +251,7 @@ int __STDCALL qbus_pvd_internal__on_timer (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-void qbus_pvd_internal__timer_enable (QbusPvdConn self)
+void qbus_pvd_internal__timer_enable (QbusPvdEntity self)
 {
   int res;
   CapeErr err = cape_err_new ();
@@ -275,7 +275,7 @@ void qbus_pvd_internal__timer_enable (QbusPvdConn self)
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_internal__on_done (QbusPvdConn self, void** p_user_object)
+void qbus_pvd_internal__on_done (QbusPvdEntity self, void** p_user_object)
 {
   if (self->factory_on_del)
   {
@@ -285,13 +285,13 @@ void qbus_pvd_internal__on_done (QbusPvdConn self, void** p_user_object)
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_internal__connections_rm (QbusPvdConn self, QbusPvdPhyConnection phy_connection)
+void qbus_pvd_internal__connections_rm (QbusPvdEntity self, QbusPvdConnection phy_connection)
 {
   CapeListCursor* cursor = cape_list_cursor_create (self->phy_connections, CAPE_DIRECTION_FORW);
   
   while (cape_list_cursor_next (cursor))
   {
-    QbusPvdPhyConnection phy_connection_loop = cape_list_node_data (cursor->node);
+    QbusPvdConnection phy_connection_loop = cape_list_node_data (cursor->node);
     
     if (phy_connection_loop == phy_connection)
     {
@@ -307,7 +307,7 @@ void qbus_pvd_internal__connections_rm (QbusPvdConn self, QbusPvdPhyConnection p
 
 static void __STDCALL qbus_pvd_listen__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
 
   if (self->on_sent)
   {
@@ -319,7 +319,7 @@ static void __STDCALL qbus_pvd_listen__on_sent (void* ptr, CapeAioSocket socket,
 
 static void __STDCALL qbus_pvd_listen__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
 
   if (self->on_recv)
   {
@@ -331,7 +331,7 @@ static void __STDCALL qbus_pvd_listen__on_recv (void* ptr, CapeAioSocket socket,
 
 static void __STDCALL qbus_pvd_listen__on_done (void* ptr, void* userdata)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
   
   qbus_pvd_internal__connections_rm (self->conn, self);
 }
@@ -340,7 +340,7 @@ static void __STDCALL qbus_pvd_listen__on_done (void* ptr, void* userdata)
 
 static void __STDCALL qbus_pvd_listen__on_connect (void* ptr, void* handle, const char* remote_addr)
 {
-  QbusPvdConn self = ptr;
+  QbusPvdEntity self = ptr;
   
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on connect", "new connection from %s", remote_addr);
   
@@ -352,7 +352,7 @@ static void __STDCALL qbus_pvd_listen__on_connect (void* ptr, void* handle, cons
   // handle new connection
   {
     // create a new object for the created socket
-    QbusPvdPhyConnection phy_connection = qbus_pvd_phy_connection_new (self);
+    QbusPvdConnection phy_connection = qbus_pvd_phy_connection_new (self);
 
     // create a new handler for the created socket
     CapeAioSocket sock = cape_aio_socket_new (handle);
@@ -395,7 +395,7 @@ static void __STDCALL qbus_pvd_listen__on_accept_done (void* ptr)
 
 //------------------------------------------------------------------------------------------------------
 
-int qbus_pvd_listen (QbusPvdConn self, CapeErr err)
+int qbus_pvd_listen (QbusPvdEntity self, CapeErr err)
 {
   void* socket_handle = cape_sock__tcp__srv_new (self->host, self->port, err);
   
@@ -422,7 +422,7 @@ int qbus_pvd_listen (QbusPvdConn self, CapeErr err)
 
 void __STDCALL qbus_pvd_reconnect__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
   
   if (self->on_sent)
   {
@@ -434,7 +434,7 @@ void __STDCALL qbus_pvd_reconnect__on_sent (void* ptr, CapeAioSocket socket, voi
 
 void __STDCALL qbus_pvd_reconnect__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
   
   if (self->on_recv)
   {
@@ -446,7 +446,7 @@ void __STDCALL qbus_pvd_reconnect__on_recv (void* ptr, CapeAioSocket socket, con
 
 void __STDCALL qbus_pvd_phy_connection__on_done (void* ptr, void* userdata)
 {
-  QbusPvdPhyConnection self = ptr;
+  QbusPvdConnection self = ptr;
   
   // add timer for reconnection
   qbus_pvd_internal__timer_enable (self->conn);
@@ -457,7 +457,7 @@ void __STDCALL qbus_pvd_phy_connection__on_done (void* ptr, void* userdata)
 
 //------------------------------------------------------------------------------------------------------
 
-int qbus_pvd_reconnect (QbusPvdConn self, CapeErr err)
+int qbus_pvd_reconnect (QbusPvdEntity self, CapeErr err)
 {
   void* sock = cape_sock__tcp__clt_new (self->host, self->port, err);
   if (sock == NULL)
@@ -467,7 +467,7 @@ int qbus_pvd_reconnect (QbusPvdConn self, CapeErr err)
   
   // handle new connection
   {
-    QbusPvdPhyConnection phy_connection = qbus_pvd_phy_connection_new (self);
+    QbusPvdConnection phy_connection = qbus_pvd_phy_connection_new (self);
 
     // create a new object to handle this connection in an upper layer
     if (self->factory_on_new)
@@ -505,7 +505,7 @@ int qbus_pvd_reconnect (QbusPvdConn self, CapeErr err)
 
 void __STDCALL qbus_pvd_ctx__connections__on_del (void* ptr)
 {
-  QbusPvdConn h = ptr; qbus_pvd_conn_del (&h);
+  QbusPvdEntity h = ptr; qbus_pvd_conn_del (&h);
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -536,9 +536,9 @@ int qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdConn qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
+QbusPvdEntity qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
 {
-  QbusPvdConn ret = qbus_pvd_conn_new (self, options, user_ptr, on_new, on_del, on_connection);
+  QbusPvdEntity ret = qbus_pvd_conn_new (self, options, user_ptr, on_new, on_del, on_connection);
   
   // store this object in connections
   cape_list_push_back (self->connections, ret);
@@ -548,13 +548,13 @@ QbusPvdConn qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, 
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdConn conn)
+void qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdEntity conn)
 {
   CapeListCursor* cursor = cape_list_cursor_create (self->connections, CAPE_DIRECTION_FORW);
   
   while (cape_list_cursor_next (cursor))
   {
-    QbusPvdConn conn_loop = cape_list_node_data (cursor->node);
+    QbusPvdEntity conn_loop = cape_list_node_data (cursor->node);
     
     if (conn_loop == conn)
     {

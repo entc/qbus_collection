@@ -201,47 +201,47 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine self, CapeAioContext aio, CapeUdc opt
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__send (void* ptr1, void* ptr2, const char* bufdat, number_t buflen, void* userdata)
+void __STDCALL qbus_engine__send (void* ptr1, void* ptr2, const char* bufdat, number_t buflen, void* userdata)
 {
   QBusEngine self = ptr1;
-  QbusPvdPhyConnection phy_connection = ptr2;
+  QbusPvdConnection connection = ptr2;
 
   if (self->functions.pvd_send)
   {
-    self->functions.pvd_send (phy_connection, bufdat, buflen, userdata);
+    self->functions.pvd_send (connection, bufdat, buflen, userdata);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__mark (void* ptr1, void* ptr2)
+void __STDCALL qbus_engine__mark (void* ptr1, void* ptr2)
 {
   QBusEngine self = ptr1;
-  QbusPvdPhyConnection phy_connection = ptr2;
+  QbusPvdConnection connection = ptr2;
 
   if (self->functions.pvd_mark)
   {
-    self->functions.pvd_mark (phy_connection);
+    self->functions.pvd_mark (connection);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
+void __STDCALL qbus_engine__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
 {
   qbus_connection_onSent (ptr, userdata);
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
+void __STDCALL qbus_engine__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
   qbus_connection_onRecv (ptr, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qbus_engine_conn__factory_on_new (void* user_ptr, QbusPvdPhyConnection phy_connection)
+void* __STDCALL qbus_engine__factory_on_new (void* user_ptr, QbusPvdConnection phy_connection)
 {
   QBusEngine self = user_ptr;
   
@@ -251,17 +251,17 @@ void* __STDCALL qbus_engine_conn__factory_on_new (void* user_ptr, QbusPvdPhyConn
 
   if (self->functions.pvd_cb_raw_set)
   {
-    self->functions.pvd_cb_raw_set (phy_connection, qbus_engine_conn__on_sent, qbus_engine_conn__on_recv);
+    self->functions.pvd_cb_raw_set (phy_connection, qbus_engine__on_sent, qbus_engine__on_recv);
   }
   
-  qbus_connection_cb (ret, self, phy_connection, qbus_engine_conn__send, qbus_engine_conn__mark);
+  qbus_connection_cb (ret, self, phy_connection, qbus_engine__send, qbus_engine__mark);
   
   return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_engine_conn__factory_on_del (void** p_object_ptr)
+void __STDCALL qbus_engine__factory_on_del (void** p_object_ptr)
 {
   qbus_connection_del ((QBusConnection*)p_object_ptr);
   
@@ -270,7 +270,7 @@ void __STDCALL qbus_engine_conn__factory_on_del (void** p_object_ptr)
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qbus_engine_conn__on_connection (void* object_ptr)
+void* __STDCALL qbus_engine__on_connection (void* object_ptr)
 {
   qbus_connection_reg (object_ptr);
   
@@ -279,13 +279,13 @@ void* __STDCALL qbus_engine_conn__on_connection (void* object_ptr)
 
 //-----------------------------------------------------------------------------
 
-QbusPvdConn qbus_engine_conn_new (QBusEngine self, QbusPvdCtx ctx, CapeUdc options, CapeErr err)
+QbusPvdEntity qbus_engine_add (QBusEngine self, QbusPvdCtx ctx, CapeUdc options, CapeErr err)
 {
-  QbusPvdConn ret = NULL;
+  QbusPvdEntity ret = NULL;
   
   if (self->functions.pvd_ctx_add)
   {
-    ret = self->functions.pvd_ctx_add (ctx, options, self, qbus_engine_conn__factory_on_new, qbus_engine_conn__factory_on_del, qbus_engine_conn__on_connection);
+    ret = self->functions.pvd_ctx_add (ctx, options, self, qbus_engine__factory_on_new, qbus_engine__factory_on_del, qbus_engine__on_connection);
   }
   else
   {
@@ -297,13 +297,13 @@ QbusPvdConn qbus_engine_conn_new (QBusEngine self, QbusPvdCtx ctx, CapeUdc optio
 
 //-----------------------------------------------------------------------------
 
-int qbus_engine_reconnect (QBusEngine self, QbusPvdConn conn, CapeErr err)
+int qbus_engine_reconnect (QBusEngine self, QbusPvdEntity entity, CapeErr err)
 {
   int res;
   
   if (self->functions.pvd_reconnect)
   {
-    res = self->functions.pvd_reconnect (conn, err);
+    res = self->functions.pvd_reconnect (entity, err);
   }
   else
   {
@@ -315,13 +315,13 @@ int qbus_engine_reconnect (QBusEngine self, QbusPvdConn conn, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qbus_engine_listen (QBusEngine self, QbusPvdConn conn, CapeErr err)
+int qbus_engine_listen (QBusEngine self, QbusPvdEntity entity, CapeErr err)
 {
   int res;
   
   if (self->functions.pvd_listen)
   {
-    res = self->functions.pvd_listen (conn, err);
+    res = self->functions.pvd_listen (entity, err);
   }
   else
   {
@@ -352,12 +352,6 @@ struct QBus_s
   CapeString name;
   
   QBusRoute route;
-  
-  // TODO -> into list
-  //EngineTcpInc engine_tcp_inc;
-  
-  // TODO -> into list
-  //EngineTcpOut engine_tcp_out;
   
   // config
   CapeUdc config;
@@ -490,7 +484,7 @@ QBusEngine qbus_load_engine__library (QBus self, const CapeString path, const Ca
 
 typedef struct {
   
-  QbusPvdConn conn;
+  QbusPvdEntity entity;
   QBusEngine engine;
   
 } QbusEngineResult;
@@ -525,7 +519,7 @@ int qbus_load_engine (QBus self, const CapeString name, CapeUdc remote, QbusEngi
     goto exit_and_cleanup;
   }
   
-  result->conn = qbus_engine_conn_new (result->engine, ctx, remote, err);
+  result->entity = qbus_engine_add (result->engine, ctx, remote, err);
 
   res = CAPE_ERR_NONE;
   
@@ -588,7 +582,7 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
       goto exit_and_cleanup;
     }
 
-    res = qbus_engine_reconnect (result.engine, result.conn, err);
+    res = qbus_engine_reconnect (result.engine, result.entity, err);
   }
   
 exit_and_cleanup:
@@ -661,7 +655,7 @@ int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
       goto exit_and_cleanup;
     }
     
-    res = qbus_engine_listen (result.engine, result.conn, err);
+    res = qbus_engine_listen (result.engine, result.entity, err);
   }
 
 exit_and_cleanup:
