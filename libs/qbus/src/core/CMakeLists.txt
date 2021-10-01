@@ -2,6 +2,7 @@
 INCLUDE_DIRECTORIES("../../cape/src" "../src")
 
 set(CORE_SOURCES
+  qbus_engine.c
   qbus_connection.c
   qbus_frame.c
   qbus_route.c
@@ -10,6 +11,7 @@ set(CORE_SOURCES
 )
 
 set(CORE_HEADERS
+  qbus_engine.h
   qbus_connection.h
   qbus_frame.h
   qbus_route.h

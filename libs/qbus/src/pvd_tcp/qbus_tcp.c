@@ -522,7 +522,7 @@ QbusPvdCtx qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
 
 //------------------------------------------------------------------------------------------------------
 
-int qbus_pvd_ctx_del (QbusPvdCtx* p_self)
+void qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 {
   if (*p_self)
   {
