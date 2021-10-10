@@ -10,6 +10,7 @@
 #include <fmt/cape_tokenizer.h>
 #include <fmt/cape_json.h>
 #include <sys/cape_pipe.h>
+#include <fmt/cape_parser_line.h>
 
 // regular expression
 #include <pcre.h>
@@ -21,7 +22,8 @@
 struct PipeContext_s
 {
   pcre* re;
-
+  CapeParserLine line_parser;
+  
   CapeString module;
   CapeString method;
 
@@ -71,6 +73,24 @@ int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeEr
 
 //-------------------------------------------------------------------------------------
 
+void __STDCALL qbus_pipe__on_line (void* ptr, const CapeString line)
+{
+  PipeContext self = ptr;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  printf ("LINE: %s\n", line);
+  
+  qbus_pipe__re (self, line, cape_str_size (line), err);
+
+exit_and_cleanup:
+  
+  cape_err_del (&err);
+}
+
+//-------------------------------------------------------------------------------------
+
 void __STDCALL qbus_pipe__on_read (void* ptr, CapeAioFileReader freader, const char* bufdat, number_t buflen)
 {
   PipeContext self = ptr;
@@ -78,7 +98,10 @@ void __STDCALL qbus_pipe__on_read (void* ptr, CapeAioFileReader freader, const c
   // local objects
   CapeErr err = cape_err_new ();
 
-  qbus_pipe__re (self, bufdat, buflen, err);
+  if (cape_parser_line_process (self->line_parser, bufdat, buflen, err))
+  {
+    
+  }
 
 exit_and_cleanup:
 
@@ -104,6 +127,8 @@ static int __STDCALL qbus_pipe_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   self->module = cape_str_cp (qbus_config_s (qbus, "module", NULL));
   self->method = cape_str_cp (qbus_config_s (qbus, "method", NULL));
 
+  self->line_parser = cape_parser_line_new (self, qbus_pipe__on_line);
+  
   self->re = pcre_compile (regex, PCRE_CASELESS | PCRE_DOTALL, &error, &erroffset, NULL);
   if (self->re == NULL)
   {
