@@ -220,7 +220,8 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
   
   if (type == NULL)
   {
-    return CAPE_ERR_NONE;
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
   }
   
   /*
@@ -282,7 +283,8 @@ int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
   
   if (type == NULL)
   {
-    return;
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
   }
   
   /*
