@@ -57,13 +57,15 @@ int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeEr
     int i;
     char buffer[10000];
     
+    printf ("-----------------------------------------------------------\n");
+
     if (rc == 0)
     {
       cape_log_fmt (CAPE_LL_WARN, "PIPE", "regex", "too many substrings were found to fit in subStrVec");
       rc = MSGD_REGEX_SUBSTR_MAXAMOUNT;
     }
     
-    for (i = 0; i < rc; i++)
+    for (i = 1; i < rc; i++)
     {
       pcre_copy_substring (bufdat, ovector, rc, i, buffer, 10000);
       
