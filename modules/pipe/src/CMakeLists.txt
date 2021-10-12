@@ -1,5 +1,5 @@
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
-find_package(Pcre REQUIRED)
+find_package(PCRE REQUIRED)
 
 INCLUDE_DIRECTORIES(${PCRE_INCLUDE_DIRS} "../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core")
 
