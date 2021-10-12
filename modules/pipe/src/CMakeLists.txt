@@ -1,7 +1,7 @@
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 find_package(Pcre REQUIRED)
 
-INCLUDE_DIRECTORIES(${PCRE_INCLUDE_DIRS} "../../../libs/cape/src" "../../../libs/qbus/src")
+INCLUDE_DIRECTORIES(${PCRE_INCLUDE_DIRS} "../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core")
 
 #----------------------------------------------------------------------------------------
 
@@ -13,7 +13,7 @@ SET (QBUS_MODULES_PIPE_HEADERS
 )
 
 ADD_EXECUTABLE (qbus_mod_pipe ${QBUS_MODULES_PIPE_SOURCES} ${QBUS_MODULES_PIPE_HEADERS})
-TARGET_LINK_LIBRARIES(qbus_mod_pipe qbus ${PCRE_LIBRARIES})
+TARGET_LINK_LIBRARIES(qbus_mod_pipe qbus adbl2 ${PCRE_LIBRARIES})
 
 # install
 INSTALL (TARGETS qbus_mod_pipe DESTINATION mods)

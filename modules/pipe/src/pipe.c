@@ -12,6 +12,8 @@
 #include <sys/cape_pipe.h>
 #include <fmt/cape_parser_line.h>
 
+#include <adbl.h>
+
 // regular expression
 #include <pcre.h>
 
@@ -24,37 +26,18 @@ struct PipeContext_s
   pcre* re;
   CapeParserLine line_parser;
   
-  CapeString module;
-  CapeString method;
+  // for database access
+  AdblCtx adbl_ctx;
+  AdblSession adbl_session;
 
 }; typedef struct PipeContext_s* PipeContext;
-
-//-------------------------------------------------------------------------------------
-
-void pipe_context_del (PipeContext* p_self)
-{
-  if (*p_self)
-  {
-    PipeContext self = *p_self;
-
-    if (self->re)
-    {
-      pcre_free(self->re);
-    }
-
-    cape_str_del (&(self->module));
-    cape_str_del (&(self->method));
-
-    CAPE_DEL (p_self, struct PipeContext_s);
-  }
-}
 
 //-------------------------------------------------------------------------------------
 
 int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeErr err)
 {
   int ovector [MSGD_REGEX_SUBSTR_MAXAMOUNT];
-
+  
   int rc = pcre_exec (self->re, NULL, bufdat, buflen, 0, 0, ovector, MSGD_REGEX_SUBSTR_MAXAMOUNT);
   if (rc < 0)
   {
@@ -69,6 +52,24 @@ int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeEr
       default                      : return cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "unknown error");
     }
   }
+  else
+  {
+    int i;
+    char buffer[10000];
+    
+    if (rc == 0)
+    {
+      cape_log_fmt (CAPE_LL_WARN, "PIPE", "regex", "too many substrings were found to fit in subStrVec");
+      rc = MSGD_REGEX_SUBSTR_MAXAMOUNT;
+    }
+    
+    for (i = 0; i < rc; i++)
+    {
+      pcre_copy_substring (bufdat, ovector, rc, i, buffer, 10000);
+      
+      printf ("REGEX: %s\n", buffer);
+    }
+  }
 }
 
 //-------------------------------------------------------------------------------------
@@ -76,17 +77,59 @@ int qbus_pipe__re (PipeContext self, const char* bufdat, number_t buflen, CapeEr
 void __STDCALL qbus_pipe__on_line (void* ptr, const CapeString line)
 {
   PipeContext self = ptr;
-
+  
   // local objects
   CapeErr err = cape_err_new ();
   
-  printf ("LINE: %s\n", line);
-  
   qbus_pipe__re (self, line, cape_str_size (line), err);
-
+  
 exit_and_cleanup:
   
   cape_err_del (&err);
+}
+
+//-------------------------------------------------------------------------------------
+
+PipeContext pipe_context_new (void)
+{
+  PipeContext self = CAPE_NEW (struct PipeContext_s);
+  
+  self->line_parser = cape_parser_line_new (self, qbus_pipe__on_line);
+  
+  self->re = NULL;
+  self->adbl_ctx = NULL;
+  self->adbl_session = NULL;
+  
+  return self;
+}
+
+//-------------------------------------------------------------------------------------
+
+void pipe_context_del (PipeContext* p_self)
+{
+  if (*p_self)
+  {
+    PipeContext self = *p_self;
+
+    if (self->re)
+    {
+      pcre_free(self->re);
+    }
+    
+    if (self->adbl_session)
+    {
+      adbl_session_close (&(self->adbl_session));
+    }
+    
+    if (self->adbl_ctx)
+    {
+      adbl_ctx_del (&(self->adbl_ctx));
+    }
+    
+    cape_parser_line_del (&(self->line_parser));
+
+    CAPE_DEL (p_self, struct PipeContext_s);
+  }
 }
 
 //-------------------------------------------------------------------------------------
@@ -122,16 +165,26 @@ static int __STDCALL qbus_pipe_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   int erroffset;
 
   // local objects
-  PipeContext self = CAPE_NEW (struct PipeContext_s);
+  PipeContext self = pipe_context_new ();
 
-  self->module = cape_str_cp (qbus_config_s (qbus, "module", NULL));
-  self->method = cape_str_cp (qbus_config_s (qbus, "method", NULL));
-
-  self->line_parser = cape_parser_line_new (self, qbus_pipe__on_line);
-  
   self->re = pcre_compile (regex, PCRE_CASELESS | PCRE_DOTALL, &error, &erroffset, NULL);
   if (self->re == NULL)
   {
+    res = cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, error);
+    goto exit_and_cleanup;
+  }
+
+  self->adbl_ctx = adbl_ctx_new ("adbl", "adbl2_mysql", err);
+  if (self->adbl_ctx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  self->adbl_session = adbl_session_open_file (self->adbl_ctx, "adbl_default.json", err);
+  if (self->adbl_session == NULL)
+  {
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
