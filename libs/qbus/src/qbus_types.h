@@ -30,7 +30,7 @@ typedef void*          (__STDCALL *fct_qbus_pvd_cb__on_connection) (void* object
 
 typedef QbusPvdCtx     (__STDCALL *fct_qbus_pvd_ctx_new)      (CapeAioContext, CapeUdc, CapeErr);
 
-typedef int            (__STDCALL *fct_qbus_pvd_ctx_del)      (QbusPvdCtx*);
+typedef void           (__STDCALL *fct_qbus_pvd_ctx_del)      (QbusPvdCtx*);
 
 typedef QbusPvdEntity  (__STDCALL *fct_qbus_pvd_ctx_add)      (QbusPvdCtx, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new, fct_qbus_pvd_factory__on_del, fct_qbus_pvd_cb__on_connection);
 

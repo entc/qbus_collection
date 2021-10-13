@@ -1,10 +1,8 @@
 #include "qbus.h" 
+#include "qbus_engine.h"
 #include "qbus_route.h"
 #include "qbus_connection.h"
 #include "qbus_types.h"
-
-// static engines
-#include "pvd_tcp/qbus_tcp.h"
 
 // c includes
 #include <stdlib.h>
@@ -25,7 +23,6 @@
 #include "sys/cape_log.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
-#include "sys/cape_dl.h"
 #include "stc/cape_str.h"
 #include "stc/cape_map.h"
 #include "aio/cape_aio_sock.h"
@@ -38,298 +35,6 @@
 // engines
 #include "../engines/tcp/engine_tcp.h"
 
-//-----------------------------------------------------------------------------
-
-struct QBusEngine_s
-{
-  QBusRoute route;    // reference
-  
-  // stores the function pointers
-  QbusPvd functions;
-  CapeDl hlib;
-  
-}; typedef struct QBusEngine_s* QBusEngine;
-
-//-----------------------------------------------------------------------------
-
-QBusEngine qbus_engine_new (QBusRoute route)
-{
-  QBusEngine self = CAPE_NEW(struct QBusEngine_s);
-
-  self->route = route;
-  
-  memset (&(self->functions), 0, sizeof(QbusPvd));
-  self->hlib = cape_dl_new ();
-  
-  return self;
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_engine_del (QBusEngine* p_self)
-{
-  if (*p_self)
-  {
-    QBusEngine self = *p_self;
-
-    cape_dl_del (&(self->hlib));
-    
-    CAPE_DEL (p_self, struct QBusEngine_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString name, CapeErr err)
-{
-  int res;
-  
-  CapeString path_current = NULL;
-  CapeString path_resolved = NULL;
-  CapeString pvd_name = NULL;
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "try to load engine = %s", name);
-
-  // fetch the current path
-  path_current = cape_fs_path_current (path);
-  if (path_current == NULL)
-  {
-    res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
-    goto exit_and_cleanup;
-  }
-  
-  path_resolved = cape_fs_path_resolve (path_current, err);
-  if (path_resolved == NULL)
-  {
-    res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
-    goto exit_and_cleanup;
-  }
-  
-  pvd_name = cape_str_catenate_2 ("qbus_pvd_", name);
-  
-  // try to load the module
-  res = cape_dl_load (self->hlib, path_resolved, pvd_name, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
-  if (self->functions.pvd_ctx_new == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_ctx_del = cape_dl_funct (self->hlib, "qbus_pvd_ctx_del", err);
-  if (self->functions.pvd_ctx_del == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_ctx_add = cape_dl_funct (self->hlib, "qbus_pvd_ctx_add", err);
-  if (self->functions.pvd_ctx_add == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_ctx_rm = cape_dl_funct (self->hlib, "qbus_pvd_ctx_rm", err);
-  if (self->functions.pvd_ctx_rm == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_listen = cape_dl_funct (self->hlib, "qbus_pvd_listen", err);
-  if (self->functions.pvd_listen == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_reconnect = cape_dl_funct (self->hlib, "qbus_pvd_reconnect", err);
-  if (self->functions.pvd_reconnect == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_send = cape_dl_funct (self->hlib, "qbus_pvd_send", err);
-  if (self->functions.pvd_send == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_mark = cape_dl_funct (self->hlib, "qbus_pvd_mark", err);
-  if (self->functions.pvd_mark == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  self->functions.pvd_cb_raw_set = cape_dl_funct (self->hlib, "qbus_pvd_cb_raw_set", err);
-  if (self->functions.pvd_cb_raw_set == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "functions mapped = %s", name);
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-
-  cape_str_del (&path_current);
-  cape_str_del (&path_resolved);
-  cape_str_del (&pvd_name);
-
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-QbusPvdCtx qbus_engine_ctx_new (QBusEngine self, CapeAioContext aio, CapeUdc options, CapeErr err)
-{
-  QbusPvdCtx ret = NULL;
-  
-  if (self->functions.pvd_ctx_new)
-  {
-    ret = self->functions.pvd_ctx_new (aio, options, err);
-  }
-  else
-  {
-    cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
-  }
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engine__send (void* ptr1, void* ptr2, const char* bufdat, number_t buflen, void* userdata)
-{
-  QBusEngine self = ptr1;
-  QbusPvdConnection connection = ptr2;
-
-  if (self->functions.pvd_send)
-  {
-    self->functions.pvd_send (connection, bufdat, buflen, userdata);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engine__mark (void* ptr1, void* ptr2)
-{
-  QBusEngine self = ptr1;
-  QbusPvdConnection connection = ptr2;
-
-  if (self->functions.pvd_mark)
-  {
-    self->functions.pvd_mark (connection);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engine__on_sent (void* ptr, CapeAioSocket socket, void* userdata)
-{
-  qbus_connection_onSent (ptr, userdata);
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engine__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
-{
-  qbus_connection_onRecv (ptr, bufdat, buflen);
-}
-
-//-----------------------------------------------------------------------------
-
-void* __STDCALL qbus_engine__factory_on_new (void* user_ptr, QbusPvdConnection phy_connection)
-{
-  QBusEngine self = user_ptr;
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "new connection was established");
-
-  QBusConnection ret = qbus_connection_new (self->route, 0);
-
-  if (self->functions.pvd_cb_raw_set)
-  {
-    self->functions.pvd_cb_raw_set (phy_connection, qbus_engine__on_sent, qbus_engine__on_recv);
-  }
-  
-  qbus_connection_cb (ret, self, phy_connection, qbus_engine__send, qbus_engine__mark);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engine__factory_on_del (void** p_object_ptr)
-{
-  qbus_connection_del ((QBusConnection*)p_object_ptr);
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "a connection was dropped");
-}
-
-//-----------------------------------------------------------------------------
-
-void* __STDCALL qbus_engine__on_connection (void* object_ptr)
-{
-  qbus_connection_reg (object_ptr);
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "connection ready for handshake");
-}
-
-//-----------------------------------------------------------------------------
-
-QbusPvdEntity qbus_engine_add (QBusEngine self, QbusPvdCtx ctx, CapeUdc options, CapeErr err)
-{
-  QbusPvdEntity ret = NULL;
-  
-  if (self->functions.pvd_ctx_add)
-  {
-    ret = self->functions.pvd_ctx_add (ctx, options, self, qbus_engine__factory_on_new, qbus_engine__factory_on_del, qbus_engine__on_connection);
-  }
-  else
-  {
-    cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
-  }
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_engine_reconnect (QBusEngine self, QbusPvdEntity entity, CapeErr err)
-{
-  int res;
-  
-  if (self->functions.pvd_reconnect)
-  {
-    res = self->functions.pvd_reconnect (entity, err);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface can't reconnect");
-  }
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_engine_listen (QBusEngine self, QbusPvdEntity entity, CapeErr err)
-{
-  int res;
-  
-  if (self->functions.pvd_listen)
-  {
-    res = self->functions.pvd_listen (entity, err);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface can't listen");
-  }
-  
-  return res;
-}
 
 //-----------------------------------------------------------------------------
 
@@ -366,35 +71,13 @@ struct QBus_s
 void qbus_new__internal__set_default_engines (QBus self)
 {
   {
-    QBusEngine engine = qbus_engine_new (self->route);
-    
-    engine->functions.pvd_ctx_new = qbus_pvd_ctx_new;
-    engine->functions.pvd_ctx_del = qbus_pvd_ctx_del;
-    engine->functions.pvd_ctx_add = qbus_pvd_ctx_add;
-    engine->functions.pvd_ctx_rm = qbus_pvd_ctx_rm;
-    engine->functions.pvd_listen = qbus_pvd_listen;
-    engine->functions.pvd_reconnect = qbus_pvd_reconnect;
-    
-    engine->functions.pvd_send = qbus_pvd_send;
-    engine->functions.pvd_mark = qbus_pvd_mark;
-    engine->functions.pvd_cb_raw_set = qbus_pvd_cb_raw_set;
+    QBusEngine engine = qbus_engine_default (self->route);
     
     cape_map_insert (self->engines, (void*)cape_str_cp ("socket"), engine);
   }
   {
-    QBusEngine engine = qbus_engine_new (self->route);
-    
-    engine->functions.pvd_ctx_new = qbus_pvd_ctx_new;
-    engine->functions.pvd_ctx_del = qbus_pvd_ctx_del;
-    engine->functions.pvd_ctx_add = qbus_pvd_ctx_add;
-    engine->functions.pvd_ctx_rm = qbus_pvd_ctx_rm;
-    engine->functions.pvd_listen = qbus_pvd_listen;
-    engine->functions.pvd_reconnect = qbus_pvd_reconnect;
-    
-    engine->functions.pvd_send = qbus_pvd_send;
-    engine->functions.pvd_mark = qbus_pvd_mark;
-    engine->functions.pvd_cb_raw_set = qbus_pvd_cb_raw_set;
-    
+    QBusEngine engine = qbus_engine_default (self->route);
+
     cape_map_insert (self->engines, (void*)cape_str_cp ("tcp"), engine);
   }
 }
@@ -509,8 +192,7 @@ int qbus_load_engine (QBus self, const CapeString name, CapeUdc remote, QbusEngi
     goto exit_and_cleanup;
   }
 
-  // TODO: save the context into a list
-  ctx = qbus_engine_ctx_new (result->engine, self->aio, NULL, err);
+  ctx = qbus_engine_ctx_add (result->engine, self->aio, NULL, err);
   if (ctx == NULL)
   {
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", name);
@@ -538,7 +220,8 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
   
   if (type == NULL)
   {
-    return CAPE_ERR_NONE;
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
   }
   
   /*
