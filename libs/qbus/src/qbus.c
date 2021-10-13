@@ -600,7 +600,8 @@ int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
   
   if (type == NULL)
   {
-    return;
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
   }
   
   /*
