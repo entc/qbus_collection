@@ -1,5 +1,6 @@
 #include "qbus_logger.h"
-#include "qbus_types.h"
+#include "qbus_logger_file.h"
+#include "qbus_logger_udp.h"
 
 // cape includes
 #include "fmt/cape_json.h"
@@ -8,127 +9,6 @@
 #include "sys/cape_file.h"
 #include <stc/cape_map.h>
 #include <sys/cape_socket.h>
-
-//-----------------------------------------------------------------------------
-
-struct QbusLogCtx_Udp_s
-{
-  CapeAioContext aio;   // reference
-  
-  CapeAioSocketUdp aio_socket;
-  
-  CapeString host;
-  number_t port;
-  
-}; typedef struct QbusLogCtx_Udp_s* QbusLogCtx_Udp;
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_logger_udp__dst_on_sent (void* ptr, CapeAioSocketUdp aio_socket, void* userdata)
-{
-  if (userdata)
-  {
-    CapeStream s = userdata; cape_stream_del (&s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-QbusLogCtx __STDCALL qbus_logger_udp__dst_new (CapeAioContext aio, CapeUdc config, CapeErr err)
-{
-  // local objects
-  void* handle = NULL;
-  
-  const CapeString host = cape_udc_get_s (config, "host", NULL);
-  number_t port = cape_udc_get_n (config, "port", 0);
-
-  if (cape_str_empty (host) || port == 0)
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "host or port is missing");
-    return NULL;
-  }
-  
-  // for udp we need format, host, port
-  const CapeString format = cape_udc_get_s (config, "format", NULL);
-  
-  if (cape_str_equal (format, "syslog"))
-  {
-    
-  }
-  else
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "format is not supported");
-    return NULL;
-  }
-
-  handle = cape_sock__udp__clt_new (host, port, err);
-  if (handle == NULL)
-  {
-    return NULL;
-  }
-
-  {
-    QbusLogCtx_Udp self = CAPE_NEW (struct QbusLogCtx_Udp_s);
-    
-    self->aio = aio;
-    self->aio_socket = cape_aio_socket__udp__new (handle);
-    
-    self->host = cape_str_cp (host);
-    self->port = port;
-    
-    cape_aio_socket__udp__cb (self->aio_socket, self, qbus_logger_udp__dst_on_sent, NULL, NULL);
-    
-    // add the socket to the AIO subsystem
-    {
-      CapeAioSocketUdp socket = self->aio_socket;
-      cape_aio_socket__udp__add (&socket, self->aio, CAPE_AIO_WRITE);
-    }
-
-    return (QbusLogCtx)self;
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_logger_udp__dst_del (QbusLogCtx* p_self)
-{
-  if (*p_self)
-  {
-    QbusLogCtx_Udp self = (QbusLogCtx_Udp)*p_self;
-    
-    if (self->aio_socket)
-    {
-      
-    }
-    
-    CAPE_DEL (p_self, struct QbusLogCtx_Udp_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_logger_udp__dst_msg (QbusLogCtx ctx, const CapeString remote, const CapeString message)
-{
-  QbusLogCtx_Udp self = (QbusLogCtx_Udp)ctx;
-  
-  CapeDatetime dt;
-  CapeStream s = cape_stream_new ();
-  
-  cape_datetime_utc (&dt);
-  
-//  cape_stream_append_str (s, "<30>");
-  cape_stream_append_d (s, &dt);
-  cape_stream_append_c (s, ' ');
-  cape_stream_append_str (s, remote);
-  cape_stream_append_str (s, ": qbus-5-0: ");
-  cape_stream_append_str (s, message);
-
- // cape_stream_append_str (s, "<30>Oct 12 12:49:06 host app[12345]: syslog msg");
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "logger", "send udp log message -> %s", self->host);
-  
-  cape_aio_socket__udp__send (self->aio_socket, self->aio, cape_stream_data (s), cape_stream_size (s), s, self->host, self->port);
-}
 
 //-----------------------------------------------------------------------------
 
@@ -142,6 +22,28 @@ struct QBusLoggerEntity_s
 //-----------------------------------------------------------------------------
 
 void qbus_logger_entity_del (QBusLoggerEntity* p_self);
+
+//-----------------------------------------------------------------------------
+
+QBusLoggerEntity qbus_logger_entity__factory__file (CapeAioContext aio, CapeUdc config, CapeErr err)
+{
+  QBusLoggerEntity self = CAPE_NEW (struct QBusLoggerEntity_s);
+  
+  self->dst.log_dst_new = qbus_logger_file__dst_new;
+  self->dst.log_dst_del = qbus_logger_file__dst_del;
+  self->dst.log_dst_msg = qbus_logger_file__dst_msg;
+  
+  self->ctx = self->dst.log_dst_new (aio, config, err);
+  
+  // if there was an issue the ctx is NULL
+  if (self->ctx == NULL)
+  {
+    // cleanup
+    qbus_logger_entity_del (&self);
+  }
+  
+  return self;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -259,6 +161,10 @@ int qbus_logger_init__dest (QBusLogger self, CapeAioContext aio, CapeUdc dest, C
           res = cape_err_code (err);
           goto exit_and_cleanup;
         }
+      }
+      else if (cape_str_equal (type, "file"))
+      {
+        
       }
     }
   }
