@@ -764,6 +764,7 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   int res;
   const CapeString remote = "unknown";
   
+  /*
   // local objects
   CapeErr err = cape_err_new ();
   CapeFileHandle fh = NULL;
@@ -775,12 +776,14 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   }
 
   cape_stream_append_c (s, ' ');
-
+   */
+   
   if (cdata)
   {
     remote = cape_udc_get_s (cdata, "remote", NULL);
   }
 
+  /*
   cape_stream_append_str (s, remote);
   cape_stream_append_c (s, ' ');
 
@@ -803,6 +806,10 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   cape_stream_del (&s);
   cape_fh_del (&fh);
   cape_err_del (&err);
+  */
+  
+  // using the new qbus interface
+  qbus_log_msg (self->qbus, remote, text);
 }
 
 //-----------------------------------------------------------------------------

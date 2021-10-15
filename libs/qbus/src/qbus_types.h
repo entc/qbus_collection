@@ -71,4 +71,25 @@ typedef struct
 
 //-----------------------------------------------------------------------------
 
+typedef struct QbusLogCtx_s* QbusLogCtx;
+
+//-----------------------------------------------------------------------------
+
+typedef QbusLogCtx     (__STDCALL *fct_qbus_log_dst_new)      (CapeAioContext, CapeUdc, CapeErr);
+
+typedef void           (__STDCALL *fct_qbus_log_dst_del)      (QbusLogCtx*);
+
+typedef void           (__STDCALL *fct_qbus_log_dst_msg)      (QbusLogCtx, const CapeString remote, const CapeString message);
+
+//-----------------------------------------------------------------------------
+
+typedef struct
+{
+  fct_qbus_log_dst_new         log_dst_new;
+  fct_qbus_log_dst_del         log_dst_del;
+  fct_qbus_log_dst_msg         log_dst_msg;
+  
+} QbusLogDst;
+
+
 #endif

@@ -14,10 +14,13 @@
 
 //-----------------------------------------------------------------------------
 
-void qwebs_response__internal__identification (CapeStream s)
+void qwebs_response__internal__identification (CapeStream s, const CapeString server_identifier, const CapeString provider)
 {
-  cape_stream_append_str (s, "Server: QWEBS\r\n");
-  cape_stream_append_str (s, "X-Powered-By: QWEBS/1.0.0\r\n");
+  cape_stream_append_str (s, "Server: ");
+  cape_stream_append_str (s, server_identifier);
+  cape_stream_append_str (s, "\r\nX-Powered-By: ");
+  cape_stream_append_str (s, provider);
+  cape_stream_append_str (s, "\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -313,7 +316,7 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
   
   cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
   
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
   
   if (cape_udc_get_b (file_node, "data_uri", FALSE))
   {
@@ -344,7 +347,7 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
   
   cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
   
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
   
   // mime type for JSON
   {
@@ -365,7 +368,7 @@ void qwebs_response_image (CapeStream s, QWebs webs, const CapeString buf)
   
   cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
 
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
   
   // mime type for JSON
   {
@@ -389,7 +392,7 @@ void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const C
   
   // start with the header
   cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
 
   // mime type
   {
@@ -465,7 +468,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
     }
   }
   
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
   
   if (cape_err_code (err))
   {
@@ -546,7 +549,7 @@ void qwebs_response_redirect (CapeStream s, QWebs webs, const CapeString url)
   
   cape_stream_append_str (s, "HTTP/1.1 301 Moved Permanently\r\n");
 
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
 
   cape_stream_append_str (s, "Location: ");
   
@@ -575,7 +578,7 @@ void qwebs_response_mp_init (CapeStream s, QWebs webs, const CapeString boundary
   
   // start with the header
   cape_stream_append_str (s, "HTTP/1.1 200 OK\r\n");
-  qwebs_response__internal__identification (s);
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
 
   cape_stream_append_str (s, "Max-Age: 0\r\n");
   cape_stream_append_str (s, "Expires: 0\r\n");

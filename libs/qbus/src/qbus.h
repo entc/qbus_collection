@@ -86,6 +86,10 @@ __CAPE_LIBEX   CapeUdc            qbus_config_node       (QBus, const char* name
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX  void                qbus_log_msg           (QBus, const CapeString remote, const CapeString message);
+
+//-----------------------------------------------------------------------------
+
 struct QBusConnection_s; typedef struct QBusConnection_s* QBusConnection;
 
 //-----------------------------------------------------------------------------

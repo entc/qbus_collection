@@ -8,6 +8,7 @@ set(CORE_SOURCES
   qbus_route.c
   qbus_route_items.c
   qbus_route_method.c
+  qbus_logger.c
 )
 
 set(CORE_HEADERS
@@ -17,6 +18,7 @@ set(CORE_HEADERS
   qbus_route.h
   qbus_route_items.h
   qbus_route_method.h
+  qbus_logger.h
 )
 
 #----------------------------------------------------------------------------------

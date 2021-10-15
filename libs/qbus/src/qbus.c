@@ -3,6 +3,7 @@
 #include "qbus_route.h"
 #include "qbus_connection.h"
 #include "qbus_types.h"
+#include "qbus_logger.h"
 
 // c includes
 #include <stdlib.h>
@@ -64,6 +65,8 @@ struct QBus_s
   CapeString config_file;
   
   CapeMap engines;
+  
+  QBusLogger logger;
 };
 
 //-----------------------------------------------------------------------------
@@ -92,6 +95,7 @@ QBus qbus_new (const char* module_origin)
   self->name = cape_str_cp (module_origin);  
   cape_str_to_upper (self->name);
   
+  self->logger = qbus_logger_new ();
   self->route = qbus_route_new (self, self->name);
   
   self->aio = cape_aio_context_new ();
@@ -122,7 +126,8 @@ void qbus_del (QBus* p_self)
   //qbus_engine_tcp_out_del (&(self->engine_tcp_out));
   
   qbus_route_del (&(self->route));
-  
+  qbus_logger_del (&(self->logger));
+
   cape_udc_del (&(self->config));
   cape_str_del (&(self->config_file));
   
@@ -1046,6 +1051,13 @@ int qbus_config_b (QBus self, const char* name, int default_val)
 
 //-----------------------------------------------------------------------------
 
+void qbus_log_msg (QBus self, const CapeString remote, const CapeString message)
+{
+  qbus_logger_msg (self->logger, remote, message);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, int argc, char *argv[])
 {
   int res = CAPE_ERR_NONE;
@@ -1204,6 +1216,12 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     goto exit_and_cleanup;
   }
 
+  res = qbus_logger_init (self->logger, self->aio, cape_udc_get (self->config, "logger"), err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
   if (on_init)
   {
     res = on_init (self, ptr, &user_ptr, err);
