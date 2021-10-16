@@ -1421,7 +1421,7 @@ CapeAioSocket cape_aio_socket_new (void* handle)
   self->aioh_send = NULL;
   self->aioh_recv = NULL;
 
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   // start with count 1 referenced to this object
   self->refcnt = 1;
@@ -1817,7 +1817,7 @@ CapeAioSocketUdp cape_aio_socket__udp__new (void* handle)
   self->aioh_send = NULL;
   self->aioh_recv = NULL;
 
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   self->send_bufdat = NULL;
   self->userdata = NULL;

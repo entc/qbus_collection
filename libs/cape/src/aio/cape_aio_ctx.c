@@ -681,7 +681,7 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
       else
       {
         cape_log_msg (CAPE_LL_WARN, "CAPE", "aio next", "no 'on_event' method was set in the aio handle");
-        hflags_result = CAPE_AIO_NONE;
+        hflags_result = CAPE_AIO__INTERNAL_NO_CHANGE;
       }
       
       if (hflags_result & CAPE_AIO_DONE)
@@ -703,7 +703,7 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
         res = CAPE_ERR_CONTINUE;
       }
       
-      if (hflags_result == CAPE_AIO_NONE)
+      if (hflags_result & CAPE_AIO__INTERNAL_NO_CHANGE)
       {
         cape_aio_update_events (&(events[i]), hobj->hflags);
         
@@ -894,7 +894,7 @@ static int __STDCALL cape_aio_context_signal_onEvent (void* ptr, int hflags, uns
     }
   }
   
-  return CAPE_AIO_NONE;
+  return CAPE_AIO__INTERNAL_NO_CHANGE;
 }
 
 //-----------------------------------------------------------------------------
