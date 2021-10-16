@@ -34,6 +34,13 @@ void __STDCALL qbus_logger_udp__dst_on_sent (void* ptr, CapeAioSocketUdp aio_soc
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus_logger_udp__dst_on_recv (void* ptr, CapeAioSocketUdp aio_socket, const char* bufdat, number_t buflen, const char* host)
+{
+  printf ("RECV: %s\n", bufdat);
+}
+
+//-----------------------------------------------------------------------------
+
 QbusLogCtx __STDCALL qbus_logger_udp__dst_new (CapeAioContext aio, CapeUdc config, CapeErr err)
 {
   // local objects
@@ -76,7 +83,7 @@ QbusLogCtx __STDCALL qbus_logger_udp__dst_new (CapeAioContext aio, CapeUdc confi
     self->host = cape_str_cp (host);
     self->port = port;
     
-    cape_aio_socket__udp__cb (self->aio_socket, self, qbus_logger_udp__dst_on_sent, NULL, NULL);
+    cape_aio_socket__udp__cb (self->aio_socket, self, qbus_logger_udp__dst_on_sent, qbus_logger_udp__dst_on_recv, NULL);
     
     // add the socket to the AIO subsystem
     {

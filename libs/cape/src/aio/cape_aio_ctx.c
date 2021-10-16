@@ -583,7 +583,11 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
           return CAPE_ERR_CONTINUE;
         }
 
-        if (hflags_result != CAPE_AIO_NONE)
+        if (hflags_result & CAPE_AIO__INTERNAL_NO_CHANGE)
+        {
+          // there is no change on the hflags
+        }
+        else
         {
           hobj->hflags = hflags_result;
         }

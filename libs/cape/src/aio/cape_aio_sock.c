@@ -89,7 +89,7 @@ CapeAioSocket cape_aio_socket_new (void* handle)
   self->handle = handle;
   self->aioh = NULL;
 
-  self->mask = CAPE_AIO_NONE;
+  self->mask = 0;
 
   // sending
   self->send_bufdat = NULL;
@@ -432,7 +432,7 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
   {
       int ret = self->mask;
 
-      self->mask = CAPE_AIO_NONE;
+      self->mask = 0;
 
       return ret;
   }
@@ -463,7 +463,7 @@ static void __STDCALL cape_aio_socket_onUnref (void* ptr, CapeAioHandle aioh, in
 
 void cape_aio_socket_markSent (CapeAioSocket self, CapeAioContext aio)
 {
-  if (self->mask == CAPE_AIO_NONE)
+  if (self->mask == 0)
   {
     if (self->aioh)
     {
@@ -511,7 +511,7 @@ void cape_aio_socket_send (CapeAioSocket self, CapeAioContext aio, const char* b
   self->send_buftos = 0;
   self->send_userdata = userdata;
 
-  if (self->mask == CAPE_AIO_NONE)
+  if (self->mask == 0)
   {
     // correct epoll flags for this filedescriptor
     if (self->aioh)
@@ -697,7 +697,7 @@ CapeAioSocketUdp cape_aio_socket__udp__new (void* handle)
 
   self->handle = handle;
   self->aioh = NULL;
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   self->send_bufdat = NULL;
   self->userdata = NULL;
@@ -885,7 +885,7 @@ static int __STDCALL cape_aio_socket__udp__on_event (void* ptr, int mode, unsign
   CapeAioSocketUdp self = ptr;
 
   // sync the mode
-  //self->mode = mode;
+  self->mode = mode;
 
 #ifdef __BSD_OS
   if (events & EVFILT_READ)
@@ -1300,7 +1300,7 @@ static int __STDCALL cape_aio_accept_onEvent (void* ptr, int hflags, unsigned lo
   {
     if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
     {
-      return CAPE_AIO_NONE;
+      return CAPE_AIO__INTERNAL_NO_CHANGE;
     }
     else
     {

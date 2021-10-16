@@ -43,14 +43,16 @@ __CAPE_LIBEX   int               cape_aio_context_next          (CapeAioContext,
 
 //-----------------------------------------------------------------------------
 
-#define CAPE_AIO_NONE     0x0000
-#define CAPE_AIO_DONE     0x0001
-#define CAPE_AIO_ABORT    0x0002
-#define CAPE_AIO_WRITE    0x0004
-#define CAPE_AIO_READ     0x0008
-#define CAPE_AIO_ALIVE    0x0010
-#define CAPE_AIO_TIMER    0x0020
-#define CAPE_AIO_ERROR    0x0040
+#define CAPE_AIO_DONE                    0x0001
+#define CAPE_AIO_ABORT                   0x0002
+#define CAPE_AIO_WRITE                   0x0004
+#define CAPE_AIO_READ                    0x0008
+#define CAPE_AIO_ALIVE                   0x0010
+#define CAPE_AIO_TIMER                   0x0020
+#define CAPE_AIO_ERROR                   0x0040
+
+// internal usage
+#define CAPE_AIO__INTERNAL_NO_CHANGE     0x1000
 
 //-----------------------------------------------------------------------------
 
