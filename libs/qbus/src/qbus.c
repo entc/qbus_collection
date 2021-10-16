@@ -1058,6 +1058,24 @@ void qbus_log_msg (QBus self, const CapeString remote, const CapeString message)
 
 //-----------------------------------------------------------------------------
 
+void qbus_log_fmt (QBus self, const CapeString remote, const char* format, ...)
+{
+  va_list ptr;
+  va_start(ptr, format);
+  
+  {
+    CapeString h = cape_str_flp (format, ptr);
+    
+    qbus_logger_msg (self->logger, remote, h);
+    
+    cape_str_del (&h);
+  }
+
+  va_end(ptr);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, int argc, char *argv[])
 {
   int res = CAPE_ERR_NONE;
