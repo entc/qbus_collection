@@ -220,7 +220,10 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   CapeUdc route_list = qbus_config_node (qbus, "route_list");
   
-  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list);
+  const CapeString identifier = qbus_config_s (qbus, "identifier", "QWebs");
+  const CapeString provider = qbus_config_s (qbus, "provider", "QBUS - Webs Module");
+
+  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list, identifier, provider);
   
   //CapeAioTimer timer = cape_aio_timer_new ();
 

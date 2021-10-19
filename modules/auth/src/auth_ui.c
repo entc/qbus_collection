@@ -415,6 +415,48 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
+int auth_ha_update (AuthUI self, number_t userid, const CapeString ha_value, CapeErr err)
+{
+  int res;
+
+  // local objects
+  AdblTrx adbl_trx = NULL;
+
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n     (params, "id"            , userid);
+    cape_udc_add_s_cp  (values, "ha_value"      , ha_value);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
 int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -429,6 +471,10 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   number_t wpid;
   number_t gpid;
   number_t userid;
+  
+  number_t ha_active;
+  CapeString ha_last = NULL;
+  CapeString ha_current = NULL;
   
   // local objects
   CapeUdc query_results = NULL;
@@ -485,6 +531,9 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     cape_udc_add_s_cp   (values, "secret"       , NULL);
     cape_udc_add_s_cp   (values, "secret_vault" , NULL);
 
+    cape_udc_add_s_cp   (values, "ha_value"     , 0);
+    cape_udc_add_n      (values, "ha_active"    , 0);
+
     cape_udc_add_n      (values, "opt_msgs"     , 0);
     cape_udc_add_n      (values, "opt_2factor"  , 0);
     
@@ -493,7 +542,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     /*
      auth_users_secret_view
      
-     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active, ru.opt_msgs, ru.opt_2factor, ru.code_2factor, ru.code_fp, ru.secret secret_vault from rbac_users ru join q5_users qu on qu.id = ru.userid;
+     select ru.id usid, gpid, wpid, qu.user512, qu.secret, qu.id userid, qu.active, qu.ha_value, qu.ha_active, ru.opt_msgs, ru.opt_2factor, ru.code_2factor, ru.code_fp, ru.secret secret_vault from rbac_users ru join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -562,6 +611,22 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no gpid assigned");
     goto exit_and_cleanup;
+  }
+  
+  ha_active = cape_udc_get_n (first_row, "ha_active", 0);
+  if (ha_active > 0)
+  {
+    // fetch the last known ha value
+    ha_last = cape_str_ln_normalize (cape_udc_get_s (first_row, "ha_value", NULL));
+    ha_current = cape_str_ln_normalize (cha);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "compare ha: current = %s, last = %s", ha_current, ha_last);
+    
+    if (cape_str_ln_cmp (ha_current, ha_last) <= 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.ALREADY_GRANTED");
+      goto exit_and_cleanup;
+    }
   }
 
   vsec = auth_vault__vsec (self->vault, wpid);
@@ -685,6 +750,15 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   
   //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
 
+  if (ha_active > 0)
+  {
+    res = auth_ha_update (self, userid, cha, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
   {
     // use the rinfo classes
     AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
@@ -764,6 +838,7 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   int res;
   const CapeString remote = "unknown";
   
+  /*
   // local objects
   CapeErr err = cape_err_new ();
   CapeFileHandle fh = NULL;
@@ -775,12 +850,14 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   }
 
   cape_stream_append_c (s, ' ');
-
+   */
+   
   if (cdata)
   {
     remote = cape_udc_get_s (cdata, "remote", NULL);
   }
 
+  /*
   cape_stream_append_str (s, remote);
   cape_stream_append_c (s, ' ');
 
@@ -803,6 +880,10 @@ void auth_ui__intern__write_log (AuthUI self, const CapeString text, CapeUdc cda
   cape_stream_del (&s);
   cape_fh_del (&fh);
   cape_err_del (&err);
+  */
+  
+  // using the new qbus interface
+  qbus_log_msg (self->qbus, remote, text);
 }
 
 //-----------------------------------------------------------------------------

@@ -15,9 +15,7 @@
 struct QWebsApi_s
 {
   fct_qwebs__on_request on_request;
-  
   void* user_ptr;
-  
 };
 
 //-----------------------------------------------------------------------------
@@ -38,8 +36,7 @@ void qwebs_api_del (QWebsApi* p_self)
 {
   if (*p_self)
   {
-    // QWebsApi self = *p_self;
-    
+//    QWebsApi self = *p_self;
     
     
     CAPE_DEL (p_self, struct QWebsApi_s);
@@ -72,6 +69,9 @@ struct QWebs_s
   CapeUdc route_list;
   
   QWebsEncoder encoder;
+
+  CapeString identifier;
+  CapeString provider;
 };
 
 //-----------------------------------------------------------------------------
@@ -122,7 +122,7 @@ void qwebs__internal__convert_sites (QWebs self, CapeUdc sites)
 
 //-----------------------------------------------------------------------------
 
-QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list)
+QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list, const CapeString identifier, const CapeString provider)
 {
   QWebs self = CAPE_NEW (struct QWebs_s);
   
@@ -154,6 +154,9 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   
   self->encoder = qwebs_encode_new ();
 
+  self->identifier = cape_str_cp (identifier);
+  self->provider = cape_str_cp (provider);
+
   return self;
 }
 
@@ -182,6 +185,9 @@ void qwebs_del (QWebs* p_self)
     
     qwebs_encode_del (&(self->encoder));
     
+    cape_str_del (&(self->identifier));
+    cape_str_del (&(self->provider));
+
     CAPE_DEL (p_self, struct QWebs_s);
   }
 }
@@ -439,6 +445,20 @@ exit_and_cleanup:
   
   cape_str_del (&url);
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_identifier (QWebs self)
+{
+  return self->identifier;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_provider (QWebs self)
+{
+  return self->provider;
 }
 
 //-----------------------------------------------------------------------------
