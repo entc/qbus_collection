@@ -23,7 +23,7 @@ typedef void*          (__STDCALL *fct_qbus_pvd_factory__on_new)   (void* user_p
 typedef void           (__STDCALL *fct_qbus_pvd_factory__on_del)   (void** object_ptr);
 
                        /* callback after a new connection was established */
-typedef void*          (__STDCALL *fct_qbus_pvd_cb__on_connection) (void* object_ptr);
+typedef void           (__STDCALL *fct_qbus_pvd_cb__on_connection) (void* object_ptr);
 
 //-----------------------------------------------------------------------------
 // context functions

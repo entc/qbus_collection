@@ -1079,7 +1079,8 @@ static int __STDCALL cape_aio_socket__icmp__on_event (void* ptr, int mode, unsig
 {
   CapeAioSocketIcmp self = ptr;
 
-
+  
+  return CAPE_AIO__INTERNAL_NO_CHANGE;
 }
 
 //-----------------------------------------------------------------------------

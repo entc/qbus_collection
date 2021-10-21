@@ -386,6 +386,7 @@ export class AuthSession
 
   private crypt4 (user: string, pass: string, code: string): string
   {
+    // get the linux time since 1970 in milliseconds
     var iv: string = this.padding ((new Date).getTime().toString(), 16);
 
     var hash1: string = CryptoJS.SHA256 (user + ":" + pass).toString();
