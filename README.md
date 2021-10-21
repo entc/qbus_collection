@@ -39,3 +39,7 @@ There is a small webserver shipped with this framework to test some parts of the
 
 *./libs/qwebs/app/qwebs_app*
 
+- Open the page
+
+*<a href="http://127.0.0.1:8080">127.0.0.1:8080</a>*
+
