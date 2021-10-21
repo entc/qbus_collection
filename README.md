@@ -29,13 +29,13 @@ There is a small webserver shipped with this framework to test some parts of the
 
 - Create a public folder
 
-*mkdir public
+*mkdir public*
 
 - Create an index.html
 
-*echo "<h1>hello world</h1>" > public/index.html
+*echo "hello world" > public/index.html*
 
 - Start the webserver
 
-*./libs/qwebs/app/qwebs_app
+*./libs/qwebs/app/qwebs_app*
 
