@@ -131,14 +131,6 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
-int auth_ui__intern__save_2f_code (AuthUI self, CapeErr err)
-{
-
-  
-}
-
-//---------------------------------------------------------------------------
-
 int auth_ui__intern__get_workspaces (AuthUI self, number_t userid, CapeUdc* p_workspaces, CapeErr err)
 {
   int res;
