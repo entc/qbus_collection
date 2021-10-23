@@ -23,3 +23,23 @@ CMake is used to generate a configuration for your available compiler.
 
 *make install*
 
+## Run Webserver
+
+There is a small webserver shipped with this framework to test some parts of the software. We assume to be in the build directory
+
+- Create a public folder
+
+*mkdir public*
+
+- Create an index.html
+
+*echo "hello world" > public/index.html*
+
+- Start the webserver
+
+*./libs/qwebs/app/qwebs_app*
+
+- Open the page
+
+*<a href="http://127.0.0.1:8080">127.0.0.1:8080</a>*
+
