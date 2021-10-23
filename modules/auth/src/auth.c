@@ -8,6 +8,7 @@
 #include "auth_session.h"
 #include "auth_msgs.h"
 
+// adbl includes
 #include <adbl.h>
 
 // cape includes
@@ -18,16 +19,15 @@
 
 struct AuthContext_s
 {
+  // module objects
   AuthTokens tokens;
-  
   AuthVault vault;
   
+  // adbl objects
   AdblCtx adbl_ctx;
-  
   AdblSession adbl_session;
-  
-  CapeString err_log_file;
-  
+
+  // configuration
   CapeUdc options_2factor;
   CapeUdc options_fp;
 
@@ -59,7 +59,7 @@ static int __STDCALL qbus_auth_ui_get (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
 
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_get (&auth_ui, qin, qout, err);
@@ -72,7 +72,7 @@ static int __STDCALL qbus_auth_ui_login (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_login (&auth_ui, qin, qout, err);
@@ -85,7 +85,7 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_login_get (&auth_ui, qin, qout, err);
@@ -98,7 +98,7 @@ static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_switch (&auth_ui, qin, qout, err);
@@ -111,7 +111,7 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_set (&auth_ui, qin, qout, err);
@@ -124,7 +124,7 @@ static int __STDCALL qbus_auth_ui_config_get (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_config_get (&auth_ui, qin, qout, err);
@@ -137,7 +137,7 @@ static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_config_set (&auth_ui, qin, qout, err);
@@ -150,7 +150,7 @@ static int __STDCALL qbus_auth_ui_2f_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_2f_send (&auth_ui, qin, qout, err);
@@ -163,7 +163,7 @@ static int __STDCALL qbus_auth_ui_fp_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->err_log_file, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
   return auth_ui_fp_send (&auth_ui, qin, qout, err);
@@ -411,38 +411,91 @@ static int __STDCALL qbus_auth_vault_get (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+AuthContext auth_context_new (void)
+{
+  AuthContext self = CAPE_NEW (struct AuthContext_s);
+  
+  self->adbl_ctx = NULL;
+  self->adbl_session = NULL;
+
+  self->vault = NULL;
+  self->tokens = NULL;
+  
+  return self;
+}
+
+//-------------------------------------------------------------------------------------
+
+void auth_context_del (AuthContext* p_self)
+{
+  if (*p_self)
+  {
+    AuthContext self = *p_self;
+    
+    auth_vault_del (&(self->vault));
+    auth_tokens_del (&(self->tokens));
+    
+    adbl_session_close (&(self->adbl_session));
+    adbl_ctx_del (&(self->adbl_ctx));
+    
+    CAPE_DEL (p_self, struct AuthContext_s);
+  }
+}
+
+//-------------------------------------------------------------------------------------
+
+int auth_context_init (AuthContext self, QBus qbus, CapeErr err)
+{
+  int res;
+  
+  self->adbl_ctx = adbl_ctx_new ("adbl", "adbl2_mysql", err);
+  if (self->adbl_ctx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  self->adbl_session = adbl_session_open_file (self->adbl_ctx, "adbl_default.json", err);
+  if (self->adbl_session == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  self->vault = auth_vault_new ();
+  
+  self->tokens = auth_tokens_new (self->adbl_session, self->vault);
+  
+  res = auth_tokens_init (self->tokens, qbus, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  self->options_2factor = qbus_config_node (qbus, "options_2factor");
+  self->options_fp = qbus_config_node (qbus, "options_fp");
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
-  AdblCtx adbl_ctx = NULL;
-  AdblSession adbl_session = NULL;
+  int res;
   
-  AuthContext ctx;
-
-  adbl_ctx = adbl_ctx_new ("adbl", "adbl2_mysql", err);
-  if (adbl_ctx == NULL)
+  // local objects
+  AuthContext ctx = auth_context_new ();
+  
+  
+  res = auth_context_init (ctx, qbus, err);
+  if (res)
   {
     goto exit_and_cleanup;
   }
-
-  adbl_session = adbl_session_open_file (adbl_ctx, "adbl_default.json", err);
-  if (adbl_session == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-
-  // create the context
-  ctx = CAPE_NEW (struct AuthContext_s);
   
-  ctx->adbl_ctx = adbl_ctx;
-  ctx->adbl_session = adbl_session;
-  
-  ctx->vault = auth_vault_new ();
-  ctx->tokens = auth_tokens_new (ctx->adbl_session, ctx->vault);
-  
-  ctx->err_log_file = cape_str_cp (qbus_config_s (qbus, "access_denied_log", "access_denied.log"));
-  ctx->options_2factor = qbus_config_node (qbus, "options_2factor");
-  ctx->options_fp = qbus_config_node (qbus, "options_fp");
-
   *p_ptr = ctx;
 
   // -------- callback methods --------------------------------------------
@@ -576,16 +629,7 @@ exit_and_cleanup:
   
   cape_log_msg (CAPE_LL_ERROR, "AUTH", "init", cape_err_text(err));
   
-  if (adbl_session)
-  {
-    adbl_session_close (&adbl_session);
-  }
-
-  if (adbl_ctx)
-  {
-    adbl_ctx_del (&adbl_ctx);
-  }
-  
+  auth_context_del (&ctx);
   return cape_err_code(err);
 }
 
@@ -595,16 +639,7 @@ static int __STDCALL qbus_auth_done (QBus qbus, void* ptr, CapeErr err)
 {
   AuthContext ctx = ptr;
   
-  if (ctx)
-  {
-    auth_vault_del (&(ctx->vault));
-    auth_tokens_del (&(ctx->tokens));
-    
-    adbl_session_close (&(ctx->adbl_session));
-    adbl_ctx_del (&(ctx->adbl_ctx));
-    
-    CAPE_DEL (&ctx, struct AuthContext_s);
-  }
+  auth_context_del (&ctx);
   
   return CAPE_ERR_NONE;
 }

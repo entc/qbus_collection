@@ -17,7 +17,6 @@ struct AuthUI_s
   AdblSession adbl_session;        // reference
   AuthTokens tokens;               // reference
   AuthVault vault;                 // reference
-  const CapeString err_log_file;   // reference
   CapeUdc options_2factor;         // reference
   CapeUdc options_fp;              // reference
 
@@ -30,7 +29,7 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, const CapeString err_log_file, CapeUdc options_2factor, CapeUdc options_fp)
+AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
@@ -38,7 +37,6 @@ AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, Auth
   self->adbl_session = adbl_session;
   self->tokens = tokens;
   self->vault = vault;
-  self->err_log_file = err_log_file;
   self->options_2factor = options_2factor;
   self->options_fp = options_fp;
   
