@@ -320,84 +320,99 @@ static int qwebs_request__internal__on_message_complete (http_parser* parser)
 
 void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  if (cape_err_code (err))
+  if (*p_self)
   {
-    // create the HTTP error response
-    qwebs_response_err (s, self->webs, content, "application/json", err);
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    if (cape_err_code (err))
+    {
+      // create the HTTP error response
+      qwebs_response_err (s, self->webs, content, "application/json", err);
+    }
+    else
+    {
+      // create the JSON response
+      qwebs_response_json (s, self->webs, content);
+    }
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
   }
-  else
-  {
-    // create the JSON response
-    qwebs_response_json (s, self->webs, content);
-  }
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_file (QWebsRequest* p_self, CapeUdc file_node, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  qwebs_response_file (s, self->webs, file_node);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_file (s, self->webs, file_node);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_image (QWebsRequest* p_self, const CapeString image_as_base64, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-
-  qwebs_response_image (s, self->webs, image_as_base64);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_image (s, self->webs, image_as_base64);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const CapeString mime_type, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  qwebs_response_buf (s, self->webs, buf, mime_type);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_buf (s, self->webs, buf, mime_type);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }  
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_redirect (QWebsRequest* p_self, const CapeString url)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-
-  qwebs_response_redirect (s, self->webs, url);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_redirect (s, self->webs, url);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------

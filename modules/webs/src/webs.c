@@ -1,5 +1,6 @@
 #include "webs_post.h"
 #include "webs_json.h"
+#include "webs_enjs.h"
 #include "webs_imca.h"
 
 #include "qbus.h"
@@ -40,6 +41,15 @@ int __STDCALL qbus_webs__json (void* user_ptr, QWebsRequest request, CapeErr err
   WebsJson webs_json = webs_json_new (user_ptr, request);
   
   return webs_json_run (&webs_json, err);  
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__enjs (void* user_ptr, QWebsRequest request, CapeErr err)
+{
+  WebsEnjs webs_enjs = webs_enjs_new (user_ptr, request);
+  
+  return webs_enjs_run (&webs_enjs, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -230,6 +240,12 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   WebsStream s = webs_stream_new ();
 
   res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = qwebs_reg (webs, "enjs", qbus, qbus_webs__enjs, err);
   if (res)
   {
     goto exit_and_cleanup;

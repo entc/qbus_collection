@@ -129,14 +129,6 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
-int auth_ui__intern__save_2f_code (AuthUI self, CapeErr err)
-{
-
-  
-}
-
-//---------------------------------------------------------------------------
-
 int auth_ui__intern__get_workspaces (AuthUI self, number_t userid, CapeUdc* p_workspaces, CapeErr err)
 {
   int res;
@@ -611,22 +603,6 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     goto exit_and_cleanup;
   }
   
-  ha_active = cape_udc_get_n (first_row, "ha_active", 0);
-  if (ha_active > 0)
-  {
-    // fetch the last known ha value
-    ha_last = cape_str_ln_normalize (cape_udc_get_s (first_row, "ha_value", NULL));
-    ha_current = cape_str_ln_normalize (cha);
-    
-    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "compare ha: current = %s, last = %s", ha_current, ha_last);
-    
-    if (cape_str_ln_cmp (ha_current, ha_last) <= 0)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.ALREADY_GRANTED");
-      goto exit_and_cleanup;
-    }
-  }
-
   vsec = auth_vault__vsec (self->vault, wpid);
   if (vsec == NULL)
   {
@@ -748,8 +724,21 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   
   //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");
 
+  ha_active = cape_udc_get_n (first_row, "ha_active", 0);
   if (ha_active > 0)
   {
+    // fetch the last known ha value
+    ha_last = cape_str_ln_normalize (cape_udc_get_s (first_row, "ha_value", NULL));
+    ha_current = cape_str_ln_normalize (cha);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "compare ha: current = %s, last = %s", ha_current, ha_last);
+    
+    if (cape_str_ln_cmp (ha_current, ha_last) <= 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.ALREADY_GRANTED");
+      goto exit_and_cleanup;
+    }
+    
     res = auth_ha_update (self, userid, cha, err);
     if (res)
     {
