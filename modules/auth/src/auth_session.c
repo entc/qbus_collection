@@ -142,7 +142,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      auth_sessions_wp_view
      
-     select wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
+     select wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active, qu.secret from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -235,7 +235,10 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "vp"            , vp);
 
     cape_udc_add_s_mv   (values, "roles"         , &h2);
-
+    
+    // reset the HA value with a fresh session
+    cape_udc_add_s_cp   (values, "ha_value"      , "0");
+    
     if (h3)
     {
       cape_udc_add_s_mv   (values, "remote"      , &h3);
@@ -438,6 +441,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp   (values, "roles"         , "{\"size\": 2000}");
     cape_udc_add_s_cp   (values, "firstname"     , NULL);
     cape_udc_add_s_cp   (values, "lastname"      , NULL);
+    cape_udc_add_s_cp   (values, "secret"        , NULL);
 
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "auth_sessions_wp_view", &params, &values, err);
@@ -547,6 +551,14 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_n    (qout->rinfo, "wpid", self->wpid);
   cape_udc_add_n    (qout->rinfo, "gpid", self->gpid);
 
+  // to be safe
+  if (qout->pdata == NULL)
+  {
+    qout->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+
+  cape_udc_add_s_cp (qout->pdata, "vsec", cape_udc_get_s (first_row, "secret", NULL));
+  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
