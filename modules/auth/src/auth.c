@@ -11,6 +11,9 @@
 // adbl includes
 #include <adbl.h>
 
+// qjobs includes
+#include <qjobs.h>
+
 // cape includes
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
@@ -31,6 +34,8 @@ struct AuthContext_s
   CapeUdc options_2factor;
   CapeUdc options_fp;
 
+  QJobs perm_jobs;
+  
 }; typedef struct AuthContext_s* AuthContext;
 
 //-------------------------------------------------------------------------------------
@@ -294,7 +299,7 @@ static int __STDCALL qbus_auth_perm_add (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
   
   // run the command
   return auth_perm_add (&auth_perm, qin, qout, err);
@@ -307,7 +312,7 @@ static int __STDCALL qbus_auth_perm_set (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
   
   // run the command
   return auth_perm_set (&auth_perm, qin, qout, err);
@@ -320,7 +325,7 @@ static int __STDCALL qbus_auth_perm_get (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
   
   // run the command
   return auth_perm_get (&auth_perm, qin, qout, err);
@@ -333,7 +338,7 @@ static int __STDCALL qbus_auth_perm_code_set (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
   
   // run the command
   return auth_perm_code_set (&auth_perm, qin, qout, err);
@@ -346,7 +351,7 @@ static int __STDCALL qbus_auth_perm_code_rm (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthPerm auth_perm = auth_perm_new (ctx->adbl_session, ctx->vault);
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
   
   // run the command
   return auth_perm_rm (&auth_perm, qin, qout, err);
@@ -411,6 +416,33 @@ static int __STDCALL qbus_auth_vault_get (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+int __STDCALL auth_context__on_perm_event (QJobs jobs, QJobsEvent event, void* user_ptr, CapeErr err)
+{
+  AuthContext self = user_ptr;
+  
+  if (event->params)
+  {
+    const CapeString token = cape_udc_get_s (event->params, "token", NULL);
+    if (token)
+    {
+      // create a temporary object
+      AuthPerm auth_perm = auth_perm_new (NULL, self->adbl_session, self->vault, self->perm_jobs);
+      
+      if (auth_perm_remove (auth_perm, token, err))
+      {
+        
+      }
+      
+      auth_perm_del (&auth_perm);
+    }
+  }
+  
+  // run it once
+  return CAPE_ERR_EOF;
+}
+
+//-------------------------------------------------------------------------------------
+
 AuthContext auth_context_new (void)
 {
   AuthContext self = CAPE_NEW (struct AuthContext_s);
@@ -421,6 +453,8 @@ AuthContext auth_context_new (void)
   self->vault = NULL;
   self->tokens = NULL;
   
+  self->perm_jobs = NULL;
+
   return self;
 }
 
@@ -431,6 +465,8 @@ void auth_context_del (AuthContext* p_self)
   if (*p_self)
   {
     AuthContext self = *p_self;
+    
+    qjobs_del (&(self->perm_jobs));
     
     auth_vault_del (&(self->vault));
     auth_tokens_del (&(self->tokens));
@@ -462,11 +498,14 @@ int auth_context_init (AuthContext self, QBus qbus, CapeErr err)
     goto exit_and_cleanup;
   }
   
+  // start the subsystems
   self->vault = auth_vault_new ();
-  
   self->tokens = auth_tokens_new (self->adbl_session, self->vault);
   
-  res = auth_tokens_init (self->tokens, qbus, err);
+  self->perm_jobs = qjobs_new (self->adbl_session, "auth_tokens_jobs");
+  
+  // init the jobs with 1000 milliseconds checking frequency
+  res = qjobs_init (self->perm_jobs, qbus_aio (qbus), 1000, self, auth_context__on_perm_event, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -489,7 +528,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // local objects
   AuthContext ctx = auth_context_new ();
   
-  
+  // initialize the context
   res = auth_context_init (ctx, qbus, err);
   if (res)
   {

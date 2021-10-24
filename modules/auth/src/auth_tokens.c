@@ -10,9 +10,6 @@
 // qcrypt includes
 #include <qcrypt.h>
 
-// qjobs includes
-#include <qjobs.h>
-
 //-----------------------------------------------------------------------------
 
 typedef struct
@@ -49,8 +46,6 @@ struct AuthTokens_s
   CapeMap tokens;
   CapeMutex mutex;
   
-  QJobs jobs;
-  
   AdblSession adbl_session;  // reference
   AuthVault vault;           // reference
 };
@@ -64,8 +59,6 @@ AuthTokens auth_tokens_new (AdblSession adbl_session, AuthVault vault)
   self->tokens = cape_map_new (NULL, auth_tokens__on_del, NULL);
   self->mutex = cape_mutex_new ();
   
-  self->jobs = qjobs_new (adbl_session, "auth_tokens_jobs");
-
   self->adbl_session = adbl_session;
   self->vault = vault;
   
@@ -82,24 +75,6 @@ void auth_tokens_del (AuthTokens* p_self)
   cape_mutex_del (&(self->mutex));
   
   CAPE_DEL (p_self, struct AuthTokens_s);
-}
-
-//-------------------------------------------------------------------------------------
-
-int __STDCALL auth_tokens__on_event (QJobs jobs, QJobsEvent event, void* user_ptr, CapeErr err)
-{
-  AuthTokens self = user_ptr;
-  
-  // run it once
-  return CAPE_ERR_EOF;
-}
-
-//-----------------------------------------------------------------------------
-
-int auth_tokens_init (AuthTokens self, QBus qbus, CapeErr err)
-{
-  // init the jobs with 1000 milliseconds checking frequency
-  return qjobs_init (self->jobs, qbus_aio (qbus), 1000, self, auth_tokens__on_event, err);
 }
 
 //-----------------------------------------------------------------------------

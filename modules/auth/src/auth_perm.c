@@ -14,8 +14,10 @@
 
 struct AuthPerm_s
 {
+  QBus qbus;                 // reference
   AdblSession adbl_session;  // reference
   AuthVault vault;           // reference
+  QJobs jobs;                // reference
 
   number_t wpid;             // rinfo: mandatory
   number_t gpid;             // rinfo: mandatory
@@ -32,12 +34,14 @@ struct AuthPerm_s
 
 //-----------------------------------------------------------------------------
 
-AuthPerm auth_perm_new (AdblSession adbl_session, AuthVault vault)
+AuthPerm auth_perm_new (QBus qbus, AdblSession adbl_session, AuthVault vault, QJobs jobs)
 {
   AuthPerm self = CAPE_NEW (struct AuthPerm_s);
   
+  self->qbus = qbus;
   self->adbl_session = adbl_session;
   self->vault = vault;
+  self->jobs = jobs;
   
   self->wpid = 0;
   self->gpid = 0;
@@ -68,6 +72,45 @@ void auth_perm_del (AuthPerm* p_self)
 
     CAPE_DEL (p_self, struct AuthPerm_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm_remove (AuthPerm self, const CapeString token, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_s_cp (params, "token", token);
+    
+    res = adbl_trx_delete (trx, "auth_perm", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  adbl_trx_commit (&trx, err);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm rm", "token was removed");
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -325,7 +368,7 @@ exit_and_cleanup:
 void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString token, CapeString* p_rinfo, CapeString* p_content)
 {
   // unique key
-  cape_udc_add_s_mv   (values, "token"        , &(self->token));
+  cape_udc_add_s_cp   (values, "token"        , self->token);
   
   // the code is optional
   if (self->code)
@@ -360,6 +403,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   AuthPerm self = *p_self;
 
   // local objects
+  number_t ttl = 0;
   CapeString content = NULL;
   CapeString rinfo = NULL;
   CapeString token = NULL;
@@ -371,6 +415,9 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   {
     goto exit_and_cleanup;
   }
+  
+  // optional
+  ttl = cape_udc_get_n (qin->cdata, "ttl", 0);
 
   /*
   // TODO: depricated -> remove userid
@@ -430,8 +477,29 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
       res = cape_err_code (err);
       goto exit_and_cleanup;
     }
-  }
 
+    if (ttl > 0)
+    {
+      CapeDatetime dt_current;
+      CapeDatetime dt_event;
+      
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_s_cp (params, "token", self->token);
+      
+      cape_datetime_utc (&dt_current);
+      cape_datetime__add_n (&dt_current, ttl, &dt_event);
+
+      // add a job to remove this token
+      // don't use rinfo and vsec
+      res = qjobs_add (self->jobs, &dt_event, ttl, &params, NULL, "AUTH", "PERM", id, 0, NULL, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
   adbl_trx_commit (&trx, err);
   res = CAPE_ERR_NONE;
   
@@ -750,6 +818,21 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   AuthPerm self = *p_self;
 
   res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+
+  if (res == CAPE_ERR_NO_AUTH)
+  {
+    const CapeString remote = cape_udc_get_s (qin->cdata, "remote", NULL);
+    
+    if (cape_str_equal (remote, "0.0.0.0") || cape_str_equal (remote, "127.0.0.1"))
+    {
+      cape_log_msg (CAPE_LL_WARN, "AUTH", "perm get", "no valid remote for logging");
+    }
+    else
+    {
+      // using the new qbus interface
+      qbus_log_msg (self->qbus, remote, "access denied");
+    }
+  }
   
   auth_perm_del (p_self);
   return res;
@@ -874,9 +957,6 @@ int auth_perm_rm (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   const CapeString token;
 
-  // local objects
-  AdblTrx trx = NULL;
-
   if (qin->pdata == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
@@ -898,36 +978,10 @@ int auth_perm_rm (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  // start a new transaction
-  trx = adbl_trx_new (self->adbl_session, err);
-  if (trx == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_s_mv (params, "token", &(self->token));
-    
-    res = adbl_trx_delete (trx, "auth_perm", &params, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-  }
-
-  adbl_trx_commit (&trx, err);
-  
-  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm rm", "token was removed");
-  
-  res = CAPE_ERR_NONE;
+  res = auth_perm_remove (self, self->token, err);
   
 exit_and_cleanup:
   
-  adbl_trx_rollback (&trx, err);
-
   auth_perm_del (p_self);
   return res;
 }

@@ -596,6 +596,15 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       cape_udc_add (msg->cdata, &extras);
     }
     
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+    
     res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);
@@ -629,6 +638,15 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       }
     }
     
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+
     res = qbus_send (self->qbus, "AUTH", "token_perm_get", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);

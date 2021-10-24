@@ -22,8 +22,6 @@ __CAPE_LIBEX   AuthTokens   auth_tokens_new       (AdblSession adbl_session, Aut
 
 __CAPE_LIBEX   void         auth_tokens_del       (AuthTokens*);
 
-__CAPE_LIBEX   int          auth_tokens_init      (AuthTokens, QBus qbus, CapeErr err);
-
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int          auth_tokens_add       (AuthTokens, QBusM qin, QBusM qout, CapeErr err);

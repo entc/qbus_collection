@@ -223,7 +223,8 @@ int auth_ui_crypt4__2f_token (AuthUI self, number_t wpid, number_t gpid, number_
   QBusM ap_qin = qbus_message_new (NULL, NULL);
   QBusM ap_qout = qbus_message_new (NULL, NULL);
   
-  AuthPerm ap = auth_perm_new (self->adbl_session, self->vault);
+  // we don't need jobs for the following calls
+  AuthPerm ap = auth_perm_new (self->qbus, self->adbl_session, self->vault, NULL);
   CapeString token = NULL;
   
   ap_qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -782,16 +783,20 @@ int auth_ui_token (AuthUI self, CapeUdc extras, QBusM qout, CapeErr err)
   token = cape_udc_get_s (extras, "__T", NULL);
   if (token == NULL)
   {
-    return cape_err_set (err, CAPE_ERR_NO_AUTH, "extras has no token");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "extras has no token");
   }
 
   res = auth_tokens_fetch (self->tokens, token, qout, err);
   if (res)
   {
-    return cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
   }
   
-  return CAPE_ERR_NONE;
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
 }
 
 //---------------------------------------------------------------------------
