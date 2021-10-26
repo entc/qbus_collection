@@ -491,7 +491,7 @@ const CapeString qwebs_provider (QWebs self)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_raise_file (QWebs self, const CapeString file, const CapeString remote)
+int qwebs_raise_file (QWebs self, const CapeString file, QWebsRequest request)
 {
   int ret = FALSE;
   number_t raise_type = QWEBS_RAISE_TYPE__MINOR;
@@ -521,7 +521,7 @@ int qwebs_raise_file (QWebs self, const CapeString file, const CapeString remote
 
   if (self->on_raise)
   {
-    self->on_raise (self->on_raise_user_ptr, raise_type, remote);
+    self->on_raise (self->on_raise_user_ptr, raise_type, request);
   }
 
   return ret;

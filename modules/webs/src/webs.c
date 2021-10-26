@@ -204,18 +204,18 @@ int __STDCALL qbus_webs__restapi_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-------------------------------------------------------------------------------------
 
-int __STDCALL qbus_webs__on_raise (void* user_ptr, number_t type, const CapeString remote)
+int __STDCALL qbus_webs__on_raise (void* user_ptr, number_t type, QWebsRequest request)
 {
   switch (type)
   {
     case QWEBS_RAISE_TYPE__MINOR:
     {
-      qbus_log_msg (user_ptr, remote, "access file forbidden");
+      qbus_log_msg (user_ptr, qwebs_request_remote (request), "access file forbidden");
       break;
     }
     case QWEBS_RAISE_TYPE__CRITICAL:
     {
-      qbus_log_msg (user_ptr, remote, "access file critical");
+      qbus_log_msg (user_ptr, qwebs_request_remote (request), "access file critical");
       break;
     }
   }

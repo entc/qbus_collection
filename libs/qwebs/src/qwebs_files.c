@@ -76,7 +76,7 @@ const CapeString qwebs_files_mime (QWebsFiles self, const CapeString extension)
 
 //-----------------------------------------------------------------------------
 
-CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeString path, const CapeString remote)
+CapeStream qwebs_files_get (QWebsFiles self, QWebsRequest request, const CapeString site, const CapeString path)
 {
   CapeStream ret = NULL;
   
@@ -98,7 +98,7 @@ CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeSt
       cape_err_set (err, CAPE_ERR_NOT_FOUND, "not found");
 
       // report an incident
-      if (qwebs_raise_file (self->webs, file_rebuild, remote))
+      if (qwebs_raise_file (self->webs, file_rebuild, request))
       {
         // do something special here
         
@@ -115,7 +115,7 @@ CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeSt
       cape_err_set (err, CAPE_ERR_NOT_FOUND, "not found");
       
       // report an incident
-      if (qwebs_raise_file (self->webs, file_rebuild, remote))
+      if (qwebs_raise_file (self->webs, file_rebuild, request))
       {
         // do something special here
         
