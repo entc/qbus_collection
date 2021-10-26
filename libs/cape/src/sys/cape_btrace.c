@@ -47,12 +47,12 @@ typedef struct _sig_ucontext {
 void cape_btrace_hdlr (int sig_num, siginfo_t * info, void * ucontext)
 {
   void *             array[50];
-  void *             caller_address;
+  void *             caller_address = NULL;
   char **            messages;
   int                size, i;
   sig_ucontext_t *   uc;
   
-  uc = (sig_ucontext_t *)ucontext;
+  //uc = (sig_ucontext_t *)ucontext;
 
   
   /* Get the address at the time the signal was raised */

@@ -162,9 +162,8 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   // -> checks all sites for re-writing
   self->site = qwebs_site (self->webs, at, length, &(self->url));
   
-  //printf ("URL: '%s'\n", self->url);
-  //printf ("SITE: '%s'\n", self->site);
-
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on url", "access: %s", self->url);
+  
   // create a map for all header values
   self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
 
@@ -394,7 +393,7 @@ void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const C
     
     qwebs_connection_send (self->conn, &s);
     qwebs_request_del (p_self);
-  }  
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -690,8 +689,6 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
     }
     else
     {
-      //printf ("FILE '%s'\'%s'\n", request->site, request->url);
-      
       CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
       if (s)
       {

@@ -1,5 +1,6 @@
 #include "qwebs_files.h"
 #include "qwebs_response.h"
+#include "qwebs.h"
 
 // cape includes
 #include <sys/cape_types.h>
@@ -77,19 +78,64 @@ const CapeString qwebs_files_mime (QWebsFiles self, const CapeString extension)
 
 CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeString path)
 {
+  CapeStream ret = NULL;
+  
   // local objects
-  CapeStream s = cape_stream_new ();
-
+  CapeErr err = cape_err_new ();
   CapeUdc file_node = cape_udc_new (CAPE_UDC_NODE, NULL);
-
-  CapeString file = cape_fs_path_merge (site, path);
-
-  cape_udc_add_s_mv (file_node, "file", &file);
-  cape_udc_add_s_cp (file_node, "mime", qwebs_files_mime (self, cape_fs_extension (path)));
+  CapeString file_relative = cape_fs_path_merge (site, path);
+  CapeString file_absolute = NULL;
   
-  qwebs_response_file (s, self->webs, file_node);
+  {
+    // retrieve an absolute path
+    file_absolute = cape_fs_path_resolve (file_relative, err);
+    if (file_absolute == NULL)
+    {
+      // it seems to be no valid file
+      goto exit_and_cleanup;
+    }
+    
+    if (!cape_str_begins (file_absolute, site))
+    {
+      cape_log_msg (CAPE_LL_WARN, "QWEBS", "files get", "file outside site path");
+      
+      cape_err_set (err, CAPE_ERR_NOT_FOUND, "not found");
+      
+      // report an incident
+      if (qwebs_raise_file (self->webs, file_absolute))
+      {
+        // do something special here
+        
+      }
+      
+      // it seems to be no valid file
+      goto exit_and_cleanup;
+    }
+
+    ret = cape_stream_new ();
+    
+    cape_udc_add_s_mv (file_node, "file", &file_absolute);
+    cape_udc_add_s_cp (file_node, "mime", qwebs_files_mime (self, cape_fs_extension (path)));
+  }
   
-  return s;
+  qwebs_response_file (ret, self->webs, file_node);
+
+exit_and_cleanup:
+  
+  if (ret == NULL)
+  {
+    ret = cape_stream_new ();
+    
+    //cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "send file", "got error: %s", cape_err_text (err));
+    qwebs_response_err (ret, self->webs, NULL, cape_udc_get_s (file_node, "mime", "application/json"), err);
+  }
+
+  cape_str_del (&file_absolute);
+  cape_str_del (&file_relative);
+  cape_udc_del (&file_node);
+  cape_err_del (&err);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

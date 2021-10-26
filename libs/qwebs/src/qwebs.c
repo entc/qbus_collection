@@ -9,6 +9,7 @@
 #include <stc/cape_map.h>
 #include <sys/cape_queue.h>
 #include <sys/cape_log.h>
+#include <sys/cape_file.h>
 
 //-----------------------------------------------------------------------------
 
@@ -111,9 +112,22 @@ void qwebs__internal__convert_sites (QWebs self, CapeUdc sites)
     
     if (site && name)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "init", "set site '%s' = %s", name, site);
+      CapeErr err = cape_err_new ();
       
-      cape_map_insert (self->sites, cape_str_cp (name), cape_str_cp (site));
+      // check if the site exists
+      CapeString site_absolute = cape_fs_path_resolve (site, err);
+      if (site_absolute)
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "init", "set site '%s' = %s", name, site);
+
+        cape_map_insert (self->sites, cape_str_cp (name), site_absolute);
+      }
+      else
+      {
+        cape_log_fmt (CAPE_LL_WARN, "QWEBS", "init", "site '%s' = '%s' was not found", name, site);
+      }
+      
+      cape_err_del (&err);
     }
   }
   
@@ -459,6 +473,35 @@ const CapeString qwebs_identifier (QWebs self)
 const CapeString qwebs_provider (QWebs self)
 {
   return self->provider;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_raise_file (QWebs self, const CapeString file)
+{
+  int ret = FALSE;
+  
+  // check for linux paths
+  ret |= cape_str_begins (file, "/etc");
+  ret |= cape_str_begins (file, "/proc");
+  ret |= cape_str_begins (file, "/dev");
+  ret |= cape_str_begins (file, "/home");
+  ret |= cape_str_begins (file, "/mnt");
+  ret |= cape_str_begins (file, "/var");
+  ret |= cape_str_begins (file, "/root");
+  ret |= cape_str_begins (file, "/boot");
+
+  // check for macosx paths
+  ret |= cape_str_begins (file, "/private");
+  ret |= cape_str_begins (file, "/Users");
+
+  if (ret)
+  {
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "security", "access to critical files, incident will be reported");
+
+  }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

@@ -328,12 +328,12 @@ void cape_aio_socket_write (CapeAioSocket self, long sockfd)
         {
           //cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio_sock", "-- UNREF --");
 
+          // disable all other read / write / etc mask flags
+          // otherwise we will run into a race condition
+          self->mask = CAPE_AIO_DONE;
+
           // decrease ref counter (this was increased in send function)
           cape_aio_socket_unref (self);
-
-          // disable all other read / write / etc mask flags
-          //otherwise we will run into a race condition
-          self->mask = CAPE_AIO_DONE;
 
           return;
         }
@@ -364,6 +364,8 @@ void cape_aio_socket_write (CapeAioSocket self, long sockfd)
 
             // decrease ref counter (this was increased in send function)
             cape_aio_socket_unref (self);
+            
+            return;
           }
         }
       }
@@ -395,6 +397,8 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
 
       cape_err_del (&err);
 
+      self->mask |= CAPE_AIO_DONE;
+
       // we still have a buffer in the queue
       // this means we have called send before and the ref counter was increased
       if (self->send_buflen)
@@ -404,8 +408,6 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
         // decrease ref counter (this was increased in send function)
         cape_aio_socket_unref (self);
       }
-
-      self->mask |= CAPE_AIO_DONE;
   }
   else
   {
@@ -1056,7 +1058,7 @@ void cape_aio_socket__icmp__del (CapeAioSocketIcmp* p_self)
 {
   if (*p_self)
   {
-    CapeAioSocketIcmp self = *p_self;
+    //CapeAioSocketIcmp self = *p_self;
 
 
 

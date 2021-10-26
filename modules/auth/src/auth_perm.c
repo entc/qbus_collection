@@ -417,7 +417,15 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   // optional
-  ttl = cape_udc_get_n (qin->cdata, "ttl", 0);
+  {
+    // remove this node, so it is not used for cdata input / content
+    CapeUdc ttl_node = cape_udc_ext (qin->cdata, "ttl");
+    if (ttl_node)
+    {
+      ttl = cape_udc_n (ttl_node, 0);
+      cape_udc_del (&ttl_node);
+    }
+  }
 
   /*
   // TODO: depricated -> remove userid

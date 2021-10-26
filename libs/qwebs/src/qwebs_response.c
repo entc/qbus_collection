@@ -287,6 +287,7 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
   
   // local objects
   CapeErr err = cape_err_new ();
+  CapeString file_absolute = NULL;
   
   // do some checks
   file = cape_udc_get_s (file_node, "file", NULL);
@@ -295,7 +296,7 @@ void qwebs_response_file (CapeStream s, QWebs webs, CapeUdc file_node)
     cape_err_set (err, CAPE_ERR_WRONG_VALUE, "file is not set");
     goto exit_and_cleanup;
   }
-  
+
   is_encrypted = cape_udc_get_b (file_node, "encrypted", FALSE);
   if (is_encrypted)
   {

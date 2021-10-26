@@ -50,6 +50,9 @@ __CAPE_LIBEX     const CapeString   qwebs_identifier  (QWebs);
 
 __CAPE_LIBEX     const CapeString   qwebs_provider    (QWebs);
 
+                                    /* returns TRUE if the file might be critical */
+__CAPE_LIBEX     int                qwebs_raise_file  (QWebs, const CapeString file);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX     CapeString         qwebs_url_encode  (QWebs, const CapeString url);
