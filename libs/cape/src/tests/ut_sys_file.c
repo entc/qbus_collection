@@ -75,6 +75,8 @@ int run_test_01 (CapeErr err)
     if (rb01)
     {
       printf ("RB01: %s\n", rb01);
+      
+      cape_str_del (&rb01);
     }
   }
   {
@@ -83,6 +85,8 @@ int run_test_01 (CapeErr err)
     if (rb02)
     {
       printf ("RB02: %s\n", rb02);
+
+      cape_str_del (&rb02);
     }
   }
   {
@@ -91,6 +95,8 @@ int run_test_01 (CapeErr err)
     if (rb03)
     {
       printf ("RB03: %s\n", rb03);
+
+      cape_str_del (&rb03);
     }
   }
 }
