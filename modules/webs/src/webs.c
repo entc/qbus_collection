@@ -204,6 +204,25 @@ int __STDCALL qbus_webs__restapi_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-------------------------------------------------------------------------------------
 
+int __STDCALL qbus_webs__on_raise (void* user_ptr, number_t type, const CapeString remote)
+{
+  switch (type)
+  {
+    case QWEBS_RAISE_TYPE__MINOR:
+    {
+      qbus_log_msg (user_ptr, remote, "access file forbidden");
+      break;
+    }
+    case QWEBS_RAISE_TYPE__CRITICAL:
+    {
+      qbus_log_msg (user_ptr, remote, "access file critical");
+      break;
+    }
+  }
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
   int res;
@@ -274,6 +293,9 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
+  
+  // register a callback in case a security issue was reported
+  qwebs_set_raise (webs, qbus, qbus_webs__on_raise);
   
   /*
   res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);

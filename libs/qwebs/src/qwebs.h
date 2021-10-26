@@ -14,6 +14,11 @@
 #include <stc/cape_list.h>
 #include <stc/cape_udc.h>
 
+#define QWEBS_RAISE_TYPE__MINOR      1
+#define QWEBS_RAISE_TYPE__CRITICAL  10
+
+//-----------------------------------------------------------------------------
+
 struct QWebsApi_s; typedef struct QWebsApi_s* QWebsApi;
 
 //-----------------------------------------------------------------------------
@@ -29,6 +34,10 @@ typedef int     (__STDCALL *fct_qwebs__on_request)    (void* user_ptr, QWebsRequ
 __CAPE_LIBEX     int                qwebs_reg         (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_request, CapeErr err);
 
 __CAPE_LIBEX     int                qwebs_reg_page    (QWebs, const CapeString page, void* user_ptr, fct_qwebs__on_request, CapeErr err);
+
+typedef int     (__STDCALL *fct_qwebs__on_raise)      (void* user_ptr, number_t type, const CapeString remote);
+
+__CAPE_LIBEX     void               qwebs_set_raise   (QWebs, void* user_ptr, fct_qwebs__on_raise);
 
 //-----------------------------------------------------------------------------
 
@@ -51,7 +60,7 @@ __CAPE_LIBEX     const CapeString   qwebs_identifier  (QWebs);
 __CAPE_LIBEX     const CapeString   qwebs_provider    (QWebs);
 
                                     /* returns TRUE if the file might be critical */
-__CAPE_LIBEX     int                qwebs_raise_file  (QWebs, const CapeString file);
+__CAPE_LIBEX     int                qwebs_raise_file  (QWebs, const CapeString file, const CapeString remote);
 
 //-----------------------------------------------------------------------------
 

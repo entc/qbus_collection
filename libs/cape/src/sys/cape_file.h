@@ -27,6 +27,9 @@ __CAPE_LIBEX   CapeString         cape_fs_path_absolute  (const char* filepath);
                                   /* resolves a path using the system functions */
 __CAPE_LIBEX   CapeString         cape_fs_path_resolve   (const char* filepath, CapeErr);
 
+                                  /* resolves a path by algorithm */
+__CAPE_LIBEX   CapeString         cape_fs_path_rebuild   (const char* filepath, CapeErr);
+
 //-----------------------------------------------------------------------------
 
                                   /* splits the filepath into path and filename parts,

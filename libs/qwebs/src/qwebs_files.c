@@ -76,7 +76,7 @@ const CapeString qwebs_files_mime (QWebsFiles self, const CapeString extension)
 
 //-----------------------------------------------------------------------------
 
-CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeString path)
+CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeString path, const CapeString remote)
 {
   CapeStream ret = NULL;
   
@@ -84,25 +84,38 @@ CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeSt
   CapeErr err = cape_err_new ();
   CapeUdc file_node = cape_udc_new (CAPE_UDC_NODE, NULL);
   CapeString file_relative = cape_fs_path_merge (site, path);
-  CapeString file_absolute = NULL;
+  CapeString file_rebuild = NULL;
   
   {
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "files get", "path: %s", file_relative);
+
     // retrieve an absolute path
-    file_absolute = cape_fs_path_resolve (file_relative, err);
-    if (file_absolute == NULL)
+    file_rebuild = cape_fs_path_rebuild (file_relative, err);
+    if (file_rebuild == NULL)
     {
+      cape_log_msg (CAPE_LL_WARN, "QWEBS", "files get", "file path invalid");
+      
+      cape_err_set (err, CAPE_ERR_NOT_FOUND, "not found");
+
+      // report an incident
+      if (qwebs_raise_file (self->webs, file_rebuild, remote))
+      {
+        // do something special here
+        
+      }
+
       // it seems to be no valid file
       goto exit_and_cleanup;
     }
     
-    if (!cape_str_begins (file_absolute, site))
+    if (!cape_str_begins (file_rebuild, site))
     {
       cape_log_msg (CAPE_LL_WARN, "QWEBS", "files get", "file outside site path");
       
       cape_err_set (err, CAPE_ERR_NOT_FOUND, "not found");
       
       // report an incident
-      if (qwebs_raise_file (self->webs, file_absolute))
+      if (qwebs_raise_file (self->webs, file_rebuild, remote))
       {
         // do something special here
         
@@ -114,7 +127,7 @@ CapeStream qwebs_files_get (QWebsFiles self, const CapeString site, const CapeSt
 
     ret = cape_stream_new ();
     
-    cape_udc_add_s_mv (file_node, "file", &file_absolute);
+    cape_udc_add_s_mv (file_node, "file", &file_rebuild);
     cape_udc_add_s_cp (file_node, "mime", qwebs_files_mime (self, cape_fs_extension (path)));
   }
   
@@ -130,7 +143,7 @@ exit_and_cleanup:
     qwebs_response_err (ret, self->webs, NULL, cape_udc_get_s (file_node, "mime", "application/json"), err);
   }
 
-  cape_str_del (&file_absolute);
+  cape_str_del (&file_rebuild);
   cape_str_del (&file_relative);
   cape_udc_del (&file_node);
   cape_err_del (&err);

@@ -67,6 +67,36 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int run_test_01 (CapeErr err)
+{
+  {
+    CapeString rb01 = cape_fs_path_rebuild ("/home/cape/../../etc", err);
+    
+    if (rb01)
+    {
+      printf ("RB01: %s\n", rb01);
+    }
+  }
+  {
+    CapeString rb02 = cape_fs_path_rebuild ("home/cape/../../etc", err);
+    
+    if (rb02)
+    {
+      printf ("RB02: %s\n", rb02);
+    }
+  }
+  {
+    CapeString rb03 = cape_fs_path_rebuild ("/cape/../../etc", err);
+    
+    if (rb03)
+    {
+      printf ("RB03: %s\n", rb03);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res;
@@ -78,6 +108,12 @@ int main (int argc, char *argv[])
   CapeString path_test_folder = cape_fs_path_current ("TestFolder");
   CapeString path_child_folder = cape_fs_path_merge (path_test_folder, "child");
   
+  res = run_test_01 (err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   res = cape_fs_path_create (path_test_folder, err);
   if (res)
   {

@@ -509,7 +509,7 @@ static void __STDCALL qwebs_request__internal__on_run (void* ptr, number_t pos)
   }
   else
   {
-    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
+    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url, NULL);
 
     if (s)
     {
@@ -689,7 +689,7 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
     }
     else
     {
-      CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
+      CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url, self->conn->remote);
       if (s)
       {
         qwebs_connection_send (self->conn, &s);
@@ -776,7 +776,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       {
         //printf ("FILE '%s'\'%s'\n", request->site, request->url);
 
-        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->site, request->url);
+        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->site, request->url, self->remote);
         if (s)
         {
           qwebs_connection_send (self, &s);

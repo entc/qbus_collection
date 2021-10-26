@@ -73,6 +73,9 @@ struct QWebs_s
 
   CapeString identifier;
   CapeString provider;
+  
+  void* on_raise_user_ptr;
+  fct_qwebs__on_raise on_raise;
 };
 
 //-----------------------------------------------------------------------------
@@ -171,6 +174,9 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   self->identifier = cape_str_cp (identifier);
   self->provider = cape_str_cp (provider);
 
+  self->on_raise_user_ptr = NULL;
+  self->on_raise = NULL;
+  
   return self;
 }
 
@@ -254,6 +260,14 @@ int qwebs_reg_page (QWebs self, const CapeString page, void* user_ptr, fct_qwebs
   }
   
   return cape_err_set (err, CAPE_ERR_RUNTIME, "API can't be registered");
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
+{
+  self->on_raise_user_ptr = user_ptr;
+  self->on_raise = on_raise;
 }
 
 //-----------------------------------------------------------------------------
@@ -477,30 +491,39 @@ const CapeString qwebs_provider (QWebs self)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_raise_file (QWebs self, const CapeString file)
+int qwebs_raise_file (QWebs self, const CapeString file, const CapeString remote)
 {
   int ret = FALSE;
+  number_t raise_type = QWEBS_RAISE_TYPE__MINOR;
   
-  // check for linux paths
-  ret |= cape_str_begins (file, "/etc");
-  ret |= cape_str_begins (file, "/proc");
-  ret |= cape_str_begins (file, "/dev");
-  ret |= cape_str_begins (file, "/home");
-  ret |= cape_str_begins (file, "/mnt");
-  ret |= cape_str_begins (file, "/var");
-  ret |= cape_str_begins (file, "/root");
-  ret |= cape_str_begins (file, "/boot");
-
-  // check for macosx paths
-  ret |= cape_str_begins (file, "/private");
-  ret |= cape_str_begins (file, "/Users");
-
-  if (ret)
+  if (file)
   {
-    cape_log_msg (CAPE_LL_WARN, "QWEBS", "security", "access to critical files, incident will be reported");
-
+    // check for linux paths
+    ret |= cape_str_begins (file, "/etc");
+    ret |= cape_str_begins (file, "/proc");
+    ret |= cape_str_begins (file, "/dev");
+    ret |= cape_str_begins (file, "/home");
+    ret |= cape_str_begins (file, "/mnt");
+    ret |= cape_str_begins (file, "/var");
+    ret |= cape_str_begins (file, "/root");
+    ret |= cape_str_begins (file, "/boot");
+    
+    // check for macosx paths
+    ret |= cape_str_begins (file, "/private");
+    ret |= cape_str_begins (file, "/Users");
+    
+    if (ret)
+    {
+      cape_log_msg (CAPE_LL_WARN, "QWEBS", "security", "access to critical files, incident will be reported");
+      raise_type = QWEBS_RAISE_TYPE__CRITICAL;
+    }
   }
-  
+
+  if (self->on_raise)
+  {
+    self->on_raise (self->on_raise_user_ptr, raise_type, remote);
+  }
+
   return ret;
 }
 
