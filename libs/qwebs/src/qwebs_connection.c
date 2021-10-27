@@ -256,15 +256,9 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
   
   if (self->header_values)
   {
-    CapeString h = cape_str_sub (at, length);
-    
-    if (NULL == self->last_header_field)
+    if (self->last_header_field)
     {
-      cape_log_fmt (CAPE_LL_WARN, "QWEBS", "on header", "scrambled header detected: '%s'", h);
-      cape_str_del (&h);
-    }
-    else
-    {
+      CapeString h = cape_str_sub (at, length);
       //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
       
       // transfer ownership to the map
