@@ -256,16 +256,18 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
   
   if (self->header_values)
   {
+    CapeString h = cape_str_sub (at, length);
+    
     if (NULL == self->last_header_field)
     {
-      return 1;
-    }
-    
-    {
-      CapeString h = cape_str_sub (at, length);
-            
-      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      printf ("HEADER VALUE: %s\n", h);
 
+      cape_str_del (&h);
+    }
+    else
+    {
+      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
       self->last_header_field = NULL;
@@ -723,7 +725,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   {
     CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
 
-    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error: %s", h);
+    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error [%i]: %s", self->parser.http_errno, h);
     
     cape_str_del (&h);
     
