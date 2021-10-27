@@ -81,8 +81,6 @@ export class AuthSession
 
   public set_content_type (type: any, modal: boolean = false)
   {
-    console.log('set custom content type');
-
     this.login_component = type;
     this.login_modal = modal;
   }
@@ -222,14 +220,6 @@ export class AuthSession
 
     this.session.next (sitem);
     this.timer_set (sitem.vp);
-
-    console.log('session was set, token = ' + sitem.token);
-    let sitem2: AuthSessionItem = this.session ? this.session.value : null;
-
-    if (sitem2)
-    {
-      console.log('session was get, token = ' + sitem2.token);
-    }
   }
 
   //---------------------------------------------------------------------------
