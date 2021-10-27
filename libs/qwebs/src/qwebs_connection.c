@@ -260,8 +260,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     
     if (NULL == self->last_header_field)
     {
-      printf ("HEADER VALUE: %s\n", h);
-
+      cape_log_fmt (CAPE_LL_WARN, "QWEBS", "on header", "scrambled header detected: '%s'", h);
       cape_str_del (&h);
     }
     else
