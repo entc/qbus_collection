@@ -637,7 +637,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "perm_code_set"        , ctx, qbus_auth_perm_code_set, NULL, err);
 
   // remove permanent token
-  //   args: token
+  //   args: token | apid
   qbus_register (qbus, "token_perm_rm"        , ctx, qbus_auth_perm_code_rm, NULL, err);
 
   // -------- callback methods --------------------------------------------
