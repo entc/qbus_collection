@@ -380,10 +380,6 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
 {
   int res;
   
-  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
-  
-  return res;
-  
   CapeUdc row;
   number_t wpid;
   const CapeString vsec;
@@ -391,6 +387,17 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
   // local objects
   CapeUdc results = NULL;
   CapeString token_hash = NULL;
+
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+  if (res == CAPE_ERR_NONE)
+  {
+    goto exit_and_cleanup;
+  }
+  else
+  {
+    // try another method
+    cape_err_clr (err);
+  }
 
   token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
   if (token_hash == NULL)
@@ -411,7 +418,7 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     cape_udc_add_s_cp   (values, "cdata"       , NULL);
     
     // execute the query
-    results = adbl_session_query (self->adbl_session, "auth_perm", &params, &values, err);
+    results = adbl_session_query (self->adbl_session, "q5_tokens", &params, &values, err);
     if (results == NULL)
     {
       // try the old way using the q5_tokens table
@@ -516,7 +523,7 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, QBusM
   }
   else
   {
-    return auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+    return auth_tokens_fetch__database_perm (self, token, qin, qout, err);
   }
 }
 
