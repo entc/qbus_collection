@@ -399,7 +399,7 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     cape_err_clr (err);
     
     // try the old way using the q5_tokens table
-    res = auth_tokens_fetch__database_q5 (self, token, qin, err);
+    res = auth_tokens_fetch__database_q5 (self, token, qout, err);
   }
 
   /*
