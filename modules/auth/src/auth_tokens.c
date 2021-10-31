@@ -397,8 +397,12 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
   {
     // try another method
     cape_err_clr (err);
+    
+    // try the old way using the q5_tokens table
+    res = auth_tokens_fetch__database_q5 (self, token, qin, err);
   }
 
+  /*
   token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
   if (token_hash == NULL)
   {
@@ -415,7 +419,7 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     
     cape_udc_add_n      (values, "wpid"        , 0);
     cape_udc_add_s_cp   (values, "rinfo"       , NULL);
-    cape_udc_add_s_cp   (values, "cdata"       , NULL);
+    cape_udc_add_s_cp   (values, "content"     , NULL);
     
     // execute the query
     results = adbl_session_query (self->adbl_session, "q5_tokens", &params, &values, err);
@@ -475,9 +479,10 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     
     cape_udc_replace_mv (&(qin->cdata), &h);
   }
-  
+   
   cape_log_fmt (CAPE_LL_TRACE, "AUTH", "tokens fetch", "found token in perm repo");
 
+   */
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
