@@ -1850,3 +1850,103 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int flow_wspc_clr__process (FlowProcess self, number_t psid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (NULL == trx)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = flow_process_rm__item (self, trx, psid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_wspc_clr (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+
+  // allow user role or admin role from workspace
+  if (qbus_message_role_has (qin, "admin") == FALSE)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_PDATA");
+    goto exit_and_cleanup;
+  }
+  
+  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (values, "id"            , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "proc_tasks", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    res = flow_wspc_clr__process (self, cape_udc_get_n (cursor->item, "id", 0), err);
+    if (res)
+    {
+      // ignore errors
+      cape_err_clr (err);
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

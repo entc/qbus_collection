@@ -774,7 +774,7 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
-int auth_ui_token (AuthUI self, CapeUdc extras, QBusM qout, CapeErr err)
+int auth_ui_token (AuthUI self, CapeUdc extras, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   
@@ -786,7 +786,7 @@ int auth_ui_token (AuthUI self, CapeUdc extras, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "extras has no token");
   }
 
-  res = auth_tokens_fetch (self->tokens, token, qout, err);
+  res = auth_tokens_fetch (self->tokens, token, qin, qout, err);
   if (res)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
@@ -925,7 +925,7 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
     case 4:
     {
-      res = auth_ui_token (self, auth_extras, qout, err);
+      res = auth_ui_token (self, auth_extras, qin, qout, err);
       goto exit_and_cleanup;
     }
   }

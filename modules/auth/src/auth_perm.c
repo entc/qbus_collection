@@ -704,6 +704,52 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_perm__helper__update (AdblSession adbl_session, number_t apid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  
+  // start a new transaction
+  trx = adbl_trx_new (adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n   (params, "id"           , apid);
+    
+    {
+      CapeDatetime dt; cape_datetime_utc (&dt);
+      cape_udc_add_d (values, "toi", &dt);
+    }
+    
+    // execute query
+    res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -750,6 +796,7 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_s_cp   (params, "token"         , token_hash);
+    cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "wpid"          , 0);
     cape_udc_add_s_cp   (values, "code"          , NULL);
     cape_udc_add_n      (values, "code_active"   , 0);
@@ -830,6 +877,12 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
   if (rinfo == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "rinfo not found");
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_perm__helper__update (adbl_session, cape_udc_get_n (first_row, "id", 0), err);
+  if (res)
+  {
     goto exit_and_cleanup;
   }
   

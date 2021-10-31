@@ -150,13 +150,51 @@ void auth_vault__save (AuthVault self, number_t wpid, const CapeString vsec)
 
 int auth_vault_get (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
 {
+  int res;
+  
+  const CapeString secret;
+  
+  // local objects
+  number_t wpid = 0;
+
   // do some security checks
   if (qin->rinfo == NULL)
   {
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing rinfo");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
   }
   
-  number_t wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (qin->pdata)
+  {
+    // allow user role or admin role from workspace
+    if (qbus_message_role_has (qin, "admin"))
+    {
+      wpid = cape_udc_get_n (qin->pdata, "wpid", 0);
+    }
+    else
+    {
+      wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    }
+  }
+  else if (qin->cdata)  // depricated way
+  {
+    // we need to set a special role
+    CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
+    if (roles)
+    {
+      CapeUdc h = cape_udc_get (roles, "__auth_vsec");
+      if (h)
+      {
+        wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+      }
+    }
+  }
+  else
+  {
+    // default way
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  }
+
   if (wpid == 0)
   {
     CapeString h = cape_json_to_s (qin->rinfo);
@@ -165,44 +203,29 @@ int auth_vault_get (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_str_del (&h);
     
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+    goto exit_and_cleanup;
   }
+
+  secret = auth_vault__vsec (self, wpid);
   
-  if (qin->cdata)
-  {
-    number_t override_wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    if (override_wpid)
-    {
-      // we need to set a special role
-      CapeUdc roles = cape_udc_get (qin->rinfo, "roles");
-      if (roles)
-      {
-        CapeUdc h = cape_udc_get (roles, "__auth_vsec");
-        if (h)
-        {
-          wpid = override_wpid;
-        }
-      }
-    }
-  }
-
-  const CapeString secret = auth_vault__vsec (self, wpid);  
-  if (secret)
-  {
-    qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_s_cp (qout->cdata, "secret", secret);
-    
-    //cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "vault get", "returned secret for wpid (%i)", wpid);
-
-    return CAPE_ERR_NONE;
-  }
-  else
+  if (secret == NULL)
   {
     cape_log_fmt (CAPE_LL_ERROR, "AUTH", "vault get", "no secret for wpid (%i)", wpid);
-
-    return cape_err_set (err, CAPE_ERR_NO_AUTH, "{OpenVault} secret not found");
+    
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{OpenVault} secret not found");
+    goto exit_and_cleanup;
   }
+  
+  // create the output
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_s_cp (qout->cdata, "secret", secret);
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------

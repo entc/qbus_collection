@@ -379,6 +379,19 @@ static int __STDCALL qbus_flow__log__get (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__wspc__clr (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+
+  // run the command
+  return flow_wspc_clr (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
   int res;
@@ -500,6 +513,12 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // -> this is using the internal instance table
   //   args: refid
   qbus_register (qbus, "log_get"             , ctx, qbus_flow__log__get, NULL, err);
+
+  // -------- callback methods --------------------------------------------
+  
+  // delete everything for a workspace
+  //   args: refid
+  qbus_register (qbus, "wspc_clr"            , ctx, qbus_flow__wspc__clr, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

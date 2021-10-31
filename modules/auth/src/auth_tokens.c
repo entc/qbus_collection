@@ -1,5 +1,6 @@
 #include "auth_tokens.h"
 #include "auth_rinfo.h"
+#include "auth_perm.h"
 
 // cape includes
 #include <stc/cape_map.h>
@@ -375,12 +376,13 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   
-  //res = auth_perm__helper__get (self->adbl_session, self->vault, qin, err);
-
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+  
+  return res;
   
   CapeUdc row;
   number_t wpid;
@@ -481,7 +483,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, QBusM qout, CapeErr err)
 {
   CapeMapNode n = NULL;
   
@@ -502,11 +504,11 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeE
   {
     AuthTokenItem* titem = cape_map_node_value (n);
 
-    cape_udc_replace_mv (&(qin->cdata), &(titem->extras));
-    cape_udc_replace_mv (&(qin->rinfo), &(titem->rinfo));
+    cape_udc_replace_mv (&(qout->cdata), &(titem->extras));
+    cape_udc_replace_mv (&(qout->rinfo), &(titem->rinfo));
 
     // add the token to rinfo
-    cape_udc_add_s_cp (qin->rinfo, "__T", token);
+    cape_udc_add_s_cp (qout->rinfo, "__T", token);
     
     cape_map_del_node (self->tokens, &n);
     
@@ -514,7 +516,7 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeE
   }
   else
   {
-    return auth_tokens_fetch__database_perm (self, token, qin, err);
+    return auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
   }
 }
 
