@@ -388,7 +388,7 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
   CapeUdc results = NULL;
   CapeString token_hash = NULL;
 
-  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, token, err);
   if (res == CAPE_ERR_NONE)
   {
     goto exit_and_cleanup;

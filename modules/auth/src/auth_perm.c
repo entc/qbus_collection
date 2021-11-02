@@ -750,12 +750,11 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, CapeErr err)
+int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, const CapeString token, CapeErr err)
 {
   int res;
   
   CapeUdc first_row;
-  const CapeString token;
   const CapeString code;
   number_t code_active;
   number_t wpid;
@@ -769,18 +768,6 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
   CapeString token_hash = NULL;
   CapeString code_hash = NULL;
   
-  if (qin->pdata == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
-    goto exit_and_cleanup;
-  }
-  
-  token = cape_udc_get_s (qin->pdata, "token", NULL);
-  if (token == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing token");
-    goto exit_and_cleanup;
-  }
   
   token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
   if (token_hash == NULL)
@@ -917,7 +904,22 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthPerm self = *p_self;
 
-  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, err);
+  const CapeString token;
+  
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing pdata");
+    goto exit_and_cleanup;
+  }
+  
+  token = cape_udc_get_s (qin->pdata, "token", NULL);
+  if (token == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing token");
+    goto exit_and_cleanup;
+  }
+
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, token, err);
 
   if (res == CAPE_ERR_NO_AUTH)
   {
@@ -933,6 +935,8 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
       qbus_log_msg (self->qbus, remote, "access denied");
     }
   }
+  
+exit_and_cleanup:
   
   auth_perm_del (p_self);
   return res;

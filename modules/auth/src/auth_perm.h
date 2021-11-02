@@ -42,7 +42,7 @@ __CAPE_LIBEX   int          auth_perm_rm            (AuthPerm*, QBusM qin, QBusM
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   int          auth_perm__helper__get  (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, CapeErr err);
+__CAPE_LOCAL   int          auth_perm__helper__get  (AdblSession adbl_session, AuthVault vault, QBusM qin, QBusM qout, const CapeString token, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

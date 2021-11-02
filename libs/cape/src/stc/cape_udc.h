@@ -152,7 +152,13 @@ __CAPE_LIBEX   void                 cape_udc_put_s_mv         (CapeUdc, const Ca
 
 __CAPE_LIBEX   void                 cape_udc_put_n            (CapeUdc, const CapeString name, number_t val);
 
+__CAPE_LIBEX   void                 cape_udc_put_f            (CapeUdc, const CapeString name, double val);
+
 __CAPE_LIBEX   void                 cape_udc_put_b            (CapeUdc, const CapeString name, int val);
+
+__CAPE_LIBEX   void                 cape_udc_put_node_cp      (CapeUdc, const CapeString name, CapeUdc);
+
+__CAPE_LIBEX   void                 cape_udc_put_node_mv      (CapeUdc, const CapeString name, CapeUdc*);
 
 //-----------------------------------------------------------------------------
 

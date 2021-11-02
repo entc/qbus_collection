@@ -1058,12 +1058,6 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
 
-  {
-    CapeString h = cape_json_to_s (qin->cdata);
-    
-    printf ("CONTENT: %s\n", h);
-  }
-
   // support both versions
   self->psid = cape_udc_get_n (qin->cdata, "psid", cape_udc_get_n (qin->cdata, "taid", 0));
   if (self->psid == 0)
