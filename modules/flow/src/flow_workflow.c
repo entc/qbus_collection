@@ -348,3 +348,197 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int flow_workflow_perm_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowWorkflow self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+
+  // check roles
+  if (qbus_message_role_has (qin, "admin") == FALSE)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NOROLE");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NOCDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
+  if (self->wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_WFID");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (params, "wfid"        , self->wfid);
+    
+    cape_udc_add_n     (values, "id"          , 0);
+    cape_udc_add_n     (values, "wpid"        , 0);
+    cape_udc_add_n     (values, "gpid"        , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_workspaces", &params, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  
+  flow_workflow_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_workflow_perm_set (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowWorkflow self = *p_self;
+
+  int perm;
+  CapeUdc perm_node;
+  CapeUdc first_row;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  CapeUdc query_results = NULL;
+
+  // check roles
+  if (qbus_message_role_has (qin, "admin") == FALSE)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NOROLE");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NOCDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_WPID");
+    goto exit_and_cleanup;
+  }
+
+  self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
+  if (self->wfid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_WFID");
+    goto exit_and_cleanup;
+  }
+
+  perm_node = cape_udc_get (qin->cdata, "perm");
+  if (perm_node == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_PERM");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (params, "wfid"        , self->wfid);
+    cape_udc_add_n     (params, "wpid"        , self->wpid);
+    cape_udc_add_n     (values, "id"          , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_workspaces", &params, &values, err);
+    if (query_results == NULL)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  first_row = cape_udc_get_first (query_results);
+  perm = cape_udc_b (perm_node, FALSE);
+  
+  // start the transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  if (first_row)
+  {
+    if (perm)
+    {
+      // already exists
+      res = cape_err_set (err, CAPE_ERR_EOF, "ERR.ALREADY_EXISTS");
+      goto exit_and_cleanup;
+    }
+    else
+    {
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n (params, "id", cape_udc_get_n (first_row, "id", 0));
+      
+      res = adbl_trx_delete (trx, "flow_workspaces", &params, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  else
+  {
+    if (perm)
+    {
+      int id;
+      
+      CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_n (values, "wfid", self->wfid);
+      cape_udc_add_n (values, "wpid", self->wpid);
+      
+      // execute query
+      id = adbl_trx_insert (trx, "flow_workspaces", &values, err);
+      if (id == 0)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      // already exists
+      res = cape_err_set (err, CAPE_ERR_EOF, "ERR.ALREADY_REMOVED");
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+
+  flow_workflow_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

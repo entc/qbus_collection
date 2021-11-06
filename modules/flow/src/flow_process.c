@@ -875,13 +875,13 @@ int flow_process_instance_rm (FlowProcess* p_self, QBusM qin, QBusM qout, CapeEr
   // local objects
   AdblTrx trx = NULL;
   
-  // allow only admin role from workspace
-  if (qbus_message_role_has (qin, "flow_admin") == FALSE)
+  // do some security checks
+  if (qin->rinfo == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
     goto exit_and_cleanup;
   }
-  
+
   if (qin->cdata == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "missing cdata");
@@ -895,11 +895,24 @@ int flow_process_instance_rm (FlowProcess* p_self, QBusM qin, QBusM qout, CapeEr
     goto exit_and_cleanup;
   }
 
-  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-  if (self->wpid == 0)
+  // allow only admin role from workspace
+  if (qbus_message_role_has (qin, "flow_admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
-    goto exit_and_cleanup;
+    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
+      goto exit_and_cleanup;
+    }
   }
 
   trx = adbl_trx_new (self->adbl_session, err);

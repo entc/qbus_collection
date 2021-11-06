@@ -106,6 +106,32 @@ static int __STDCALL qbus_flow__workflow__rm (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__workflow__perm_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowWorkflow flow_workflow = flow_workflow_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return flow_workflow_perm_get (&flow_workflow, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_flow__workflow__perm_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowWorkflow flow_workflow = flow_workflow_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return flow_workflow_perm_set (&flow_workflow, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__workflow__get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -422,6 +448,14 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // delete a workflow
   //   args: wfid
   qbus_register (qbus, "workflow_rm"         , ctx, qbus_flow__workflow__rm, NULL, err);
+
+  // get the permissions for a workflow
+  //   args: wfid
+  qbus_register (qbus, "workflow_perm_get"   , ctx, qbus_flow__workflow__perm_get, NULL, err);
+
+  // set the permissions for a workflow
+  //   args: wfid, peid
+  qbus_register (qbus, "workflow_perm_set"   , ctx, qbus_flow__workflow__perm_set, NULL, err);
 
   // -------- callback methods --------------------------------------------
   

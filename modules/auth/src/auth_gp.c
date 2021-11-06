@@ -369,3 +369,47 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int auth_wp_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthGP self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+
+  // check roles
+  if (qbus_message_role_has (qin, "admin") == FALSE)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NOROLE");
+    goto exit_and_cleanup;
+  }
+  
+  // query
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (values, "id"               , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_workspaces", NULL, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  
+  auth_gp_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

@@ -555,6 +555,13 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
         // content needs to be base64 encrypted
         {
           CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
+          
+          if (h == NULL)
+          {
+            res = cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "can't encode base64");
+            goto exit_and_cleanup;
+          }
+          
           cape_udc_add_s_mv (msg->cdata, "content", &h);
         }
 
