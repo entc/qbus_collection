@@ -5,7 +5,6 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { Routes, RouterModule } from '@angular/router';
 import { QbngModule } from '@qbus/qbng.module';
-import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor/component';
 import { FlowProcessComponent, FlowProcessDataModalComponent } from './flow_process/component';
 import { FlowProcessDetailsComponent } from './flow_process_details/component';
 
@@ -25,12 +24,9 @@ const routes: Routes = [
 @NgModule({
   declarations:
   [
-    FlowEditorComponent,
     FlowProcessComponent,
-    FlowEditorAddModalComponent,
     FlowProcessDetailsComponent,
     FlowProcessDataModalComponent,
-    FlowEditorPermModalComponent
   ],
   imports: [
     CommonModule,
@@ -45,9 +41,7 @@ const routes: Routes = [
   ],
   exports: [RouterModule],
   entryComponents: [
-    FlowEditorAddModalComponent,
     FlowProcessDataModalComponent,
-    FlowEditorPermModalComponent
   ]
 })
 export class FlowAdminModule
