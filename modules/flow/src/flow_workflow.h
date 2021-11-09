@@ -31,6 +31,10 @@ __CAPE_LIBEX   int            flow_workflow_rm          (FlowWorkflow*, QBusM qi
 
 __CAPE_LIBEX   int            flow_workflow_get         (FlowWorkflow*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_workflow_perm_get    (FlowWorkflow*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int            flow_workflow_perm_set    (FlowWorkflow*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

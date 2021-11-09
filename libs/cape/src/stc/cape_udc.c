@@ -1119,6 +1119,21 @@ void cape_udc_put_n (CapeUdc self, const CapeString name, number_t val)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_put_f (CapeUdc self, const CapeString name, double val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_f (h, val);
+  }
+  else
+  {
+    cape_udc_add_f (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_put_b (CapeUdc self, const CapeString name, int val)
 {
   CapeUdc h = cape_udc_get (self, name);
@@ -1130,6 +1145,35 @@ void cape_udc_put_b (CapeUdc self, const CapeString name, int val)
   {
     cape_udc_add_b (self, name, val);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_node_cp (CapeUdc self, const CapeString name, CapeUdc node)
+{
+  // remove previous entry
+  {
+    CapeUdc h = cape_udc_ext (self, name);
+    cape_udc_del (&h);
+  }
+
+  {
+    CapeUdc h = cape_udc_cp (node);
+    cape_udc_add_name (self, &h, name);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
+{
+  // remove previous entry
+  {
+    CapeUdc h = cape_udc_ext (self, name);
+    cape_udc_del (&h);
+  }
+
+  cape_udc_add_name (self, p_node, name);
 }
 
 //-----------------------------------------------------------------------------

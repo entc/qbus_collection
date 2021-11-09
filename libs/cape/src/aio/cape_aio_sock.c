@@ -89,7 +89,7 @@ CapeAioSocket cape_aio_socket_new (void* handle)
   self->handle = handle;
   self->aioh = NULL;
 
-  self->mask = CAPE_AIO_NONE;
+  self->mask = 0;
 
   // sending
   self->send_bufdat = NULL;
@@ -328,12 +328,12 @@ void cape_aio_socket_write (CapeAioSocket self, long sockfd)
         {
           //cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio_sock", "-- UNREF --");
 
+          // disable all other read / write / etc mask flags
+          // otherwise we will run into a race condition
+          self->mask = CAPE_AIO_DONE;
+
           // decrease ref counter (this was increased in send function)
           cape_aio_socket_unref (self);
-
-          // disable all other read / write / etc mask flags
-          //otherwise we will run into a race condition
-          self->mask = CAPE_AIO_DONE;
 
           return;
         }
@@ -364,6 +364,8 @@ void cape_aio_socket_write (CapeAioSocket self, long sockfd)
 
             // decrease ref counter (this was increased in send function)
             cape_aio_socket_unref (self);
+            
+            return;
           }
         }
       }
@@ -395,6 +397,8 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
 
       cape_err_del (&err);
 
+      self->mask |= CAPE_AIO_DONE;
+
       // we still have a buffer in the queue
       // this means we have called send before and the ref counter was increased
       if (self->send_buflen)
@@ -404,8 +408,6 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
         // decrease ref counter (this was increased in send function)
         cape_aio_socket_unref (self);
       }
-
-      self->mask |= CAPE_AIO_DONE;
   }
   else
   {
@@ -432,7 +434,7 @@ static int __STDCALL cape_aio_socket_onEvent (void* ptr, int hflags, unsigned lo
   {
       int ret = self->mask;
 
-      self->mask = CAPE_AIO_NONE;
+      self->mask = 0;
 
       return ret;
   }
@@ -463,7 +465,7 @@ static void __STDCALL cape_aio_socket_onUnref (void* ptr, CapeAioHandle aioh, in
 
 void cape_aio_socket_markSent (CapeAioSocket self, CapeAioContext aio)
 {
-  if (self->mask == CAPE_AIO_NONE)
+  if (self->mask == 0)
   {
     if (self->aioh)
     {
@@ -511,7 +513,7 @@ void cape_aio_socket_send (CapeAioSocket self, CapeAioContext aio, const char* b
   self->send_buftos = 0;
   self->send_userdata = userdata;
 
-  if (self->mask == CAPE_AIO_NONE)
+  if (self->mask == 0)
   {
     // correct epoll flags for this filedescriptor
     if (self->aioh)
@@ -697,7 +699,7 @@ CapeAioSocketUdp cape_aio_socket__udp__new (void* handle)
 
   self->handle = handle;
   self->aioh = NULL;
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   self->send_bufdat = NULL;
   self->userdata = NULL;
@@ -885,7 +887,7 @@ static int __STDCALL cape_aio_socket__udp__on_event (void* ptr, int mode, unsign
   CapeAioSocketUdp self = ptr;
 
   // sync the mode
-  //self->mode = mode;
+  self->mode = mode;
 
 #ifdef __BSD_OS
   if (events & EVFILT_READ)
@@ -1056,7 +1058,7 @@ void cape_aio_socket__icmp__del (CapeAioSocketIcmp* p_self)
 {
   if (*p_self)
   {
-    CapeAioSocketIcmp self = *p_self;
+    //CapeAioSocketIcmp self = *p_self;
 
 
 
@@ -1079,7 +1081,8 @@ static int __STDCALL cape_aio_socket__icmp__on_event (void* ptr, int mode, unsig
 {
   CapeAioSocketIcmp self = ptr;
 
-
+  
+  return CAPE_AIO__INTERNAL_NO_CHANGE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1300,7 +1303,7 @@ static int __STDCALL cape_aio_accept_onEvent (void* ptr, int hflags, unsigned lo
   {
     if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
     {
-      return CAPE_AIO_NONE;
+      return CAPE_AIO__INTERNAL_NO_CHANGE;
     }
     else
     {
@@ -1421,7 +1424,7 @@ CapeAioSocket cape_aio_socket_new (void* handle)
   self->aioh_send = NULL;
   self->aioh_recv = NULL;
 
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   // start with count 1 referenced to this object
   self->refcnt = 1;
@@ -1817,7 +1820,7 @@ CapeAioSocketUdp cape_aio_socket__udp__new (void* handle)
   self->aioh_send = NULL;
   self->aioh_recv = NULL;
 
-  self->mode = CAPE_AIO_NONE;
+  self->mode = 0;
 
   self->send_bufdat = NULL;
   self->userdata = NULL;

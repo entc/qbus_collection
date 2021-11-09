@@ -1,5 +1,6 @@
 #include "auth_tokens.h"
 #include "auth_rinfo.h"
+#include "auth_perm.h"
 
 // cape includes
 #include <stc/cape_map.h>
@@ -61,7 +62,7 @@ AuthTokens auth_tokens_new (AdblSession adbl_session, AuthVault vault)
   
   self->adbl_session = adbl_session;
   self->vault = vault;
-
+  
   return self;
 }
 
@@ -375,12 +376,9 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
-  
-  //res = auth_perm__helper__get (self->adbl_session, self->vault, qin, err);
-
   
   CapeUdc row;
   number_t wpid;
@@ -390,6 +388,21 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
   CapeUdc results = NULL;
   CapeString token_hash = NULL;
 
+  res = auth_perm__helper__get (self->adbl_session, self->vault, qin, qout, token, err);
+  if (res == CAPE_ERR_NONE)
+  {
+    goto exit_and_cleanup;
+  }
+  else
+  {
+    // try another method
+    cape_err_clr (err);
+    
+    // try the old way using the q5_tokens table
+    res = auth_tokens_fetch__database_q5 (self, token, qout, err);
+  }
+
+  /*
   token_hash = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
   if (token_hash == NULL)
   {
@@ -406,10 +419,10 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     
     cape_udc_add_n      (values, "wpid"        , 0);
     cape_udc_add_s_cp   (values, "rinfo"       , NULL);
-    cape_udc_add_s_cp   (values, "cdata"       , NULL);
+    cape_udc_add_s_cp   (values, "content"     , NULL);
     
     // execute the query
-    results = adbl_session_query (self->adbl_session, "auth_perm", &params, &values, err);
+    results = adbl_session_query (self->adbl_session, "q5_tokens", &params, &values, err);
     if (results == NULL)
     {
       // try the old way using the q5_tokens table
@@ -466,9 +479,10 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
     
     cape_udc_replace_mv (&(qin->cdata), &h);
   }
-  
+   
   cape_log_fmt (CAPE_LL_TRACE, "AUTH", "tokens fetch", "found token in perm repo");
 
+   */
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
@@ -481,7 +495,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeErr err)
+int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, QBusM qout, CapeErr err)
 {
   CapeMapNode n = NULL;
   
@@ -502,11 +516,11 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeE
   {
     AuthTokenItem* titem = cape_map_node_value (n);
 
-    cape_udc_replace_mv (&(qin->cdata), &(titem->extras));
-    cape_udc_replace_mv (&(qin->rinfo), &(titem->rinfo));
+    cape_udc_replace_mv (&(qout->cdata), &(titem->extras));
+    cape_udc_replace_mv (&(qout->rinfo), &(titem->rinfo));
 
     // add the token to rinfo
-    cape_udc_add_s_cp (qin->rinfo, "__T", token);
+    cape_udc_add_s_cp (qout->rinfo, "__T", token);
     
     cape_map_del_node (self->tokens, &n);
     
@@ -514,7 +528,7 @@ int auth_tokens_fetch (AuthTokens self, const CapeString token, QBusM qin, CapeE
   }
   else
   {
-    return auth_tokens_fetch__database_perm (self, token, qin, err);
+    return auth_tokens_fetch__database_perm (self, token, qin, qout, err);
   }
 }
 

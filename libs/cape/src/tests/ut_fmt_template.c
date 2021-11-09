@@ -240,11 +240,16 @@ int main (int argc, char *argv[])
 
     cape_udc_add_name (n1, &n2, "sub");
     
-    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, NULL, NULL, err);
+    CapeString h = cape_template_run ("d1: {{data1}}, {{#sub}}d2: {{data2}}, d1: {{data1}}{{/sub}}, d2: {{sub.data2}}", n1, NULL, NULL, err);
 
     if (h)
     {
       printf ("SUB: %s\n", h);
+      
+      if (!cape_str_equal ("d1: 1, d2: 2, d1: 1, d2: 2", h))
+      {
+        cape_err_set (err, CAPE_ERR_WRONG_VALUE, "missmatch sub");
+      }
     }
     else
     {
@@ -256,7 +261,7 @@ int main (int argc, char *argv[])
     cape_udc_del (&n1);
     cape_udc_del (&n2);
   }
-
+  
 exit_and_cleanup:
 
   if (cape_err_code(err))

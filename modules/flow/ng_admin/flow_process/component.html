@@ -6,8 +6,8 @@
     <tr>
       <th></th>
       <th><span class="badge badge-primary">psid</span></th>
-      <th width="50%">workflow</th>
-      <th width="50%">current step</th>
+      <th width="50%">{{ 'FLOW.WORKFLOWNAME' | transloco }}</th>
+      <th width="50%">{{ 'FLOW.WORKSTEPNAME' | transloco }}</th>
       <th></th>
     </tr>
     <tr *ngFor="let item of processes | async | pageToolBar : toolbar : ['id']">

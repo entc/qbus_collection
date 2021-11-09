@@ -1,5 +1,6 @@
 #include "webs_post.h"
 #include "webs_json.h"
+#include "webs_enjs.h"
 #include "webs_imca.h"
 
 #include "qbus.h"
@@ -40,6 +41,15 @@ int __STDCALL qbus_webs__json (void* user_ptr, QWebsRequest request, CapeErr err
   WebsJson webs_json = webs_json_new (user_ptr, request);
   
   return webs_json_run (&webs_json, err);  
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_webs__enjs (void* user_ptr, QWebsRequest request, CapeErr err)
+{
+  WebsEnjs webs_enjs = webs_enjs_new (user_ptr, request);
+  
+  return webs_enjs_run (&webs_enjs, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -194,6 +204,25 @@ int __STDCALL qbus_webs__restapi_get (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-------------------------------------------------------------------------------------
 
+int __STDCALL qbus_webs__on_raise (void* user_ptr, number_t type, QWebsRequest request)
+{
+  switch (type)
+  {
+    case QWEBS_RAISE_TYPE__MINOR:
+    {
+      qbus_log_msg (user_ptr, qwebs_request_remote (request), "access file forbidden");
+      break;
+    }
+    case QWEBS_RAISE_TYPE__CRITICAL:
+    {
+      qbus_log_msg (user_ptr, qwebs_request_remote (request), "access file critical");
+      break;
+    }
+  }
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
   int res;
@@ -220,13 +249,22 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   CapeUdc route_list = qbus_config_node (qbus, "route_list");
   
-  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list);
+  const CapeString identifier = qbus_config_s (qbus, "identifier", "QWebs");
+  const CapeString provider = qbus_config_s (qbus, "provider", "QBUS - Webs Module");
+
+  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list, identifier, provider);
   
   //CapeAioTimer timer = cape_aio_timer_new ();
 
   WebsStream s = webs_stream_new ();
 
   res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = qwebs_reg (webs, "enjs", qbus, qbus_webs__enjs, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -255,6 +293,9 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   {
     goto exit_and_cleanup;
   }
+  
+  // register a callback in case a security issue was reported
+  qwebs_set_raise (webs, qbus, qbus_webs__on_raise);
   
   /*
   res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);

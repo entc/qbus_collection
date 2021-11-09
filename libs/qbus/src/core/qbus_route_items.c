@@ -138,7 +138,7 @@ QBusRouteDirectConn qbus_route_direct_context__round_robin__next (QBusRouteDirec
     {
       rdn->rr_current = self->rr_context;
       
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] (old version)", rdn->rr_current);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] (old version)", rdn->rr_current);
 
       ret = rdn;
       goto exit_and_cleanup;
@@ -155,7 +155,7 @@ QBusRouteDirectConn qbus_route_direct_context__round_robin__next (QBusRouteDirec
     {
       rdn->rr_current = self->rr_context;
 
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] in the pool = %s", rdn->rr_current, cape_map_node_key (cursor->node));
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "direct route", "found a connection [%i] in the pool = %s", rdn->rr_current, cape_map_node_key (cursor->node));
 
       ret = rdn;
       goto exit_and_cleanup;

@@ -1,0 +1,32 @@
+<div class="modal-header">
+  <span class="modal-title">
+    <strong><i class="fa fa-user-shield"></i>&nbsp;&nbsp;{{ 'FLOW.PERMISSIONS' | transloco }}</strong>
+  </span>
+</div>
+<div class="modal-body" *authSessionRole="['admin']">
+
+  <ul class="list-group">
+    <li class="list-group-item" *ngFor="let item of permission_list | async">
+
+      <div class="d-flex justify-content-between">
+        <span>{{get_workspace_name (item.wpid)}}</span>
+        <button (click)="workspace_rm (item)" class="btn btn-outline-danger btn-sm" type="button"><i class="fa fa-minus-square"></i></button>
+      </div>
+    </li>
+  </ul>
+
+  <hr>
+
+  <div class="input-group mb-3">
+    <select class="custom-select" (change)="workspace_select ($event.target.value)">
+      <option [value] = "item.id" *ngFor="let item of workspace_list">[{{item.id}}] {{item.name}}</option>
+    </select>
+    <div class="input-group-append">
+      <button (click)="workspace_add ()" class="btn btn-outline-success" type="button"><i class="fa fa-plus-square"></i></button>
+    </div>
+  </div>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.close()">{{ 'MISC.CLOSE' | transloco }}</button>
+</div>

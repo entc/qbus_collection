@@ -323,10 +323,10 @@ CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
   CapeMapNode w;          /* New root of rebalanced subtree. */
   int dir;                /* Direction to descend. */
   
-  unsigned char da[64];   /* Cached comparison results. */
+  unsigned char da[128];   /* Cached comparison results. */
   int k = 0;              /* Number of cached results. */
   
-  memset (da, 0, 64);
+  memset (da, 0, 128);
   
   z = (CapeMapNode)&self->root;
   y = self->root;

@@ -23,7 +23,7 @@ typedef void*          (__STDCALL *fct_qbus_pvd_factory__on_new)   (void* user_p
 typedef void           (__STDCALL *fct_qbus_pvd_factory__on_del)   (void** object_ptr);
 
                        /* callback after a new connection was established */
-typedef void*          (__STDCALL *fct_qbus_pvd_cb__on_connection) (void* object_ptr);
+typedef void           (__STDCALL *fct_qbus_pvd_cb__on_connection) (void* object_ptr);
 
 //-----------------------------------------------------------------------------
 // library functions
@@ -80,5 +80,26 @@ typedef struct
 } QbusPvd;
 
 //-----------------------------------------------------------------------------
+
+typedef struct QbusLogCtx_s* QbusLogCtx;
+
+//-----------------------------------------------------------------------------
+
+typedef QbusLogCtx     (__STDCALL *fct_qbus_log_dst_new)      (CapeAioContext, CapeUdc, CapeErr);
+
+typedef void           (__STDCALL *fct_qbus_log_dst_del)      (QbusLogCtx*);
+
+typedef void           (__STDCALL *fct_qbus_log_dst_msg)      (QbusLogCtx, const CapeString remote, const CapeString message);
+
+//-----------------------------------------------------------------------------
+
+typedef struct
+{
+  fct_qbus_log_dst_new         log_dst_new;
+  fct_qbus_log_dst_del         log_dst_del;
+  fct_qbus_log_dst_msg         log_dst_msg;
+  
+} QbusLogDst;
+
 
 #endif

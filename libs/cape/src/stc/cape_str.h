@@ -138,6 +138,16 @@ __CAPE_LIBEX   number_t           cape_str_distance      (const CapeString s1, n
 
 //-----------------------------------------------------------------------------
 
+                                  /* convert into [0-9] to use as a large number */
+                                  /* leading '0' will be removed */
+__CAPE_LIBEX   CapeString         cape_str_ln_normalize  (const CapeString s);
+
+                                  /* compare two large numbers */
+                                  /* ! it is recomended to normalize the strings before ! */
+__CAPE_LIBEX   int                cape_str_ln_cmp        (const CapeString lns1, const CapeString lns2);
+
+//-----------------------------------------------------------------------------
+
 #endif
 
 

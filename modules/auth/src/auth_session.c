@@ -142,7 +142,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      auth_sessions_wp_view
      
-     select wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, wp.active wp_active from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id;
+     select au.id id, wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, au.ha_value, wp.active wp_active, qu.secret from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -235,7 +235,10 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "vp"            , vp);
 
     cape_udc_add_s_mv   (values, "roles"         , &h2);
-
+    
+    // reset the HA value with a fresh session
+    cape_udc_add_s_cp   (values, "ha_value"      , "0");
+    
     if (h3)
     {
       cape_udc_add_s_mv   (values, "remote"      , &h3);
@@ -341,7 +344,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_session_get__update (AuthSession self, number_t session_id, CapeErr err)
+int auth_session_get__update (AuthSession self, number_t session_id, const CapeString ha, CapeErr err)
 {
   int res;
 
@@ -368,6 +371,8 @@ int auth_session_get__update (AuthSession self, number_t session_id, CapeErr err
       cape_udc_add_d (values, "lu", &dt);
     }
 
+    cape_udc_add_s_cp (values, "ha_value", ha);
+    
     // execute query
     res = adbl_trx_update (trx, "auth_sessions", &params, &values, err);
     if (res)
@@ -387,13 +392,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_session__internal__check_da (const CapeString secret, const CapeString ha, const CapeString da, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString h1 = cape_str_catenate_c (ha, ':', secret);
+  CapeString h2 = qcrypt__hash_sha256__hex_o (h1, cape_str_size (h1), err);
+  
+  if (h2 == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = cape_str_equal (h2, da) ? CAPE_ERR_NONE : cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.DA_MISSMATCH");
+  
+exit_and_cleanup:
+
+  cape_str_del (&h1);
+  cape_str_del (&h2);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   AuthSession self = *p_self;
   
   const CapeString session_token;
+  const CapeString session_ha;
+  const CapeString session_da;
   const CapeString roles_ecrypted;
+  const CapeString secret;
   CapeUdc first_row;
   number_t vp;
   
@@ -402,6 +435,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeString h1 = NULL;
   CapeUdc roles = NULL;
+  CapeString ha_last = NULL;
+  CapeString ha_current = NULL;
   
   // do some security checks
   if (qin->pdata == NULL)
@@ -414,6 +449,20 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   if (session_token == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing token");
+    goto exit_and_cleanup;
+  }
+  
+  session_ha = cape_udc_get_s (qin->pdata, "ha", NULL);
+  if (session_ha == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing ha");
+    goto exit_and_cleanup;
+  }
+
+  session_da = cape_udc_get_s (qin->pdata, "da", NULL);
+  if (session_da == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing da");
     goto exit_and_cleanup;
   }
   
@@ -430,6 +479,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_s_mv   (params, "token"         , &session_token_hash);
+    cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "wp_active"     , 0);
     cape_udc_add_d      (values, "lu"            , NULL);
     cape_udc_add_n      (values, "vp"            , 0);
@@ -438,6 +488,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp   (values, "roles"         , "{\"size\": 2000}");
     cape_udc_add_s_cp   (values, "firstname"     , NULL);
     cape_udc_add_s_cp   (values, "lastname"      , NULL);
+    cape_udc_add_s_cp   (values, "secret"        , NULL);
+    cape_udc_add_s_cp   (values, "ha_value"      , NULL);
 
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "auth_sessions_wp_view", &params, &values, err);
@@ -488,6 +540,21 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
    */
   
+  secret = cape_udc_get_s (first_row, "secret", NULL);
+  if (secret == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing secret");
+    goto exit_and_cleanup;
+  }
+
+  // calculate the the DA from session_ha and secret
+  // -> check if they match
+  res = auth_session__internal__check_da (secret, session_ha, session_da, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   self->wpid = cape_udc_get_n (first_row, "wpid", 0);
   if (self->wpid == 0)
   {
@@ -530,7 +597,22 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_session_get__update (self, cape_udc_get_n (first_row, "id", 0), err);
+  // fetch the last known ha value
+  ha_last = cape_str_ln_normalize (cape_udc_get_s (first_row, "ha_value", NULL));
+  ha_current = cape_str_ln_normalize (session_ha);
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session get", "compare ha: current = %s, last = %s", ha_current, ha_last);
+  
+  /*
+   AK: check doesn't work, because the sorting is stable
+  if (cape_str_ln_cmp (ha_current, ha_last) <= 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.ALREADY_GRANTED");
+    goto exit_and_cleanup;
+  }
+   */
+
+  res = auth_session_get__update (self, cape_udc_get_n (first_row, "id", 0), ha_current, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -547,6 +629,14 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_n    (qout->rinfo, "wpid", self->wpid);
   cape_udc_add_n    (qout->rinfo, "gpid", self->gpid);
 
+  // to be safe
+  if (qout->pdata == NULL)
+  {
+    qout->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  }
+
+  cape_udc_add_s_cp (qout->pdata, "vsec", secret);
+  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:

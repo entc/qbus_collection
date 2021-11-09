@@ -162,9 +162,8 @@ static int qwebs_request__internal__on_url (http_parser* parser, const char *at,
   // -> checks all sites for re-writing
   self->site = qwebs_site (self->webs, at, length, &(self->url));
   
-  //printf ("URL: '%s'\n", self->url);
-  //printf ("SITE: '%s'\n", self->site);
-
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on url", "access: %s", self->url);
+  
   // create a map for all header values
   self->header_values = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
 
@@ -257,16 +256,11 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
   
   if (self->header_values)
   {
-    if (NULL == self->last_header_field)
-    {
-      return 1;
-    }
-    
+    if (self->last_header_field)
     {
       CapeString h = cape_str_sub (at, length);
-            
       //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
-
+      
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
       self->last_header_field = NULL;
@@ -320,84 +314,99 @@ static int qwebs_request__internal__on_message_complete (http_parser* parser)
 
 void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  if (cape_err_code (err))
+  if (*p_self)
   {
-    // create the HTTP error response
-    qwebs_response_err (s, self->webs, content, "application/json", err);
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    if (cape_err_code (err))
+    {
+      // create the HTTP error response
+      qwebs_response_err (s, self->webs, content, "application/json", err);
+    }
+    else
+    {
+      // create the JSON response
+      qwebs_response_json (s, self->webs, content);
+    }
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
   }
-  else
-  {
-    // create the JSON response
-    qwebs_response_json (s, self->webs, content);
-  }
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_file (QWebsRequest* p_self, CapeUdc file_node, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  qwebs_response_file (s, self->webs, file_node);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_file (s, self->webs, file_node);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_image (QWebsRequest* p_self, const CapeString image_as_base64, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-
-  qwebs_response_image (s, self->webs, image_as_base64);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_image (s, self->webs, image_as_base64);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const CapeString mime_type, CapeErr err)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-  
-  qwebs_response_buf (s, self->webs, buf, mime_type);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_buf (s, self->webs, buf, mime_type);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qwebs_request_redirect (QWebsRequest* p_self, const CapeString url)
 {
-  QWebsRequest self = *p_self;
-  
-  // local objects
-  CapeStream s = cape_stream_new ();
-
-  qwebs_response_redirect (s, self->webs, url);
-  
-  qwebs_connection_send (self->conn, &s);
-  qwebs_request_del (p_self);
+  if (*p_self)
+  {
+    QWebsRequest self = *p_self;
+    
+    // local objects
+    CapeStream s = cape_stream_new ();
+    
+    qwebs_response_redirect (s, self->webs, url);
+    
+    qwebs_connection_send (self->conn, &s);
+    qwebs_request_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -495,7 +504,7 @@ static void __STDCALL qwebs_request__internal__on_run (void* ptr, number_t pos)
   }
   else
   {
-    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
+    CapeStream s = qwebs_files_get (qwebs_files (self->webs), self, self->site, self->url);
 
     if (s)
     {
@@ -675,9 +684,7 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
     }
     else
     {
-      //printf ("FILE '%s'\'%s'\n", request->site, request->url);
-      
-      CapeStream s = qwebs_files_get (qwebs_files (self->webs), self->site, self->url);
+      CapeStream s = qwebs_files_get (qwebs_files (self->webs), self, self->site, self->url);
       if (s)
       {
         qwebs_connection_send (self->conn, &s);
@@ -711,7 +718,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   {
     CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
 
-    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error: %s", h);
+    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error [%i]: %s", self->parser.http_errno, h);
     
     cape_str_del (&h);
     
@@ -764,7 +771,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       {
         //printf ("FILE '%s'\'%s'\n", request->site, request->url);
 
-        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request->site, request->url);
+        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request, request->site, request->url);
         if (s)
         {
           qwebs_connection_send (self, &s);

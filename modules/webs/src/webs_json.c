@@ -365,9 +365,21 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
   
   qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
 
-  // transfer the cdata
+  // transfer ownership
   cape_udc_replace_mv (&(qin->cdata), &(self->cdata));
 
+  if (p_cdata)
+  {
+    if (qin->cdata)
+    {
+      cape_udc_merge_mv (qin->cdata, p_cdata);
+    }
+    else
+    {
+      qin->cdata = cape_udc_mv (p_cdata);
+    }
+  }
+  
   if (qin->rinfo == NULL)
   {
     qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -381,19 +393,7 @@ int webs_auth_call (WebsJson* p_self, QBusM qin, CapeUdc* p_cdata, CapeErr err)
       cape_udc_add_s_mv (qin->rinfo, "remote", &remote);
     }
   }
-  
-  if (p_cdata)
-  {
-    if (qin->cdata)
-    {
-      cape_udc_merge_mv (qin->cdata, p_cdata);
-    }
-    else
-    {
-      qin->cdata = cape_udc_mv (p_cdata);
-    }
-  }
-  
+
   // transfer the clist
   if (self->clist)
   {
@@ -418,9 +418,12 @@ static int __STDCALL qbus_webs__auth__on_ui (QBus qbus, void* ptr, QBusM qin, QB
     goto exit_and_cleanup;
   }
   
-  CapeUdc cdata = cape_udc_mv (&(qin->cdata));
-  
-  return webs_auth_call (&self, qin, &cdata, err);
+  {
+    // extract cdata
+    CapeUdc cdata = cape_udc_mv (&(qin->cdata));
+
+    return webs_auth_call (&self, qin, &cdata, err);
+  }
   
 exit_and_cleanup:
   
@@ -515,9 +518,16 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
           }
         }
 
-        msg->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-        
-        cape_udc_add_s_cp (msg->pdata, "token", auth_cont);
+        // decode base64
+        {
+          CapeStream content_stream = qcrypt__decode_base64_s (auth_cont);
+
+          if (content_stream)
+          {
+            msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream));
+            cape_stream_del (&content_stream);
+          }
+        }
         
         res = qbus_send (self->qbus, "AUTH", "session_get", msg, self, qbus_webs__auth__on_ui, err);
         if (res)
@@ -545,6 +555,13 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
         // content needs to be base64 encrypted
         {
           CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
+          
+          if (h == NULL)
+          {
+            res = cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "can't encode base64");
+            goto exit_and_cleanup;
+          }
+          
           cape_udc_add_s_mv (msg->cdata, "content", &h);
         }
 
@@ -586,6 +603,15 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       cape_udc_add (msg->cdata, &extras);
     }
     
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+    
     res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);
@@ -619,6 +645,15 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       }
     }
     
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+
     res = qbus_send (self->qbus, "AUTH", "token_perm_get", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);

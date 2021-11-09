@@ -32,7 +32,7 @@ __CAPE_LIBEX   int          auth_tokens_rm        (AuthTokens, QBusM qin, QBusM 
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int          auth_tokens_fetch     (AuthTokens, const CapeString token, QBusM qin, CapeErr err);
+__CAPE_LIBEX   int          auth_tokens_fetch     (AuthTokens, const CapeString token, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

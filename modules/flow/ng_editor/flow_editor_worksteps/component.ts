@@ -237,6 +237,8 @@ export class FlowWorkstepsComponent implements OnInit
 
     });
   }
+
+  //-----------------------------------------------------------------------------
 }
 
 export class WidgetItem

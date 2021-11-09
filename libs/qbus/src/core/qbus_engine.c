@@ -330,7 +330,7 @@ void __STDCALL qbus_engine__factory_on_del (void** p_object_ptr)
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qbus_engine__on_connection (void* object_ptr)
+void __STDCALL qbus_engine__on_connection (void* object_ptr)
 {
   qbus_connection_reg (object_ptr);
   

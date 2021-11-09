@@ -16,7 +16,7 @@ __CAPE_LIBEX     QWebsFiles         qwebs_files_new           (QWebs webs);
 
 __CAPE_LIBEX     void               qwebs_files_del           (QWebsFiles*);
 
-__CAPE_LIBEX     CapeStream         qwebs_files_get           (QWebsFiles, const CapeString site, const CapeString path);
+__CAPE_LIBEX     CapeStream         qwebs_files_get           (QWebsFiles, QWebsRequest, const CapeString site, const CapeString path);
 
 //-----------------------------------------------------------------------------
 

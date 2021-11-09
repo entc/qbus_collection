@@ -1802,3 +1802,83 @@ number_t cape_str_distance (const CapeString s1, number_t l1, const CapeString s
 }
 
 //-----------------------------------------------------------------------------
+
+CapeString cape_str_ln_normalize (const CapeString source)
+{
+  CapeString copy;
+  char* pos01;
+  char* pos02;
+  
+  if (NULL == source)
+  {
+    return 0;
+  }
+  
+  copy = cape_str_cp (source);
+  
+  pos01 = copy;
+  pos02 = 0;
+  
+  while (*pos01)
+  {
+    // exit if pos01 is in [1-9]
+    if ((*pos01 > 48) && (*pos01 < 58)) break;
+    pos01++;
+  }
+ 
+  pos02 = copy;
+
+  while (*pos01)
+  {
+    if ((*pos01 > 47) && (*pos01 < 58))
+    {
+      *pos02 = *pos01;
+      pos02++;
+    }
+    
+    pos01++;
+  }
+  
+  /* set here 0 not to run in undefined situation */
+  *pos02 = 0;
+  
+  return copy;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_str_ln_cmp (const CapeString lns1, const CapeString lns2)
+{
+  number_t len_lns1 = cape_str_size (lns1);
+  number_t len_lns2 = cape_str_size (lns2);
+
+  if (lns1 == NULL)
+  {
+    if (lns2 == NULL)
+    {
+      return 0;
+    }
+    else
+    {
+      return -1;
+    }
+  }
+  else if (lns2 == NULL)
+  {
+    return 1;
+  }
+  
+  if (len_lns1 > len_lns2)
+  {
+    return 1;
+  }
+
+  if (len_lns1 < len_lns2)
+  {
+    return -1;
+  }
+  
+  return strcmp (lns1, lns2);
+}
+
+//-----------------------------------------------------------------------------
