@@ -30,6 +30,7 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (values, "val_float4", "1.134,32");
   cape_udc_add_s_cp (values, "val_float5", "10.35555");
   cape_udc_add_s_cp (values, "val_float6", "10.35444");
+  cape_udc_add_s_cp (values, "val_float7", "98.1");
 
   cape_udc_add_b (values, "val_bool_true", TRUE);
   cape_udc_add_b (values, "val_bool_false", FALSE);
@@ -230,7 +231,19 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
     cape_udc_del (&n);
   }
+  {
+    CapeString h = cape_template_run ("{{val_float7|decimal:((fraction:12,digits:2,round:halfup,delimiter:','))}}", values, NULL, NULL, err);
+    
+    if (h)
+    {
+      printf ("HALFUP: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
 
+  }
   {
     CapeUdc n1 = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc n2 = cape_udc_new (CAPE_UDC_NODE, NULL);
