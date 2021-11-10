@@ -8,7 +8,7 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 
 // components
-import { FlowFunctionService, FlowWorkstepsComponent, FlowWidgetComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent, FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/component';
+import { FlowUserFormService, FlowFunctionService, FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent, FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/component';
 import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
 
 @NgModule({
@@ -20,7 +20,8 @@ import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalCo
     FlowWorkstepsComponent,
     FlowWorkstepsRmModalComponent,
     FlowWorkstepsAddModalComponent,
-    FlowWidgetComponent,
+    FlowWidgetFunctionComponent,
+    FlowWidgetUsrFormComponent,
     FlowWidgetSyncronComponent,
     FlowWidgetAsyncronComponent,
     FlowWidgetWaitforlistComponent,
@@ -41,11 +42,13 @@ import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalCo
     AuthSessionModule
   ],
   providers: [
-    FlowFunctionService
+    FlowFunctionService,
+    FlowUserFormService
   ],
   exports: [
     FlowWorkstepsComponent,
-    FlowWidgetComponent
+    FlowWidgetFunctionComponent,
+    FlowWidgetUsrFormComponent
   ],
   entryComponents: [
     FlowEditorAddModalComponent,
