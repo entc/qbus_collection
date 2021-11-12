@@ -1,5 +1,5 @@
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("../../cape/src" "../src")
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "../src")
 
 set(CORE_SOURCES
   qbus_engine.c
@@ -28,7 +28,7 @@ set(CORE_HEADERS
 #----------------------------------------------------------------------------------
 
 add_library             (qbus_core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
-target_link_libraries   (qbus_core cape)
+target_link_libraries   (qbus_core cape qcrypt)
 set_target_properties   (qbus_core PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 #----------------------------------------------------------------------------------

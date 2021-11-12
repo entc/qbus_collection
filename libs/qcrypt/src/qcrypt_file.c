@@ -1,3 +1,4 @@
+#include "qcrypt.h"
 #include "qcrypt_file.h"
 #include "qcrypt_decrypt.h"
 #include "qcrypt_encrypt.h"
@@ -486,7 +487,7 @@ int qcrypt__decrypt_json (const CapeString source, CapeUdc* p_content, const Cap
     }
   }
 
-  *p_content = cape_json_from_buf (cape_stream_data (data), cape_stream_size (data));
+  *p_content = cape_json_from_buf (cape_stream_data (data), cape_stream_size (data), qcrypt__stream_base64_decode);
   if (*p_content == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_PARSER, "can't deserialze json stream");

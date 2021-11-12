@@ -25,11 +25,10 @@
 struct CapeStream_s
 {
   number_t size;
-  
   char* buffer;
-  
   char* pos;
   
+  CapeString mime_type;
 };
 
 //-----------------------------------------------------------------------------
@@ -83,6 +82,8 @@ CapeStream cape_stream_new ()
   self->buffer = 0;
   self->pos = self->buffer;
   
+  self->mime_type = NULL;
+  
   // initial alloc
   cape_stream_allocate (self, 100);
   
@@ -100,6 +101,7 @@ void cape_stream_del (CapeStream* pself)
   
   if (self)
   {
+    cape_str_del (&(self->mime_type));
     free (self->buffer);
     
     CAPE_DEL (pself, struct CapeStream_s);
@@ -170,6 +172,62 @@ const char* cape_stream_get (CapeStream self)
 const char* cape_stream_data (CapeStream self)
 {
   return self->buffer;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_stream_mime_set (CapeStream self, const CapeString mime)
+{
+  cape_str_replace_cp (&(self->mime_type), mime);
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString cape_stream_mime_get (CapeStream self)
+{
+  return self->mime_type;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode cb_encode)
+{
+  if (cb_encode)
+  {
+    CapeString h = cb_encode (self);
+    if (h)
+    {
+      CapeStream s = cape_stream_new ();
+      
+      cape_stream_append_str (s, "data:");
+      cape_stream_append_str (s, self->mime_type ? self->mime_type : "application/octet-stream");
+      cape_stream_append_str (s, ";base64,");
+      
+      cape_stream_append_str (s, h);
+      return cape_stream_to_str (&s);
+    }
+  }
+  
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_stream_deserialize (CapeString source, fct_cape_stream_base64_decode cb_decode)
+{
+  number_t pos;
+  
+  if (cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
+  {
+    CapeStream s = cb_decode (source + pos + 8);
+    if (s)
+    {
+      s->mime_type = cape_str_sub (source + 5, pos);
+      return s;
+    }
+  }
+  
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------
