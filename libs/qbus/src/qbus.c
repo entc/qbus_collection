@@ -282,7 +282,7 @@ int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
   
   if (type == NULL)
   {
-    return;
+    return CAPE_ERR_NONE;
   }
   
   /*

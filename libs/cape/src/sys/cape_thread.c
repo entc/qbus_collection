@@ -31,6 +31,8 @@ struct CapeThread_s
   pthread_t tid;
   
   int status;
+  
+  cape_thread_on_done on_done;
 };
 
 //-----------------------------------------------------------------------------------
@@ -51,6 +53,11 @@ static void* cape_thread_run (void* params)
   
   cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
   
+  if (self->on_done)
+  {
+    self->on_done (self->ptr);
+  }
+  
   return NULL;
 }
 
@@ -65,6 +72,8 @@ CapeThread cape_thread_new (void)
   //memset(self->tid, 0x00, sizeof(pthread_t));
   
   self->status = FALSE;
+  
+  self->on_done = NULL;
   
   return self;
 }
@@ -126,6 +135,13 @@ void cape_thread_join (CapeThread self)
 void cape_thread_sleep (unsigned long milliseconds)
 {
   usleep (milliseconds * 1000);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_thread_cb (CapeThread self, cape_thread_on_done on_done)
+{
+  self->on_done = on_done;
 }
 
 //-----------------------------------------------------------------------------
