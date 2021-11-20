@@ -5,6 +5,7 @@
 #include "sys/cape_log.h"
 
 #include <stdio.h>
+#include <qcrypt.h>
 
 //-----------------------------------------------------------------------------
 
@@ -149,7 +150,7 @@ CapeUdc qbus_frame_set_udc (QBusFrame self, number_t msgType, CapeUdc* p_payload
 {
   CapeUdc payload = *p_payload;
   
-  CapeString h = cape_json_to_s (payload);
+  CapeString h = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
   
   CapeUdc rinfo = cape_udc_ext (payload, "I");
   
@@ -270,7 +271,7 @@ CapeUdc qbus_frame_get_udc (QBusFrame self)
   if (self->msg_size)
   {
     // convert from raw data into json data structure
-    CapeUdc payload = cape_json_from_buf (self->msg_data, self->msg_size);
+    CapeUdc payload = cape_json_from_buf (self->msg_data, self->msg_size, qcrypt__stream_base64_decode);
     
     if (payload)
     {
@@ -301,7 +302,7 @@ QBusM qbus_frame_qin (QBusFrame self)
       if (self->msg_size)
       {
         // convert from raw data into json data structure
-        CapeUdc payload = cape_json_from_buf (self->msg_data, self->msg_size);
+        CapeUdc payload = cape_json_from_buf (self->msg_data, self->msg_size, qcrypt__stream_base64_decode);
         if (payload)
         {
           // extract all substructures from the payload

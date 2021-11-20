@@ -100,6 +100,13 @@ export class TrloPipeLocale implements PipeTransform {
 
   transform (value: string): string
   {
-    return this.trlo_service.format_date (value, 'short');
+    if (value)
+    {
+      return this.trlo_service.format_date (value, 'short');
+    }
+    else
+    {
+      return '';
+    }
   }
 }

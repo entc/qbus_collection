@@ -2,6 +2,7 @@ import { Injectable, Component, Directive, AfterViewInit, OnInit, Injector, Inpu
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { NgForm } from '@angular/forms';
 import { AuthSession } from '@qbus/auth_session';
+import { Observable, BehaviorSubject } from 'rxjs';
 
 //-----------------------------------------------------------------------------
 
@@ -10,6 +11,7 @@ export class IWorkstep {
   public id: number;
   public sqtid: number;
   public fctid: number;
+  public usrid: number;
   public name: string;
   public pdata = {};
 
@@ -20,18 +22,19 @@ export class IWorkstep {
 export abstract class FlowEditorWidget
 {
   protected event_emitter: EventEmitter<IWorkstep> = undefined;
-  public content_emitter: EventEmitter<IWorkstep> = new EventEmitter();
   public content: IWorkstep;
 
   //---------------------------------------------------------------------------
 
   constructor ()
   {
-    this.content_emitter.subscribe ((content: IWorkstep) => {
+  }
 
-      this.content = content;
+  //---------------------------------------------------------------------------
 
-    });
+  public set content_setter (val: IWorkstep)
+  {
+    this.on_content_change (val);
   }
 
   //---------------------------------------------------------------------------
@@ -54,6 +57,73 @@ export abstract class FlowEditorWidget
       console.log('no emitter was set');
     }
   }
+
+  //---------------------------------------------------------------------------
+
+  protected on_content_change (val: IWorkstep)
+  {
+    this.content = val;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Injectable()
+export class FlowUserFormService
+{
+  public values: StepFct[] = [];
+
+  //-----------------------------------------------------------------------------
+
+  constructor ()
+  {
+    this.values = [];
+  }
+
+  //-----------------------------------------------------------------------------
+
+  add (item: StepFct)
+  {
+    this.values.push (item);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public userform_name_get (usrid: number): string
+  {
+    if (usrid)
+    {
+      const found: StepFct = this.values.find ((element: StepFct) => element.id == usrid);
+
+      return found ? found.name : '[unknown]';
+    }
+    else
+    {
+      return 'no form';
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  get_usrid (index: number): number
+  {
+    try
+    {
+      return this.values[index].id;
+    }
+    catch (e)
+    {
+      return 0;
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public get_val (usrid: number): StepFct
+  {
+    return this.values.find ((element: StepFct) => element.id == usrid);
+  }
+
 }
 
 //-----------------------------------------------------------------------------
@@ -92,9 +162,16 @@ export class FlowFunctionService
 
   //-----------------------------------------------------------------------------
 
-  function_name_get (fctid: number): string
+  public get_val (fctid: number): StepFct
   {
-    const found: StepFct = this.values.find ((element: StepFct) => element.id == fctid);
+    return this.values.find ((element: StepFct) => element.id == fctid);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public function_name_get (fctid: number): string
+  {
+    const found: StepFct = this.get_val (fctid);
 
     return found ? found.name : '[unknown]';
   }
@@ -160,7 +237,7 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
-  constructor(private auth_session: AuthSession, private modalService: NgbModal, public function_service: FlowFunctionService)
+  constructor(private auth_session: AuthSession, private modalService: NgbModal, public userform_service: FlowUserFormService, public function_service: FlowFunctionService)
   {
   }
 
@@ -177,6 +254,13 @@ export class FlowWorkstepsComponent implements OnInit
   function_name_get (fctid: number)
   {
     return this.function_service.function_name_get (fctid);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  userform_name_get (usrid: number)
+  {
+    return this.userform_service.userform_name_get (usrid);
   }
 
   //-----------------------------------------------------------------------------
@@ -237,6 +321,8 @@ export class FlowWorkstepsComponent implements OnInit
 
     });
   }
+
+  //-----------------------------------------------------------------------------
 }
 
 export class WidgetItem
@@ -246,63 +332,128 @@ export class WidgetItem
 
 //=============================================================================
 
-@Directive({
-  selector: 'flow-widget-component'
-}) export class FlowWidgetComponent implements OnInit {
+class WidgetComponent
+{
+  // this is the current widget object
+  private widget: FlowEditorWidget = null;
+  private last_step: StepFct = null;
 
-  @Input('function_index') index: EventEmitter<number>;
-  @Input('content') content: IWorkstep;
+  constructor (protected view: ViewContainerRef, protected component_factory_resolver: ComponentFactoryResolver)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  protected update_workstep (workstep: IWorkstep, step: StepFct, on_change: EventEmitter<IWorkstep>)
+  {
+    if (this.last_step != step)
+    {
+      this.last_step = step;
+
+      // clear the current view
+      this.view.clear();
+
+      if (step)
+      {
+        this.build_widget (step, on_change);
+      }
+    }
+
+    if (this.widget)
+    {
+      this.widget.content_setter = workstep;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  protected build_widget (step: StepFct, on_change: EventEmitter<IWorkstep>)
+  {
+    try
+    {
+      const type = step.type;
+      if (type)
+      {
+        // this will create an instance of our widget type
+        var item: WidgetItem = new WidgetItem(type);
+
+        // create a factory to create a new component
+        const factory = this.component_factory_resolver.resolveComponentFactory (item.component);
+
+        // use the factory to create the new component
+        const compontent = this.view.createComponent(factory);
+
+        // assign the instance to the widget variable
+        this.widget = compontent.instance;
+        this.widget.emitter = on_change;
+      }
+    }
+    catch (e)
+    {
+
+    }
+  }
+
+}
+
+//=============================================================================
+
+@Directive({
+  selector: 'flow-widget-function-component'
+}) export class FlowWidgetFunctionComponent extends WidgetComponent implements OnInit  {
+
+  @Input() workstep_content: BehaviorSubject<IWorkstep>;
   @Output() contentChange: EventEmitter<IWorkstep> = new EventEmitter();
 
-  // this is the current widget object
-  private widget: FlowEditorWidget;
-
   //---------------------------------------------------------------------------
 
-  constructor (private view: ViewContainerRef, private function_service: FlowFunctionService, private component_factory_resolver: ComponentFactoryResolver)
+  constructor (private function_service: FlowFunctionService, view: ViewContainerRef, component_factory_resolver: ComponentFactoryResolver)
   {
+    super (view, component_factory_resolver);
   }
 
   //---------------------------------------------------------------------------
 
-  ngOnInit ()
+  ngOnInit()
   {
-    this.index.subscribe ((index: number) => {
+    this.workstep_content.subscribe ((workstep: IWorkstep) => {
 
-      try
-      {
-        // get the step function
-        const step: StepFct = this.function_service.values[index];
+      this.update_workstep (workstep, this.function_service.get_val (workstep.fctid), this.contentChange);
 
-        // clear the current view
-        this.view.clear();
-
-        const type = step.type;
-        if (type)
-        {
-          // this will create an instance of our widget type
-          var item: WidgetItem = new WidgetItem(type);
-
-          // create a factory to create a new component
-          const factory = this.component_factory_resolver.resolveComponentFactory (item.component);
-
-          // use the factory to create the new component
-          const compontent = this.view.createComponent(factory);
-
-          // assign the instance to the widget variable
-          this.widget = compontent.instance;
-
-          // transfer emitter and content
-          this.widget.content_emitter.emit (this.content);
-          this.widget.emitter = this.contentChange;
-        }
-      }
-      catch (e)
-      {
-
-      }
     });
   }
+
+  //---------------------------------------------------------------------------
+}
+
+//=============================================================================
+
+@Directive({
+  selector: 'flow-widget-usrform-component'
+}) export class FlowWidgetUsrFormComponent extends WidgetComponent implements OnInit {
+
+  @Input() workstep_content: BehaviorSubject<IWorkstep>;
+  @Output() contentChange: EventEmitter<IWorkstep> = new EventEmitter();
+
+  //---------------------------------------------------------------------------
+
+  constructor (private userform_service: FlowUserFormService, view: ViewContainerRef, component_factory_resolver: ComponentFactoryResolver)
+  {
+    super (view, component_factory_resolver);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.workstep_content.subscribe ((workstep: IWorkstep) => {
+
+      this.update_workstep (workstep, this.userform_service.get_val (workstep.usrid), this.contentChange);
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
 }
 
 //=============================================================================
@@ -314,28 +465,29 @@ export class WidgetItem
 
   //---------------------------------------------------------------------------
 
-  public modal_step_content: IWorkstep;
+  public workstep_content: BehaviorSubject<IWorkstep>;
   public submit_name: string;
 
-  public step_index: EventEmitter<number> = new EventEmitter();
-  public current_index: number;
+  public show_usr: boolean = false;
 
-  constructor (public modal: NgbActiveModal, public modal_content: IWorkstep, public function_service: FlowFunctionService, private component_factory_resolver: ComponentFactoryResolver)
+  public index_usrid: number = -1;
+  public index_fctid: number = -1;
+
+  constructor (public modal: NgbActiveModal, public modal_content: IWorkstep, public userform_service: FlowUserFormService, public function_service: FlowFunctionService, private component_factory_resolver: ComponentFactoryResolver)
   {
     if (modal_content)
     {
-      this.modal_step_content = modal_content;
-
-      if (!this.modal_step_content.pdata)
+      if (!modal_content.pdata)
       {
-        this.modal_step_content.pdata = {};
+        modal_content.pdata = {};
       }
 
+      this.workstep_content = new BehaviorSubject<IWorkstep>(modal_content);
       this.submit_name = 'MISC.APPLY';
     }
     else
     {
-      this.modal_step_content = new IWorkstep;
+      this.workstep_content = new BehaviorSubject<IWorkstep>(new IWorkstep);
       this.submit_name = 'MISC.ADD';
     }
   }
@@ -344,32 +496,61 @@ export class WidgetItem
 
   ngAfterViewInit ()
   {
+    const workstep: IWorkstep = this.workstep_content.value;
+
     // set the dropdown index
-    this.on_index_change (this.function_service.get_index (this.modal_step_content.fctid));
+    this.on_index_change (this.function_service.get_index (workstep.fctid));
   }
 
   //---------------------------------------------------------------------------
 
-  on_index_change (index: number)
+  on_usrform_change (i: number)
   {
-    this.modal_step_content.fctid = this.function_service.get_fctid (index);
+    const workstep: IWorkstep = this.workstep_content.value;
 
-    this.current_index = index;
-    this.step_index.emit(index);
+    if (i != -1)
+    {
+      workstep.usrid = this.userform_service.get_usrid (i);
+      this.show_usr = true;
+    }
+    else
+    {
+      workstep.usrid = null;
+      this.show_usr = false;
+    }
+
+    // apply changes
+    this.workstep_content.next (workstep);
+    this.index_usrid = i;
+  }
+
+  //---------------------------------------------------------------------------
+
+  on_index_change (i: number)
+  {
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    workstep.fctid = this.function_service.get_fctid (i);
+
+    // apply changes
+    this.workstep_content.next (workstep);
+    this.index_fctid = i;
   }
 
   //---------------------------------------------------------------------------
 
   submit ()
   {
-    this.modal.close (this.modal_step_content);
+    this.modal.close (this.workstep_content.value);
   }
 
   //---------------------------------------------------------------------------
 
-  on_content_change (content: IWorkstep)
+  on_content_change (workstep: IWorkstep)
   {
-    this.modal_step_content = content;
+console.log('set content');
+
+    this.workstep_content.next (workstep);
   }
 }
 
@@ -406,6 +587,8 @@ export class FlowWidgetSyncronComponent extends FlowEditorWidget {
 
   on_pdata_change (data, name)
   {
+    console.log('emit changes from form');
+
     this.content.pdata[name] = data;
     this.emit (this.content);
   }

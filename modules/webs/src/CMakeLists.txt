@@ -6,12 +6,14 @@ SET (QBUS_MODULES_WEBS_SOURCES
   webs.c
   webs_json.c
   webs_post.c
+  webs_enjs.c
   webs_imca.c
 )
 
 SET (QBUS_MODULES_WEBS_HEADERS
   webs_json.h
   webs_post.h
+  webs_enjs.h
   webs_imca.h
 )
 

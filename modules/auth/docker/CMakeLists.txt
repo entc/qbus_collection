@@ -22,5 +22,6 @@ SUBDIRS(../qbus_collection/libs/cape/src)
 SUBDIRS(../qbus_collection/libs/adbl/src)
 SUBDIRS(../qbus_collection/libs/qbus/src)
 SUBDIRS(../qbus_collection/libs/qcrypt/src)
+SUBDIRS(../qbus_collection/libs/qjobs/src)
 
 SUBDIRS(../qbus_collection/modules/auth/src)

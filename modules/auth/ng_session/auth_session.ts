@@ -18,6 +18,7 @@ const SESSION_STORAGE_LT           = 'session_lt';
 const SESSION_STORAGE_VP           = 'session_vp';
 const SESSION_STORAGE_WPID         = 'session_wpid';
 const SESSION_STORAGE_GPID         = 'session_gpid';
+const SESSION_STORAGE_VSEC         = 'session_vsec';
 
 //-----------------------------------------------------------------------------
 
@@ -53,7 +54,19 @@ export class AuthSession
     this.wpid = sessionStorage.getItem (SESSION_STORAGE_WPID);
     if (this.wpid)
     {
-      this.session = new BehaviorSubject({token: sessionStorage.getItem (SESSION_STORAGE_TOKEN), firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME), lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME), workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE), lt: sessionStorage.getItem (SESSION_STORAGE_LT), vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)), wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)), gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)), state: 0, user: null});
+      this.session = new BehaviorSubject({
+        vsec: sessionStorage.getItem (SESSION_STORAGE_VSEC),
+        token: sessionStorage.getItem (SESSION_STORAGE_TOKEN),
+        firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME),
+        lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME),
+        workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE),
+        lt: sessionStorage.getItem (SESSION_STORAGE_LT),
+        vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)),
+        wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)),
+        gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)),
+        state: 0,
+        user: null
+      });
 
       this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
       this.timer_set (Number(sessionStorage.getItem (SESSION_STORAGE_VP)));
@@ -68,8 +81,6 @@ export class AuthSession
 
   public set_content_type (type: any, modal: boolean = false)
   {
-    console.log('set custom content type');
-
     this.login_component = type;
     this.login_modal = modal;
   }
@@ -194,6 +205,10 @@ export class AuthSession
 
   private storage_set (sitem: AuthSessionItem): void
   {
+    // encode the vsec
+    sitem.vsec = CryptoJS.SHA256 (this.user + ":" + this.pass).toString();
+
+    sessionStorage.setItem (SESSION_STORAGE_VSEC, sitem.vsec);
     sessionStorage.setItem (SESSION_STORAGE_TOKEN, sitem.token);
     sessionStorage.setItem (SESSION_STORAGE_FIRSTNAME, sitem.firstname);
     sessionStorage.setItem (SESSION_STORAGE_LASTNAME, sitem.lastname);
@@ -205,14 +220,6 @@ export class AuthSession
 
     this.session.next (sitem);
     this.timer_set (sitem.vp);
-
-    console.log('session was set, token = ' + sitem.token);
-    let sitem2: AuthSessionItem = this.session ? this.session.value : null;
-
-    if (sitem2)
-    {
-      console.log('session was get, token = ' + sitem2.token);
-    }
   }
 
   //---------------------------------------------------------------------------
@@ -225,6 +232,7 @@ export class AuthSession
     this.pass = null;
     this.wpid = null;
 
+    sessionStorage.removeItem (SESSION_STORAGE_VSEC);
     sessionStorage.removeItem (SESSION_STORAGE_TOKEN);
     sessionStorage.removeItem (SESSION_STORAGE_FIRSTNAME);
     sessionStorage.removeItem (SESSION_STORAGE_LASTNAME);
@@ -270,14 +278,48 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private session_options (): object
+  private construct_bearer (sitem: AuthSessionItem): string
   {
-    var options: object;
+    // get the linux time since 1970 in milliseconds
+    var iv: string = this.padding ((new Date).getTime().toString(), 16);
+    var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
+
+    return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
+  }
+
+  //---------------------------------------------------------------------------
+
+  private construct_header (bearer: string): HttpHeaders
+  {
+    return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
+  }
+
+  //---------------------------------------------------------------------------
+
+  private session_get_bearer (): string
+  {
     var sitem: AuthSessionItem = this.session_get_token ();
 
     if (sitem)
     {
-      options = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})};
+      return this.construct_bearer (sitem);
+    }
+    else
+    {
+      return null;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private session_options (): object
+  {
+    var options: object;
+    var bearer: string = this.session_get_bearer ();
+
+    if (bearer)
+    {
+      options = {headers: this.construct_header (bearer)};
     }
     else
     {
@@ -289,28 +331,94 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  public json_rpc<T> (qbus_module: string, qbus_method: string, params: object): Observable<T>
+  private construct_params (sitem: AuthSessionItem, params: object)
   {
-    return this.handle_error_session<T> (this.http.post<T>(this.session_url (qbus_module, qbus_method), JSON.stringify (params), this.session_options()));
+    var h = JSON.stringify (params);
+
+    return CryptoJS.AES.encrypt (h, sitem.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
   }
 
   //---------------------------------------------------------------------------
 
-  public json_rpc_blob (qbus_module: string, qbus_method: string, params: object): Observable<string>
+  private construct_enjs (qbus_module: string, qbus_method: string, qbus_params: object): AuthEnjs
   {
-    var options: object;
     var sitem: AuthSessionItem = this.session_get_token ();
-
     if (sitem)
     {
-      options = {headers: new HttpHeaders ({'Authorization': "Bearer " + sitem.token, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}), responseType: 'blob'};
+      // construct other values
+      var bearer: string = this.construct_bearer (sitem);
+      var enjs: AuthEnjs = new AuthEnjs;
+
+      enjs.url = 'enjs/' + qbus_module + '/' + qbus_method;
+      enjs.header = this.construct_header (bearer);
+      enjs.params = this.construct_params (sitem, qbus_params);
+      enjs.vsec = sitem.vsec;
+
+      return enjs;
     }
     else
     {
-      options = {responseType: 'blob'};
+      return null;
     }
+  }
 
-    return this.http.post<string>(this.session_url (qbus_module, qbus_method), JSON.stringify (params), options);
+  //---------------------------------------------------------------------------
+
+  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
+  {
+    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
+    if (enjs)
+    {
+      var req = this.handle_error_session<string> (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text'}));
+
+      // decrypt the content
+      return req.pipe (map ((data: string) => {
+
+        if (data)
+        {
+          return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (data, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T;
+        }
+        else
+        {
+          return {} as T;
+        }
+
+      }));
+    }
+    else
+    {
+      // construct url
+      var url: string = this.session_url (qbus_module, qbus_method);
+
+      // construct other values
+      var params: string = JSON.stringify (qbus_params);
+
+      return this.handle_error_session<T> (this.http.post<T>(url, params, {}));
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public json_rpc_blob (qbus_module: string, qbus_method: string, qbus_params: object): Observable<Blob>
+  {
+    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
+    if (enjs)
+    {
+      var req = this.handle_error_session<Blob> (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob'}));
+
+      // decrypt the content
+      return req;
+    }
+    else
+    {
+      // construct url
+      var url: string = this.session_url (qbus_module, qbus_method);
+
+      // construct other values
+      var params: string = JSON.stringify (qbus_params);
+
+      return this.handle_error_session<Blob> (this.http.post(url, params, {responseType: 'blob'}));
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -386,6 +494,7 @@ export class AuthSession
 
   private crypt4 (user: string, pass: string, code: string): string
   {
+    // get the linux time since 1970 in milliseconds
     var iv: string = this.padding ((new Date).getTime().toString(), 16);
 
     var hash1: string = CryptoJS.SHA256 (user + ":" + pass).toString();
@@ -452,6 +561,7 @@ export class AuthSession
           {
             // activate to use the session already
             this.roles.next (data['roles']);
+            this.storage_set (data);
 
             // to disable the login background
             this.session.next (data);
@@ -459,6 +569,8 @@ export class AuthSession
             this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
 
               this.storage_set (data);
+              this.session.next (data);
+
               response.emit (data);
 
             }, () => {
@@ -646,6 +758,14 @@ export class AuthSession
 
 }
 
+class AuthEnjs
+{
+  url: string;
+  params: string;
+  header: HttpHeaders;
+  vsec: string;
+};
+
 export class AuthSessionItem
 {
   token: string;
@@ -663,6 +783,7 @@ export class AuthSessionItem
 
   // will be set internally
   user: string;
+  vsec: string;
 }
 
 //=============================================================================

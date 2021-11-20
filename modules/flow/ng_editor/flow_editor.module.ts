@@ -8,15 +8,20 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 
 // components
-import { FlowFunctionService, FlowWorkstepsComponent, FlowWidgetComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent, FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/component';
+import { FlowUserFormService, FlowFunctionService, FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent, FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/component';
+import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
 
 @NgModule({
   declarations:
   [
+    FlowEditorComponent,
+    FlowEditorAddModalComponent,
+    FlowEditorPermModalComponent,
     FlowWorkstepsComponent,
     FlowWorkstepsRmModalComponent,
     FlowWorkstepsAddModalComponent,
-    FlowWidgetComponent,
+    FlowWidgetFunctionComponent,
+    FlowWidgetUsrFormComponent,
     FlowWidgetSyncronComponent,
     FlowWidgetAsyncronComponent,
     FlowWidgetWaitforlistComponent,
@@ -37,13 +42,17 @@ import { FlowFunctionService, FlowWorkstepsComponent, FlowWidgetComponent, FlowW
     AuthSessionModule
   ],
   providers: [
-    FlowFunctionService
+    FlowFunctionService,
+    FlowUserFormService
   ],
   exports: [
     FlowWorkstepsComponent,
-    FlowWidgetComponent
+    FlowWidgetFunctionComponent,
+    FlowWidgetUsrFormComponent
   ],
   entryComponents: [
+    FlowEditorAddModalComponent,
+    FlowEditorPermModalComponent,
     FlowWorkstepsRmModalComponent,
     FlowWorkstepsAddModalComponent,
     FlowWidgetSyncronComponent,

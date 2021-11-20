@@ -11,9 +11,11 @@
 
 __CAPE_LIBEX   CapeUdc           cape_json_from_s           (const CapeString);
 
-__CAPE_LIBEX   CapeUdc           cape_json_from_buf         (const char* buffer, number_t size);
+__CAPE_LIBEX   CapeUdc           cape_json_from_buf         (const char* buffer, number_t size, fct_cape_stream_base64_decode);
 
 __CAPE_LIBEX   CapeString        cape_json_to_s             (const CapeUdc source);
+
+__CAPE_LIBEX   CapeString        cape_json_to_s__ex         (const CapeUdc source, fct_cape_stream_base64_encode);
 
 __CAPE_LIBEX   CapeString        cape_json_to_s_max         (const CapeUdc source, number_t max_item_size);
 

@@ -1,6 +1,7 @@
 SUBDIRS(src)
 
 file (STRINGS "version.txt" VERSION_NUMBER)
+SET(CMAKE_BUILD_TYPE Release)                                     # build type
 
 #----------------------------------------------------------------------------------
 

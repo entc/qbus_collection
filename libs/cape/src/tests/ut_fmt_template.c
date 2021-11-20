@@ -30,6 +30,7 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (values, "val_float4", "1.134,32");
   cape_udc_add_s_cp (values, "val_float5", "10.35555");
   cape_udc_add_s_cp (values, "val_float6", "10.35444");
+  cape_udc_add_s_cp (values, "val_float7", "98.1");
 
   cape_udc_add_b (values, "val_bool_true", TRUE);
   cape_udc_add_b (values, "val_bool_false", FALSE);
@@ -230,7 +231,19 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
     cape_udc_del (&n);
   }
+  {
+    CapeString h = cape_template_run ("{{val_float7|decimal:((fraction:12,digits:2,round:halfup,delimiter:','))}}", values, NULL, NULL, err);
+    
+    if (h)
+    {
+      printf ("HALFUP: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
 
+  }
   {
     CapeUdc n1 = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc n2 = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -240,11 +253,16 @@ int main (int argc, char *argv[])
 
     cape_udc_add_name (n1, &n2, "sub");
     
-    CapeString h = cape_template_run ("d1: {{data1}}\n sub {{#sub}}d2: {{data2}} d1: {{data1}}{{/sub}}", n1, NULL, NULL, err);
+    CapeString h = cape_template_run ("d1: {{data1}}, {{#sub}}d2: {{data2}}, d1: {{data1}}{{/sub}}, d2: {{sub.data2}}", n1, NULL, NULL, err);
 
     if (h)
     {
       printf ("SUB: %s\n", h);
+      
+      if (!cape_str_equal ("d1: 1, d2: 2, d1: 1, d2: 2", h))
+      {
+        cape_err_set (err, CAPE_ERR_WRONG_VALUE, "missmatch sub");
+      }
     }
     else
     {
@@ -256,7 +274,7 @@ int main (int argc, char *argv[])
     cape_udc_del (&n1);
     cape_udc_del (&n2);
   }
-
+  
 exit_and_cleanup:
 
   if (cape_err_code(err))

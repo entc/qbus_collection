@@ -33,4 +33,8 @@ __CAPE_LIBEX   int      auth_gp_set       (AuthGP*, QBusM qin, QBusM qout, CapeE
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   int      auth_wp_get       (AuthGP*, QBusM qin, QBusM qout, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 #endif

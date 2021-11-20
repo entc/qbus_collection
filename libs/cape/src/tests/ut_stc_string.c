@@ -102,8 +102,44 @@ int main (int argc, char *argv[])
     
     cape_str_del (&p1);
   }
-
   
+  {
+    CapeString ln1 = cape_str_ln_normalize ("0---0001230--2313-*12312");
+
+    printf ("LN1: '%s'\n", ln1);
+    cape_str_del (&ln1);
+  }
+
+  {
+    int res1 = cape_str_ln_cmp ("1234567890", "1234567890");
+    
+    printf ("CMP LN1: %i\n", res1);
+  }
+
+  {
+    int res1 = cape_str_ln_cmp ("7891", "7892");
+    
+    printf ("CMP LN2: %i\n", res1);
+  }
+
+  {
+    int res1 = cape_str_ln_cmp ("7891", "7890");
+    
+    printf ("CMP LN3: %i\n", res1);
+  }
+
+  {
+    int res1 = cape_str_ln_cmp ("10000", "100");
+    
+    printf ("CMP LN4: %i\n", res1);
+  }
+
+  {
+    int res1 = cape_str_ln_cmp ("100", "10000");
+    
+    printf ("CMP LN5: %i\n", res1);
+  }
+
   return 0;
 }
 

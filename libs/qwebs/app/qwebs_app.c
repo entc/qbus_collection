@@ -90,7 +90,7 @@ int main (int argc, char *argv[])
   cape_udc_add_s_cp (sites, "/", "public");
 
   // allocate memory and initialize the qwebs library context
-  webs = qwebs_new (sites, "127.0.0.1", 8080, 4, "pages", NULL);
+  webs = qwebs_new (sites, "127.0.0.1", 8080, 4, "pages", NULL, "QWebs APP", "QWebs");
   
   // register an API which can be called by http://127.0.0.1/json/
   res = qwebs_reg (webs, "json", NULL, main_on_json, err);

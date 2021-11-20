@@ -2,6 +2,7 @@
 #include "cape_log.h"
 
 #include "stc/cape_list.h"
+#include "stc/cape_stream.h"
 #include "fmt/cape_tokenizer.h"
 
 //-----------------------------------------------------------------------------
@@ -192,6 +193,138 @@ CapeString cape_fs_path_resolve (const char* filepath, CapeErr err)
   }
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_fs_path_rebuild__norm (CapeList parts)
+{
+  // local objects
+  CapeListCursor* cursor = cape_list_cursor_create (parts, CAPE_DIRECTION_FORW);
+
+  while (cape_list_cursor_next (cursor))
+  {
+    if (cursor->position)
+    {
+      const CapeString part = cape_list_node_data (cursor->node);
+      
+      if (cape_str_empty (part))
+      {
+        cape_list_cursor_erase (parts, cursor);
+      }
+    }
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_rebuild__stack (CapeList parts, CapeList paths, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeListCursor* cursor = cape_list_cursor_create (parts, CAPE_DIRECTION_FORW);
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    const CapeString part = cape_list_node_data (cursor->node);
+    
+    if (cape_str_equal (part, ".."))
+    {
+      if (cape_list_size (paths) > 0)
+      {
+        if (cape_str_empty (cape_list_pop_back (paths)))
+        {
+          res = cape_err_set (err, CAPE_ERR_OUT_OF_BOUNDS, "path out of bounds");
+          goto exit_and_cleanup;
+        }
+      }
+      else
+      {
+        res = cape_err_set (err, CAPE_ERR_OUT_OF_BOUNDS, "path out of bounds");
+        goto exit_and_cleanup;
+      }
+    }
+    else if (cape_str_equal (part, "."))
+    {
+      // nothing
+    }
+    else
+    {
+      cape_list_push_back (paths, (void*)part);
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_list_cursor_destroy (&cursor);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_fs_path_rebuild__build (CapeList paths)
+{
+  // local objects
+  CapeListCursor* cursor = cape_list_cursor_create (paths, CAPE_DIRECTION_FORW);
+  CapeStream s = cape_stream_new ();
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    if (cursor->position)
+    {
+      cape_stream_append_c (s, CAPE_FS_FOLDER_SEP);
+    }
+    
+    cape_stream_append_str (s, cape_list_node_data (cursor->node));
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+  
+  return cape_stream_to_str (&s);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_fs_path_rebuild (const char* filepath, CapeErr err)
+{
+  CapeString ret = NULL;
+  
+  // local objects
+  CapeList parts = NULL;
+  CapeList paths = NULL;
+  
+  if (filepath == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // split the path into its parts
+  parts = cape_tokenizer_buf (filepath, cape_str_size (filepath), CAPE_FS_FOLDER_SEP);
+  if (parts)
+  {
+    paths = cape_list_new (NULL);
+    
+    // normalize the parts (no empty parts)
+    cape_fs_path_rebuild__norm (parts);
+    
+    if (cape_fs_path_rebuild__stack (parts, paths, err))
+    {
+      goto exit_and_cleanup;
+    }
+
+    ret = cape_fs_path_rebuild__build (paths);
+  }
+  
+exit_and_cleanup:
+
+  cape_list_del (&parts);
+  cape_list_del (&paths);
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

@@ -9,15 +9,14 @@
 #include <stc/cape_map.h>
 #include <sys/cape_queue.h>
 #include <sys/cape_log.h>
+#include <sys/cape_file.h>
 
 //-----------------------------------------------------------------------------
 
 struct QWebsApi_s
 {
   fct_qwebs__on_request on_request;
-  
   void* user_ptr;
-  
 };
 
 //-----------------------------------------------------------------------------
@@ -38,8 +37,7 @@ void qwebs_api_del (QWebsApi* p_self)
 {
   if (*p_self)
   {
-    // QWebsApi self = *p_self;
-    
+//    QWebsApi self = *p_self;
     
     
     CAPE_DEL (p_self, struct QWebsApi_s);
@@ -72,6 +70,12 @@ struct QWebs_s
   CapeUdc route_list;
   
   QWebsEncoder encoder;
+
+  CapeString identifier;
+  CapeString provider;
+  
+  void* on_raise_user_ptr;
+  fct_qwebs__on_raise on_raise;
 };
 
 //-----------------------------------------------------------------------------
@@ -111,9 +115,22 @@ void qwebs__internal__convert_sites (QWebs self, CapeUdc sites)
     
     if (site && name)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "init", "set site '%s' = %s", name, site);
+      CapeErr err = cape_err_new ();
       
-      cape_map_insert (self->sites, cape_str_cp (name), cape_str_cp (site));
+      // check if the site exists
+      CapeString site_absolute = cape_fs_path_resolve (site, err);
+      if (site_absolute)
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "init", "set site '%s' = %s", name, site);
+
+        cape_map_insert (self->sites, cape_str_cp (name), site_absolute);
+      }
+      else
+      {
+        cape_log_fmt (CAPE_LL_WARN, "QWEBS", "init", "site '%s' = '%s' was not found", name, site);
+      }
+      
+      cape_err_del (&err);
     }
   }
   
@@ -122,7 +139,7 @@ void qwebs__internal__convert_sites (QWebs self, CapeUdc sites)
 
 //-----------------------------------------------------------------------------
 
-QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list)
+QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t threads, const CapeString pages, CapeUdc route_list, const CapeString identifier, const CapeString provider)
 {
   QWebs self = CAPE_NEW (struct QWebs_s);
   
@@ -154,6 +171,12 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   
   self->encoder = qwebs_encode_new ();
 
+  self->identifier = cape_str_cp (identifier);
+  self->provider = cape_str_cp (provider);
+
+  self->on_raise_user_ptr = NULL;
+  self->on_raise = NULL;
+  
   return self;
 }
 
@@ -182,6 +205,9 @@ void qwebs_del (QWebs* p_self)
     
     qwebs_encode_del (&(self->encoder));
     
+    cape_str_del (&(self->identifier));
+    cape_str_del (&(self->provider));
+
     CAPE_DEL (p_self, struct QWebs_s);
   }
 }
@@ -234,6 +260,14 @@ int qwebs_reg_page (QWebs self, const CapeString page, void* user_ptr, fct_qwebs
   }
   
   return cape_err_set (err, CAPE_ERR_RUNTIME, "API can't be registered");
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
+{
+  self->on_raise_user_ptr = user_ptr;
+  self->on_raise = on_raise;
 }
 
 //-----------------------------------------------------------------------------
@@ -438,6 +472,58 @@ const CapeString qwebs_site (QWebs self, const char *bufdat, size_t buflen, Cape
 exit_and_cleanup:
   
   cape_str_del (&url);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_identifier (QWebs self)
+{
+  return self->identifier;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwebs_provider (QWebs self)
+{
+  return self->provider;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_raise_file (QWebs self, const CapeString file, QWebsRequest request)
+{
+  int ret = FALSE;
+  number_t raise_type = QWEBS_RAISE_TYPE__MINOR;
+  
+  if (file)
+  {
+    // check for linux paths
+    ret |= cape_str_begins (file, "/etc");
+    ret |= cape_str_begins (file, "/proc");
+    ret |= cape_str_begins (file, "/dev");
+    ret |= cape_str_begins (file, "/home");
+    ret |= cape_str_begins (file, "/mnt");
+    ret |= cape_str_begins (file, "/var");
+    ret |= cape_str_begins (file, "/root");
+    ret |= cape_str_begins (file, "/boot");
+    
+    // check for macosx paths
+    ret |= cape_str_begins (file, "/private");
+    ret |= cape_str_begins (file, "/Users");
+    
+    if (ret)
+    {
+      cape_log_msg (CAPE_LL_WARN, "QWEBS", "security", "access to critical files, incident will be reported");
+      raise_type = QWEBS_RAISE_TYPE__CRITICAL;
+    }
+  }
+
+  if (self->on_raise)
+  {
+    self->on_raise (self->on_raise_user_ptr, raise_type, request);
+  }
+
   return ret;
 }
 

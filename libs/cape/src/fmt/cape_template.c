@@ -521,54 +521,73 @@ int cape_template_part_eval_substr (CapeTemplatePart self, const CapeString valu
 int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTemplateCB cb, CapeErr err)
 {
   double fraction = 1.0;
-  const CapeString devider;
+  CapeString devider = NULL;
   number_t decimal = 3;
   
-  CapeList tokens = cape_tokenizer_buf (self->eval, cape_str_size (self->eval), '%');
+  CapeUdc options = cape_tokenizer_options (self->eval);
   
-  if (cape_list_size (tokens) == 3)
+  if (options)
   {
-    CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
+    fraction = cape_udc_get_f (options, "fraction", fraction);
+    devider = cape_str_cp (cape_udc_get_s (options, "delimiter", "."));
+    decimal = cape_udc_get_n (options, "digits", decimal);
     
-    cape_list_cursor_next (cursor);
-
-    fraction = cape_str_to_f (cape_list_node_data (cursor->node));
+    cape_udc_del (&options);
+  }
+  else
+  {
+    CapeList tokens = cape_tokenizer_buf (self->eval, cape_str_size (self->eval), '%');
     
-    cape_list_cursor_next (cursor);
-
-    devider = cape_list_node_data (cursor->node);
-
-    cape_list_cursor_next (cursor);
-
-    decimal = strtol (cape_list_node_data (cursor->node), NULL, 10);
-
-    // calculate value
+    if (cape_list_size (tokens) == 3)
     {
-      double v = (double)value / fraction;
+      CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
       
-      number_t dh = pow (10, decimal);
-      number_t dj = (number_t)(v * dh + 0.5);
-
-      double dk = (double)dj / dh;
+      cape_list_cursor_next (cursor);
       
-      CapeString fmt = cape_str_fmt ("%%.%if", decimal);
-      CapeString val = cape_str_fmt (fmt, dk);
+      fraction = cape_str_to_f (cape_list_node_data (cursor->node));
       
-      cape_str_replace (&val, ".", devider);
+      cape_list_cursor_next (cursor);
       
-      if (cb->on_text)
-      {
-        cb->on_text (cb->ptr, val);
-      }
-
-      cape_str_del (&val);
-      cape_str_del (&fmt);
+      devider = cape_str_cp (cape_list_node_data (cursor->node));
+      
+      cape_list_cursor_next (cursor);
+      
+      decimal = strtol (cape_list_node_data (cursor->node), NULL, 10);
+      
+      cape_list_cursor_destroy (&cursor);
     }
     
-    cape_list_cursor_destroy (&cursor);
+    cape_list_del (&tokens);
   }
   
-  cape_list_del (&tokens);
+  // calculate value
+  {
+    double v = (double)value / fraction;
+    
+    number_t dh = pow (10, decimal);
+    
+    // fix an issue with rounding
+    double v2 = v * dh + 0.5000000001;
+    
+    number_t dj = floor(v2);
+
+    double dk = (double)dj / dh;
+    
+    CapeString fmt = cape_str_fmt ("%%.%if", decimal);
+    CapeString val = cape_str_fmt (fmt, dk);
+    
+    cape_str_replace (&val, ".", devider);
+    
+    if (cb->on_text)
+    {
+      cb->on_text (cb->ptr, val);
+    }
+    
+    cape_str_del (&val);
+    cape_str_del (&fmt);
+  }
+
+  cape_str_del (&devider);
   
   return CAPE_ERR_NONE;
 }

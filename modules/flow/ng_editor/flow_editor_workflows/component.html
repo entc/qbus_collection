@@ -19,11 +19,6 @@
         </td>
         <td>{{wf.name}} <span class="badge badge-secondary">{{wf.cnt}}</span></td>
         <td>
-          <!--
-          <button (click)="modal__process_add (wf.id)" type="button" class="btn btn-sm btn-outline-success">
-            <span class="text-nowrap"><i class="fa fa-play"></i>&nbsp;&nbsp;start&nbsp;process</span>
-          </button>
-          -->
         </td>
         <td>
           <div class="btn-group mr-3">
@@ -31,6 +26,12 @@
             <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
               <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
               <div class="dropdown-menu" ngbDropdownMenu>
+                <ng-container *authSessionRole="['admin']">
+                  <button (click)="modal__workflow_perm__open (wf)" type="button" class="dropdown-item">
+                    <i class="fa fa-user-shield"></i>&nbsp;&nbsp;{{ 'FLOW.PERMISSIONS' | transloco }}
+                  </button>
+                  <li><hr class="dropdown-divider"></li>
+                </ng-container>
                 <button (click)="modal__workflow_del__open (wf)" type="button" class="dropdown-item">
                   <i class="fa fa-trash"></i>&nbsp;&nbsp;{{ 'MISC.DELETE' | transloco }}
                 </button>

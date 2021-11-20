@@ -72,6 +72,11 @@ void qbus_engine_del (QBusEngine* p_self)
   {
     QBusEngine self = *p_self;
     
+    if (self->functions.pvd_done)
+    {
+      self->functions.pvd_done ();
+    }
+    
     cape_dl_del (&(self->hlib));
     cape_list_del (&(self->ctxs));
     
@@ -114,7 +119,13 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
   {
     goto exit_and_cleanup;
   }
-  
+
+  self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
+  if (self->functions.pvd_ctx_new == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
   self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
   if (self->functions.pvd_ctx_new == NULL)
   {
@@ -169,9 +180,21 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
     goto exit_and_cleanup;
   }
   
+  // optional methods
+  // if the library has its own initializing concept, those methods can be implemented
+  self->functions.pvd_init = cape_dl_funct (self->hlib, "qbus_pvd_init", err);
+  self->functions.pvd_done = cape_dl_funct (self->hlib, "qbus_pvd_done", err);
+
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "functions mapped = %s", name);
-  
-  res = CAPE_ERR_NONE;
+
+  if (self->functions.pvd_init)
+  {
+    res = self->functions.pvd_init (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
   
 exit_and_cleanup:
   
@@ -307,7 +330,7 @@ void __STDCALL qbus_engine__factory_on_del (void** p_object_ptr)
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qbus_engine__on_connection (void* object_ptr)
+void __STDCALL qbus_engine__on_connection (void* object_ptr)
 {
   qbus_connection_reg (object_ptr);
   

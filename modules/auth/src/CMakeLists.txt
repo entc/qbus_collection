@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core" "../../../libs/qcrypt/src")
+INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core" "../../../libs/qcrypt/src" "../../../libs/qjobs/src")
 
 #----------------------------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ SET (QBUS_MODULES_AUTH_HEADERS
 )
 
 ADD_EXECUTABLE (qbus_mod_auth ${QBUS_MODULES_AUTH_SOURCES} ${QBUS_MODULES_AUTH_HEADERS})
-TARGET_LINK_LIBRARIES (qbus_mod_auth qbus adbl2 qcrypt)
+TARGET_LINK_LIBRARIES (qbus_mod_auth qbus adbl2 qcrypt qjobs)
 
 INSTALL (TARGETS qbus_mod_auth DESTINATION mods)
 
