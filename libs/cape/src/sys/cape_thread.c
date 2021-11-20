@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "sys/cape_types.h"
 
@@ -51,12 +52,12 @@ static void* cape_thread_run (void* params)
     }
   }
   
-  cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
-  
   if (self->on_done)
   {
     self->on_done (self->ptr);
   }
+
+  cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
   
   return NULL;
 }
@@ -142,6 +143,22 @@ void cape_thread_sleep (unsigned long milliseconds)
 void cape_thread_cb (CapeThread self, cape_thread_on_done on_done)
 {
   self->on_done = on_done;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_thread_nosignals ()
+{
+  sigset_t set;
+  
+  sigemptyset(&set);
+
+  // disable the following signals
+  sigaddset(&set, SIGINT);
+  sigaddset(&set, SIGKILL);
+  
+  // for linux
+  pthread_sigmask (SIG_BLOCK, &set, NULL);
 }
 
 //-----------------------------------------------------------------------------

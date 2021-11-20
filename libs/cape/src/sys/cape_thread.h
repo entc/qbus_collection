@@ -28,6 +28,10 @@ __CAPE_LIBEX   void            cape_thread_cb          (CapeThread, cape_thread_
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   void            cape_thread_nosignals   ();
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   void            cape_thread_sleep       (unsigned long milliseconds);
 
                                /* returns the available physical cores of the system */
