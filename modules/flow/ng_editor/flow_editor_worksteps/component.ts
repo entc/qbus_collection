@@ -19,7 +19,7 @@ export class IWorkstep {
 
 //-----------------------------------------------------------------------------
 
-export abstract class FlowEditorWidget
+export abstract class IFlowEditorWidget
 {
   protected event_emitter: EventEmitter<IWorkstep> = undefined;
   public content: IWorkstep;
@@ -28,13 +28,6 @@ export abstract class FlowEditorWidget
 
   constructor ()
   {
-  }
-
-  //---------------------------------------------------------------------------
-
-  public set content_setter (val: IWorkstep)
-  {
-    this.on_content_change (val);
   }
 
   //---------------------------------------------------------------------------
@@ -60,10 +53,7 @@ export abstract class FlowEditorWidget
 
   //---------------------------------------------------------------------------
 
-  protected on_content_change (val: IWorkstep)
-  {
-    this.content = val;
-  }
+  abstract on_content_change (val: IWorkstep);
 }
 
 //-----------------------------------------------------------------------------
@@ -338,7 +328,7 @@ class WidgetComponent
   @Output() contentChange: EventEmitter<IWorkstep> = new EventEmitter();
 
   // this is the current widget object
-  private widget: FlowEditorWidget = null;
+  private widget: IFlowEditorWidget = null;
   private last_step: StepFct = null;
 
   constructor (protected view: ViewContainerRef, protected component_factory_resolver: ComponentFactoryResolver)
@@ -575,7 +565,6 @@ export class FlowWidgetSyncronComponent extends FlowEditorWidget {
 
   constructor ()
   {
-    super ();
   }
 
   //---------------------------------------------------------------------------
