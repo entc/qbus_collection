@@ -20,6 +20,7 @@ SET(CMAKE_INSTALL_PREFIX /opt/)
 
 SUBDIRS(../qbus_collection/libs/cape/src)
 SUBDIRS(../qbus_collection/libs/adbl/src)
+SUBDIRS(../qbus_collection/libs/qcrypt/src)
 SUBDIRS(../qbus_collection/libs/qbus/src)
 SUBDIRS(../qbus_collection/libs/qflow/src)
 
