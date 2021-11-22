@@ -74,6 +74,11 @@ CapeUdc cape_udc_new (u_t type, const CapeString name)
       self->data = NULL;
       break;
     }
+    case CAPE_UDC_STREAM:
+    {
+      
+      break;
+    }
   }
   
   return self;
@@ -703,6 +708,48 @@ void cape_udc_set_d (CapeUdc self, const CapeDatetime* val)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_set_m_cp (CapeUdc self, const CapeStream val)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_STREAM:
+    {
+      if (val)
+      {
+        
+      }
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_m_mv (CapeUdc self, CapeStream* p_val)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_STREAM:
+    {
+      if (self->data)
+      {
+        cape_stream_del ((CapeStream*)&(self->data));
+      }
+      
+      if (p_val)
+      {
+        self->data = *p_val;
+        *p_val = NULL;
+      }
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 const CapeString cape_udc_s (CapeUdc self, const CapeString alt)
 {
   switch (self->type)
@@ -877,6 +924,44 @@ CapeList cape_udc_list_mv (CapeUdc self)
 
 //-----------------------------------------------------------------------------
 
+const CapeStream cape_udc_m (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_STREAM:
+    {
+      return self->data;
+    }
+    default:
+    {
+      return NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_udc_m_mv (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_STREAM:
+    {
+      CapeStream h = self->data;
+      
+      self->data = NULL;
+      
+      return h;
+    }
+    default:
+    {
+      return NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_udc_add_s_cp (CapeUdc self, const CapeString name, const CapeString val)
 {
   CapeUdc h = cape_udc_new (CAPE_UDC_STRING, name);
@@ -970,6 +1055,28 @@ CapeUdc cape_udc_add_list (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc cape_udc_add_m_cp (CapeUdc self, const CapeString name, const CapeStream val)
+{
+  CapeUdc h = cape_udc_new (CAPE_UDC_STREAM, name);
+  
+  cape_udc_set_m_cp (h, val);
+  
+  return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_add_m_mv (CapeUdc self, const CapeString name, CapeStream* p_val)
+{
+  CapeUdc h = cape_udc_new (CAPE_UDC_STREAM, name);
+  
+  cape_udc_set_m_mv (h, p_val);
+  
+  return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
 const CapeString cape_udc_get_s (CapeUdc self, const CapeString name, const CapeString alt)
 {
   CapeUdc h = cape_udc_get (self, name);
@@ -1036,6 +1143,20 @@ const CapeDatetime* cape_udc_get_d (CapeUdc self, const CapeString name, const C
   }
   
   return alt; 
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeStream cape_udc_get_m (CapeUdc self, const CapeString name)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  
+  if (h)
+  {
+    return cape_udc_m (h);
+  }
+  
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -1144,6 +1265,36 @@ void cape_udc_put_b (CapeUdc self, const CapeString name, int val)
   else
   {
     cape_udc_add_b (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_m_cp (CapeUdc self, const CapeString name, const CapeStream val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_m_cp (h, val);
+  }
+  else
+  {
+    cape_udc_add_m_cp (self, name, val);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_put_m_mv (CapeUdc self, const CapeString name, CapeStream* p_val)
+{
+  CapeUdc h = cape_udc_get (self, name);
+  if (h)
+  {
+    cape_udc_set_m_mv (h, p_val);
+  }
+  else
+  {
+    cape_udc_add_m_mv (self, name, p_val);
   }
 }
 
@@ -1567,6 +1718,47 @@ CapeDatetime* cape_udc_ext_d (CapeUdc self, const CapeString name)
         if (h->type == CAPE_UDC_DATETIME)
         {
           CapeDatetime* ret;
+          
+          // remove the UDC (h) from the map
+          n = cape_map_extract (self->data, n);
+          
+          // get the content
+          ret = h->data;
+          h->data = NULL;
+          
+          // clean up
+          cape_udc_del (&h);
+          cape_map_node_del (&n);
+
+          return ret;
+        }
+      }
+      
+      return NULL;
+    }
+    default:
+    {
+      return NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_udc_ext_m (CapeUdc self, const CapeString name)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_NODE:
+    {
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      if (n)
+      {
+        CapeUdc h = cape_map_node_value (n);
+        
+        if (h->type == CAPE_UDC_STREAM)
+        {
+          CapeStream ret;
           
           // remove the UDC (h) from the map
           n = cape_map_extract (self->data, n);

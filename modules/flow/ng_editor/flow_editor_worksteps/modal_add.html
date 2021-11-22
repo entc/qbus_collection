@@ -65,7 +65,7 @@
   <div [hidden]="show_usr" class="pt-4">
 
     <div class="alert alert-info" role="alert">
-      {{ function_service.get_desc(current_index) | transloco }}
+      {{ function_service.get_desc (index_fctid) | transloco }}
     </div>
 
     <flow-widget-function-component [workstep_content]="workstep_content" (contentChange)="on_content_change($event)"></flow-widget-function-component>

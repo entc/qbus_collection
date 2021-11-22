@@ -522,7 +522,7 @@ int webs_enjs_run__auth (WebsEnjs* p_self, CapeErr err)
     
     if (content_stream)
     {
-      msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream));
+      msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream), NULL);
       cape_stream_del (&content_stream);
     }
   }

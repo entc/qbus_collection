@@ -74,7 +74,7 @@ CapeUdc auth_ui_crypt4__extract_from_content (const CapeString content)
   CapeStream s = qcrypt__decode_base64_s (content);
     
   // de-serialize into an UDC container
-  auth_crypt_credentials = cape_json_from_buf (cape_stream_data (s), cape_stream_size (s));
+  auth_crypt_credentials = cape_json_from_buf (cape_stream_data (s), cape_stream_size (s), NULL);
 
   cape_stream_del (&s);
   

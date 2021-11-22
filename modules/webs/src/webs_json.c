@@ -347,7 +347,7 @@ void webs__check_body (WebsJson self)
       if (cape_stream_size (body) > 0)
       {
         // try to convert into a UDC container
-        self->cdata = cape_json_from_buf (cape_stream_data (body), cape_stream_size (body));
+        self->cdata = cape_json_from_buf (cape_stream_data (body), cape_stream_size (body), qcrypt__stream_base64_decode);
       }
     }
   }
@@ -524,7 +524,7 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
 
           if (content_stream)
           {
-            msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream));
+            msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream), NULL);
             cape_stream_del (&content_stream);
           }
         }
@@ -641,7 +641,7 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       if (cape_stream_size (body) > 0)
       {
         // try to convert into a UDC container
-        msg->cdata = cape_json_from_buf (cape_stream_data (body), cape_stream_size (body));
+        msg->cdata = cape_json_from_buf (cape_stream_data (body), cape_stream_size (body), NULL);
       }
     }
     

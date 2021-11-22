@@ -561,6 +561,7 @@ export class AuthSession
           {
             // activate to use the session already
             this.roles.next (data['roles']);
+            this.storage_set (data);
 
             // to disable the login background
             this.session.next (data);
@@ -568,6 +569,8 @@ export class AuthSession
             this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
 
               this.storage_set (data);
+              this.session.next (data);
+
               response.emit (data);
 
             }, () => {

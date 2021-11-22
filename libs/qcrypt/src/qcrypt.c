@@ -499,3 +499,17 @@ CapeString qcrypt__hash_sha256__hex_m (const CapeStream source, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
+
+CapeString __STDCALL qcrypt__stream_base64_encode (const CapeStream source)
+{
+  return qcrypt__encode_base64_m (source);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream __STDCALL qcrypt__stream_base64_decode (const CapeString source)
+{
+  return qcrypt__decode_base64_s (source);
+}
+
+//-----------------------------------------------------------------------------
