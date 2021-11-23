@@ -552,6 +552,28 @@ console.log('set content');
 
     this.workstep_content.next (workstep);
   }
+
+  //---------------------------------------------------------------------------
+
+  on_name_change (value: string)
+  {
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    workstep.name = value;
+
+    this.workstep_content.next (workstep);
+  }
+
+  //---------------------------------------------------------------------------
+
+  on_pdata_change (value: string, pdata_name: string)
+  {
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    workstep.pdata[pdata_name] = value;
+
+    this.workstep_content.next (workstep);
+  }
 }
 
 //=============================================================================
