@@ -346,6 +346,8 @@ class WidgetComponent
 
   protected update_workstep (workstep: IWorkstep, step: StepFct, on_change: EventEmitter<IWorkstep>)
   {
+    console.log ('update workstep');
+
     if (this.last_step != step)
     {
       this.last_step = step;
