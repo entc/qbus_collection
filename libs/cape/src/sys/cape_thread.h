@@ -8,6 +8,7 @@
 //=============================================================================
 
 typedef int (__STDCALL *cape_thread_worker_fct)(void* ptr);
+typedef void (__STDCALL *cape_thread_on_done)(void* ptr);
 
 struct CapeThread_s; typedef struct CapeThread_s* CapeThread;
 
@@ -22,6 +23,12 @@ __CAPE_LIBEX   void            cape_thread_start       (CapeThread, cape_thread_
 __CAPE_LIBEX   void            cape_thread_join        (CapeThread);
 
 __CAPE_LIBEX   void            cape_thread_cancel      (CapeThread);
+
+__CAPE_LIBEX   void            cape_thread_cb          (CapeThread, cape_thread_on_done);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   void            cape_thread_nosignals   ();
 
 //-----------------------------------------------------------------------------
 

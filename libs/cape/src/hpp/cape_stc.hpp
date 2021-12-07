@@ -335,6 +335,18 @@ namespace cape
     }
 
     //-----------------------------------------------------------------------------
+    
+    void append_u32 (cape_uint32 val, bool network_byte_order)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+      
+      cape_stream_append_32 (m_obj, val, network_byte_order ? TRUE : FALSE);
+    }
+
+    //-----------------------------------------------------------------------------
 
     cape::String to_str ()
     {
@@ -441,7 +453,7 @@ namespace cape
       cape_stream_append_str (obj, value.str().c_str());
     }
   };
-    
+
   //-----------------------------------------------------------------------------------------------------
 
   class Udc
