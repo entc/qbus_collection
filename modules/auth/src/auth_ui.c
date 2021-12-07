@@ -1386,6 +1386,153 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+struct AuthPasswordPolicyContext
+{
+  number_t length;
+  number_t special_chars;
+  number_t lower_case;
+  number_t upper_case;
+  number_t numbers;
+  number_t invalid;
+};
+
+//-----------------------------------------------------------------------------
+
+void auth_ui_set__password_policy__analyse (struct AuthPasswordPolicyContext* ctx, const CapeString password)
+{
+  const char* pos = password;
+
+  while (*pos)
+  {
+    // retrieve the length of the UTF8 character
+    number_t cs = cape_str_utf8__len (*pos);
+    
+    if (cs == 1)  // normal ASCII
+    {
+      ctx->length++;
+      
+      if (*pos < 33)
+      {
+        ctx->invalid++;
+      }
+      else if (*pos > 32 && *pos < 48)
+      {
+        ctx->special_chars++;
+      }
+      else if (*pos > 47 && *pos < 58)
+      {
+        ctx->numbers++;
+      }
+      else if (*pos > 57 && *pos < 65)
+      {
+        ctx->special_chars++;
+      }
+      else if (*pos > 64 && *pos < 91)
+      {
+        ctx->upper_case++;
+      }
+      else if (*pos > 90 && *pos < 97)
+      {
+        ctx->special_chars++;
+      }
+      else if (*pos > 96 && *pos < 123)
+      {
+        ctx->lower_case++;
+      }
+      else
+      {
+        ctx->special_chars++;
+      }
+      
+      pos++;
+    }
+    else
+    {
+      number_t i;
+      
+      ctx->length++;
+      
+      // increase the position regarding the utf8
+      for (i = 0; (i < cs) && *pos; i++, pos++);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_set__password_policy (AuthUI self, const CapeString password, number_t* p_strength, CapeErr err)
+{
+  struct AuthPasswordPolicyContext ppctx;
+  
+  ppctx.length = 0;
+  ppctx.lower_case = 0;
+  ppctx.upper_case = 0;
+  ppctx.special_chars = 0;
+  ppctx.numbers = 0;
+  ppctx.invalid = 0;
+  
+  auth_ui_set__password_policy__analyse (&ppctx, password);
+
+  // try to calculate the password strength using a trivial algorithm
+  if (p_strength)
+  {
+    number_t strength = 0;
+    
+    if (ppctx.length > 8)
+    {
+      strength++;
+    }
+
+    if (ppctx.length > 10)
+    {
+      strength++;
+    }
+
+    if (ppctx.length > 12)
+    {
+      strength++;
+    }
+    
+    *p_strength = strength;
+  }
+
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "password policy", "found length = %i, lower_case = %i, upper_case = %i, special = %i, numbers = %i, invalid = %i", ppctx.length, ppctx.lower_case, ppctx.upper_case, ppctx.special_chars, ppctx.numbers, ppctx.invalid);
+  
+  if (ppctx.invalid > 0)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.INVALID_CHARS");
+  }
+  
+  if (ppctx.length < 8)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.INVALID_LENGTH");
+  }
+  
+  if (ppctx.numbers < 2)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.TOOFEW_NUMBERS");
+  }
+
+  if (ppctx.special_chars < 1)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.TOOFEW_SPECIAL_CHARS");
+  }
+
+  if (ppctx.upper_case < 1)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.TOOFEW_UPPERCASE_CHARS");
+  }
+
+  if (ppctx.lower_case < 1)
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.TOOFEW_LOWERCASE_CHARS");
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_set__rinfo (AuthUI* p_self, QBusM qin, QBusM qout, number_t wpid, CapeErr err)
 {
   int res;
@@ -1432,8 +1579,18 @@ int auth_ui_set__rinfo (AuthUI* p_self, QBusM qin, QBusM qout, number_t wpid, Ca
     goto exit_and_cleanup;
   }
   
-  // optional (if given we need to check)
   q5_pass = cape_udc_get_s (qin->cdata, "pass", NULL);
+  if (q5_pass == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'pass' is empty or missing");
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_ui_set__password_policy (self, secret, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
   
   // create the hash version of the user
   h0 = qcrypt__hash_sha256__hex_o (q5_user, cape_str_size (q5_user), err);
@@ -1480,7 +1637,6 @@ int auth_ui_set__rinfo (AuthUI* p_self, QBusM qin, QBusM qout, number_t wpid, Ca
     goto exit_and_cleanup;
   }
   
-  if (q5_pass)
   {
     const CapeString old_password_db = cape_udc_get_s (first_row, "secret", NULL);
     
@@ -1564,6 +1720,53 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_pp (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  const CapeString secret;
+  number_t strength;
+  
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+  
+  secret = cape_udc_get_s (qin->cdata, "secret", NULL);
+  if (secret == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.EMPTY_SECRET");
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui_set__password_policy (self, secret, &strength, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_n (qout->cdata, "strength", strength);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  auth_ui_del (p_self);
   return res;
 }
 

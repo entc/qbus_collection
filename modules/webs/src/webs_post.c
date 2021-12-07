@@ -55,7 +55,7 @@ void webs_post_del (WebsPost* p_self)
     {
       CapeErr err = cape_err_new ();
       
-      qwebs_request_send_json (&(self->request), NULL, err);
+      qwebs_request_send_json (&(self->request), NULL, 0, err);
       
       cape_err_del (&err);
     }
@@ -294,7 +294,7 @@ int webs_post_run (WebsPost* p_self, CapeErr err)
       }
       else
       {
-        qwebs_request_send_json (&(self->request), NULL, err);
+        qwebs_request_send_json (&(self->request), NULL, 0, err);
       }
     }
   }

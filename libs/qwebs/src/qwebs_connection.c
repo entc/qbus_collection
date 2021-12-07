@@ -312,7 +312,7 @@ static int qwebs_request__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, CapeErr err)
+void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, number_t ttl, CapeErr err)
 {
   if (*p_self)
   {
@@ -329,7 +329,7 @@ void qwebs_request_send_json (QWebsRequest* p_self, CapeUdc content, CapeErr err
     else
     {
       // create the JSON response
-      qwebs_response_json (s, self->webs, content);
+      qwebs_response_json (s, self->webs, content, ttl);
     }
     
     qwebs_connection_send (self->conn, &s);
@@ -375,7 +375,7 @@ void qwebs_request_send_image (QWebsRequest* p_self, const CapeString image_as_b
 
 //-----------------------------------------------------------------------------
 
-void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const CapeString mime_type, CapeErr err)
+void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const CapeString mime_type, number_t ttl, CapeErr err)
 {
   if (*p_self)
   {
@@ -384,7 +384,7 @@ void qwebs_request_send_buf (QWebsRequest* p_self, const CapeString buf, const C
     // local objects
     CapeStream s = cape_stream_new ();
     
-    qwebs_response_buf (s, self->webs, buf, mime_type);
+    qwebs_response_buf (s, self->webs, buf, mime_type, ttl);
     
     qwebs_connection_send (self->conn, &s);
     qwebs_request_del (p_self);
@@ -450,7 +450,7 @@ void qwebs_request_api (QWebsRequest* p_self)
     goto exit_and_cleanup;
   }
   
-  qwebs_request_send_json (p_self, NULL, err);
+  qwebs_request_send_json (p_self, NULL, 0, err);
 
 exit_and_cleanup:
   

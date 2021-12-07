@@ -25,13 +25,13 @@ __CAPE_LIBEX     void               qwebs_connection_attach     (QWebsConnection
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     void               qwebs_request_send_json     (QWebsRequest*, CapeUdc content, CapeErr);
+__CAPE_LIBEX     void               qwebs_request_send_json     (QWebsRequest*, CapeUdc content, number_t ttl, CapeErr);
 
 __CAPE_LIBEX     void               qwebs_request_send_file     (QWebsRequest*, CapeUdc file_node, CapeErr);
 
 __CAPE_LIBEX     void               qwebs_request_send_image    (QWebsRequest*, const CapeString image, CapeErr);
 
-__CAPE_LIBEX     void               qwebs_request_send_buf      (QWebsRequest*, const CapeString buf, const CapeString mime_type, CapeErr);
+__CAPE_LIBEX     void               qwebs_request_send_buf      (QWebsRequest*, const CapeString buf, const CapeString mime_type, number_t ttl, CapeErr);
 
 __CAPE_LIBEX     void               qwebs_request_redirect      (QWebsRequest*, const CapeString url);
 

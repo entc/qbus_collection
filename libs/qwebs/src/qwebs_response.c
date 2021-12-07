@@ -341,7 +341,34 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
+void qwebs_response_expires (CapeStream s, number_t ttl)
+{
+  if (ttl > 0)
+  {
+    CapeDatetime dt_current;
+    CapeDatetime dt_expire;
+    
+    // get the current time in UTC
+    cape_datetime_utc (&dt_current);
+    
+    // add ttl as seconds
+    cape_datetime__add_n (&dt_current, ttl, &dt_expire);
+    
+    {
+      CapeString h = cape_datetime_s__gmt (&dt_expire);
+      
+      cape_stream_append_str (s, "Expires: ");
+      cape_stream_append_str (s, h);
+      cape_stream_append_str (s, "\r\n");
+      
+      cape_str_del (&h);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content, number_t ttl)
 {
   // BEGIN
   cape_stream_clr (s);
@@ -356,6 +383,9 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content)
     cape_stream_append_str (s, "application/json");
     cape_stream_append_str (s, "\r\n");
   }
+  
+  // add expire date
+  qwebs_response_expires (s, ttl);
 
   qwebs_response__internal__content (s, webs, content);
 }
@@ -387,7 +417,7 @@ void qwebs_response_image (CapeStream s, QWebs webs, const CapeString buf)
 
 //-----------------------------------------------------------------------------
 
-void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const CapeString mime_type)
+void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const CapeString mime_type, number_t ttl)
 {
   cape_stream_clr (s);
   
@@ -401,6 +431,9 @@ void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const C
     cape_stream_append_str (s, mime_type);
     cape_stream_append_str (s, "\r\n");
   }
+  
+  // add expire date
+  qwebs_response_expires (s, ttl);
 
   qwebs_response__internal__content_length (s, cape_str_size (buf));
   cape_stream_append_str (s, buf);
