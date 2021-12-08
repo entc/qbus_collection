@@ -176,6 +176,58 @@ const char* cape_stream_data (CapeStream self)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
+{
+  CapeStream self = CAPE_NEW (struct CapeStream_s);
+
+  // allocate memory and set the size
+  self->buffer = CAPE_ALLOC (buflen + 1);
+  self->size = buflen;
+  
+  // copy the data
+  memcpy (self->buffer, bufdat, buflen);
+
+  // set the new position
+  self->pos = self->buffer + buflen;
+
+  // no mime type
+  self->mime_type = NULL;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_stream_sub (CapeStream self, number_t start, number_t length, int overflow)
+{
+  CapeStream ret = NULL;
+  
+  // do some checks
+  if (start < (self->pos - self->buffer))
+  {
+    number_t pos_start = self->buffer + start;
+    number_t maxlen = self->pos - pos_start;
+    
+    if (length > maxlen)
+    {
+      if (overflow)
+      {
+        // allow if overflow was enabled
+        // use the maximal length possible
+        ret = cape_stream_from_buf (pos_start, maxlen);
+      }
+    }
+    else
+    {
+      ret = cape_stream_from_buf (pos_start, length);
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_mime_set (CapeStream self, const CapeString mime)
 {
   cape_str_replace_cp (&(self->mime_type), mime);

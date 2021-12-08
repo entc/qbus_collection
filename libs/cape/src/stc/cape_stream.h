@@ -31,6 +31,13 @@ __CAPE_LIBEX number_t          cape_stream_size (CapeStream);
                                /* get a pointer to the raw data buffer */
 __CAPE_LIBEX const char*       cape_stream_data (CapeStream);
 
+                               /* copies a part of the stream into a new stream
+                                -> overflow = TRUE: returns even if there is not enough data. the length is set to the maximum length possible
+                                -> overflow = FALSE: returns NULL if not enough data is in the stream
+                                -> returns NULL if start is behind the data length
+                                */
+__CAPE_LIBEX CapeStream        cape_stream_sub (CapeStream, number_t start, number_t length, int overflow);
+
 //-----------------------------------------------------------------------------
 
                                /* define the mime type of the content */
