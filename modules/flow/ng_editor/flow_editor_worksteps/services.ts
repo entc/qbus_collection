@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './component';
+import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './widgets';
 
 //-----------------------------------------------------------------------------
 
