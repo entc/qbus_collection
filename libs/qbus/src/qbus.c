@@ -197,7 +197,7 @@ int qbus_load_engine (QBus self, const CapeString name, CapeUdc remote, QbusEngi
     goto exit_and_cleanup;
   }
 
-  ctx = qbus_engine_ctx_add (result->engine, self->aio, NULL, err);
+  ctx = qbus_engine_ctx_add (result->engine, self->aio, remote, err);
   if (ctx == NULL)
   {
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", name);

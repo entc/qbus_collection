@@ -125,12 +125,6 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
   {
     goto exit_and_cleanup;
   }
-
-  self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
-  if (self->functions.pvd_ctx_new == NULL)
-  {
-    goto exit_and_cleanup;
-  }
   
   self->functions.pvd_ctx_del = cape_dl_funct (self->hlib, "qbus_pvd_ctx_del", err);
   if (self->functions.pvd_ctx_del == NULL)
