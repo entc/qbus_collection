@@ -22,7 +22,7 @@ __CAPE_LIBEX  int             qbus_engine_load       (QBusEngine, const CapeStri
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX  QbusPvdCtx      qbus_engine_ctx_add    (QBusEngine, CapeAioContext aio, CapeUdc options, CapeErr);
+__CAPE_LIBEX  QbusPvdCtx      qbus_engine_ctx_add    (QBusEngine, CapeAioContext aio, const CapeString name, CapeErr);
 
 //-----------------------------------------------------------------------------
 

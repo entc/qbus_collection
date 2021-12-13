@@ -16,7 +16,7 @@ int __STDCALL main_on_json (void* user_ptr, QWebsRequest request, CapeErr err)
 {
   printf ("ON JSON\n");
  
-  qwebs_request_send_json (&request, NULL, err);
+  qwebs_request_send_json (&request, NULL, 0, err);
   
   return CAPE_ERR_CONTINUE;
 }
@@ -42,14 +42,14 @@ int __STDCALL main_on_page (void* user_ptr, QWebsRequest request, CapeErr err)
       // retrieve the value
       const CapeString value = (const CapeString)cape_map_node_value (n);
       
-      qwebs_request_send_buf (&request, value, "text/html", err);
+      qwebs_request_send_buf (&request, value, "text/html", 0, err);
       
       return CAPE_ERR_CONTINUE;
     }
   }
   
   // default
-  qwebs_request_send_buf (&request, "<h1>hidden callback</h1>", "text/html", err);
+  qwebs_request_send_buf (&request, "<h1>hidden callback</h1>", "text/html", 0, err);
 
   return CAPE_ERR_CONTINUE;
 }

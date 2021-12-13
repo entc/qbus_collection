@@ -50,6 +50,20 @@ namespace qbus
       }
     }
     
+    int get_err ()
+    {
+      CapeErr err = m_qin->err;
+      
+      if (err)
+      {
+        return cape_err_code (err);
+      }
+      else
+      {
+        return CAPE_ERR_NONE;
+      }
+    }
+    
     void set_continue (cape::Udc& content)
     {
       m_ret = CAPE_ERR_CONTINUE;

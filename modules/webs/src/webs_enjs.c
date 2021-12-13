@@ -35,6 +35,8 @@ struct WebsEnjs_s
 
   CapeList files_to_delete;
   CapeString vsec;
+  
+  number_t ttl;
 };
 
 //-----------------------------------------------------------------------------
@@ -70,6 +72,8 @@ WebsEnjs webs_enjs_new (QBus qbus, QWebsRequest request)
   self->files_to_delete = cape_list_new (webs__files__on_del);
   self->vsec = NULL;
   
+  self->ttl = 0;
+  
   return self;
 }
 
@@ -95,7 +99,7 @@ void webs_enjs_del (WebsEnjs* p_self)
     {
       CapeErr err = cape_err_new ();
       
-      qwebs_request_send_json (&(self->request), NULL, err);
+      qwebs_request_send_json (&(self->request), NULL, self->ttl, err);
       
       cape_err_del (&err);
     }
@@ -141,7 +145,7 @@ static int __STDCALL webs_enjs_run__on_vsec (QBus qbus, void* ptr, QBusM qin, QB
   
 exit_and_cleanup:
   
-  qwebs_request_send_json (&(self->request), qin->cdata, err);
+  qwebs_request_send_json (&(self->request), qin->cdata, self->ttl, err);
   webs_enjs_del (&self);
   
   return res;
@@ -185,11 +189,11 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
           goto exit_and_cleanup;
         }
 
-        qwebs_request_send_buf (&(self->request), h2, "text/plain", err);
+        qwebs_request_send_buf (&(self->request), h2, "text/plain", self->ttl, err);
       }
       else
       {
-        qwebs_request_send_json (&(self->request), NULL, err);
+        qwebs_request_send_json (&(self->request), NULL, self->ttl, err);
       }
       
       break;
@@ -233,7 +237,7 @@ exit_and_cleanup:
     cape_log_msg (CAPE_LL_ERROR, "WEBS", "on call", cape_err_text (err));
   }
   
-  qwebs_request_send_json (&(self->request), qin->cdata, err);
+  qwebs_request_send_json (&(self->request), qin->cdata, self->ttl, err);
   webs_enjs_del (&self);
   
   return res;
@@ -381,6 +385,9 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NOVSEC");
     goto exit_and_cleanup;
   }
+  
+  // optional to tell the client how long the session might be valid
+  self->ttl = cape_udc_get_n (qin->pdata, "ttl", 0);
 
   // extract averything from the body
   webs_enjs_run__body (self);
@@ -435,7 +442,7 @@ exit_and_cleanup:
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on ui", "auth UI failed = %s", cape_err_text (err));
 
     // send the error back
-    qwebs_request_send_json (&(self->request), qin->cdata, err);
+    qwebs_request_send_json (&(self->request), qin->cdata, self->ttl, err);
   }
   
   webs_enjs_del (&self);
@@ -555,7 +562,7 @@ exit_and_cleanup:
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "webs run", "got error: %s", cape_err_text(err));
 
     // send the error back
-    qwebs_request_send_json (&(self->request), NULL, err);
+    qwebs_request_send_json (&(self->request), NULL, self->ttl, err);
   }
 
   webs_enjs_del (p_self);
