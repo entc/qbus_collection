@@ -7,9 +7,15 @@ import { QbngModule } from '@qbus/qbng.module';
 import { AuthSessionModule } from '@qbus/auth_session.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 
+//-----------------------------------------------------------------------------
+
 // components
-import { FlowUserFormService, FlowFunctionService, FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent, FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/component';
+import { FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent } from './flow_editor_worksteps/component';
 import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
+import { FlowUserFormService, FlowFunctionService } from './flow_editor_worksteps/services';
+import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/widgets';
+
+//-----------------------------------------------------------------------------
 
 @NgModule({
   declarations:

@@ -1,0 +1,7 @@
+<div class="list-group">
+
+    <button *ngFor="let item of workflows | async" class="list-group-item list-group-item-action" type="button" (click)="select_workflow(item)">
+      <span class="badge badge-secondary">{{item.id}}</span>&nbsp;&nbsp;{{item.name}}
+    </button>
+
+</div>

@@ -1,0 +1,13 @@
+<div class="modal-header">
+  <span class="modal-title">
+    <strong><i class="fa fa-hand-pointer"></i>&nbsp;&nbsp;{{ 'FLOW.WORKFLOW_SELECT' | transloco }}</strong>
+  </span>
+</div>
+<div class="modal-body">
+
+  <flow-workflow-selector (onChange)="on_apply($event)"></flow-workflow-selector>
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+</div>

@@ -507,10 +507,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  /*
-   AK: timeout must be handled by the client
-   -> it is impossible to sync backend and frontend
-   
+  // AK: timeout can only be handled by the server
+  // -> client must be synced with the server session timeouts
   vp = cape_udc_get_n (first_row, "vp", 0);
   if (vp)
   {
@@ -538,7 +536,6 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
   }
-   */
   
   secret = cape_udc_get_s (first_row, "secret", NULL);
   if (secret == NULL)
@@ -636,7 +633,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
 
   cape_udc_add_s_cp (qout->pdata, "vsec", secret);
-  
+  cape_udc_add_n (qout->pdata, "ttl", vp);
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
