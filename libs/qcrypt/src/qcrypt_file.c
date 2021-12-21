@@ -21,6 +21,7 @@
 #else
 
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #endif
 
@@ -585,14 +586,19 @@ exit_and_cleanup:
 
 CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
 {
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
   int res;
   CapeString ret = NULL;
   
   MD5_CTX ctx;
-  unsigned char c[MD5_DIGEST_LENGTH];
 
   // local objects
-  char* buffer = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  char* buffer_read = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  unsigned char* binary_hash = CAPE_ALLOC (MD5_DIGEST_LENGTH);
   CapeFileHandle fh = cape_fh_new (NULL, source);
   
   res = cape_fh_open (fh, O_RDONLY, err);
@@ -606,10 +612,10 @@ CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
 
   while (TRUE)
   {
-    number_t bytes_read = cape_fh_read_buf (fh, buffer, QCRYPT_BUFFER_SIZE);
+    number_t bytes_read = cape_fh_read_buf (fh, buffer_read, QCRYPT_BUFFER_SIZE);
     if (bytes_read > 0)
     {
-      MD5_Update (&ctx, buffer, bytes_read);
+      MD5_Update (&ctx, buffer_read, bytes_read);
     }
     else
     {
@@ -618,37 +624,91 @@ CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
   }
 
   // the result will be stored in an array of short values
-  MD5_Final (c, &ctx);
+  MD5_Final (binary_hash, &ctx);
 
   // convert the md5 result into a hex-string
-  {
-    number_t i;
-    number_t l = MD5_DIGEST_LENGTH * 2;  // for each short -> 2x hex char
-    
-    char* buf_hex = CAPE_ALLOC (l + 1); // add an extra byte for termination
-    
-    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
-    {
-      // print for each charater the hex presentation
-      snprintf ((char*)buf_hex + (i * 2), 4, "%02x", c[i]);
-    }
-    
-    buf_hex[l] = '\0';
-    
-    // create the string object
-    // -> in order to keep malloc/free within the borders of a library
-    // -> the malloc must be done with a cape function
-    ret = cape_str_cp (buf_hex);
-    
-    CAPE_FREE (buf_hex);
-  }
+  ret = cape_str_hex (binary_hash, MD5_DIGEST_LENGTH);
   
 exit_and_cleanup:
   
   cape_fh_del (&fh);
-  CAPE_FREE (buffer);
+  CAPE_FREE (buffer_read);
+  CAPE_FREE (binary_hash);
 
   return ret;
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_sha256_file (const CapeString source, CapeErr err)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+
+  int res;
+  CapeString ret = NULL;
+
+  SHA256_CTX ctx;
+
+  // local objects
+  char* buffer_read = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  unsigned char* binary_hash = CAPE_ALLOC (SHA256_DIGEST_LENGTH);
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // initialization
+  if (SHA256_Init (&ctx) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize SHA256");
+    goto exit_and_cleanup;
+  }
+
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer_read, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      // collect all data
+      if (SHA256_Update (&ctx, buffer_read, bytes_read) == 0)
+      {
+        cape_err_set (err, CAPE_ERR_RUNTIME, "can't update SHA256");
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  // create the SHA256 hash value and store it into the buffer stream
+  if (SHA256_Final (binary_hash, &ctx) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize SHA256");
+    goto exit_and_cleanup;
+  }
+
+  // convert the binary result into a hex-string
+  ret = cape_str_hex (binary_hash, SHA256_DIGEST_LENGTH);
+  
+exit_and_cleanup:
+  
+  cape_fh_del (&fh);
+  CAPE_FREE (buffer_read);
+  CAPE_FREE (binary_hash);
+
+  return ret;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------

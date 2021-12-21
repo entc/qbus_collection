@@ -70,6 +70,11 @@ __CAPE_LIBEX  int            qcrypt__encrypt_json       (const CapeUdc content, 
                               */
 __CAPE_LIBEX  CapeString     qcrypt__hash_md5_file      (const CapeString source, CapeErr err);
 
+                             /*
+                              calculates the sha256 checksum from a file
+                              */
+__CAPE_LIBEX  CapeString     qcrypt__hash_sha256_file   (const CapeString source, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

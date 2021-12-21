@@ -31,6 +31,8 @@ TARGET_LINK_LIBRARIES (qbus_mod_auth qbus adbl2 qcrypt qjobs)
 INSTALL (TARGETS qbus_mod_auth DESTINATION mods)
 
 # set default symlinks
+
+
 if (ETC_LOCATION)
   add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
   add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
