@@ -37,10 +37,10 @@ add_executable          (adbl_app ${ADBL_APP_SOURCES})
 target_link_libraries   (adbl_app adbl2)
 set_target_properties   (adbl_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
-#INSTALL (TARGETS adbl_app DESTINATION bin)
+#----------------------------------------------------------------------------------
 
-# for docker
-#INSTALL (TARGETS adbl_app DESTINATION docker/qore/bin)
+SET (PVD_ADBL_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_adbl CACHE PATH "library path to adbl backends")
+message (STATUS "PVD_ADBL_DIR  = ${PVD_ADBL_DIR}")
 
 #----------------------------------------------------------------------------------
 
