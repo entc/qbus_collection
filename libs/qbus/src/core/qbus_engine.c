@@ -125,12 +125,6 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString n
   {
     goto exit_and_cleanup;
   }
-
-  self->functions.pvd_ctx_new = cape_dl_funct (self->hlib, "qbus_pvd_ctx_new", err);
-  if (self->functions.pvd_ctx_new == NULL)
-  {
-    goto exit_and_cleanup;
-  }
   
   self->functions.pvd_ctx_del = cape_dl_funct (self->hlib, "qbus_pvd_ctx_del", err);
   if (self->functions.pvd_ctx_del == NULL)
@@ -215,9 +209,15 @@ QbusPvdCtx qbus_engine_ctx_add (QBusEngine self, CapeAioContext aio, const CapeS
   {
     CapeUdc options = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    // always send the name in the options
-    cape_udc_add_s_cp (options, "name", name);
-    
+    {
+      CapeString name_engine = cape_str_cp (name);
+      
+      cape_str_to_lower (name_engine);
+      
+      // always send the name in the options
+      cape_udc_add_s_mv (options, "name", &name_engine);
+    }
+        
     // create a new engine context
     // -> might use the AIO for event handling
     // -> might use the options for config
