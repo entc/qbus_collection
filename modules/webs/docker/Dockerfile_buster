@@ -13,5 +13,10 @@ COPY --from=0 /opt .
 
 WORKDIR /mods
 
+RUN groupadd -r qbus    -g 1000 && \
+useradd -u 1000 -r -g qbus -d /app -s /sbin/nologin -c "container user" qbus 
+
+USER qbus
+
 ENTRYPOINT ["/mods/qbus_mod_webs"]
 CMD ["-d", "socket:127.0.0.1:33340"]
