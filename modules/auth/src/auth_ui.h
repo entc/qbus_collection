@@ -31,6 +31,8 @@ __CAPE_LIBEX   int     auth_ui_get         (AuthUI*, QBusM qin, QBusM qout, Cape
 
 __CAPE_LIBEX   int     auth_ui_set         (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int     auth_ui_pp          (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int     auth_ui_login       (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_login_get   (AuthUI*, QBusM qin, QBusM qout, CapeErr err);

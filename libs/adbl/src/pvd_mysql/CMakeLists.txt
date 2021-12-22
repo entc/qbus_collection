@@ -28,11 +28,9 @@ endif()
 
   ADD_LIBRARY(adbl2_mysql SHARED ${CORE_SOURCES} ${CORE_HEADERS})
   TARGET_LINK_LIBRARIES( adbl2_mysql adbl2 cape ${MYSQL_LIBRARIES} ${ZLIB_LIBRARIES})
+  SET_TARGET_PROPERTIES (adbl2_mysql PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PVD_ADBL_DIR})
 
   INSTALL (TARGETS adbl2_mysql DESTINATION mods/adbl)
-
-  # set for later
-  SET (ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 
   #--------------------------------------------------------------
   # unit tests 

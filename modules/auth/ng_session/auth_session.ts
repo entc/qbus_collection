@@ -114,6 +114,8 @@ export class AuthSession
   {
     this.storage_clear ();
     this.roles.next (null);
+
+    this.modal_service.dismissAll();
   }
 
   //---------------------------------------------------------------------------

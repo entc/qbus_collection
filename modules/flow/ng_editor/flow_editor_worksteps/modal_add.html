@@ -7,12 +7,11 @@
 
   <div class="row">
 
-<!--
     <div class="col-md-6 col-12">
       <div class="form-group">
         <label>{{ 'FLOW.WSNAME' | transloco }}</label>
         <div class="input-group">
-          <input type="text" class="form-control" [(ngModel)] = "modal_step_content.name" name="step_name" required>
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.name" (blur)="on_name_change ($event.target.value)" name="step_name">
           <div class="invalid-feedback">please enter a name for this step</div>
         </div>
       </div>
@@ -22,11 +21,11 @@
       <div class="form-group">
         <label>{{ 'FLOW.WSCONDITION' | transloco }}</label>
         <div class="input-group">
-          <input type="text" class="form-control" [(ngModel)] = "modal_step_content.pdata['cond']" name="step_cond">
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.pdata['cond']" (blur)="on_pdata_change ($event.target.value, 'cond')" name="step_cond">
         </div>
       </div>
     </div>
--->
+
     <div class="col-md-6 col-12">
       <div class="form-group">
         <label>{{ 'FLOW.WSUSRFORM' | transloco }}</label>

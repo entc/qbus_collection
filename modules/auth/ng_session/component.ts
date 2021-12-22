@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, of } from 'rxjs';
 import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
+import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 
 //=============================================================================
 
@@ -57,6 +58,8 @@ import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
   {
     auth_session.session.subscribe ((data: AuthSessionItem) => {
+
+console.log(data);
 
       if (data)
       {
@@ -252,7 +255,6 @@ export class AuthSessionRoleDirective {
   templateUrl: './component_passreset.html'
 }) export class AuthSessionPassResetComponent {
 
-  @Input() old: boolean;
   @Output() onChange = new EventEmitter();
 
   public pass_old: string;
@@ -290,10 +292,7 @@ export class AuthSessionRoleDirective {
   {
     var params = {secret: this.pass_new, user: this.user_value};
 
-    if (this.old)
-    {
-      params['pass'] = this.pass_old;
-    }
+    params['pass'] = this.pass_old;
 
     this.auth_session.json_rpc ('AUTH', 'ui_set', params).subscribe(() => {
 
@@ -308,11 +307,6 @@ export class AuthSessionRoleDirective {
   }
 
   //---------------------------------------------------------------------------
-
-  generate_password ()
-  {
-
-  }
 }
 
 //=============================================================================
@@ -521,7 +515,9 @@ class AuthConfigItem
 
   public pass_new1: string;
   public pass_new2: string;
-  public err: string = null;
+  public err1: string = null;
+  public err2: string = null;
+  public strength: number = 0;
 
   @Output() onChange = new EventEmitter();
 
@@ -533,10 +529,36 @@ class AuthConfigItem
 
   //---------------------------------------------------------------------------
 
+  public password_strength_text (): string
+  {
+    switch (this.strength)
+    {
+      case 0: return 'AUTH.PASS_NOPOLICY';
+      case 1: return 'AUTH.PASS_WEAK';
+      case 2: return 'AUTH.PASS_ENOUGH';
+      case 3: return 'AUTH.PASS_STRONG';
+      default: return 'ERR.PASS_STRENGTH';
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
   public on_change_1 (val: string)
   {
-    this.pass_new1 = val;
-    this.check_passwords ();
+    this.pass_new2 = '';
+    this.err2 = null;
+
+    this.auth_session.json_rpc ('AUTH', 'ui_pp', {secret : val}).subscribe((data) => {
+
+      this.strength = data['strength'];
+      this.pass_new1 = val;
+      this.err1 = null;
+
+    }, (err: QbngErrorHolder) => {
+
+      this.err1 = err.text;
+
+    });
   }
 
   //---------------------------------------------------------------------------
@@ -553,12 +575,12 @@ class AuthConfigItem
   {
     if (this.pass_new1 && this.pass_new2 && this.pass_new1 != this.pass_new2)
     {
-      this.err = 'AUTH.PASSMISMATCH';
+      this.err2 = 'AUTH.PASSMISMATCH';
       this.onChange.emit (null);
     }
     else
     {
-      this.err = null;
+      this.err2 = null;
       this.onChange.emit (this.pass_new1);
     }
   }

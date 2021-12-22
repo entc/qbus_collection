@@ -32,8 +32,10 @@ INSTALL (TARGETS qbus DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
-# set for later
-SET (ENV{QBUS_PVD_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/engines)
+SET (PVD_QBUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_qbus CACHE PATH "library path to qbus engines")
+message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}")
+
+#----------------------------------------------------------------------------------
 
 SUBDIRS(pvd_example)
 SUBDIRS(pvd_tcp)

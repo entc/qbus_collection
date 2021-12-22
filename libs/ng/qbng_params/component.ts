@@ -11,7 +11,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 export class QbngParamsComponent implements OnInit {
 
   // those variables control the underlaying data structure
-  @Input('model') model: any;
+  @Input() model: any;
   @Output() modelChange = new EventEmitter();
 
   // (optional) this controls the name of the structure
@@ -39,8 +39,18 @@ export class QbngParamsComponent implements OnInit {
     this.nameUsed = this.nameChange.observers.length > 0;
 
     this.show = false;
+  }
 
-    this.on_type ();
+  //---------------------------------------------------------------------------
+
+  ngOnChanges (changes: SimpleChanges): void
+  {
+    console.log('QBNG PARAMS: params change from input');
+
+    if(changes['model'])
+    {
+      this.on_type (this.model);
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -73,24 +83,24 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  on_type ()
+  on_type (model: any)
   {
-    if (this.model == undefined || this.model == null)
+    if (model == undefined || model == null)
     {
       this.type = 1;
     }
-    else if (typeof this.model === "object")
+    else if (typeof model === "object")
     {
-      if (Object.prototype.toString.call( this.model ) === '[object Array]')
+      if (Object.prototype.toString.call( model ) === '[object Array]')
       {
         this.type = 3;
 
         // convert into list
         this.data_map = [];
 
-        for (var i in this.model)
+        for (var i in model)
         {
-          this.data_map.push ({key: '', index: Number(i), val: this.model[i]});
+          this.data_map.push ({key: '', index: Number(i), val: model[i]});
         }
       }
       else
@@ -100,21 +110,21 @@ export class QbngParamsComponent implements OnInit {
         // convert into list
         this.data_map = [];
 
-        for (var i in this.model)
+        for (var i in model)
         {
-          this.data_map.push ({key: i, index: 0, val: this.model[i]});
+          this.data_map.push ({key: i, index: 0, val: model[i]});
         }
       }
     }
-    else if (typeof this.model === "string")
+    else if (typeof model === "string")
     {
       this.type = 4;
     }
-    else if (typeof this.model === "number")
+    else if (typeof model === "number")
     {
       this.type = 5;
     }
-    else if (typeof this.model === "boolean")
+    else if (typeof model === "boolean")
     {
       this.type = 6;
     }
@@ -161,7 +171,7 @@ export class QbngParamsComponent implements OnInit {
     }
 
     this.modelChange.emit (this.model);
-    this.on_type ();
+    this.on_type (this.model);
   }
 
   //-----------------------------------------------------------------------------

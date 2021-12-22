@@ -3,6 +3,7 @@ import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { NgForm } from '@angular/forms';
 import { AuthSession } from '@qbus/auth_session';
 import { Observable, BehaviorSubject } from 'rxjs';
+<<<<<<< HEAD
 
 //-----------------------------------------------------------------------------
 
@@ -211,6 +212,11 @@ export class StepFct
   desc: string;
   type: any;
 }
+=======
+import { FlowUserFormService, FlowFunctionService, StepFct } from './services';
+import { IWorkstep } from './headers';
+import { IFlowEditorWidget } from './widgets';
+>>>>>>> 72d533f8250a5b5c9c29aeb2205f16c9b5abfc85
 
 //-----------------------------------------------------------------------------
 
@@ -336,6 +342,8 @@ class WidgetComponent
 
   protected update_workstep (workstep: IWorkstep, step: StepFct, on_change: EventEmitter<IWorkstep>)
   {
+    console.log ('update workstep');
+
     if (this.last_step != step)
     {
       this.last_step = step;
@@ -538,10 +546,9 @@ class WidgetComponent
 
   on_content_change (workstep: IWorkstep)
   {
-console.log('set content');
-
     this.workstep_content.next (workstep);
   }
+<<<<<<< HEAD
 }
 
 //=============================================================================
@@ -638,139 +645,42 @@ export class FlowWidgetWaitforlistComponent extends FlowEditorWidget {
   templateUrl: './widget_split.html'
 })
 export class FlowWidgetSplitComponent extends FlowEditorWidget {
+=======
+>>>>>>> 72d533f8250a5b5c9c29aeb2205f16c9b5abfc85
 
   //---------------------------------------------------------------------------
 
-  constructor ()
+  on_name_change (value: string)
   {
-    super ();
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    workstep.name = value;
+
+    this.workstep_content.next (workstep);
   }
 
   //---------------------------------------------------------------------------
 
-  on_pdata_change (data, name)
+  on_pdata_change (value: string, pdata_name: string)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
-  }
-}
+    const workstep: IWorkstep = this.workstep_content.value;
 
-//=============================================================================
+    workstep.pdata[pdata_name] = value;
 
-@Component({
-  selector: 'flow-widget-switch',
-  templateUrl: './widget_switch.html'
-})
-export class FlowWidgetSwitchComponent extends FlowEditorWidget {
-
-  //---------------------------------------------------------------------------
-
-  constructor ()
-  {
-    super ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (data, name)
-  {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.workstep_content.next (workstep);
   }
 }
 
 //=============================================================================
 
 @Component({
-  selector: 'flow-widget-if',
-  templateUrl: './widget_if.html'
-})
-export class FlowWidgetIfComponent extends FlowEditorWidget {
+  selector: 'flow-worksteps-rm-modal-component',
+  templateUrl: './modal_rm.html'
+}) export class FlowWorkstepsRmModalComponent {
 
   //---------------------------------------------------------------------------
 
-  constructor ()
+  constructor (public modal: NgbActiveModal)
   {
-    super ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (data, name)
-  {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
-  }
-}
-
-//=============================================================================
-
-@Component({
-  selector: 'flow-widget-copy',
-  templateUrl: './widget_copy.html'
-})
-export class FlowWidgetCopyComponent extends FlowEditorWidget {
-
-  //---------------------------------------------------------------------------
-
-  constructor ()
-  {
-    super ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (data, name)
-  {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
-  }
-}
-
-//=============================================================================
-
-@Component({
-  selector: 'flow-widget-create-node',
-  templateUrl: './widget_create_node.html'
-})
-export class FlowWidgetCreateNodeComponent extends FlowEditorWidget {
-
-  //---------------------------------------------------------------------------
-
-  constructor ()
-  {
-    super ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (data, name)
-  {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
-  }
-}
-
-//=============================================================================
-
-@Component({
-  selector: 'flow-widget-move',
-  templateUrl: './widget_move.html'
-})
-export class FlowWidgetMoveComponent extends FlowEditorWidget {
-
-  //---------------------------------------------------------------------------
-
-  constructor ()
-  {
-    super ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (data, name)
-  {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
   }
 }

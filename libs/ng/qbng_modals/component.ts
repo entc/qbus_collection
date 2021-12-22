@@ -5,6 +5,34 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 //=============================================================================
 
 @Component({
+  selector: 'qbng-spinner-modal-component',
+  templateUrl: './modal_spinner.html'
+}) export class QbngSpinnerModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal)
+  {
+  }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'qbng-spinner-ok-modal-component',
+  templateUrl: './modal_spinner_ok.html'
+}) export class QbngSpinnerOkModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal)
+  {
+  }
+}
+
+//=============================================================================
+
+@Component({
   selector: 'qbng-success-modal-component',
   templateUrl: './modal_success.html'
 }) export class QbngSuccessModalComponent implements OnInit {

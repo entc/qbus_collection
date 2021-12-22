@@ -225,7 +225,7 @@ int webs_stream_get (WebsStream self, QWebsRequest request, CapeErr err)
         }
         else
         {
-          qwebs_request_send_json (&h, NULL, err);
+          qwebs_request_send_json (&h, NULL, 0, err);
         }
       }
     }

@@ -23,9 +23,12 @@ TARGET_LINK_LIBRARIES(qbus_mod_webs qwebs qbus qcrypt)
 # new install path
 INSTALL (TARGETS qbus_mod_webs DESTINATION mods)
 
-# set default symlinks
 if (ETC_LOCATION)
   add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
+endif()
+
+if (PVD_QBUS_DIR)
+  add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus)
 endif()
 
 add_custom_command (TARGET qbus_mod_webs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/dist ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/dist)

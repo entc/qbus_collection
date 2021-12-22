@@ -29,10 +29,16 @@ TARGET_LINK_LIBRARIES (qbus_mod_flow qbus qflow adbl2)
 # for local install
 INSTALL (TARGETS qbus_mod_flow DESTINATION mods)
 
-# set default symlinks
 if (ETC_LOCATION)
   add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
-  add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
+endif()
+
+if (PVD_ADBL_DIR)
+  add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_ADBL_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
+endif()
+
+if (PVD_QBUS_DIR)
+  add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus)
 endif()
 
 #----------------------------------------------------------------------------------

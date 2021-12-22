@@ -7,7 +7,7 @@ import { QbngParamsComponent } from './qbng_params/component';
 import { QbngSwitchComponent, QbngSwitchMultiComponent, QbngUploadComponent, QbngUploadModalComponent } from './qbng_widgets/component';
 import { SizeService } from './size_service/service';
 import { SizeDetectorComponent } from './size_service/component';
-import { QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModalComponent } from './qbng_modals/component';
+import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModalComponent } from './qbng_modals/component';
 
 @NgModule({
   declarations: [
@@ -17,6 +17,8 @@ import { QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModal
     QbngUploadComponent,
     QbngUploadModalComponent,
     SizeDetectorComponent,
+    QbngSpinnerModalComponent,
+    QbngSpinnerOkModalComponent,
     QbngSuccessModalComponent,
     QbngErrorModalComponent,
     QbngWarnOptionModalComponent
@@ -39,6 +41,8 @@ import { QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModal
   ],
   entryComponents: [
     QbngUploadModalComponent,
+    QbngSpinnerModalComponent,
+    QbngSpinnerOkModalComponent,
     QbngSuccessModalComponent,
     QbngErrorModalComponent,
     QbngWarnOptionModalComponent

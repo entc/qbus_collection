@@ -243,6 +243,27 @@ CapeString cape_str_n (number_t value)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_hex (const unsigned char* data, number_t len)
+{
+  number_t i;
+  number_t l = len * 2;  // for each short -> 2x hex char
+  
+  char* self = CAPE_ALLOC (l + 1); // add an extra byte for termination
+  const unsigned char* pos = data;
+  
+  for (i = 0; i < len; i++, pos++)
+  {
+    // print for each charater the hex presentation
+    snprintf (self + (i * 2), 3, "%02x", *pos);
+  }
+  
+  self[l] = '\0';
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_str_empty (const CapeString s)
 {
   if (s)

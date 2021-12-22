@@ -101,7 +101,7 @@ void webs_json_del (WebsJson* p_self)
     {
       CapeErr err = cape_err_new ();
       
-      qwebs_request_send_json (&(self->request), NULL, err);
+      qwebs_request_send_json (&(self->request), NULL, 0, err);
       
       cape_err_del (&err);
     }
@@ -147,7 +147,7 @@ static int __STDCALL qbus_webs__file__on_vsec (QBus qbus, void* ptr, QBusM qin, 
 
 exit_and_cleanup:
 
-  qwebs_request_send_json (&(self->request), qin->cdata, err);
+  qwebs_request_send_json (&(self->request), qin->cdata, 0, err);
   webs_json_del (&self);
 
   return res;
@@ -169,7 +169,7 @@ static int __STDCALL qbus_webs__auth__on_call (QBus qbus, void* ptr, QBusM qin, 
   {
     case QBUS_MTYPE_JSON:
     {
-      qwebs_request_send_json (&(self->request), qin->cdata, err);
+      qwebs_request_send_json (&(self->request), qin->cdata, 0, err);
       break;
     }
     case QBUS_MTYPE_FILE:
@@ -221,7 +221,7 @@ exit_and_cleanup:
     cape_str_del (&h);
   }
   
-  qwebs_request_send_json (&(self->request), qin->cdata, err);
+  qwebs_request_send_json (&(self->request), qin->cdata, 0, err);
   webs_json_del (&self);
   
   return CAPE_UDC_NODE;
@@ -441,7 +441,7 @@ exit_and_cleanup:
     cape_str_del (&h);
   }
 
-  qwebs_request_send_json (&(self->request), qin->cdata, err);
+  qwebs_request_send_json (&(self->request), qin->cdata, 0, err);
   webs_json_del (&self);
   
   return CAPE_ERR_NONE;
