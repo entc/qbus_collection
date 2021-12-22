@@ -205,7 +205,7 @@ CapeStream cape_stream_sub (CapeStream self, number_t start, number_t length, in
   // do some checks
   if (start < (self->pos - self->buffer))
   {
-    number_t pos_start = self->buffer + start;
+    char* pos_start = self->buffer + start;
     number_t maxlen = self->pos - pos_start;
     
     if (length > maxlen)
