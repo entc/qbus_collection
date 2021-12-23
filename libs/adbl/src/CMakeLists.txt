@@ -40,7 +40,7 @@ set_target_properties   (adbl_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 #----------------------------------------------------------------------------------
 
 SET (PVD_ADBL_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_adbl CACHE PATH "library path to adbl backends")
-message (STATUS "PVD_ADBL_DIR  = ${PVD_ADBL_DIR}")
+message (STATUS "PVD_ADBL_DIR  = ${PVD_ADBL_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
