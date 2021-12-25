@@ -88,6 +88,76 @@ MYSQL_BIND* adbl_bindvars_binds (AdblBindVars self)
 
 //------------------------------------------------------------------------------------------------------
 
+void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials);
+
+//------------------------------------------------------------------------------------------------------
+
+void adbl_bindvars_set__node (AdblBindVars self, CapeUdc item)
+{
+  if (self->pos < self->size)
+  {
+    MYSQL_BIND* bind = &(self->binds[self->pos]);
+    
+    // convert into string
+    CapeString h = cape_json_to_s (item);
+    
+    bind->buffer_type = MYSQL_TYPE_STRING;
+    bind->buffer = h;
+    bind->buffer_length = strlen (h);
+    bind->is_null = NULL;
+    bind->length = 0;
+    bind->error = 0;
+    
+    bind->pack_length = 1;
+    
+    self->pos++;
+  }
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void adbl_bindvars_set__special_options (AdblBindVars self, CapeUdc item)
+{
+  switch (cape_udc_get_n (item, ADBL_SPECIAL__TYPE, 0))
+  {
+    case ADBL_TYPE__BETWEEN:
+    {
+      // check what kind of special param we have
+      CapeUdc from_node = cape_udc_get (item, ADBL_SPECIAL__BETWEEN_FROM);
+      CapeUdc to_node = cape_udc_get (item, ADBL_SPECIAL__BETWEEN_TO);
+      
+      if (from_node && to_node)
+      {
+        adbl_bindvars_set (self, from_node, FALSE);
+        adbl_bindvars_set (self, to_node, FALSE);
+      }
+      
+      break;
+    }
+    case ADBL_TYPE__GREATER_THAN:
+    case ADBL_TYPE__GREATER_EQUAL_THAN:
+    case ADBL_TYPE__LESS_THAN:
+    case ADBL_TYPE__LESS_EQUAL_THAN:
+    {
+      CapeUdc val = cape_udc_get (item, ADBL_SPECIAL__VALUE);
+      
+      if (val)
+      {
+        adbl_bindvars_set (self, val, FALSE);
+      }
+      
+      break;
+    }
+    default:
+    {
+      adbl_bindvars_set__node (self, item);
+      break;
+    }
+  }
+}
+
+//------------------------------------------------------------------------------------------------------
+
 void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
 {
   switch (cape_udc_type (item))
@@ -255,61 +325,14 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
     {
       if (check_for_specials)
       {
-        switch (cape_udc_get_n (item, ADBL_SPECIAL__TYPE, 0))
-        {
-          case ADBL_TYPE__BETWEEN:
-          {
-            // check what kind of special param we have
-            CapeUdc from_node = cape_udc_get (item, ADBL_SPECIAL__BETWEEN_FROM);
-            CapeUdc to_node = cape_udc_get (item, ADBL_SPECIAL__BETWEEN_TO);
-            
-            if (from_node && to_node)
-            {
-              adbl_bindvars_set (self, from_node, FALSE);
-              adbl_bindvars_set (self, to_node, FALSE);
-            }
-            
-            break;
-          }
-          case ADBL_TYPE__GREATER_THAN:
-          case ADBL_TYPE__GREATER_EQUAL_THAN:
-          case ADBL_TYPE__LESS_THAN:
-          case ADBL_TYPE__LESS_EQUAL_THAN:
-          {
-            CapeUdc val = cape_udc_get (item, ADBL_SPECIAL__VALUE);
-           
-            if (val)
-            {
-              adbl_bindvars_set (self, val, FALSE);
-            }
-           
-            break;
-          }
-        }
+        adbl_bindvars_set__special_options (self, item);
       }
       else
       {
-        if (self->pos < self->size)
-        {
-          MYSQL_BIND* bind = &(self->binds[self->pos]);
-          
-          // convert into string
-          CapeString h = cape_json_to_s (item);
-          
-          bind->buffer_type = MYSQL_TYPE_STRING;
-          bind->buffer = h;
-          bind->buffer_length = strlen (h);
-          bind->is_null = NULL;
-          bind->length = 0;
-          bind->error = 0;
-          
-          bind->pack_length = 1;
-          
-          self->pos++;
-        }
-        
-        break;
+        adbl_bindvars_set__node (self, item);
       }
+
+      break;
     }
   }
 }
