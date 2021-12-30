@@ -461,6 +461,8 @@ namespace qbus
         std::unique_ptr<T> obj (new T (args...));
 
         (*fct)(obj, qbus, v);
+        
+        return CAPE_ERR_NONE;
       }
       catch (cape::Exception& e)
       {

@@ -661,6 +661,16 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
   
   if (self->is_complete)
   {
+    {
+      CapeMapNode n = cape_map_find (self->header_values, "Upgrade");
+      if (n)
+      {
+        const CapeString upgrade_name = cape_map_node_value (n);
+        
+
+        
+      }
+    }
     
     {
       CapeMapNode n = cape_map_find (self->header_values, "Connection");

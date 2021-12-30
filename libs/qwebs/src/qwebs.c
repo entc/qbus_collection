@@ -76,6 +76,9 @@ struct QWebs_s
   
   void* on_raise_user_ptr;
   fct_qwebs__on_raise on_raise;
+  
+  void* on_upgrade_ptr;
+  fct_qwebs__on_upgrade on_upgrade;
 };
 
 //-----------------------------------------------------------------------------
@@ -177,6 +180,9 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   self->on_raise_user_ptr = NULL;
   self->on_raise = NULL;
   
+  self->on_upgrade_ptr = NULL;
+  self->on_upgrade = NULL;
+  
   return self;
 }
 
@@ -268,6 +274,14 @@ void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
 {
   self->on_raise_user_ptr = user_ptr;
   self->on_raise = on_raise;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, CapeErr err)
+{
+  self->on_upgrade_ptr = user_ptr;
+  self->on_upgrade = on_upgrade;
 }
 
 //-----------------------------------------------------------------------------
