@@ -20,6 +20,7 @@
 //-----------------------------------------------------------------------------
 
 struct QWebsApi_s; typedef struct QWebsApi_s* QWebsApi;
+struct QWebsUpgrade_s; typedef struct QWebsUpgrade_s* QWebsUpgrade;
 
 //-----------------------------------------------------------------------------
 
@@ -54,6 +55,8 @@ __CAPE_LIBEX     int                qwebs_attach        (QWebs, CapeAioContext, 
 __CAPE_LIBEX     QWebsApi           qwebs_get_api       (QWebs, const CapeString name);
 
 __CAPE_LIBEX     QWebsApi           qwebs_get_page      (QWebs, const CapeString page);
+
+__CAPE_LIBEX     QWebsUpgrade       qwebs_get_upgrade   (QWebs, const CapeString name);
 
 __CAPE_LIBEX     QWebsFiles         qwebs_files         (QWebs);
 

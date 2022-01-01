@@ -21,6 +21,14 @@ struct QWebsApi_s
 
 //-----------------------------------------------------------------------------
 
+struct QWebsUpgrade_s
+{
+  fct_qwebs__on_upgrade on_upgrade;
+  void* user_ptr;
+};
+
+//-----------------------------------------------------------------------------
+
 QWebsApi qwebs_api_new (void* user_ptr, fct_qwebs__on_request on_request)
 {
   QWebsApi self = CAPE_NEW (struct QWebsApi_s);
@@ -46,10 +54,36 @@ void qwebs_api_del (QWebsApi* p_self)
 
 //-----------------------------------------------------------------------------
 
+QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade)
+{
+  QWebsUpgrade self = CAPE_NEW (struct QWebsUpgrade_s);
+  
+  self->on_upgrade = on_upgrade;
+  self->user_ptr = user_ptr;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_upgrade_del (QWebsUpgrade* p_self)
+{
+  if (*p_self)
+  {
+    //    QWebsUpgrade self = *p_self;
+    
+    
+    CAPE_DEL (p_self, struct QWebsUpgrade_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 struct QWebs_s
 {
-  CapeMap request_apis;      // all api callbacks
-  CapeMap request_page;      // all page callbacks
+  CapeMap request_apis;          // all api callbacks
+  CapeMap request_page;          // all page callbacks
+  CapeMap request_upgrades;      // all upgrade callbacks
 
   CapeMap sites;
   
@@ -76,9 +110,6 @@ struct QWebs_s
   
   void* on_raise_user_ptr;
   fct_qwebs__on_raise on_raise;
-  
-  void* on_upgrade_ptr;
-  fct_qwebs__on_upgrade on_upgrade;
 };
 
 //-----------------------------------------------------------------------------
@@ -102,6 +133,18 @@ static void __STDCALL qwebs__intern__on_sites_del (void* key, void* val)
   }
   {
     CapeString h = val; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs__intern__on_upgrade_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QWebsUpgrade api = val; qwebs_upgrade_del (&api);
   }
 }
 
@@ -153,6 +196,7 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   
   self->request_apis = cape_map_new (NULL, qwebs__intern__on_api_del, NULL);
   self->request_page = cape_map_new (NULL, qwebs__intern__on_api_del, NULL);
+  self->request_upgrades = cape_map_new (NULL, qwebs__intern__on_upgrade_del, NULL);
   
   self->aio_attached = NULL;
   self->accept = NULL;
@@ -180,9 +224,6 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   self->on_raise_user_ptr = NULL;
   self->on_raise = NULL;
   
-  self->on_upgrade_ptr = NULL;
-  self->on_upgrade = NULL;
-  
   return self;
 }
 
@@ -196,6 +237,7 @@ void qwebs_del (QWebs* p_self)
     
     cape_map_del (&(self->request_apis));
     cape_map_del (&(self->request_page));
+    cape_map_del (&(self->request_upgrades));
     cape_map_del (&(self->sites));
 
     cape_str_del (&(self->host));    
@@ -280,8 +322,25 @@ void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
 
 int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, CapeErr err)
 {
-  self->on_upgrade_ptr = user_ptr;
-  self->on_upgrade = on_upgrade;
+  if (name)
+  {
+    CapeMapNode n = cape_map_find (self->request_upgrades, name);
+    if (NULL == n)
+    {
+      QWebsUpgrade upgrade = qwebs_upgrade_new (user_ptr, on_upgrade);
+      
+      // transfer ownership to the map
+      cape_map_insert (self->request_upgrades, cape_str_cp (name), upgrade);
+      
+      return CAPE_ERR_NONE;
+    }
+    else
+    {
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "Upgrade was already registered");
+    }
+  }
+  
+  return cape_err_set (err, CAPE_ERR_RUNTIME, "Upgrade can't be registered");
 }
 
 //-----------------------------------------------------------------------------
@@ -389,6 +448,22 @@ QWebsApi qwebs_get_page (QWebs self, const CapeString page)
   if (page)
   {
     CapeMapNode n = cape_map_find (self->request_page, page);
+    if (n)
+    {
+      return cape_map_node_value (n);
+    }
+  }
+  
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+QWebsUpgrade qwebs_get_upgrade (QWebs self, const CapeString name)
+{
+  if (name)
+  {
+    CapeMapNode n = cape_map_find (self->request_upgrades, name);
     if (n)
     {
       return cape_map_node_value (n);
