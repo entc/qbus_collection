@@ -23,7 +23,11 @@ __CAPE_LIBEX     void               qwebs_connection_del        (QWebsConnection
 
 __CAPE_LIBEX     void               qwebs_connection_attach     (QWebsConnection, CapeAioContext aio_context);
 
-__CAPE_LIBEX     void               qwebs_connection_upgrade    (QWebsConnection, fct_qwebs__on_recv);
+__CAPE_LIBEX     void               qwebs_connection_upgrade    (QWebsConnection, void* user_ptr, fct_qwebs__on_recv, fct_qwebs__on_del);
+
+__CAPE_LIBEX     QWebsRequest       qwebs_connection_factory    (QWebsConnection);
+
+__CAPE_LIBEX     void               qwebs_connection_close      (QWebsConnection);
 
 //-----------------------------------------------------------------------------
 

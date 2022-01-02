@@ -40,9 +40,9 @@ __CAPE_LIBEX     void               qwebs_set_raise     (QWebs, void* user_ptr, 
 
 //-----------------------------------------------------------------------------
 
-typedef int     (__STDCALL *fct_qwebs__on_upgrade)      (void* user_ptr, QWebsRequest, CapeMap return_header, CapeErr err);
+typedef void*   (__STDCALL *fct_qwebs__on_upgrade)      (void* user_ptr, QWebsRequest, CapeMap return_header, CapeErr err);
 
-__CAPE_LIBEX     int                qwebs_on_upgrade    (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade, fct_qwebs__on_recv, CapeErr err);
+__CAPE_LIBEX     int                qwebs_on_upgrade    (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade, fct_qwebs__on_recv, fct_qwebs__on_del, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
@@ -79,7 +79,7 @@ __CAPE_LIBEX     int                qwebs_api_call      (QWebsApi, QWebsRequest 
 
 __CAPE_LIBEX     int                qwebs_upgrade_call  (QWebsUpgrade, QWebsRequest request, CapeMap return_headers, CapeErr err);
 
-__CAPE_LIBEX     void               qwebs_upgrade_conn  (QWebsUpgrade, QWebsConnection);
+__CAPE_LIBEX     void               qwebs_upgrade_conn  (QWebsUpgrade, QWebsConnection, void* user_ptr);
 
 //-----------------------------------------------------------------------------
 

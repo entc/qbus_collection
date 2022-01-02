@@ -22,7 +22,9 @@ struct QWebsUpgrade_s; typedef struct QWebsUpgrade_s* QWebsUpgrade;
 
 //-----------------------------------------------------------------------------
 
-typedef void     (__STDCALL *fct_qwebs__on_recv)      (QWebsConnection, const char* bufdat, number_t buflen);
+typedef void     (__STDCALL *fct_qwebs__on_recv)      (void* user_ptr, QWebsConnection, const char* bufdat, number_t buflen);
+
+typedef void     (__STDCALL *fct_qwebs__on_del)       (void** user_ptr, QWebsConnection);
 
 //-----------------------------------------------------------------------------
 

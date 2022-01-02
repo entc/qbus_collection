@@ -421,20 +421,13 @@ void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgra
   CapeMap return_headers = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
   CapeStream s = cape_stream_new ();
 
-  res = qwebs_upgrade_call (upgrade, self, return_headers, err);
-  if (res)
-  {
-    
-  }
+  void* user_ptr = qwebs_upgrade_call (upgrade, self, return_headers, err);
   
   qwebs_response_sp (s, self->webs, upgrade_name, return_headers);
 
   qwebs_connection_send (self->conn, &s);
   
-  // keep connection
-  qwebs_connection_inc (self->conn);
-  
-  qwebs_upgrade_conn (upgrade, self->conn);
+  qwebs_upgrade_conn (upgrade, self->conn, user_ptr);
   
 exit_and_cleanup:
 
@@ -559,56 +552,29 @@ static void __STDCALL qwebs_request__internal__on_del (void* ptr, number_t pos)
 
 //-----------------------------------------------------------------------------
 
-struct QWebsConnection_s
-{
-  QWebs webs;                      // reference
-  CapeQueue queue;                 // reference
+void qwebs_request_complete (QWebsRequest* p_self, const CapeString method);
 
-  CapeAioSocket aio_socket;
-  CapeAioContext aio_attached;
-  
-  CapeList send_cache;
-  
+//-----------------------------------------------------------------------------
+
+struct QWebsProtHttp_s
+{
   http_parser parser;
   http_parser_settings settings;
+
   
-  CapeMutex mutex;
-  
-  int close_connection;           // closes the connection for each request
-  int active;
-  
-  CapeString remote;
-  
-  fct_qwebs__on_recv on_recv;
-};
+}; typedef struct QWebsProtHttp_s* QWebsProtHttp;
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL qwebs_connection__cache__on_del (void* ptr)
+QWebsProtHttp qwebs_prot_http_new ()
 {
-  CapeStream s = ptr; cape_stream_del (&s);
-}
+  QWebsProtHttp self = CAPE_NEW (struct QWebsProtHttp_s);
 
-//-----------------------------------------------------------------------------
-
-void __STDCALL qwebs_connection__http__on_recv (QWebsConnection, const char* bufdat, number_t buflen);
-
-//-----------------------------------------------------------------------------
-
-QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs, const CapeString remote)
-{
-  QWebsConnection self = CAPE_NEW (struct QWebsConnection_s);
-  
-  self->webs = webs;
-  self->queue = queue;
-  
-  self->aio_socket = cape_aio_socket_new (handle);
-  
   http_parser_init (&(self->parser), HTTP_REQUEST);
   
   // initialize the HTTP parser
   http_parser_settings_init (&(self->settings));
-
+  
   // set some callbacks
   self->settings.on_message_begin = qwebs_request__internal__on_message_begin;
   self->settings.on_url = qwebs_request__internal__on_url;
@@ -621,6 +587,114 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs,
   self->settings.on_chunk_header = NULL;
   self->settings.on_chunk_complete = NULL;
   
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_http_del (QWebsProtHttp* p_self)
+{
+  if (*p_self)
+  {
+    QWebsProtHttp self = *p_self;
+    
+    qwebs_request_del ((QWebsRequest*)&(self->parser.data));
+
+    CAPE_DEL (p_self, struct QWebsProtHttp_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_prot_http__on_recv (void* user_ptr, QWebsConnection conn, const char* bufdat, number_t buflen)
+{
+  QWebsProtHttp self = user_ptr;
+  
+  if (NULL == self->parser.data)
+  {
+    self->parser.data = qwebs_connection_factory (conn);
+  }
+  
+  //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+  http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+  
+  //printf ("BYTES PROCESSED: %i\n", bytes_processed);
+  
+  if (self->parser.http_errno > 0)
+  {
+    CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
+    
+    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error [%i]: %s", self->parser.http_errno, h);
+    
+    cape_str_del (&h);
+    
+    // close it
+    qwebs_connection_close (conn);
+    return;
+  }
+  
+  if (http_body_is_final (&(self->parser)))
+  {
+    return;
+  }
+  
+  qwebs_request_complete ((QWebsRequest*)&(self->parser.data), http_method_str (self->parser.method));
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_prot_http__on_del (void** p_user_ptr, QWebsConnection conn)
+{
+  qwebs_prot_http_del ((QWebsProtHttp*)p_user_ptr);
+}
+
+//-----------------------------------------------------------------------------
+
+struct QWebsConnection_s
+{
+  QWebs webs;                      // reference
+  CapeQueue queue;                 // reference
+
+  CapeAioSocket aio_socket;
+  CapeAioContext aio_attached;
+  
+  CapeList send_cache;
+  
+  CapeMutex mutex;
+  
+  int close_connection;           // closes the connection for each request
+  int active;
+  
+  CapeString remote;
+  
+  fct_qwebs__on_recv on_recv;
+  fct_qwebs__on_del on_del;
+  void* user_ptr;
+};
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__cache__on_del (void* ptr)
+{
+  CapeStream s = ptr; cape_stream_del (&s);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_connection__http__on_recv (void* user_ptr, QWebsConnection, const char* bufdat, number_t buflen);
+
+//-----------------------------------------------------------------------------
+
+QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs, const CapeString remote)
+{
+  QWebsConnection self = CAPE_NEW (struct QWebsConnection_s);
+  
+  self->webs = webs;
+  self->queue = queue;
+  
+  self->aio_socket = cape_aio_socket_new (handle);
+  
+  
   self->send_cache = cape_list_new (qwebs_connection__cache__on_del);
   self->mutex = cape_mutex_new ();
   
@@ -629,7 +703,10 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs,
   
   self->remote = cape_str_cp (remote);
   
-  self->on_recv = qwebs_connection__http__on_recv;
+  self->on_recv = qwebs_prot_http__on_recv;
+  self->on_del = qwebs_prot_http__on_del;
+  
+  self->user_ptr = qwebs_prot_http_new ();
   
   return self;
 }
@@ -641,7 +718,7 @@ void qwebs_connection_del (QWebsConnection* p_self)
   if (*p_self)
   {
     QWebsConnection self = *p_self;
-    
+
     cape_list_del (&(self->send_cache));
     cape_mutex_del (&(self->mutex));
     
@@ -649,6 +726,22 @@ void qwebs_connection_del (QWebsConnection* p_self)
     
     CAPE_DEL (p_self, struct QWebsConnection_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+QWebsRequest qwebs_connection_factory (QWebsConnection self)
+{
+  self->active = TRUE;
+  
+  return qwebs_request_new (self->webs, self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_close (QWebsConnection self)
+{
+  cape_aio_socket_close (self->aio_socket, self->aio_attached);
 }
 
 //-----------------------------------------------------------------------------
@@ -766,100 +859,11 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_connection__http__on_recv (QWebsConnection self, const char* bufdat, number_t buflen)
-{
-  if (NULL == self->parser.data)
-  {
-    self->parser.data = qwebs_request_new (self->webs, self);
-    self->active = TRUE;
-  }
-  
-  //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-  http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-  
-  //printf ("BYTES PROCESSED: %i\n", bytes_processed);
-  
-  if (self->parser.http_errno > 0)
-  {
-    CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
-    
-    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error [%i]: %s", self->parser.http_errno, h);
-    
-    cape_str_del (&h);
-    
-    // close it
-    cape_aio_socket_close (self->aio_socket, self->aio_attached);
-    
-    return;
-  }
-  
-  if (http_body_is_final (&(self->parser)))
-  {
-    return;
-  }
-  
-  qwebs_request_complete ((QWebsRequest*)&(self->parser.data), http_method_str (self->parser.method));
-  
-  return;
-  
-  {
-    QWebsRequest request = self->parser.data;
-    
-    request->method = cape_str_cp (http_method_str (self->parser.method));
-    
-    //printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
-    
-    if (request->is_complete)
-    {
-      
-      {
-        CapeMapNode n = cape_map_find (request->header_values, "Connection");
-        if (n)
-        {
-          const CapeString connection_type = cape_map_node_value (n);
-          
-          //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "on recv", "connection type: %s", connection_type);
-          
-          self->close_connection = cape_str_equal (connection_type, "close");
-        }
-        else
-        {
-          cape_log_fmt (CAPE_LL_WARN, "WEBS", "on recv", "connection type unknown");
-        }
-      }
-      
-      if (request->api)
-      {
-        qwebs_request_api (&request);
-      }
-      else
-      {
-        //printf ("FILE '%s'\'%s'\n", request->site, request->url);
-        
-        CapeStream s = qwebs_files_get (qwebs_files (self->webs), request, request->site, request->url);
-        if (s)
-        {
-          qwebs_connection_send (self, &s);
-        }
-        
-        qwebs_request_del (&request);
-      }
-      
-      // this is faster but it block the process and results in a zombie
-      //cape_queue_add (self->queue, NULL, qwebs_request__internal__on_run, qwebs_request__internal__on_del, self->parser.data, 0);
-      
-      self->parser.data = NULL;
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-
 static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
 {
   QWebsConnection self = ptr;
   
-  self->on_recv (self, bufdat, buflen);
+  self->on_recv (self->user_ptr, self, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------
@@ -867,6 +871,11 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
 static void __STDCALL qwebs_connection__internal__on_done (void* ptr, void* userdata)
 {
   QWebsConnection self = ptr;
+  
+  cape_log_msg (CAPE_LL_TRACE, "QWEBS", "on done", "connection dropped");
+  
+  // clear connection handling
+  self->on_del (&(self->user_ptr), self);
   
   // check for userdata
   if (userdata)
@@ -930,9 +939,19 @@ void qwebs_connection_dec (QWebsConnection self)
 
 //-----------------------------------------------------------------------------
 
-void qwebs_connection_upgrade (QWebsConnection self, fct_qwebs__on_recv on_recv)
+void qwebs_connection_upgrade (QWebsConnection self, void* user_ptr, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
 {
+  // keep connection alive
+  qwebs_connection_inc (self);
+  
+  // cleanup old connection handling
+  self->on_del (&(self->user_ptr), self);
+  
+  // set new connection handling
+  self->user_ptr = user_ptr;
+  
   self->on_recv = on_recv;
+  self->on_del = on_del;
 }
 
 //-----------------------------------------------------------------------------
