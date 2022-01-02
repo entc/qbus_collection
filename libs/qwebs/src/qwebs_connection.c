@@ -941,9 +941,6 @@ void qwebs_connection_dec (QWebsConnection self)
 
 void qwebs_connection_upgrade (QWebsConnection self, void* user_ptr, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
 {
-  // keep connection alive
-  qwebs_connection_inc (self);
-  
   // cleanup old connection handling
   self->on_del (&(self->user_ptr), self);
   
