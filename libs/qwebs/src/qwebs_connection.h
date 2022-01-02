@@ -23,6 +23,8 @@ __CAPE_LIBEX     void               qwebs_connection_del        (QWebsConnection
 
 __CAPE_LIBEX     void               qwebs_connection_attach     (QWebsConnection, CapeAioContext aio_context);
 
+__CAPE_LIBEX     void               qwebs_connection_upgrade    (QWebsConnection, fct_qwebs__on_recv);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX     void               qwebs_request_send_json     (QWebsRequest*, CapeUdc content, number_t ttl, CapeErr);

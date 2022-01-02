@@ -24,6 +24,7 @@ struct QWebsApi_s
 struct QWebsUpgrade_s
 {
   fct_qwebs__on_upgrade on_upgrade;
+  fct_qwebs__on_recv on_recv;
   void* user_ptr;
 };
 
@@ -54,11 +55,13 @@ void qwebs_api_del (QWebsApi* p_self)
 
 //-----------------------------------------------------------------------------
 
-QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade)
+QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_recv on_recv)
 {
   QWebsUpgrade self = CAPE_NEW (struct QWebsUpgrade_s);
   
   self->on_upgrade = on_upgrade;
+  self->on_recv = on_recv;
+  
   self->user_ptr = user_ptr;
   
   return self;
@@ -320,14 +323,14 @@ void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, CapeErr err)
+int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_recv on_recv, CapeErr err)
 {
   if (name)
   {
     CapeMapNode n = cape_map_find (self->request_upgrades, name);
     if (NULL == n)
     {
-      QWebsUpgrade upgrade = qwebs_upgrade_new (user_ptr, on_upgrade);
+      QWebsUpgrade upgrade = qwebs_upgrade_new (user_ptr, on_upgrade, on_recv);
       
       // transfer ownership to the map
       cape_map_insert (self->request_upgrades, cape_str_cp (name), upgrade);
@@ -499,6 +502,29 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
   }
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwebs_upgrade_call (QWebsUpgrade self, QWebsRequest request, CapeMap return_headers, CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+  
+  if (self->on_upgrade)
+  {
+    res = self->on_upgrade (self->user_ptr, request, return_headers, err);
+  }
+  
+  
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_upgrade_conn (QWebsUpgrade self, QWebsConnection conn)
+{
+  qwebs_connection_upgrade (conn, self->on_recv);
 }
 
 //-----------------------------------------------------------------------------

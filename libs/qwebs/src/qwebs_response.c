@@ -650,3 +650,36 @@ void qwebs_response_mp_part (CapeStream s, QWebs webs, const CapeString boundary
 }
 
 //-----------------------------------------------------------------------------
+
+void qwebs_response_sp (CapeStream s, QWebs webs, const CapeString name, CapeMap return_headers)
+{
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_create (return_headers, CAPE_DIRECTION_FORW);
+  
+  // BEGIN
+  cape_stream_clr (s);
+
+  // start with the header
+  cape_stream_append_str (s, "HTTP/1.1 101 Switching Protocols\r\n");
+  qwebs_response__internal__identification (s, qwebs_identifier (webs), qwebs_provider (webs));
+
+  cape_stream_append_str (s, "Upgrade: ");
+  cape_stream_append_str (s, name);
+  cape_stream_append_str (s, "\r\n");
+
+  cape_stream_append_str (s, "Connection: Upgrade\r\n");
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    cape_stream_append_str (s, cape_map_node_key (cursor->node));
+    cape_stream_append_str (s, ": ");
+    cape_stream_append_str (s, cape_map_node_value (cursor->node));
+    cape_stream_append_str (s, "\r\n");
+  }
+
+  cape_stream_append_str (s, "\r\n");
+
+  cape_map_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------

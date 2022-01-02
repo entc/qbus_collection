@@ -49,6 +49,12 @@ __CAPE_LIBEX  CapeStream     qcrypt__hash_sha256__bin_m  (const CapeStream sourc
 __CAPE_LIBEX  CapeStream     qcrypt__hash_sha256__bin_o  (const char* bufdat, number_t buflen, CapeErr err);
 
 //-----------------------------------------------------------------------------
+
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_m  (const CapeStream source, CapeErr err);
+
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_o  (const char* bufdat, number_t buflen, CapeErr err);
+
+//-----------------------------------------------------------------------------
 // definitions for cape stream encode/decode
 
 __CAPE_LIBEX  CapeString __STDCALL qcrypt__stream_base64_encode (const CapeStream s);

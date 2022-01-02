@@ -411,6 +411,42 @@ void qwebs_request_redirect (QWebsRequest* p_self, const CapeString url)
 
 //-----------------------------------------------------------------------------
 
+void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgrade, const CapeString upgrade_name)
+{
+  int res;
+  QWebsRequest self = *p_self;
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  CapeMap return_headers = cape_map_new (NULL, qwebs_request__intern__on_headers_del, NULL);
+  CapeStream s = cape_stream_new ();
+
+  res = qwebs_upgrade_call (upgrade, self, return_headers, err);
+  if (res)
+  {
+    
+  }
+  
+  qwebs_response_sp (s, self->webs, upgrade_name, return_headers);
+
+  qwebs_connection_send (self->conn, &s);
+  
+  // keep connection
+  qwebs_connection_inc (self->conn);
+  
+  qwebs_upgrade_conn (upgrade, self->conn);
+  
+exit_and_cleanup:
+
+  cape_stream_del (&s);
+  cape_map_del (&return_headers);
+  cape_err_del (&err);
+  
+  qwebs_request_del (p_self);
+}
+
+//-----------------------------------------------------------------------------
+
 void qwebs_request_stream_init (QWebsRequest self, const CapeString boundary, const CapeString mime_type, CapeErr err)
 {
   // local objects
@@ -542,6 +578,8 @@ struct QWebsConnection_s
   int active;
   
   CapeString remote;
+  
+  fct_qwebs__on_recv on_recv;
 };
 
 //-----------------------------------------------------------------------------
@@ -550,6 +588,10 @@ static void __STDCALL qwebs_connection__cache__on_del (void* ptr)
 {
   CapeStream s = ptr; cape_stream_del (&s);
 }
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_connection__http__on_recv (QWebsConnection, const char* bufdat, number_t buflen);
 
 //-----------------------------------------------------------------------------
 
@@ -586,6 +628,8 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs,
   self->active = FALSE;
   
   self->remote = cape_str_cp (remote);
+  
+  self->on_recv = qwebs_connection__http__on_recv;
   
   return self;
 }
@@ -665,15 +709,24 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
       CapeMapNode n = cape_map_find (self->header_values, "Upgrade");
       if (n)
       {
-        QWebsUpgrade upgrade = qwebs_get_upgrade (self->webs, cape_map_node_value (n));
+        const CapeString name = cape_map_node_value (n);
+        
+        QWebsUpgrade upgrade = qwebs_get_upgrade (self->webs, name);
 
-        if (NULL == upgrade)
+        cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "request complete", "found 'upgrade' in headers with value = %s", name);
+        
+        if (upgrade)
         {
+          qwebs_request_switching_protocols (p_self, upgrade, name);
           
+          return;
         }
         else
         {
-          
+          // send error back and close connection
+
+          qwebs_request_del (p_self);
+          return;
         }
       }
     }
@@ -713,12 +766,8 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
+void __STDCALL qwebs_connection__http__on_recv (QWebsConnection self, const char* bufdat, number_t buflen)
 {
-  QWebsConnection self = ptr;
-  
-  //printf ("RECV BYTES %lu\n", buflen);
-  
   if (NULL == self->parser.data)
   {
     self->parser.data = qwebs_request_new (self->webs, self);
@@ -727,13 +776,13 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   
   //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
   http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-
+  
   //printf ("BYTES PROCESSED: %i\n", bytes_processed);
   
   if (self->parser.http_errno > 0)
   {
     CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
-
+    
     cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "on recv", "parser returned an error [%i]: %s", self->parser.http_errno, h);
     
     cape_str_del (&h);
@@ -748,18 +797,18 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
   {
     return;
   }
-
+  
   qwebs_request_complete ((QWebsRequest*)&(self->parser.data), http_method_str (self->parser.method));
   
   return;
   
   {
     QWebsRequest request = self->parser.data;
-
+    
     request->method = cape_str_cp (http_method_str (self->parser.method));
     
     //printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
-
+    
     if (request->is_complete)
     {
       
@@ -778,7 +827,7 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
           cape_log_fmt (CAPE_LL_WARN, "WEBS", "on recv", "connection type unknown");
         }
       }
-
+      
       if (request->api)
       {
         qwebs_request_api (&request);
@@ -786,13 +835,13 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       else
       {
         //printf ("FILE '%s'\'%s'\n", request->site, request->url);
-
+        
         CapeStream s = qwebs_files_get (qwebs_files (self->webs), request, request->site, request->url);
         if (s)
         {
           qwebs_connection_send (self, &s);
         }
-
+        
         qwebs_request_del (&request);
       }
       
@@ -802,6 +851,15 @@ static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSoc
       self->parser.data = NULL;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL qwebs_connection__internal__on_recv (void* ptr, CapeAioSocket socket, const char* bufdat, number_t buflen)
+{
+  QWebsConnection self = ptr;
+  
+  self->on_recv (self, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------
@@ -868,6 +926,13 @@ void qwebs_connection_dec (QWebsConnection self)
 {
   cape_aio_socket_unref (self->aio_socket);
   self->active = FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_connection_upgrade (QWebsConnection self, fct_qwebs__on_recv on_recv)
+{
+  self->on_recv = on_recv;
 }
 
 //-----------------------------------------------------------------------------

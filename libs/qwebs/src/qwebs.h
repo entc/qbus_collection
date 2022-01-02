@@ -12,15 +12,11 @@
 #include <sys/cape_err.h>
 #include <stc/cape_str.h>
 #include <stc/cape_list.h>
+#include <stc/cape_map.h>
 #include <stc/cape_udc.h>
 
 #define QWEBS_RAISE_TYPE__MINOR      1
 #define QWEBS_RAISE_TYPE__CRITICAL  10
-
-//-----------------------------------------------------------------------------
-
-struct QWebsApi_s; typedef struct QWebsApi_s* QWebsApi;
-struct QWebsUpgrade_s; typedef struct QWebsUpgrade_s* QWebsUpgrade;
 
 //-----------------------------------------------------------------------------
 
@@ -44,9 +40,9 @@ __CAPE_LIBEX     void               qwebs_set_raise     (QWebs, void* user_ptr, 
 
 //-----------------------------------------------------------------------------
 
-typedef int     (__STDCALL *fct_qwebs__on_upgrade)      (void* user_ptr, QWebsConnection connection, CapeErr err);
+typedef int     (__STDCALL *fct_qwebs__on_upgrade)      (void* user_ptr, QWebsRequest, CapeMap return_header, CapeErr err);
 
-__CAPE_LIBEX     int                qwebs_on_upgrade    (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade, CapeErr err);
+__CAPE_LIBEX     int                qwebs_on_upgrade    (QWebs, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade, fct_qwebs__on_recv, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
@@ -80,6 +76,10 @@ __CAPE_LIBEX     CapeString         qwebs_url_encode    (QWebs, const CapeString
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX     int                qwebs_api_call      (QWebsApi, QWebsRequest request, CapeErr err);
+
+__CAPE_LIBEX     int                qwebs_upgrade_call  (QWebsUpgrade, QWebsRequest request, CapeMap return_headers, CapeErr err);
+
+__CAPE_LIBEX     void               qwebs_upgrade_conn  (QWebsUpgrade, QWebsConnection);
 
 //-----------------------------------------------------------------------------
 

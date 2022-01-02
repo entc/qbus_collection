@@ -10,6 +10,7 @@
 #include "sys/cape_err.h"
 #include <stc/cape_stream.h>
 #include <stc/cape_udc.h>
+#include <stc/cape_map.h>
 
 //-----------------------------------------------------------------------------
 
@@ -28,6 +29,9 @@ __CAPE_LIBEX   void      qwebs_response_redirect  (CapeStream s, QWebs webs, con
 __CAPE_LIBEX   void      qwebs_response_mp_init   (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime);
 
 __CAPE_LIBEX   void      qwebs_response_mp_part   (CapeStream s, QWebs webs, const CapeString boundary, const CapeString mime, const char* bufdat, number_t buflen);
+
+                         /* switching protocols */
+__CAPE_LIBEX   void      qwebs_response_sp        (CapeStream s, QWebs webs, const CapeString name, CapeMap return_headers);
 
 //-----------------------------------------------------------------------------
 
