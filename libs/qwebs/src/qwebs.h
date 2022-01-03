@@ -77,7 +77,7 @@ __CAPE_LIBEX     CapeString         qwebs_url_encode    (QWebs, const CapeString
 
 __CAPE_LIBEX     int                qwebs_api_call      (QWebsApi, QWebsRequest request, CapeErr err);
 
-__CAPE_LIBEX     int                qwebs_upgrade_call  (QWebsUpgrade, QWebsRequest request, CapeMap return_headers, CapeErr err);
+__CAPE_LIBEX     void*              qwebs_upgrade_call  (QWebsUpgrade, QWebsRequest request, CapeMap return_headers, CapeErr err);
 
 __CAPE_LIBEX     void               qwebs_upgrade_conn  (QWebsUpgrade, QWebsConnection, void* user_ptr);
 

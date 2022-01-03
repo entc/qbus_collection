@@ -67,7 +67,7 @@ QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade
 
   self->on_recv = on_recv;
   self->on_del = on_del;
-    
+  
   return self;
 }
 
@@ -510,18 +510,16 @@ int qwebs_api_call (QWebsApi self, QWebsRequest request, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_upgrade_call (QWebsUpgrade self, QWebsRequest request, CapeMap return_headers, CapeErr err)
+void* qwebs_upgrade_call (QWebsUpgrade self, QWebsRequest request, CapeMap return_headers, CapeErr err)
 {
-  int res = CAPE_ERR_NONE;
+  void* ret = NULL;
   
   if (self->on_upgrade)
   {
-    res = self->on_upgrade (self->user_ptr, request, return_headers, err);
+    ret = self->on_upgrade (self->user_ptr, request, return_headers, err);
   }
-  
-  
-  
-  return res;
+
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

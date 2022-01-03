@@ -7,6 +7,7 @@ SET(QWEBS_CORE_SOURCES
   qwebs_files.c
   qwebs_multipart.c
   qwebs_response.c
+  qwebs_prot_ws.c
 )
 
 SET(QWEBS_CORE_HEADERS
@@ -17,6 +18,7 @@ SET(QWEBS_CORE_HEADERS
   qwebs_files.h
   qwebs_multipart.h
   qwebs_response.h
+  qwebs_prot_ws.h
 )
 
 #----------------------------------------------------------------------------------
