@@ -89,9 +89,68 @@ void qwebs_prot_websocket_connection_del (QWebsProtWebsocketConnection* p_self)
 
 void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeString message)
 {
+  number_t data_size = cape_str_size (message);
+  number_t size_type = 0;
+  
+  // local objects
   CapeStream s = cape_stream_new ();
   
-  cape_stream_append_str (s, message);
+  {
+    cape_uint8 bits01 = 1;  // opcode text
+    
+    bits01 |= 0B10000000;   // fin
+
+    cape_stream_append_08 (s, bits01);
+  }
+  {
+    cape_uint8 bits02 = 0;  // opcode text
+    
+    if (data_size < 126)
+    {
+      bits02 = data_size;
+    }
+    else if (data_size < 65535)
+    {
+      bits02 = 126;
+      size_type = 1;
+    }
+    else
+    {
+      bits02 = 127;
+      size_type = 2;
+    }
+    
+  //  bits02 |= 0B10000000;   // set the mask bit
+
+    cape_stream_append_08 (s, bits02);
+  }
+  
+  switch (size_type)
+  {
+    case 1:
+    {
+      cape_stream_append_16 (s, data_size, TRUE);
+      break;
+    }
+    case 2:
+    {
+      cape_stream_append_32 (s, data_size, TRUE);
+      break;
+    }
+  }
+
+  /*
+  // masking key
+  {
+    CapeString h = cape_str_random_n (4);
+    
+    cape_stream_append_buf (s, h, 4);
+    
+    cape_str_del (&h);
+  }
+   */
+  
+  cape_stream_append_buf (s, message, data_size);
   
   qwebs_connection_send (self->conn, &s);
 }
@@ -201,7 +260,7 @@ void qwebs_prot_websocket__decode_header1 (QWebsProtWebsocketConnection self, Ca
     self->data_size = bits02 & ~0B10000000;
   }
   
-  cape_log_fmt (CAPE_LL_TRACE, "AREA", "on recv", "got something: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "got something: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
 }
 
 //-----------------------------------------------------------------------------
@@ -263,7 +322,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  cape_log_fmt (CAPE_LL_TRACE, "AREA", "on recv", "received buffer with len = %i", buflen);
+  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
 
   if (self->buffer)
   {
@@ -335,8 +394,6 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
         cape_str_del (&(self->masking_key));
         self->masking_key = cape_cursor_scan_s (cursor, 4);
         
-        cape_log_fmt (CAPE_LL_TRACE, "AREA", "on recv", "with masking key");
-
         self->state = QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD;
       }
       else
@@ -375,7 +432,7 @@ void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr, QWebsConnection 
 {
   QWebsProtWebsocketConnection* p_self = (QWebsProtWebsocketConnection*)p_user_ptr;
   
-  cape_log_fmt (CAPE_LL_DEBUG, "AREA", "on upgrade", "websocket connection dropped");
+  cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "websocket", "websocket connection dropped");
   
   CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
 }
