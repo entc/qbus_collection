@@ -87,13 +87,33 @@ void qwebs_prot_websocket_connection_del (QWebsProtWebsocketConnection* p_self)
 
 //-----------------------------------------------------------------------------
 
+/*
+void qwebs_prot_websocket__encode_payload (char* bufdat, number_t buflen, const CapeString m)
+{
+  number_t i;
+  
+  for (i = 0; i < buflen; i++)
+  {
+    bufdat[i] = bufdat[i] ^ m[i % 4];
+  }
+}
+*/
+
+//-----------------------------------------------------------------------------
+
 void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeString message)
 {
   number_t data_size = cape_str_size (message);
   number_t size_type = 0;
+  //number_t data_pos;
   
   // local objects
   CapeStream s = cape_stream_new ();
+  //CapeString m = cape_str_random_n (4);
+
+  /* the server is not allowed to send masked payload
+   * -> mask was set to 0
+   */
   
   {
     cape_uint8 bits01 = 1;  // opcode text
@@ -120,7 +140,7 @@ void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeStr
       size_type = 2;
     }
     
-  //  bits02 |= 0B10000000;   // set the mask bit
+    //bits02 |= 0B10000000;   // set the mask bit
 
     cape_stream_append_08 (s, bits02);
   }
@@ -139,20 +159,20 @@ void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeStr
     }
   }
 
-  /*
   // masking key
-  {
-    CapeString h = cape_str_random_n (4);
-    
-    cape_stream_append_buf (s, h, 4);
-    
-    cape_str_del (&h);
-  }
-   */
+  //cape_stream_append_buf (s, m, 4);
   
+  // calculate the absolute position
+  //data_pos = cape_stream_a_pos (s);
+  
+  // add the message to the buffer
   cape_stream_append_buf (s, message, data_size);
   
+  // encode the message with the masking key
+  //qwebs_prot_websocket__encode_payload (cape_stream_pos_a (s, data_pos), data_size, m);
+  
   qwebs_connection_send (self->conn, &s);
+  //cape_str_del (&m);
 }
 
 //-----------------------------------------------------------------------------
@@ -260,7 +280,7 @@ void qwebs_prot_websocket__decode_header1 (QWebsProtWebsocketConnection self, Ca
     self->data_size = bits02 & ~0B10000000;
   }
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "got something: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
 }
 
 //-----------------------------------------------------------------------------

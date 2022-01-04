@@ -74,6 +74,15 @@ __CAPE_LIBEX void              cape_stream_set (CapeStream, number_t bytes_appen
 __CAPE_LIBEX char*             cape_stream_pos (CapeStream);
 
 //-----------------------------------------------------------------------------
+// stream position settings
+
+                               /* calculate the absolute position as number */
+__CAPE_LIBEX number_t          cape_stream_a_pos (CapeStream);
+
+                               /* get the data pointer at a absolute position */
+__CAPE_LIBEX char*             cape_stream_pos_a (CapeStream, number_t);
+
+//-----------------------------------------------------------------------------
 // convert to other types
 
                                /* converts the stream into a string, stream will be deleted */

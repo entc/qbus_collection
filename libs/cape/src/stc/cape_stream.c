@@ -305,6 +305,20 @@ char* cape_stream_pos (CapeStream self)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_stream_a_pos (CapeStream self)
+{
+  return (self->pos - self->buffer);
+}
+
+//-----------------------------------------------------------------------------
+
+char* cape_stream_pos_a (CapeStream self, number_t absolute_position)
+{
+  return (self->buffer + absolute_position);
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_append_str (CapeStream self, const char* s)
 {
   if (s)
