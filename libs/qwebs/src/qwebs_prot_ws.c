@@ -16,7 +16,9 @@
 
 struct QWebsProtWebsocketConnection_s
 {
-  QWebsProtWebsocket ws;
+  QWebsProtWebsocket ws;     // reference
+  QWebsConnection conn;      // reference
+  
   void* conn_ptr;
   
   number_t state;
@@ -33,7 +35,7 @@ struct QWebsProtWebsocketConnection_s
   
   CapeStream buffer;
 
-}; typedef struct QWebsProtWebsocketConnection_s* QWebsProtWebsocketConnection;
+};
 
 //-----------------------------------------------------------------------------
 
@@ -44,11 +46,13 @@ struct QWebsProtWebsocketConnection_s
 
 //-----------------------------------------------------------------------------
 
-QWebsProtWebsocketConnection qwebs_prot_websocket_connection_new (QWebsProtWebsocket ws)
+QWebsProtWebsocketConnection qwebs_prot_websocket_connection_new (QWebsProtWebsocket ws, QWebsConnection conn)
 {
   QWebsProtWebsocketConnection self = CAPE_NEW (struct QWebsProtWebsocketConnection_s);
 
   self->ws = ws;
+  self->conn = conn;
+  
   self->conn_ptr = NULL;
   
   self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
@@ -79,6 +83,17 @@ void qwebs_prot_websocket_connection_del (QWebsProtWebsocketConnection* p_self)
     
     CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeString message)
+{
+  CapeStream s = cape_stream_new ();
+  
+  cape_stream_append_str (s, message);
+  
+  qwebs_connection_send (self->conn, &s);
 }
 
 //-----------------------------------------------------------------------------
@@ -151,11 +166,11 @@ void* __STDCALL qwebs_prot_websocket__on_upgrade (void* user_ptr, QWebsRequest r
     cape_map_insert (return_header, cape_str_cp ("Sec-WebSocket-Accept"), accept_key);
   }
   
-  ret = qwebs_prot_websocket_connection_new (self);
+  ret = qwebs_prot_websocket_connection_new (self, qwebs_request_conn (request));
   
   if (self->on_conn)
   {
-    ret->conn_ptr = self->on_conn (self->user_ptr);
+    ret->conn_ptr = self->on_conn (self->user_ptr, ret);
   }
   
 exit_and_cleanup:

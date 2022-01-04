@@ -977,3 +977,10 @@ CapeString qwebs_request_remote (QWebsRequest self)
 }
 
 //-----------------------------------------------------------------------------
+
+QWebsConnection qwebs_request_conn (QWebsRequest self)
+{
+  return self->conn;
+}
+
+//-----------------------------------------------------------------------------

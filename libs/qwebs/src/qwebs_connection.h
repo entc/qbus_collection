@@ -27,6 +27,8 @@ __CAPE_LIBEX     void               qwebs_connection_upgrade    (QWebsConnection
 
 __CAPE_LIBEX     QWebsRequest       qwebs_connection_factory    (QWebsConnection);
 
+__CAPE_LIBEX     void               qwebs_connection_send       (QWebsConnection, CapeStream*);
+
 __CAPE_LIBEX     void               qwebs_connection_close      (QWebsConnection);
 
 //-----------------------------------------------------------------------------
@@ -60,6 +62,8 @@ __CAPE_LIBEX     CapeStream         qwebs_request_body          (QWebsRequest);
 __CAPE_LIBEX     const CapeString   qwebs_request_method        (QWebsRequest);
 
 __CAPE_LIBEX     CapeString         qwebs_request_remote        (QWebsRequest);
+
+__CAPE_LIBEX     QWebsConnection    qwebs_request_conn          (QWebsRequest);
 
 //-----------------------------------------------------------------------------
 
