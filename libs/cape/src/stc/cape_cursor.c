@@ -71,6 +71,13 @@ const char* cape_cursor_dpos (CapeCursor self)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_cursor_apos (CapeCursor self)
+{
+  return (self->pos - self->buffer);
+}
+
+//-----------------------------------------------------------------------------
+
 const char* cape_cursor_tpos (CapeCursor self, number_t len)
 {
   const char* ret = self->pos;

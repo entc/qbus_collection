@@ -34,6 +34,9 @@ __CAPE_LIBEX number_t        cape_cursor_tail       (CapeCursor);
 
 __CAPE_LIBEX const char*     cape_cursor_dpos       (CapeCursor);
 
+                             /* get the absolute number of the position, if = 0 -> no traversal was made */
+__CAPE_LIBEX number_t        cape_cursor_apos       (CapeCursor);
+
                              /* get the current position and travers the len further */
 __CAPE_LIBEX const char*     cape_cursor_tpos       (CapeCursor, number_t len);
 
