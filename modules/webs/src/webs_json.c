@@ -187,7 +187,6 @@ static int __STDCALL qbus_webs__auth__on_call (QBus qbus, void* ptr, QBusM qin, 
           
           // clean up
           qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
-          
           return qbus_continue (self->qbus, "AUTH", "getVaultSecret", qin, (void**)&self, qbus_webs__file__on_vsec, err);
         }
       }
