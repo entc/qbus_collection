@@ -13,7 +13,6 @@ import { IFlowEditorWidget } from './widgets';
   selector: 'flow-editor-worksteps',
   templateUrl: './component.html',
 })
-
 export class FlowWorkstepsComponent implements OnInit
 {
   @Input('wfid') wfid: number;
