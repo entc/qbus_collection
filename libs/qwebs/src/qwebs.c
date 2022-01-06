@@ -27,6 +27,7 @@ struct QWebsUpgrade_s
   void* user_ptr;
 
   // connection handling
+  fct_qwebs__on_switched on_switched;
   fct_qwebs__on_recv on_recv;
   fct_qwebs__on_del on_del;
 };
@@ -58,13 +59,14 @@ void qwebs_api_del (QWebsApi* p_self)
 
 //-----------------------------------------------------------------------------
 
-QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
+QWebsUpgrade qwebs_upgrade_new (void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_switched on_switched, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
 {
   QWebsUpgrade self = CAPE_NEW (struct QWebsUpgrade_s);
   
   self->on_upgrade = on_upgrade;
   self->user_ptr = user_ptr;
 
+  self->on_switched = on_switched;
   self->on_recv = on_recv;
   self->on_del = on_del;
   
@@ -327,14 +329,14 @@ void qwebs_set_raise (QWebs self, void* user_ptr, fct_qwebs__on_raise on_raise)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del, CapeErr err)
+int qwebs_on_upgrade (QWebs self, const CapeString name, void* user_ptr, fct_qwebs__on_upgrade on_upgrade, fct_qwebs__on_switched on_switched, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del, CapeErr err)
 {
   if (name)
   {
     CapeMapNode n = cape_map_find (self->request_upgrades, name);
     if (NULL == n)
     {
-      QWebsUpgrade upgrade = qwebs_upgrade_new (user_ptr, on_upgrade, on_recv, on_del);
+      QWebsUpgrade upgrade = qwebs_upgrade_new (user_ptr, on_upgrade, on_switched, on_recv, on_del);
       
       // transfer ownership to the map
       cape_map_insert (self->request_upgrades, cape_str_cp (name), upgrade);
@@ -527,6 +529,13 @@ void* qwebs_upgrade_call (QWebsUpgrade self, QWebsRequest request, CapeMap retur
 void qwebs_upgrade_conn (QWebsUpgrade self, QWebsConnection conn, void* user_ptr)
 {
   qwebs_connection_upgrade (conn, user_ptr, self->on_recv, self->on_del);
+  
+  if (self->on_switched)
+  {
+    cape_log_msg (CAPE_LL_TRACE, "QWEBS", "upgrade", "switched protocol done");
+    
+    self->on_switched (user_ptr);
+  }
 }
 
 //-----------------------------------------------------------------------------

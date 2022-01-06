@@ -8,6 +8,7 @@
 #include "sys/cape_types.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_map.h"
 #include "stc/cape_stream.h"
 
 //-----------------------------------------------------------------------------
@@ -24,14 +25,17 @@ __CAPE_LIBEX   int                   qwebs_prot_websocket_init   (QWebsProtWebso
 //-----------------------------------------------------------------------------
 
                /* called if a new connection was established, return void* as conn_ptr */
-typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)    (void* user_ptr, QWebsProtWebsocketConnection connection);
+typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)    (void* user_ptr, QWebsProtWebsocketConnection connection, CapeMap query);
+
+               /* called after upgrade was done */
+typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_init)    (void* conn_ptr);
 
                /* a new message was received */
 typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_msg)     (void* conn_ptr, CapeString message);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void                  qwebs_prot_websocket_cb     (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_msg);
+__CAPE_LIBEX   void                  qwebs_prot_websocket_cb     (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_init, fct_qwebs_prot_websocket__on_msg);
 
 __CAPE_LIBEX   void                  qwebs_prot_websocket_send   (QWebsProtWebsocketConnection connection, const CapeString message);
 
