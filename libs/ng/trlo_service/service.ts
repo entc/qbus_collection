@@ -56,6 +56,39 @@ export class TrloService
   {
     return formatDate (date_in_iso, format_type, this.locale);
   }
+
+  //---------------------------------------------------------------------------
+
+  public diff_date (date_in_iso: string): string
+  {
+    var time = new Date().getTime() - new Date(date_in_iso).getTime();
+
+    if (time < 1000)
+    {
+      return time + ' ms';
+    }
+    else if (time < 60000)
+    {
+      return Math.floor (time / 1000) + ' sec';
+    }
+    else if (time < 3600000)
+    {
+      var min = Math.floor (time / 60000);
+      var sec = Math.floor ((time - min * 60000) / 1000);
+      return min + ':' + String(sec).padStart(2 ,"0") + ' min';
+    }
+    else if (time < 86400000)
+    {
+      var hrs = Math.floor (time / 3600000);
+      var min = Math.floor ((time - hrs * 3600000) / 60000);
+
+      return hrs + ':' + String(min).padStart(2 ,"0") + ' hrs';
+    }
+    else
+    {
+      return Math.floor (time / 86400000) + ' days';
+    }
+  }
 }
 
 //=============================================================================
@@ -103,6 +136,30 @@ export class TrloPipeLocale implements PipeTransform {
     if (value)
     {
       return this.trlo_service.format_date (value, 'short');
+    }
+    else
+    {
+      return '';
+    }
+  }
+}
+
+//=============================================================================
+
+@Pipe({name: 'trlo_timediff'})
+export class TrloPipeTimediff implements PipeTransform {
+
+  constructor (private trlo_service: TrloService)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  transform (value: string): string
+  {
+    if (value)
+    {
+      return this.trlo_service.diff_date (value);
     }
     else
     {

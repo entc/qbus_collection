@@ -111,6 +111,11 @@ int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeErr err)
   cape_udc_add_n    (values, "refid"        , self->refid);
   cape_udc_add_n    (values, "psid"         , self->psid);
 
+  {
+    CapeDatetime dt; cape_datetime_utc (&dt);    
+    cape_udc_add_d (values, "toc", &dt);
+  }
+  
   // execute the query
   self->fiid = adbl_trx_insert (trx, "flow_instance", &values, err);
   
@@ -989,13 +994,15 @@ int flow_process_all (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "wfid"          , 0);
+    cape_udc_add_n      (values, "refid"         , 0);
+    cape_udc_add_d      (values, "toc"           , NULL);
     cape_udc_add_n      (values, "active"        , 0);
     cape_udc_add_s_cp   (values, "step_name"     , NULL);
     cape_udc_add_n      (values, "fctid"         , 0);
     cape_udc_add_s_cp   (values, "wf_name"       , NULL);
     cape_udc_add_n      (values, "t_data"        , 0);
     cape_udc_add_n      (values, "p_data"        , 0);
-
+    
     if (self->wpid)
     {
       CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -1003,7 +1010,7 @@ int flow_process_all (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
       cape_udc_add_n    (params, "wpid"          , self->wpid);
 
       // execute the query
-      // select ps.id, ps.wpid, ps.wfid, ps.active, ws.name step_name, ws.fctid, wf.name wf_name, ps.t_data, ws.p_data from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step join proc_workflows wf on wf.id = ps.wfid where sync is null;
+      // select ps.id, ps.wpid, ps.wfid, fi.refid, fi.toc, ps.active, ws.name step_name, ws.fctid, wf.name wf_name, ps.t_data, ws.p_data from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step join proc_workflows wf on wf.id = ps.wfid join flow_instance fi on fi.wfid = wf.id and fi.psid = ps.id;
       query_results = adbl_session_query (self->adbl_session, "flow_process_get_view", &params, &values, err);
     }
     else

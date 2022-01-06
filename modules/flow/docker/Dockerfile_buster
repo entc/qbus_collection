@@ -7,6 +7,7 @@ FROM bitnami/minideb:buster
 
 RUN apt-get update && apt-get install -y \
   libmariadb-dev-compat \
+  libssl-dev \
   && rm -rf /var/lib/apt/lists/*
   
 COPY --from=0 /opt .
