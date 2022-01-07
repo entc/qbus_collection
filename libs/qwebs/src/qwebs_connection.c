@@ -106,7 +106,8 @@ void qwebs_request_del (QWebsRequest* p_self)
   {
     QWebsRequest self = *p_self;
     
-    qwebs_connection_dec (self->conn);
+    // TODO: check this
+    //qwebs_connection_dec (self->conn);
 
     cape_str_del (&(self->method));
     cape_str_del (&(self->url));
@@ -431,17 +432,29 @@ void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgra
   {
     QWebsConnection conn = self->conn;
   
-    // delete this bevor upgrade / otherwise race condition  
+    // delete this before upgrade / otherwise race condition  
     qwebs_request_del (p_self);
+    
+    printf ("PSELF #1: %p\n", *p_self);
 
     qwebs_upgrade_conn (upgrade, conn, user_ptr);
   }
+
+  printf ("PSELF #2: %p\n", *p_self);
   
 exit_and_cleanup:
 
   cape_stream_del (&s);
+
+  printf ("PSELF #3: %p\n", *p_self);
+
   cape_map_del (&return_headers);
+
+  printf ("PSELF #4: %p\n", *p_self);
+
   cape_err_del (&err);
+
+  printf ("PSELF #5: %p\n", *p_self);
   
   qwebs_request_del (p_self);
 }
@@ -578,7 +591,11 @@ QWebsProtHttp qwebs_prot_http_new ()
 {
   QWebsProtHttp self = CAPE_NEW (struct QWebsProtHttp_s);
 
+  printf ("PSELF PROT #1: %p\n", self);
+
   http_parser_init (&(self->parser), HTTP_REQUEST);
+  
+  printf ("PARSER #1 %p\n", &(self->parser));
   
   // initialize the HTTP parser
   http_parser_settings_init (&(self->settings));
@@ -595,6 +612,8 @@ QWebsProtHttp qwebs_prot_http_new ()
   self->settings.on_chunk_header = NULL;
   self->settings.on_chunk_complete = NULL;
   
+  printf ("PSELF PROT #2: %p\n", self);
+  
   return self;
 }
 
@@ -604,9 +623,13 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
 {
   if (*p_self)
   {
-    // QWebsProtHttp self = *p_self;
+    printf ("PSELF PROT: %p\n", *p_self);
     
-    CAPE_DEL (p_self, struct QWebsProtHttp_s);
+    QWebsProtHttp self = *p_self;
+    
+    printf ("PARSER %p\n", &(self->parser));
+    
+    //CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
 }
 
@@ -817,7 +840,6 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
         if (upgrade)
         {
           qwebs_request_switching_protocols (p_self, upgrade, name);
-          
           return;
         }
         else
