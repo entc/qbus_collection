@@ -102,8 +102,6 @@ QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
 
 void qwebs_request_del (QWebsRequest* p_self)
 {
-  printf ("DEL REQUEST %p\n", *p_self);
-
   if (*p_self)
   {
     QWebsRequest self = *p_self;
@@ -427,9 +425,17 @@ void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgra
   
   qwebs_response_sp (s, self->webs, upgrade_name, return_headers);
 
+  // send the upgrade to the browser
   qwebs_connection_send (self->conn, &s);
+
+  {
+    QWebsConnection conn = self->conn;
   
-  qwebs_upgrade_conn (upgrade, self->conn, user_ptr);
+    // delete this bevor upgrade / otherwise race condition  
+    qwebs_request_del (p_self);
+
+    qwebs_upgrade_conn (upgrade, conn, user_ptr);
+  }
   
 exit_and_cleanup:
 
@@ -643,7 +649,7 @@ void __STDCALL qwebs_prot_http__on_recv (void* user_ptr, QWebsConnection conn, c
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_http__on_del (void** p_user_ptr, QWebsConnection conn)
+void __STDCALL qwebs_prot_http__on_del (void** p_user_ptr)
 {
   qwebs_prot_http_del ((QWebsProtHttp*)p_user_ptr);
 }
@@ -874,8 +880,11 @@ static void __STDCALL qwebs_connection__internal__on_done (void* ptr, void* user
   
   cape_log_msg (CAPE_LL_TRACE, "QWEBS", "on done", "connection dropped");
   
-  // clear connection handling
-  self->on_del (&(self->user_ptr), self);
+  if (self->on_del)
+  {
+    // clear connection handling
+    self->on_del (&(self->user_ptr));
+  }
   
   // check for userdata
   if (userdata)
@@ -942,7 +951,10 @@ void qwebs_connection_dec (QWebsConnection self)
 void qwebs_connection_upgrade (QWebsConnection self, void* user_ptr, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
 {
   // cleanup old connection handling
-  self->on_del (&(self->user_ptr), self);
+  if (self->on_del)
+  {
+    self->on_del (&(self->user_ptr));
+  }
   
   // set new connection handling
   self->user_ptr = user_ptr;

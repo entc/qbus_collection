@@ -467,7 +467,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr, QWebsConnection conn)
+void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr)
 {
   QWebsProtWebsocketConnection* p_self = (QWebsProtWebsocketConnection*)p_user_ptr;
   
