@@ -299,7 +299,7 @@ void qwebs_prot_websocket__decode_header1 (QWebsProtWebsocketConnection self, Ca
     self->data_size = bits02 & ~0B10000000;
   }
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
+  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
 }
 
 //-----------------------------------------------------------------------------

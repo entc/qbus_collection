@@ -102,6 +102,8 @@ QWebsRequest qwebs_request_new (QWebs webs, QWebsConnection conn)
 
 void qwebs_request_del (QWebsRequest* p_self)
 {
+  printf ("DEL REQUEST %p\n", *p_self);
+
   if (*p_self)
   {
     QWebsRequest self = *p_self;
@@ -596,10 +598,8 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
 {
   if (*p_self)
   {
-    QWebsProtHttp self = *p_self;
+    // QWebsProtHttp self = *p_self;
     
-    qwebs_request_del ((QWebsRequest*)&(self->parser.data));
-
     CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
 }
