@@ -106,7 +106,8 @@ void qwebs_request_del (QWebsRequest* p_self)
   {
     QWebsRequest self = *p_self;
     
-    qwebs_connection_dec (self->conn);
+    // TODO: check this
+    //qwebs_connection_dec (self->conn);
 
     cape_str_del (&(self->method));
     cape_str_del (&(self->url));
@@ -425,15 +426,35 @@ void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgra
   
   qwebs_response_sp (s, self->webs, upgrade_name, return_headers);
 
+  // send the upgrade to the browser
   qwebs_connection_send (self->conn, &s);
+
+  {
+    QWebsConnection conn = self->conn;
   
-  qwebs_upgrade_conn (upgrade, self->conn, user_ptr);
+    // delete this before upgrade / otherwise race condition  
+    qwebs_request_del (p_self);
+    
+    printf ("PSELF #1: %p\n", *p_self);
+
+    qwebs_upgrade_conn (upgrade, conn, user_ptr);
+  }
+
+  printf ("PSELF #2: %p\n", *p_self);
   
 exit_and_cleanup:
 
   cape_stream_del (&s);
+
+  printf ("PSELF #3: %p\n", *p_self);
+
   cape_map_del (&return_headers);
+
+  printf ("PSELF #4: %p\n", *p_self);
+
   cape_err_del (&err);
+
+  printf ("PSELF #5: %p\n", *p_self);
   
   qwebs_request_del (p_self);
 }
@@ -570,7 +591,11 @@ QWebsProtHttp qwebs_prot_http_new ()
 {
   QWebsProtHttp self = CAPE_NEW (struct QWebsProtHttp_s);
 
+  printf ("PSELF PROT #1: %p\n", self);
+
   http_parser_init (&(self->parser), HTTP_REQUEST);
+  
+  printf ("PARSER #1 %p\n", &(self->parser));
   
   // initialize the HTTP parser
   http_parser_settings_init (&(self->settings));
@@ -587,6 +612,8 @@ QWebsProtHttp qwebs_prot_http_new ()
   self->settings.on_chunk_header = NULL;
   self->settings.on_chunk_complete = NULL;
   
+  printf ("PSELF PROT #2: %p\n", self);
+  
   return self;
 }
 
@@ -596,11 +623,13 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
 {
   if (*p_self)
   {
+    printf ("PSELF PROT: %p\n", *p_self);
+    
     QWebsProtHttp self = *p_self;
     
-    qwebs_request_del ((QWebsRequest*)&(self->parser.data));
-
-    CAPE_DEL (p_self, struct QWebsProtHttp_s);
+    printf ("PARSER %p\n", &(self->parser));
+    
+    //CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
 }
 
@@ -643,7 +672,7 @@ void __STDCALL qwebs_prot_http__on_recv (void* user_ptr, QWebsConnection conn, c
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_http__on_del (void** p_user_ptr, QWebsConnection conn)
+void __STDCALL qwebs_prot_http__on_del (void** p_user_ptr)
 {
   qwebs_prot_http_del ((QWebsProtHttp*)p_user_ptr);
 }
@@ -811,7 +840,6 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
         if (upgrade)
         {
           qwebs_request_switching_protocols (p_self, upgrade, name);
-          
           return;
         }
         else
@@ -874,8 +902,11 @@ static void __STDCALL qwebs_connection__internal__on_done (void* ptr, void* user
   
   cape_log_msg (CAPE_LL_TRACE, "QWEBS", "on done", "connection dropped");
   
-  // clear connection handling
-  self->on_del (&(self->user_ptr), self);
+  if (self->on_del)
+  {
+    // clear connection handling
+    self->on_del (&(self->user_ptr));
+  }
   
   // check for userdata
   if (userdata)
@@ -942,7 +973,10 @@ void qwebs_connection_dec (QWebsConnection self)
 void qwebs_connection_upgrade (QWebsConnection self, void* user_ptr, fct_qwebs__on_recv on_recv, fct_qwebs__on_del on_del)
 {
   // cleanup old connection handling
-  self->on_del (&(self->user_ptr), self);
+  if (self->on_del)
+  {
+    self->on_del (&(self->user_ptr));
+  }
   
   // set new connection handling
   self->user_ptr = user_ptr;

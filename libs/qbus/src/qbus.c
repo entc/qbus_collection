@@ -229,40 +229,11 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  /*
-  else if (strcmp (type, "socket") == 0)
-  {
-    // check if we have host and port
-    const CapeString host = cape_udc_get_s (remote, "host", NULL);
-    number_t port = cape_udc_get_n (remote, "port", 0);
-    
-    if (host && port)
-    {
-      self->engine_tcp_out = qbus_engine_tcp_out_new (self->aio, self->route, host, port);
-      
-      // power up engine
-      {
-        CapeErr err = cape_err_new ();
-        
-        int res = qbus_engine_tcp_out_reconnect (self->engine_tcp_out, err);
-        if (res)
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "add remote", "error in connect: %s", cape_err_text (err));
-        }
-        
-        cape_err_del (&err);
-      }
-    }
-    
-    return CAPE_ERR_NONE;
-  }
-   */
-
-  
-  
-//  if (strcmp (type, "tcp") == 0)
   {
     QbusEngineResult result;
+    
+    result.engine = NULL;
+    result.entity = NULL;
     
     res = qbus_load_engine (self, type, remote, &result, err);
     if (res)
@@ -270,6 +241,13 @@ int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
       goto exit_and_cleanup;
     }
 
+    // to be on the safe side
+    if (NULL == result.engine || NULL == result.entity)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.INTERNAL_ERROR");
+      goto exit_and_cleanup;
+    }
+    
     res = qbus_engine_reconnect (result.engine, result.entity, err);
   }
   
@@ -292,58 +270,25 @@ int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  /*
-  if (strcmp (type, "pipe") == 0)
-  {
-    // check if we have name and path
-    const CapeString name = cape_udc_get_s (bind, "name", NULL);
-    const CapeString path = cape_udc_get_s (bind, "path", NULL);
-    
-    if (name && path)
-    {
-      
-    }
-    
-    return;
-  }
-  
-  if (strcmp (type, "socket") == 0)
-  {
-    // check if we have host and port
-    const CapeString host = cape_udc_get_s (bind, "host", NULL);
-    number_t port = cape_udc_get_n (bind, "port", 0);
-    
-    if (host && port)
-    {
-      self->engine_tcp_inc = qbus_engine_tcp_inc_new (self->aio, self->route, host, port);
-      
-      // power up engine
-      {
-        CapeErr err = cape_err_new ();
-        
-        int res = qbus_engine_tcp_inc_listen (self->engine_tcp_inc, err);
-        if (res)
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "add income", "error in listen: %s", cape_err_text (err));
-        }
-        
-        cape_err_del (&err);
-      }
-    }
-    
-    return;
-  }
-   */
-  
   {
     QbusEngineResult result;
     
+    result.engine = NULL;
+    result.entity = NULL;
+
     res = qbus_load_engine (self, type, bind, &result, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
     
+    // to be on the safe side
+    if (NULL == result.engine || NULL == result.entity)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.INTERNAL_ERROR");
+      goto exit_and_cleanup;
+    }
+
     res = qbus_engine_listen (result.engine, result.entity, err);
   }
 
