@@ -61,12 +61,13 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthSession self = *p_self;
   
-  number_t vp = 600;   // 10 minutes
+  number_t session_ttl = 600;   // 10 minutes
   number_t type;
   
   // local objects
   CapeString session_token = cape_str_uuid ();
   CapeString session_token_hash = NULL;
+  CapeString session_locale = NULL;
   
   CapeString h1 = NULL;
   CapeString h2 = NULL;
@@ -139,10 +140,13 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 
     cape_udc_add_s_cp   (values, "remote"      , NULL);
 
+    cape_udc_add_s_cp   (values, "opt_locale"  , NULL);
+    cape_udc_add_n      (values, "opt_ttl"     , 0);
+
     /*
      auth_sessions_wp_view
      
-     select au.id id, wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, au.ha_value, wp.active wp_active, qu.secret from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id join q5_users qu on qu.id = ru.userid;
+     select au.id id, wp.id wpid, gp.id gpid, ru.id usid, ru.state state, gp.firstname, gp.lastname, wp.name workspace, au.token, au.lt lt, au.lu lu, au.vp vp, au.remote, au.roles, au.ha_value, wp.active wp_active, qu.secret, ru.opt_locale, ru.opt_ttl from rbac_workspaces wp join glob_persons gp on gp.wpid = wp.id join rbac_users ru on ru.wpid = wp.id and ru.gpid = gp.id left join auth_sessions au on au.wpid = wp.id and au.gpid = gp.id join q5_users qu on qu.id = ru.userid;
      */
     
     // execute the query
@@ -161,6 +165,21 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  {
+    CapeUdc h = cape_udc_get (first_row, "opt_locale");
+    if (h)
+    {
+      session_locale = cape_udc_s_mv (h, NULL);
+    }
+  }
+  {
+    CapeUdc h = cape_udc_get (first_row, "opt_ttl");
+    if (h)
+    {
+      session_ttl = cape_udc_n (h, session_ttl);
+    }
+  }
+  
   roles = cape_udc_ext (qin->rinfo, "roles");
   if (roles == NULL)
   {
@@ -232,7 +251,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
       cape_udc_add_d (values, "lu", &dt);
     }
 
-    cape_udc_add_n      (values, "vp"            , vp);
+    cape_udc_add_n      (values, "vp"            , session_ttl);
 
     cape_udc_add_s_mv   (values, "roles"         , &h2);
     
@@ -312,7 +331,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_n      (first_row, "gpid"        , self->gpid);
   
   // set the vp
-  cape_udc_add_n (first_row, "vp", vp);
+  cape_udc_add_n (first_row, "vp", session_ttl);
   
   res = CAPE_ERR_NONE;
   adbl_trx_commit (&trx, err);
