@@ -1,12 +1,13 @@
 import { Component, EventEmitter } from '@angular/core';
 import { IWorkstep } from './headers';
+import { Observable, BehaviorSubject } from 'rxjs';
 
 //-----------------------------------------------------------------------------
 
 export abstract class IFlowEditorWidget
 {
-  protected event_emitter: EventEmitter<IWorkstep> = undefined;
-  public content: IWorkstep;
+  // this is a reference to the one in WorkstepAddModelComponent
+  protected workstep: BehaviorSubject<IWorkstep>;
 
   //---------------------------------------------------------------------------
 
@@ -16,39 +17,28 @@ export abstract class IFlowEditorWidget
 
   //---------------------------------------------------------------------------
 
-  public set content_setter (val: IWorkstep)
+  protected on_init ()
   {
-    this.on_content_change (val);
+
   }
 
   //---------------------------------------------------------------------------
 
-  public set emitter (emitter: EventEmitter<IWorkstep>)
+  public set workstep_content (workstep_content: BehaviorSubject<IWorkstep>)
   {
-    this.event_emitter = emitter;
+    this.workstep = workstep_content;
+    this.on_init ();
   }
 
   //---------------------------------------------------------------------------
 
-  protected emit (content: IWorkstep)
+  protected submit_pdata_append (name: string, data: object)
   {
-    console.log('new content emitted');
+    const workstep: IWorkstep = this.workstep.value;
 
-    if (this.event_emitter)
-    {
-      this.event_emitter.emit (content);
-    }
-    else
-    {
-      console.log('no emitter was set');
-    }
-  }
+    workstep.pdata[name] = data;
 
-  //---------------------------------------------------------------------------
-
-  protected on_content_change (val: IWorkstep)
-  {
-    this.content = val;
+    this.workstep.next (workstep);
   }
 }
 
@@ -71,10 +61,7 @@ export class FlowWidgetSyncronComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    console.log('emit changes from form');
-
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -97,8 +84,7 @@ export class FlowWidgetAsyncronComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -121,8 +107,7 @@ export class FlowWidgetWaitforlistComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -145,8 +130,7 @@ export class FlowWidgetSplitComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -169,8 +153,7 @@ export class FlowWidgetSwitchComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -193,8 +176,7 @@ export class FlowWidgetIfComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -217,8 +199,7 @@ export class FlowWidgetCopyComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -241,8 +222,7 @@ export class FlowWidgetCreateNodeComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
 
@@ -265,7 +245,6 @@ export class FlowWidgetMoveComponent extends IFlowEditorWidget {
 
   on_pdata_change (data, name)
   {
-    this.content.pdata[name] = data;
-    this.emit (this.content);
+    this.submit_pdata_append (name, data);
   }
 }
