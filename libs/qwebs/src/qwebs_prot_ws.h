@@ -18,26 +18,28 @@ struct QWebsProtWebsocketConnection_s; typedef struct QWebsProtWebsocketConnecti
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QWebsProtWebsocket    qwebs_prot_websocket_new    (QWebs webs);
+__CAPE_LIBEX   QWebsProtWebsocket   qwebs_prot_websocket_new        (QWebs webs);
 
-__CAPE_LIBEX   int                   qwebs_prot_websocket_init   (QWebsProtWebsocket, CapeErr err);
+__CAPE_LIBEX   int                  qwebs_prot_websocket_init       (QWebsProtWebsocket, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
                /* called if a new connection was established, return void* as conn_ptr */
-typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)    (void* user_ptr, QWebsProtWebsocketConnection connection, CapeMap query);
+typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)        (void* user_ptr, QWebsProtWebsocketConnection connection, CapeMap query);
 
                /* called after upgrade was done */
-typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_init)    (void* conn_ptr);
+typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_init)        (void* conn_ptr);
 
                /* a new message was received */
-typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_msg)     (void* conn_ptr, CapeString message);
+typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_msg)         (void* conn_ptr, CapeString message);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void                  qwebs_prot_websocket_cb     (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_init, fct_qwebs_prot_websocket__on_msg);
+__CAPE_LIBEX   void                 qwebs_prot_websocket_cb         (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_init, fct_qwebs_prot_websocket__on_msg);
 
-__CAPE_LIBEX   void                  qwebs_prot_websocket_send   (QWebsProtWebsocketConnection connection, const CapeString message);
+__CAPE_LIBEX   void                 qwebs_prot_websocket_send_s     (QWebsProtWebsocketConnection connection, const CapeString message);
+
+__CAPE_LIBEX   void                 qwebs_prot_websocket_send_buf   (QWebsProtWebsocketConnection connection, const char* bufdat, number_t buflen);
 
 //-----------------------------------------------------------------------------
 
