@@ -7,7 +7,7 @@ import { Observable, BehaviorSubject } from 'rxjs';
 export abstract class IFlowEditorWidget
 {
   // this is a reference to the one in WorkstepAddModelComponent
-  protected workstep: BehaviorSubject<IWorkstep>;
+  public workstep: BehaviorSubject<IWorkstep>;
 
   //---------------------------------------------------------------------------
 
