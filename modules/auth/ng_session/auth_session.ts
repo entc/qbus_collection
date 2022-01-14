@@ -1,5 +1,5 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
@@ -396,6 +396,30 @@ export class AuthSession
       var params: string = JSON.stringify (qbus_params);
 
       return this.handle_error_session<T> (this.http.post<T>(url, params, {}));
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public blob_rpc_resp (qbus_module: string, qbus_method: string, qbus_params: object): Observable<HttpResponse<Blob>>
+  {
+    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
+    if (enjs)
+    {
+      var req = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob', observe: 'response'}));
+
+      // decrypt the content
+      return req;
+    }
+    else
+    {
+      // construct url
+      var url: string = this.session_url (qbus_module, qbus_method);
+
+      // construct other values
+      var params: string = JSON.stringify (qbus_params);
+
+      return this.handle_error_session (this.http.post(url, params, {responseType: 'blob', observe: 'response'}));
     }
   }
 
