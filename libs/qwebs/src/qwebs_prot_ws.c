@@ -14,6 +14,15 @@
 
 //-----------------------------------------------------------------------------
 
+#define RFC_WEBSOCKET_FRAME__CONTINUATION    0x0
+#define RFC_WEBSOCKET_FRAME__TEXT            0x1
+#define RFC_WEBSOCKET_FRAME__BINARY          0x2
+#define RFC_WEBSOCKET_FRAME__CLOSED          0x8
+#define RFC_WEBSOCKET_FRAME__PING            0x9
+#define RFC_WEBSOCKET_FRAME__PONG            0xa
+
+//-----------------------------------------------------------------------------
+
 struct QWebsProtWebsocketConnection_s
 {
   QWebsProtWebsocket ws;     // reference
@@ -101,35 +110,31 @@ void qwebs_prot_websocket__encode_payload (char* bufdat, number_t buflen, const 
 
 //-----------------------------------------------------------------------------
 
-void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeString message)
+void qwebs_prot_websocket_send__frame (QWebsProtWebsocketConnection self, number_t opcode, const char* bufdat, number_t buflen)
 {
-  number_t data_size = cape_str_size (message);
-  number_t size_type = 0;
-  //number_t data_pos;
-  
   // local objects
   CapeStream s = cape_stream_new ();
-  //CapeString m = cape_str_random_n (4);
-
+  number_t size_type = 0;
+  
   /* the server is not allowed to send masked payload
    * -> mask was set to 0
    */
-  
+
   {
-    cape_uint8 bits01 = 1;  // opcode text
+    cape_uint8 bits01 = opcode;  // opcode text
     
     bits01 |= 0B10000000;   // fin
-
+    
     cape_stream_append_08 (s, bits01);
   }
   {
-    cape_uint8 bits02 = 0;  // opcode text
+    cape_uint8 bits02 = 0;
     
-    if (data_size < 126)
+    if (buflen < 126)
     {
-      bits02 = data_size;
+      bits02 = buflen;
     }
-    else if (data_size < 65535)
+    else if (buflen < 65535)
     {
       bits02 = 126;
       size_type = 1;
@@ -140,8 +145,6 @@ void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeStr
       size_type = 2;
     }
     
-    //bits02 |= 0B10000000;   // set the mask bit
-
     cape_stream_append_08 (s, bits02);
   }
   
@@ -149,30 +152,36 @@ void qwebs_prot_websocket_send (QWebsProtWebsocketConnection self, const CapeStr
   {
     case 1:
     {
-      cape_stream_append_16 (s, data_size, TRUE);
+      cape_stream_append_16 (s, buflen, TRUE);
       break;
     }
     case 2:
     {
-      cape_stream_append_32 (s, data_size, TRUE);
+      cape_stream_append_32 (s, buflen, FALSE);
       break;
     }
   }
-
-  // masking key
-  //cape_stream_append_buf (s, m, 4);
-  
-  // calculate the absolute position
-  //data_pos = cape_stream_a_pos (s);
   
   // add the message to the buffer
-  cape_stream_append_buf (s, message, data_size);
-  
-  // encode the message with the masking key
-  //qwebs_prot_websocket__encode_payload (cape_stream_pos_a (s, data_pos), data_size, m);
+  cape_stream_append_buf (s, bufdat, buflen);
   
   qwebs_connection_send (self->conn, &s);
-  //cape_str_del (&m);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_websocket_send_s (QWebsProtWebsocketConnection self, const CapeString message)
+{
+  number_t data_size = cape_str_size (message);
+
+  qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__TEXT, message, data_size);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_websocket_send_buf (QWebsProtWebsocketConnection self, const char* bufdat, number_t buflen)
+{
+  qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__BINARY, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------

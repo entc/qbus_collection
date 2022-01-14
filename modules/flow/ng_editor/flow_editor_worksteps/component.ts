@@ -128,7 +128,7 @@ class WidgetComponent
 
   //---------------------------------------------------------------------------
 
-  protected update_workstep (workstep: IWorkstep, step: StepFct, on_change: EventEmitter<IWorkstep>)
+  protected rebuild_workstep (step: StepFct, workstep_content: BehaviorSubject<IWorkstep>)
   {
     console.log ('update workstep');
 
@@ -141,25 +141,22 @@ class WidgetComponent
 
       if (step)
       {
-        this.build_widget (step, on_change);
+        this.build_widget (step, workstep_content);
       }
-    }
-
-    if (this.widget)
-    {
-      this.widget.content_setter = workstep;
     }
   }
 
   //---------------------------------------------------------------------------
 
-  protected build_widget (step: StepFct, on_change: EventEmitter<IWorkstep>)
+  protected build_widget (step: StepFct, workstep_content: BehaviorSubject<IWorkstep>)
   {
     try
     {
       const type = step.type;
       if (type)
       {
+        console.log ('create a new widget');
+
         // this will create an instance of our widget type
         var item: WidgetItem = new WidgetItem(type);
 
@@ -171,12 +168,12 @@ class WidgetComponent
 
         // assign the instance to the widget variable
         this.widget = compontent.instance;
-        this.widget.emitter = on_change;
+        this.widget.workstep_content = workstep_content;
       }
     }
     catch (e)
     {
-
+      console.log(e);
     }
   }
 
@@ -189,7 +186,6 @@ class WidgetComponent
 }) export class FlowWidgetFunctionComponent extends WidgetComponent implements OnInit  {
 
   @Input() workstep_content: BehaviorSubject<IWorkstep>;
-  @Output() contentChange: EventEmitter<IWorkstep> = new EventEmitter();
 
   //---------------------------------------------------------------------------
 
@@ -204,7 +200,8 @@ class WidgetComponent
   {
     this.workstep_content.subscribe ((workstep: IWorkstep) => {
 
-      this.update_workstep (workstep, this.function_service.get_val (workstep.fctid), this.contentChange);
+      // rebuild the widget with a different workstep widget
+      this.rebuild_workstep (this.function_service.get_val (workstep.fctid), this.workstep_content);
 
     });
   }
@@ -219,7 +216,6 @@ class WidgetComponent
 }) export class FlowWidgetUsrFormComponent extends WidgetComponent implements OnInit {
 
   @Input() workstep_content: BehaviorSubject<IWorkstep>;
-  @Output() contentChange: EventEmitter<IWorkstep> = new EventEmitter();
 
   //---------------------------------------------------------------------------
 
@@ -234,7 +230,8 @@ class WidgetComponent
   {
     this.workstep_content.subscribe ((workstep: IWorkstep) => {
 
-      this.update_workstep (workstep, this.userform_service.get_val (workstep.usrid), this.contentChange);
+      // rebuild the widget with a different workstep widget
+      this.rebuild_workstep (this.userform_service.get_val (workstep.usrid), this.workstep_content);
 
     });
   }
