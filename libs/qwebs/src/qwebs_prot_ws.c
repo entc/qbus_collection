@@ -172,9 +172,12 @@ void qwebs_prot_websocket_send__frame (QWebsProtWebsocketConnection self, number
 
 void qwebs_prot_websocket_send_s (QWebsProtWebsocketConnection self, const CapeString message)
 {
-  number_t data_size = cape_str_size (message);
-
-  qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__TEXT, message, data_size);
+  if (self)
+  {
+    number_t data_size = cape_str_size (message);
+    
+    qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__TEXT, message, data_size);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -194,6 +197,7 @@ struct QWebsProtWebsocket_s
   fct_qwebs_prot_websocket__on_conn on_conn;
   fct_qwebs_prot_websocket__on_init on_init;
   fct_qwebs_prot_websocket__on_msg on_msg;
+  fct_qwebs_prot_websocket__on_done on_done;
 };
 
 //-----------------------------------------------------------------------------
@@ -209,6 +213,7 @@ QWebsProtWebsocket qwebs_prot_websocket_new (QWebs qwebs)
   self->on_conn = NULL;
   self->on_init = NULL;
   self->on_msg = NULL;
+  self->on_done = NULL;
   
   return self;
 }
@@ -479,10 +484,21 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
 void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr)
 {
   QWebsProtWebsocketConnection* p_self = (QWebsProtWebsocketConnection*)p_user_ptr;
-  
+
   cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "websocket", "websocket connection dropped");
-  
-  CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
+
+  if (*p_self)
+  {
+    QWebsProtWebsocketConnection self = *p_self;
+    
+    if (self->ws->on_done)
+    {
+      self->ws->on_done (self->conn_ptr);
+      self->conn_ptr = NULL;
+    }
+    
+    CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -495,13 +511,14 @@ int qwebs_prot_websocket_init (QWebsProtWebsocket self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void qwebs_prot_websocket_cb (QWebsProtWebsocket self, void* user_ptr, fct_qwebs_prot_websocket__on_conn on_conn, fct_qwebs_prot_websocket__on_init on_init, fct_qwebs_prot_websocket__on_msg on_msg)
+void qwebs_prot_websocket_cb (QWebsProtWebsocket self, void* user_ptr, fct_qwebs_prot_websocket__on_conn on_conn, fct_qwebs_prot_websocket__on_init on_init, fct_qwebs_prot_websocket__on_msg on_msg, fct_qwebs_prot_websocket__on_done on_done)
 {
   self->user_ptr = user_ptr;
   
   self->on_conn = on_conn;
   self->on_init = on_init;
   self->on_msg = on_msg;
+  self->on_done = on_done;
 }
 
 //-----------------------------------------------------------------------------

@@ -303,6 +303,12 @@ void cape_aio_remove_handle (CapeAioContext self, CapeAioHandle hobj)
 {
   void* ptr = NULL;
   
+  // try to call the unref function
+  if (hobj->on_unref)
+  {
+    hobj->on_unref (hobj->ptr, hobj, TRUE);
+  }
+  
   // enter monitor
   pthread_mutex_lock (&(self->mutex));
   
@@ -536,11 +542,19 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
       return CAPE_ERR_NONE;
     }
     
-    return cape_err_lastOSError (err);
+    res = cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+    
+    return res;
   }
   else if (event.flags & EV_ERROR)
   {
-    return cape_err_lastOSError (err);
+    res = cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+    
+    return res;
   }
   else if (res == 0)
   {
@@ -562,9 +576,11 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
       {
         hflags_result = 0;
       }
-      
+
       if (hflags_result & CAPE_AIO_DONE)
       {
+        cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "remove handle %p", hobj->ptr);
+
         // remove the event from the kqueue
         cape_aio_delete_event (self, hobj, (void*)event.ident);
 
@@ -573,6 +589,7 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
 
         if (hflags_result & CAPE_AIO_ABORT)
         {
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "abort");
           return CAPE_ERR_CONTINUE;
         }
       }
@@ -580,6 +597,7 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
       {
         if (hflags_result & CAPE_AIO_ABORT)
         {
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "abort");
           return CAPE_ERR_CONTINUE;
         }
 
@@ -1098,7 +1116,7 @@ void cape_aio_handle_unref (CapeAioHandle self, int close)
 
 void cape_aio_handle_close (CapeAioHandle self)
 {
-  
+  printf ("close handle\n");
   
 }
 
