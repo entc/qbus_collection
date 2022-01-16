@@ -4,7 +4,7 @@
     <div class="form-group">
       <label>wait list node (name)</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['waitlist_node']" (ngModelChange)="on_pdata_change($event, 'waitlist_node')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['waitlist_node']" (ngModelChange)="on_pdata_change($event, 'waitlist_node')">
       </div>
     </div>
 
@@ -14,7 +14,7 @@
     <div class="form-group">
       <label>code variable (optional)</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel] = "content.pdata['code_node']" (ngModelChange)="on_pdata_change($event, 'code_node')">
+        <input type="text" class="form-control" [ngModel] = "(workstep | async).pdata['code_node']" (ngModelChange)="on_pdata_change($event, 'code_node')">
       </div>
     </div>
 

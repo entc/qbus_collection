@@ -9,6 +9,7 @@ auth_sessions \
 auth_sessions_wp_view \
 auth_users_secret_view \
 auth_roles_gpid_view \
+auth_tokens_jobs \
 glob_emails \
 glob_persons \
 q5_users \

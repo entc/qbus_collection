@@ -4,7 +4,7 @@
     <div class="form-group">
       <label>variable name</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['var_name']" (ngModelChange)="on_pdata_change($event, 'var_name')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['var_name']" (ngModelChange)="on_pdata_change($event, 'var_name')">
       </div>
     </div>
 
@@ -14,7 +14,7 @@
     <div class="form-group">
       <label>new variable name</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['new_name']" (ngModelChange)="on_pdata_change($event, 'new_name')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['new_name']" (ngModelChange)="on_pdata_change($event, 'new_name')">
       </div>
     </div>
 

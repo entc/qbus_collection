@@ -4,7 +4,7 @@
     <div class="form-group">
       <label>name of the precondition node</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['precondition_node']" (ngModelChange)="on_pdata_change($event, 'precondition_node')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['precondition_node']" (ngModelChange)="on_pdata_change($event, 'precondition_node')">
       </div>
     </div>
 
@@ -17,7 +17,7 @@
     <div class="form-group">
       <label>{{ 'FLOW.WSMODULE' | transloco }}</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['module']" (ngModelChange)="on_pdata_change($event, 'module')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['module']" (ngModelChange)="on_pdata_change($event, 'module')">
       </div>
     </div>
 
@@ -27,7 +27,7 @@
     <div class="form-group">
       <label>{{ 'FLOW.WSMETHOD' | transloco }}</label>
       <div class="input-group">
-        <input type="text" class="form-control" [ngModel]="content.pdata['method']" (ngModelChange)="on_pdata_change($event, 'method')">
+        <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['method']" (ngModelChange)="on_pdata_change($event, 'method')">
       </div>
     </div>
 
@@ -35,4 +35,4 @@
 </div>
 
 <hr>
-<qbng-params [model]="content.pdata['params']" (modelChange)="on_pdata_change($event, 'params')"></qbng-params>
+<qbng-params [model]="(workstep | async).pdata['params']" (modelChange)="on_pdata_change($event, 'params')"></qbng-params>

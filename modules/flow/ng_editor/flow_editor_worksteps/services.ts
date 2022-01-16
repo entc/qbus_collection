@@ -29,7 +29,17 @@ export class FlowUserFormService
 
   add (item: StepFct)
   {
-    this.values.push (item);
+    // check if an item with this attributes already exists
+    var item_in_service = this.values.find ((e: StepFct) => (e.id == item.id) && (e.name == item.name))
+
+    if (item_in_service)
+    {
+      console.log('User Form already exists');
+    }
+    else
+    {
+      this.values.push (item);
+    }
   }
 
   //---------------------------------------------------------------------------
