@@ -17,6 +17,7 @@
 #else
 
 #include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #endif
 
@@ -499,6 +500,59 @@ exit_and_cleanup:
   cape_stream_del (&buffer);
   return ret;
 
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_md5__hex_m (const CapeStream source, CapeErr err)
+{
+  return qcrypt__hash_md5__hex_o (cape_stream_data (source), cape_stream_size (source), err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_md5__hex_o (const char* bufdat, number_t buflen, CapeErr err)
+{
+#if defined __WINDOWS_OS
+  
+#else
+  
+  CapeString ret = NULL;
+  
+  // local objects
+  unsigned char* binary_hash = CAPE_ALLOC (MD5_DIGEST_LENGTH);
+  MD5_CTX ctx;
+  
+  // initialization
+  if (MD5_Init (&ctx) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize MD5");
+    goto exit_and_cleanup;
+  }
+  
+  // collect all data
+  if (MD5_Update (&ctx, bufdat, buflen) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't update SHA");
+    goto exit_and_cleanup;
+  }
+  
+  // create the SHA256 hash value and store it into the buffer stream
+  if (MD5_Final (binary_hash, &ctx) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  // convert the md5 result into a hex-string
+  ret = cape_str_hex (binary_hash, MD5_DIGEST_LENGTH);
+  
+exit_and_cleanup:
+  
+  CAPE_FREE (binary_hash);
+  return ret;
+  
 #endif
 }
 
