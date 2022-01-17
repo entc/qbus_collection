@@ -1,0 +1,49 @@
+<div class="modal-header">
+  <span class="modal-title">
+    <strong><i class="fa fa-stopwatch"></i>&nbsp;&nbsp;{{ 'GBNG.TIMEPERIOD' | transloco }}</strong>
+  </span>
+</div>
+<div class="modal-body">
+
+  <div class="form-group mt-2">
+    <label>{{ 'GBNG.TIMEPERIOD' | transloco }}</label>
+    <div class="input-group">
+      <input type="text" class="form-control" aria-label="ttl" aria-describedby="ttl" [(ngModel)]="timeperiod" (blur)="calculate_time_period()">
+      <div class="input-group-append">
+        <span class="input-group-text" id="basic-addon2">
+          <ng-container *ngIf="multiplier_id === 0">{{ 'GBNG.SECONDS' | transloco }}</ng-container>
+          <ng-container *ngIf="multiplier_id === 1">{{ 'GBNG.MINUTES' | transloco }}</ng-container>
+          <ng-container *ngIf="multiplier_id === 2">{{ 'GBNG.HOURS' | transloco }}</ng-container>
+          <ng-container *ngIf="multiplier_id === 3">{{ 'GBNG.DAYS' | transloco }}</ng-container>
+          <ng-container *ngIf="multiplier_id === 4">{{ 'GBNG.WEEKS' | transloco }}</ng-container>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="btn-group d-flex" role="group" aria-label="Basic example">
+    <button (click)="set_multiplier(0)" type="button" class="btn btn-outline-dark w-100" [class.active] = "multiplier_id === 0">{{ 'GBNG.SECONDS' | transloco }}</button>
+    <button (click)="set_multiplier(1)" type="button" class="btn btn-outline-dark w-100" [class.active] = "multiplier_id === 1">{{ 'GBNG.MINUTES' | transloco }}</button>
+    <button (click)="set_multiplier(2)" type="button" class="btn btn-outline-dark w-100" [class.active] = "multiplier_id === 2">{{ 'GBNG.HOURS' | transloco }}</button>
+    <button (click)="set_multiplier(3)" type="button" class="btn btn-outline-dark w-100" [class.active] = "multiplier_id === 3">{{ 'GBNG.DAYS' | transloco }}</button>
+    <button (click)="set_multiplier(4)" type="button" class="btn btn-outline-dark w-100" [class.active] = "multiplier_id === 4">{{ 'GBNG.WEEKS' | transloco }}</button>
+  </div>
+
+  <hr>
+
+  <div class="form-group mt-2">
+    <label>{{ 'GBNG.TIMEPERIOD_INFO' | transloco }}</label>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text"><i class="fa fa-chevron-right"></i></span>
+      </div>
+      <input type="text" class="form-control" aria-label="ttl" aria-describedby="ttl" [ngModel]="timeperiod_in_seconds" readonly>
+    </div>
+  </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+  <button type="button" class="btn btn-outline-success" (click)="apply()">{{ 'MISC.APPLY' | transloco }}</button>
+</div>

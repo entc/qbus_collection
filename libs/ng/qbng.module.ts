@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngParamsComponent } from './qbng_params/component';
-import { QbngSwitchComponent, QbngSwitchMultiComponent, QbngUploadComponent, QbngUploadModalComponent } from './qbng_widgets/component';
+import { QbngSwitchComponent, QbngSwitchMultiComponent, QbngUploadComponent, QbngUploadModalComponent, QbngTimePeriodModalComponent } from './qbng_widgets/component';
 import { SizeService } from './size_service/service';
 import { SizeDetectorComponent } from './size_service/component';
 import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModalComponent } from './qbng_modals/component';
@@ -16,6 +16,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     QbngSwitchMultiComponent,
     QbngUploadComponent,
     QbngUploadModalComponent,
+    QbngTimePeriodModalComponent,
     SizeDetectorComponent,
     QbngSpinnerModalComponent,
     QbngSpinnerOkModalComponent,
@@ -41,6 +42,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   ],
   entryComponents: [
     QbngUploadModalComponent,
+    QbngTimePeriodModalComponent,
     QbngSpinnerModalComponent,
     QbngSpinnerOkModalComponent,
     QbngSuccessModalComponent,

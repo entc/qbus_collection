@@ -75,6 +75,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+AdblPvdSession __STDCALL adbl_pvd_clone (AdblPvdSession rhs, CapeErr err)
+{
+  int res;
+  AdblPvdSession self = CAPE_NEW (struct AdblPvdSession_s);
+  
+  self->schema = cape_str_cp (rhs->schema);
+  self->file = cape_str_cp (rhs->file);
+  
+  // open the file
+  {
+    int res = sqlite3_open (self->file, &(self->handle));
+    if( res == SQLITE_OK )
+    {
+      
+      
+    }
+    else
+    {
+      cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "database can't be opened");
+      goto exit_and_cleanup;
+    }
+  }
+  
+  self->mutex = sqlite3_mutex_alloc (SQLITE_MUTEX_FAST);
+    
+  return self;
+  
+exit_and_cleanup:
+  
+  adbl_pvd_close (&self);
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL adbl_pvd_close (AdblPvdSession* p_self)
 {
   AdblPvdSession self = *p_self;
@@ -391,3 +426,28 @@ CapeUdc __STDCALL adbl_pvd_cursor_get (AdblPvdCursor self)
 }
 
 //-----------------------------------------------------------------------------
+
+number_t __STDCALL adbl_pvd_atomic_dec (AdblPvdSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr err)
+{
+  // TODO: implementation
+  return -1;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t __STDCALL adbl_pvd_atomic_inc (AdblPvdSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, CapeErr err)
+{
+  // TODO: implementation
+  return -1;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t __STDCALL adbl_pvd_atomic_or (AdblPvdSession self, const char* table, CapeUdc* p_params, const CapeString atomic_value, number_t or_val, CapeErr err)
+{
+  // TODO: implementation
+  return -1;
+}
+
+//-----------------------------------------------------------------------------
+

@@ -194,3 +194,55 @@ export class QbngUploadFile {
     return parseFloat (bytes.toFixed(2)) + ' ' + UNITS[index];
   }
 }
+
+//=============================================================================
+
+@Component({
+  selector: 'qbng-timeperiod-modal-component',
+  templateUrl: './modal_timeperiod.html'
+}) export class QbngTimePeriodModalComponent implements OnInit {
+
+  public timeperiod: number;
+  public timeperiod_in_seconds: number;
+  public multiplier_id: number;
+
+  private multiplier: number;
+  private mmatrix: number[] = [1, 60, 3600, 86400, 604800];
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.timeperiod = 1;
+    this.multiplier_id = 2;
+    this.calculate_time_period ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public calculate_time_period ()
+  {
+    this.timeperiod_in_seconds = this.timeperiod * this.mmatrix[this.multiplier_id];
+  }
+
+  //---------------------------------------------------------------------------
+
+  public set_multiplier (id: number)
+  {
+    this.multiplier_id = id;
+    this.calculate_time_period ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public apply ()
+  {
+    this.modal.close (this.timeperiod_in_seconds);
+  }
+}

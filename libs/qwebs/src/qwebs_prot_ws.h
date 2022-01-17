@@ -33,9 +33,12 @@ typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_init)        (void* conn
                /* a new message was received */
 typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_msg)         (void* conn_ptr, CapeString message);
 
+               /* called after upgrade was done */
+typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_done)        (void* conn_ptr);
+
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void                 qwebs_prot_websocket_cb         (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_init, fct_qwebs_prot_websocket__on_msg);
+__CAPE_LIBEX   void                 qwebs_prot_websocket_cb         (QWebsProtWebsocket, void* user_ptr, fct_qwebs_prot_websocket__on_conn, fct_qwebs_prot_websocket__on_init, fct_qwebs_prot_websocket__on_msg, fct_qwebs_prot_websocket__on_done);
 
 __CAPE_LIBEX   void                 qwebs_prot_websocket_send_s     (QWebsProtWebsocketConnection connection, const CapeString message);
 
