@@ -17,6 +17,12 @@
 
 //-----------------------------------------------------------------------------
 
+#define AUTH_STATE__NONE             0
+#define AUTH_STATE__FIRST_USE        1
+#define AUTH_STATE__NORMAL           2
+
+//-----------------------------------------------------------------------------
+
 struct AuthUI_s; typedef struct AuthUI_s* AuthUI;
 
 //-----------------------------------------------------------------------------
@@ -46,6 +52,8 @@ __CAPE_LIBEX   int     auth_ui_config_set  (AuthUI*, QBusM qin, QBusM qout, Cape
 __CAPE_LIBEX   int     auth_ui_2f_send     (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_fp_send     (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int     auth_ui_users       (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

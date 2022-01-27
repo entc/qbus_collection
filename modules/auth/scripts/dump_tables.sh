@@ -22,4 +22,8 @@ rbac_users_view \
 rbac_workspaces \
 rbac_workspaces_roles \
 rbac_workspaces_roles_view \
+auth_logins \
+auth_logins_last_view \
+auth_logins_cnt_view \
+rbac_users_logins_view \
 | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' > ../../../../var/auth.sql

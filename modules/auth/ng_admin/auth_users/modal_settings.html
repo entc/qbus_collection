@@ -1,0 +1,30 @@
+<div class="modal-header">
+  <div class="modal-title mr-auto">
+    <strong><i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'MISC.SETTINGS' | transloco }}</strong>
+  </div>
+</div>
+<div class="modal-body">
+
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="input_user">
+  </div>
+
+  <div class="input-group mt-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="input_pass">
+  </div>
+
+  <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
+
+  <auth-session-msgs></auth-session-msgs>
+
+
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+</div>

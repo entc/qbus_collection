@@ -304,10 +304,12 @@ void cape_aio_remove_handle (CapeAioContext self, CapeAioHandle hobj)
   void* ptr = NULL;
   
   // try to call the unref function
+  /*
   if (hobj->on_unref)
   {
     hobj->on_unref (hobj->ptr, hobj, TRUE);
   }
+   */
   
   // enter monitor
   pthread_mutex_lock (&(self->mutex));

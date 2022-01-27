@@ -386,8 +386,6 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
   cape_udc_add_n      (values, "gpid"         , 0);
   cape_udc_add_n      (values, "userid"       , 0);
   cape_udc_add_s_cp   (values, "workspace"    , NULL);
-  cape_udc_add_s_cp   (values, "clts"         , NULL);
-  cape_udc_add_n      (values, "cltsid"       , 0);
   cape_udc_add_s_cp   (values, "title"        , NULL);
   cape_udc_add_s_cp   (values, "firstname"    , NULL);
   cape_udc_add_s_cp   (values, "lastname"     , NULL);

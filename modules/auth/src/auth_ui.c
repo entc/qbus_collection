@@ -1118,7 +1118,7 @@ int auth_ui_set__rbac_users__update (AuthUI self, AdblTrx adbl_trx, number_t usi
     cape_udc_add_n     (params, "id"        , usid);
     
     cape_udc_add_s_mv  (values, "secret"    , &h2);
-    cape_udc_add_n     (values, "state"     , 2);
+    cape_udc_add_n     (values, "state"     , AUTH_STATE__NORMAL);
     
     // execute query
     res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
@@ -1696,28 +1696,159 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_ui_set__admin (AuthUI* p_self, number_t userid, number_t wpid, number_t gpid, const CapeString q5_user, const CapeString q5_pass, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  CapeUdc first_row;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  AdblTrx adbl_trx = NULL;
+  CapeString h0 = NULL;
+
+  // create the hash version of the user
+  h0 = qcrypt__hash_sha256__hex_o (q5_user, cape_str_size (q5_user), err);
+  if (h0 == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't hash h0");
+    goto exit_and_cleanup;
+  }
+
+  // check if the account realy exists
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // conditions
+    cape_udc_add_n      (params, "id"           , userid);
+    cape_udc_add_s_mv   (params, "user512"      , &h0);
+    
+    cape_udc_add_s_cp   (values, "secret"       , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "q5_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_ACCOUNT");
+    goto exit_and_cleanup;
+  }
+
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui_set__q5_users__update (self, adbl_trx, userid, q5_user, q5_pass, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+
+  cape_str_del (&h0);
+  cape_udc_del (&query_results);
+
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   number_t wpid;
   
-  // do some security checks
-  if (qin->rinfo == NULL)
+  if (qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui set} missing rinfo");
-    goto exit_and_cleanup;
-  }
+    const CapeString user;
+    const CapeString pass;
 
-  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-  if (wpid == 0)
-  {
-    res = auth_ui_set__no_authentication (p_self, qin, qout, err);
+    number_t gpid;
+    number_t userid;
+    
+    if (NULL == qin->cdata)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
+    userid = cape_udc_get_n (qin->cdata, "userid", 0);
+    if (0 == userid)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_USERID");
+      goto exit_and_cleanup;
+    }
+
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    if (0 == wpid)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_WPID");
+      goto exit_and_cleanup;
+    }
+    
+    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+    if (0 == gpid)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_GPID");
+      goto exit_and_cleanup;
+    }
+
+    user = cape_udc_get_s (qin->cdata, "user", NULL);
+    if (NULL == user)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER");
+      goto exit_and_cleanup;
+    }
+
+    pass = cape_udc_get_s (qin->cdata, "pass", NULL);
+    if (NULL == pass)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASS");
+      goto exit_and_cleanup;
+    }
+
+    res = auth_ui_set__admin (p_self, userid, wpid, gpid, user, pass, err);
   }
   else
   {
-    res = auth_ui_set__rinfo (p_self, qin, qout, wpid, err);
+    // do some security checks
+    if (qin->rinfo == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui set} missing rinfo");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    if (wpid == 0)
+    {
+      res = auth_ui_set__no_authentication (p_self, qin, qout, err);
+    }
+    else
+    {
+      res = auth_ui_set__rinfo (p_self, qin, qout, wpid, err);
+    }
   }
-  
+
 exit_and_cleanup:
   
   return res;
@@ -2745,6 +2876,133 @@ int auth_ui_fp_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  cape_udc_del (&query_results);
+
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_users (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  const CapeString vsec;
+  
+  // local objects
+  number_t wpid = 0;
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+  
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  }
+  else if (qbus_message_role_has (qin, "auth_wp_lu"))
+  {
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  }
+  
+  if (0 == wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"         , wpid);
+    
+    cape_udc_add_n      (values, "userid"       , 0);
+    cape_udc_add_n      (values, "gpid"         , 0);
+    cape_udc_add_n      (values, "active"       , 0);
+    cape_udc_add_n      (values, "state"        , 0);
+    cape_udc_add_n      (values, "opt_msgs"     , 0);
+    cape_udc_add_n      (values, "opt_2factor"  , 0);
+    cape_udc_add_s_cp   (values, "opt_locale"   , NULL);
+    cape_udc_add_n      (values, "opt_ttl"      , 0);
+    cape_udc_add_s_cp   (values, "firstname"    , NULL);
+    cape_udc_add_s_cp   (values, "lastname"     , NULL);
+    cape_udc_add_d      (values, "last"         , NULL);
+    cape_udc_add_s_cp   (values, "ip"           , NULL);
+    cape_udc_add_n      (values, "logins"       , 0);
+
+    /*
+     auth_logins_last_view
+     
+     select wpid, gpid, userid, max(ltime) last, ip from auth_logins group by wpid, gpid;
+     */
+    
+    /*
+     auth_logins_cnt_view
+     
+     select wpid, gpid, userid, count(*) logins from auth_logins group by wpid, gpid;
+     */
+    /*
+     rbac_users_view
+     
+     select ru.id, ru.wpid, ru.userid, ru.gpid, wp.name workspace, wp.token, ru.secret, gp.title, gp.firstname, gp.lastname, ru.state, ru.opt_msgs, ru.opt_2factor, ru.opt_locale, ru.opt_ttl from rbac_users ru left join rbac_workspaces wp on wp.id = ru.wpid left join q5_users qu on qu.id = ru.userid join glob_persons gp on gp.id = ru.gpid;
+     */
+    /*
+     rbac_users_logins_view
+     
+     select uv.wpid, uv.userid, uv.gpid, uv.active, uv.state, uv.opt_msgs, uv.opt_2factor, uv.opt_locale, uv.opt_ttl, uv.firstname, uv.lastname, lw.last, lw.ip, cv.logins from rbac_users_view uv left join auth_logins_last_view lw on lw.wpid = uv.wpid and lw.gpid = uv.gpid and lw.userid = uv.userid left join auth_logins_cnt_view cv on cv.wpid = uv.wpid and cv.gpid = uv.gpid and cv.userid = uv.userid
+     */
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users_logins_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  vsec = auth_vault__vsec (self->vault, wpid);
+  if (vsec)
+  {
+    while (cape_udc_cursor_next (cursor))
+    {
+      res = qcrypt__decrypt_row_text (vsec, cursor->item, "firstname", err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+
+      res = qcrypt__decrypt_row_text (vsec, cursor->item, "lastname", err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  else
+  {
+    while (cape_udc_cursor_next (cursor))
+    {
+      cape_udc_put_s_cp (cursor->item, "firstname", "[encrypted]");
+      cape_udc_put_s_cp (cursor->item, "lastname", "[encrypted]");
+    }
+  }
+
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
   cape_udc_del (&query_results);
 
   auth_ui_del (p_self);

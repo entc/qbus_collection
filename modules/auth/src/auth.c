@@ -189,6 +189,19 @@ static int __STDCALL qbus_auth_ui_fp_send (QBus qbus, void* ptr, QBusM qin, QBus
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_users (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_users (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__wp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -608,6 +621,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // send the forget password auth messages
   //   args:
   qbus_register (qbus, "ui_fp_send"           , ctx, qbus_auth_ui_fp_send, NULL, err);
+
+  // get a list of all users from a certain workspace
+  //   args:
+  qbus_register (qbus, "ui_users"             , ctx, qbus_auth_ui_users, NULL, err);
 
   // -------- callback methods --------------------------------------------
 
