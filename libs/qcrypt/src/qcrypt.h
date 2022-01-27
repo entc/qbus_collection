@@ -49,10 +49,18 @@ __CAPE_LIBEX  CapeStream     qcrypt__hash_sha256__bin_m  (const CapeStream sourc
 __CAPE_LIBEX  CapeStream     qcrypt__hash_sha256__bin_o  (const char* bufdat, number_t buflen, CapeErr err);
 
 //-----------------------------------------------------------------------------
+// don't use this as security feature, sha-1 is broken and unsafe
 
-__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_m  (const CapeStream source, CapeErr err);
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_m     (const CapeStream source, CapeErr err);
 
-__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_o  (const char* bufdat, number_t buflen, CapeErr err);
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha__bin_o     (const char* bufdat, number_t buflen, CapeErr err);
+
+//-----------------------------------------------------------------------------
+// don't use this as security feature, md5 is broken and unsafe
+
+__CAPE_LIBEX  CapeString     qcrypt__hash_md5__hex_m     (const CapeStream source, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__hash_md5__hex_o     (const char* bufdat, number_t buflen, CapeErr err);
 
 //-----------------------------------------------------------------------------
 // definitions for cape stream encode/decode
