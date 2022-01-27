@@ -360,6 +360,31 @@ int qjobs__intern__event_run (QJobs self, number_t rpid, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int qjobs__intern__run (QJobs self, number_t rpid, number_t period, CapeDatetime* dt, CapeErr err)
+{
+  int res = qjobs__intern__event_run (self, rpid, err);
+  
+  switch (res)
+  {
+    case CAPE_ERR_EOF:
+    {
+      res = qjobs__intern__event_rm (self, rpid, err);
+      break;
+    }
+    case CAPE_ERR_NONE:
+    {
+      res = qjobs__intern__event_update (self, dt, rpid, period, err);
+      break;
+    }
+  }
+  
+  res = qjobs__intern__fetch (self, err);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL qjobs__on_event (void* ptr)
 {
   int res;
@@ -390,6 +415,9 @@ int __STDCALL qjobs__on_event (void* ptr)
     // if next_event is in the past, trigger that event
     if (cape_datetime_cmp (self->next_event, &dt) <= 0)
     {
+      res = qjobs__intern__run (self, cape_udc_get_n (self->next_list_item, "id", 0), cape_udc_get_n (self->next_list_item, "period", 0), &dt, err);
+
+        /*
       res = qjobs__intern__event_run (self, cape_udc_get_n (self->next_list_item, "id", 0), err);
       
       switch (res)
@@ -407,6 +435,7 @@ int __STDCALL qjobs__on_event (void* ptr)
       }
       
       res = qjobs__intern__fetch (self, err);
+      */
     }
   }
   
@@ -625,6 +654,70 @@ int qjobs_rm (QJobs self, number_t jobid, CapeErr err)
 exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qjobs_run (QJobs self, number_t rpid, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"          , rpid);
+    cape_udc_add_n      (values, "id"          , 0);
+    
+    cape_udc_add_n      (values, "wpid"        , 0);
+    cape_udc_add_n      (values, "gpid"        , 0);
+    
+    cape_udc_add_d      (values, "event_date"  , NULL);
+    cape_udc_add_n      (values, "period"      , 0);
+    cape_udc_add_node   (values, "params"      );
+    cape_udc_add_s_cp   (values, "rinfo"       , NULL);
+    cape_udc_add_s_cp   (values, "ref_mod"     , NULL);
+    cape_udc_add_s_cp   (values, "ref_umi"     , NULL);
+    cape_udc_add_n      (values, "ref_id1"     , 0);
+    cape_udc_add_n      (values, "ref_id2"     , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, self->adbl_table, &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }    
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+  
+  cape_udc_replace_mv (&(self->list), &query_results);
+  self->next_list_item = first_row;
+  
+  {
+    CapeDatetime dt;
+    
+    // fetch current date
+    cape_datetime_utc (&dt);
+    
+    res = qjobs__intern__run (self, cape_udc_get_n (self->next_list_item, "id", 0), cape_udc_get_n (self->next_list_item, "period", 0), &dt, err);    
+  }
+
+exit_and_cleanup:
+
+  cape_udc_del (&query_results);
   return res;
 }
 

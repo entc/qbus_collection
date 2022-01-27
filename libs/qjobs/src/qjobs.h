@@ -59,6 +59,8 @@ __CAPE_LIBEX     int      qjobs_set        (QJobs, number_t rpid, CapeDatetime* 
 
 __CAPE_LIBEX     int      qjobs_rm         (QJobs, number_t jobid, CapeErr);
 
+__CAPE_LIBEX     int      qjobs_run        (QJobs, number_t jobid, CapeErr);
+
 //-----------------------------------------------------------------------------
 
 #endif
