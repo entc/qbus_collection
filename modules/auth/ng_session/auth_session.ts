@@ -753,6 +753,8 @@ export class AuthSession
       {
         this.disable ();
         this.show_login ();
+
+        return throwError (error);
       }
       else
       {

@@ -9,7 +9,7 @@ import { CanActivate, Routes, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTr
 @Injectable()
 export class AuthSessionGuard implements CanActivate {
 
-  private permissions: Array<string> = null;
+  private permissions: string[] = null;
 
   //---------------------------------------------------------------------------
 
@@ -22,13 +22,11 @@ export class AuthSessionGuard implements CanActivate {
   canActivate (route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean|UrlTree>|Promise<boolean|UrlTree>|boolean|UrlTree
   {
     // grab the permission array
-    this.permissions = route.data.permissions as Array<string>;
+    this.permissions = route.data.permissions as string[];
 
     return this.auth_session.roles.pipe(mergeMap ((data) => {
 
       let new_status: boolean = this.auth_session.contains_role__or (data, this.permissions);
-
-      console.log('status = ' + new_status);
 
       return of (new_status);
 

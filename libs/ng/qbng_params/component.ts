@@ -240,7 +240,43 @@ export class QbngParamsComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  on_model_changed (value)
+  public on_name_changed_input (e: Event)
+  {
+    const target = e.target as HTMLInputElement;
+
+    if (target && target.value)
+    {
+      this.nameChange.emit (target.value);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_model_changed_input (e: Event)
+  {
+    const target = e.target as HTMLInputElement;
+
+    if (target && target.value)
+    {
+      this.on_model_changed (target.value);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_model_changed_select (e: Event)
+  {
+    const target = e.target as HTMLSelectElement;
+
+    if (target && target.value)
+    {
+      this.on_model_changed (target.value);
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private on_model_changed (value: string)
   {
     switch (this.type)
     {

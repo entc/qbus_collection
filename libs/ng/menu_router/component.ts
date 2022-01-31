@@ -14,7 +14,7 @@ export class MenuRouterComponent implements OnInit {
 
   public mobile_size: boolean = false;
 
-  @Input('menu') menu_structure: object[];
+  @Input('menu') menu_structure: MenuStructureSection[];
 
   //-----------------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ export class MenuRouterComponent implements OnInit {
   templateUrl: './modal_menu.html'
 }) export class MenuRouterModalComponent implements OnInit {
 
-  public menu_structure: object[];
+  public menu_structure: MenuStructureSection[];
 
   //---------------------------------------------------------------------------
 
@@ -77,3 +77,20 @@ export class MenuRouterComponent implements OnInit {
 }
 
 //-----------------------------------------------------------------------------
+
+class MenuStructureSection
+{
+  name: string;
+  auth: string[];
+  items: MenuStructureItem[];
+}
+
+//-----------------------------------------------------------------------------
+
+class MenuStructureItem
+{
+  name: string;
+  auth: string[];
+  icon: string;
+  link: string;
+}

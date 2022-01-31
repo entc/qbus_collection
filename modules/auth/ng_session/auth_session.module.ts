@@ -7,7 +7,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AuthSession, AuthSessionLoginModalComponent, AuthWorkspacesModalComponent, Auth2FactorModalComponent, AuthSessionComponentDirective, AuthSessionLoginComponent, AuthFirstuseModalComponent } from '@qbus/auth_session';
 import { AuthSessionMenuComponent, AuthSessionInfoModalComponent, AuthSessionRoleDirective, AuthSessionContentComponent, AuthSessionPassResetComponent, AuthSessionMsgsComponent, AuthSessionLangComponent, AuthSessionPasscheckComponent } from './component';
-import { AuthSessionGuard } from '@qbus/auth_session/route';
+//import { AuthSessionGuard } from '@qbus/auth_session/route';
 
 //=============================================================================
 
@@ -29,8 +29,8 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     AuthSessionPasscheckComponent
   ],
   providers: [
-    AuthSession,
-    AuthSessionGuard
+    AuthSession
+//    AuthSessionGuard
   ],
   imports: [
     CommonModule,
