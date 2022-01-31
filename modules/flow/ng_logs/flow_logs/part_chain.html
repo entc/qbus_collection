@@ -30,13 +30,13 @@
             <span class="badge badge-success"><i class="fas fa-check-circle"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}</span>
           </div>
           <div *ngIf="item.state == 7">
-            <span class="badge badge-light"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data['remote']}}</span>
+            <span class="badge badge-light"><i class="fas fa-eye"></i>&nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;{{item.data.remote}}</span>
           </div>
           <div *ngIf="item.state == 1">
             <span class="badge badge-danger"><i class="fas fa-exclamation"></i>
               &nbsp;&nbsp;{{item.pot | trlo_locale}}&nbsp;&nbsp;
               <span *ngIf="item.data">
-                {{item.data['err_text']}}
+                {{item.data.err_text}}
               </span>
             </span>
           </div>

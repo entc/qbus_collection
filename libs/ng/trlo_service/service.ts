@@ -113,10 +113,15 @@ export class TrloService
 
   //---------------------------------------------------------------------------
 
-  updateLocale (value: string)
+  updateLocale (e: Event)
   {
-    // the global locale in the service
-    this.trlo_service.updateLocale (value)
+    const target = e.target as HTMLSelectElement;
+
+    if (target && target.value)
+    {
+      // the global locale in the service
+      this.trlo_service.updateLocale (target.value)
+    }
   }
 }
 

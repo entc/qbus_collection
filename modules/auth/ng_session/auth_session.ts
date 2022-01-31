@@ -65,7 +65,8 @@ export class AuthSession
         wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)),
         gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)),
         state: 0,
-        user: null
+        user: null,
+        remote: ''
       });
 
       this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
@@ -810,6 +811,8 @@ export class AuthSessionItem
   // will be set internally
   user: string;
   vsec: string;
+
+  remote: string;
 }
 
 //=============================================================================

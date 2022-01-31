@@ -2,7 +2,7 @@
     <div class="input-group-prepend">
       <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW1' | transloco }}</small></span>
     </div>
-    <input (blur)="on_change_1 ($event.target.value)" [ngClass]="{'is-invalid': err1}" type="password" class="form-control">
+    <input (blur)="on_change_1 ($event)" [ngClass]="{'is-invalid': err1}" type="password" class="form-control">
   </div>
 
   <div class="progress mb-2">
@@ -17,7 +17,7 @@
     <div class="input-group-prepend">
       <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
     </div>
-    <input [ngModel]="pass_new2" (blur)="on_change_2 ($event.target.value)" [ngClass]="{'is-invalid': err2}" type="password" class="form-control">
+    <input [ngModel]="pass_new2" (blur)="on_change_2 ($event)" [ngClass]="{'is-invalid': err2}" type="password" class="form-control">
   </div>
 
   <div *ngIf="err2" class="text-danger mb-2 ml-4">

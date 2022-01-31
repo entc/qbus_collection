@@ -228,7 +228,7 @@ export class AuthSessionRoleDirective {
   templateUrl: './component_content.html'
 }) export class AuthSessionContentComponent {
 
-  public sitem: AuthSessionItem = null;
+  public sitem: AuthSessionItem | null = null;
 
   //---------------------------------------------------------------------------
 
@@ -317,7 +317,7 @@ export class AuthSessionRoleDirective {
 }) export class AuthSessionMsgsComponent {
 
   msgs_list: AuthMsgsItem[];
-  new_item: AuthMsgsItem = null;
+  new_item: AuthMsgsItem | null = null;
 
   opt_msgs: boolean = false;
   opt_2factor: boolean = false;
@@ -515,8 +515,8 @@ class AuthConfigItem
 
   public pass_new1: string;
   public pass_new2: string;
-  public err1: string = null;
-  public err2: string = null;
+  public err1: string | null = null;
+  public err2: string | null = null;
   public strength: number = 0;
 
   @Output() onChange = new EventEmitter();
@@ -543,30 +543,40 @@ class AuthConfigItem
 
   //---------------------------------------------------------------------------
 
-  public on_change_1 (val: string)
+  public on_change_1 (e: Event)
   {
-    this.pass_new2 = '';
-    this.err2 = null;
+    const target = e.target as HTMLInputElement;
 
-    this.auth_session.json_rpc ('AUTH', 'ui_pp', {secret : val}).subscribe((data) => {
+    if (target && target.value)
+    {
+      this.pass_new2 = '';
+      this.err2 = null;
 
-      this.strength = data['strength'];
-      this.pass_new1 = val;
-      this.err1 = null;
+      this.auth_session.json_rpc ('AUTH', 'ui_pp', {secret : target.value}).subscribe((data: object) => {
 
-    }, (err: QbngErrorHolder) => {
+        this.strength = data['strength'];
+        this.pass_new1 = target.value;
+        this.err1 = null;
 
-      this.err1 = err.text;
+      }, (err: QbngErrorHolder) => {
 
-    });
+        this.err1 = err.text;
+
+      });
+    }
   }
 
   //---------------------------------------------------------------------------
 
-  public on_change_2 (val: string)
+  public on_change_2 (e: Event)
   {
-    this.pass_new2 = val;
-    this.check_passwords ();
+    const target = e.target as HTMLInputElement;
+
+    if (target && target.value)
+    {
+      this.pass_new2 = target.value;
+      this.check_passwords ();
+    }
   }
 
   //---------------------------------------------------------------------------

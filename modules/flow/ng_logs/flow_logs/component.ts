@@ -19,7 +19,7 @@ export class FlowLogsComponent implements OnInit
   public chain_items: ChainItem[];
   public filter: boolean;
 
-  private data: ChainItem[];
+  private data: ChainItem[] = [];
 
   //-----------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ export class FlowLogsComponent implements OnInit
           {
             if (has_state_change == false)
             {
-              item_chain['between'] = true;
+              item_chain.between = true;
               has_state_change = true;
             }
 
@@ -146,21 +146,24 @@ class ChainItem
   logs: ChainItem[];
   fctid: number;
   tag: string;
+  between: boolean;
+  state: number;
 
   states: ChainItemStatus[];
-}
-
-class ChainItemStatus
-{
-  data: object;
-  pot: string;
-  state: number;
 }
 
 class ChainEvent
 {
   err_text: string;
   timestamp: string;
+  remote: string;
+}
+
+class ChainItemStatus
+{
+  data: ChainEvent;
+  pot: string;
+  state: number;
 }
 
 @Component({
