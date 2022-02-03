@@ -2951,7 +2951,7 @@ int auth_ui_users (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     /*
      rbac_users_view
      
-     select ru.id, ru.wpid, ru.userid, ru.gpid, wp.name workspace, wp.token, ru.secret, gp.title, gp.firstname, gp.lastname, ru.state, ru.opt_msgs, ru.opt_2factor, ru.opt_locale, ru.opt_ttl from rbac_users ru left join rbac_workspaces wp on wp.id = ru.wpid left join q5_users qu on qu.id = ru.userid join glob_persons gp on gp.id = ru.gpid;
+     select ru.id, ru.wpid, ru.userid, ru.gpid, wp.name workspace, wp.token, ru.secret, gp.title, gp.firstname, gp.lastname, qu.active, ru.state, ru.opt_msgs, ru.opt_2factor, ru.opt_locale, ru.opt_ttl from rbac_users ru left join rbac_workspaces wp on wp.id = ru.wpid left join q5_users qu on qu.id = ru.userid join glob_persons gp on gp.id = ru.gpid;
      */
     /*
      rbac_users_logins_view

@@ -45,14 +45,28 @@ __CAPE_LIBEX   void            cape_datetime_set          (CapeDatetime*, const 
 // example:
 /*
  * CapeDatetime* dt = cape_datetime_new ();
- * 
+ *
  * -> dt will be filled with a new object
- * 
+ *
  * cape_datetime_del (&dt);
- * 
+ *
  * -> dt will be set to NULL and all memeory will be freed
- * 
+ *
  */
+
+//-----------------------------------------------------------------------------
+
+                               /* sets the internal structure by using epoch time
+                                  -> in seconds
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__s       (CapeDatetime*, time_t unix_time_since_1970);
+
+                               /* sets the internal structure by using epoch time
+                                  -> in milliseconds
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__ms      (CapeDatetime*, time_t unix_time_since_1970);
 
 //-----------------------------------------------------------------------------
 
