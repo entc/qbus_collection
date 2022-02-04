@@ -1,3 +1,5 @@
-<select (change)="updateLocale($event)" class="btn btn-sm btn-outline-primary input_select ml-2">
-  <option *ngFor="let l of locales" [value]="l.value" [selected]="l.value === locale">{{ l.label }}</option>
-</select>
+<div class="input-group">
+  <select (change)="updateLocale($event)" class="custom-select">
+    <option *ngFor="let l of locales" [value]="l.value" [selected]="l.value === locale">{{ l.label }}</option>
+  </select>
+</div>
