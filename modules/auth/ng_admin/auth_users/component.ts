@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, Injector } from '@angular/core';
-import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
+import { AuthSession, AuthSessionItem, AuthUserContext } from '@qbus/auth_session';
 import { Observable, of } from 'rxjs';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
@@ -48,13 +48,40 @@ export class AuthUsersComponent implements OnInit {
 
   open_settings (item: AuthUserItem)
   {
-    var ctx: AuthUserContext = new AuthUserContext;
+    var ctx: AuthUserContext | null = null;
 
-    ctx.wpid = this._wpid;
-    ctx.gpid = item.gpid;
-    ctx.userid = item.userid;
+    if (this._wpid)
+    {
+      ctx = new AuthUserContext;
+
+      ctx.wpid = Number(this._wpid);
+      ctx.gpid = item.gpid;
+      ctx.userid = item.userid;
+    }
 
     this.modal_service.open (AuthUsersSettingsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
+
+    }, () => {
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  open_roles (item: AuthUserItem)
+  {
+    var ctx: AuthUserContext | null = null;
+
+    if (this._wpid)
+    {
+      ctx = new AuthUserContext;
+
+      ctx.wpid = Number(this._wpid);
+      ctx.gpid = item.gpid;
+      ctx.userid = item.userid;
+    }
+
+    this.modal_service.open (AuthUsersRolesModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
     }, () => {
 
@@ -82,19 +109,10 @@ export class AuthUserItem
   logins: number;
 }
 
-//-----------------------------------------------------------------------------
-
-export class AuthUserContext
-{
-  wpid: number;
-  gpid: number;
-  userid: number;
-}
-
 //=============================================================================
 
 @Component({
-  selector: 'auth-users-settings',
+  selector: 'auth-users-settings-modal',
   templateUrl: './modal_settings.html'
 }) export class AuthUsersSettingsModalComponent {
 
@@ -103,7 +121,7 @@ export class AuthUserContext
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, private ctx: AuthUserContext)
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
   {
   }
 
@@ -117,4 +135,22 @@ export class AuthUserContext
 
     }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-users-roles-modal',
+  templateUrl: './modal_roles.html'
+}) export class AuthUsersRolesModalComponent {
+
+  public input_pass: string;
+  public input_user: string;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
+  {
+  }
+
 }

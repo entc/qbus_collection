@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Directive, Input, Output, ElementRef, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Component, EventEmitter, Directive, Input, Output, ElementRef, TemplateRef, ViewContainerRef, OnInit, Injector } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, of } from 'rxjs';
-import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
-import { QbngErrorHolder } from '@qbus/qbng_modals/header';
+import { AuthSession, AuthSessionItem, AuthUserContext } from '@qbus/auth_session';
+import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
+import { QbngErrorModalComponent } from '@qbus/qbng_modals/component';
 
 //=============================================================================
 
@@ -314,17 +315,28 @@ export class AuthSessionRoleDirective {
 @Component({
   selector: 'auth-session-msgs',
   templateUrl: './component_msgs.html'
-}) export class AuthSessionMsgsComponent {
+}) export class AuthSessionMsgsComponent implements OnInit {
 
-  msgs_list: AuthMsgsItem[];
+  msgs_list: AuthMsgsItem[] | null = null;
+  msgs_list_err: string | null = null;
+
   new_item: AuthMsgsItem | null = null;
 
+  opt_err: string | null = null;
   opt_msgs: boolean = false;
   opt_2factor: boolean = false;
+
+  @Input() user_ctx: AuthUserContext;
 
   //---------------------------------------------------------------------------
 
   constructor (public auth_session: AuthSession, private modal_service: NgbModal)
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
   {
     this.auth_session.session.subscribe ((data) => {
 
@@ -345,7 +357,14 @@ export class AuthSessionRoleDirective {
 
   fetch_msgs ()
   {
-    this.auth_session.json_rpc ('AUTH', 'msgs_get', {}).subscribe ((data: AuthMsgsItem[]) => {
+    var params = {};
+
+    if (this.user_ctx)
+    {
+      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid}
+    }
+
+    this.auth_session.json_rpc ('AUTH', 'msgs_get', params).subscribe ((data: AuthMsgsItem[]) => {
 
       for (var i in data)
       {
@@ -354,6 +373,12 @@ export class AuthSessionRoleDirective {
       }
 
       this.msgs_list = data;
+      this.msgs_list_err = null;
+
+    }, (err: QbngErrorHolder) => {
+
+      this.msgs_list = null;
+      this.msgs_list_err = err.text;
 
     });
   }
@@ -362,10 +387,22 @@ export class AuthSessionRoleDirective {
 
   fetch_config ()
   {
-    this.auth_session.json_rpc ('AUTH', 'ui_config_get', {}).subscribe ((data: AuthConfigItem) => {
+    var params = {};
+
+    if (this.user_ctx)
+    {
+      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid}
+    }
+
+    this.auth_session.json_rpc ('AUTH', 'ui_config_get', params).subscribe ((data: AuthConfigItem) => {
 
       this.opt_msgs = (data.opt_msgs > 0);
       this.opt_2factor = (data.opt_2factor > 0);
+      this.opt_err = null;
+
+    }, (err: QbngErrorHolder) => {
+
+      this.opt_err = err.text;
 
     });
   }
@@ -374,9 +411,17 @@ export class AuthSessionRoleDirective {
 
   save_config ()
   {
-    this.auth_session.json_rpc ('AUTH', 'ui_config_set', {opt_msgs: this.opt_msgs ? 1 : 0, opt_2factor: this.opt_2factor ? 1 : 0}).subscribe (() => {
+    var params = {opt_msgs: this.opt_msgs ? 1 : 0, opt_2factor: this.opt_2factor ? 1 : 0};
 
-    });
+    if (this.user_ctx)
+    {
+      params['wpid'] = this.user_ctx.wpid;
+      params['gpid'] = this.user_ctx.gpid;
+    }
+
+    this.auth_session.json_rpc ('AUTH', 'ui_config_set', params).subscribe (() => {
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
   //---------------------------------------------------------------------------

@@ -21,8 +21,7 @@
 
   <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
 
-  <auth-session-msgs></auth-session-msgs>
-
+  <auth-session-msgs [user_ctx]="ctx"></auth-session-msgs>
 
 </div>
 <div class="modal-footer">

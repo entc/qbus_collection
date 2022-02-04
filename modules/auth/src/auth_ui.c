@@ -2111,24 +2111,39 @@ int auth_ui_config_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
 
-  // do some security checks
-  if (qin->rinfo == NULL)
+  if (qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config get} missing rinfo");
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  }
+  else
+  {
+    // do some security checks
+    if (qin->rinfo == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  }
+  
+  if (0 == wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
     goto exit_and_cleanup;
   }
-
-  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-  if (wpid == 0)
+  
+  if (0 == gpid)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config get} 'wpid' is missing");
-    goto exit_and_cleanup;
-  }
-
-  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
-  if (gpid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config get} 'gpid' is missing");
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
     goto exit_and_cleanup;
   }
   
@@ -2184,45 +2199,60 @@ int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   // local objects
   AdblTrx adbl_trx = NULL;
   
-  // do some security checks
-  if (qin->rinfo == NULL)
+  if (qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config set} missing rinfo");
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  }
+  else
+  {
+    // do some security checks
+    if (qin->rinfo == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  }
+  
+  if (0 == wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
     goto exit_and_cleanup;
   }
   
-  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-  if (wpid == 0)
+  if (0 == gpid)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'wpid' is missing");
-    goto exit_and_cleanup;
-  }
-  
-  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
-  if (gpid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'gpid' is missing");
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
     goto exit_and_cleanup;
   }
 
   // do some security checks
-  if (qin->cdata == NULL)
+  if (NULL == qin->cdata)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui config set} missing cdata");
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
     goto exit_and_cleanup;
   }
   
   opt_msgs_node = cape_udc_get (qin->cdata, "opt_msgs");
-  if (opt_msgs_node == NULL)
+  if (NULL == opt_msgs_node)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'opt_msgs' is missing");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_OPT_MSGS");
     goto exit_and_cleanup;
   }
 
   opt_2factor_node = cape_udc_get (qin->cdata, "opt_2factor");
-  if (opt_2factor_node == NULL)
+  if (NULL == opt_2factor_node)
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{ui config set} 'opt_2factor' is missing");
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_OPT_2F");
     goto exit_and_cleanup;
   }
 

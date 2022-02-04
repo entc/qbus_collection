@@ -64,7 +64,10 @@
       {{item.opt_locale}}
     </td>
     <td style="padding-bottom: 0px;" rowspan="2">
-      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs"></i></button>
+      <div class="btn-group" role="group" aria-label="Basic example">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs"></i></button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_roles(item)"><i class="fa fa-lock"></i></button>
+      </div>
     </td>
   </tr>
   <tr>

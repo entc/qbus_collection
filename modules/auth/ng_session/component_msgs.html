@@ -1,3 +1,4 @@
+<ng-container *ngIf="msgs_list_err == null">
     <table class="table mt-2">
       <tr>
         <th>
@@ -111,5 +112,24 @@
     </table>
 
     <hr>
-    <qbng-switch [val]="opt_msgs" (onVal)="msgs_active_changed ($event)">{{ 'AUTH.MSGSACTIVE' | transloco }}</qbng-switch>
-    <qbng-switch [val]="opt_2factor" (onVal)="msgs_2factor_changed ($event)">{{ 'AUTH.OPT2FACTOR' | transloco }}</qbng-switch>
+
+</ng-container>
+<ng-container *ngIf="msgs_list_err">
+
+  <div class="alert alert-danger" role="alert">
+    {{ msgs_list_err | transloco }}
+  </div>
+
+</ng-container>
+
+<ng-container *ngIf="opt_err == null">
+  <qbng-switch [val]="opt_msgs" (onVal)="msgs_active_changed ($event)">{{ 'AUTH.MSGSACTIVE' | transloco }}</qbng-switch>
+  <qbng-switch [val]="opt_2factor" (onVal)="msgs_2factor_changed ($event)">{{ 'AUTH.OPT2FACTOR' | transloco }}</qbng-switch>
+</ng-container>
+<ng-container *ngIf="opt_err">
+
+  <div class="alert alert-danger" role="alert">
+    {{ opt_err | transloco }}
+  </div>
+
+</ng-container>

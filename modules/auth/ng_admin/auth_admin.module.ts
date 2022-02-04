@@ -12,7 +12,7 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 // components
 import { AuthLoginsComponent } from './auth_logins/component';
 import { AuthApiTokenComponent } from './auth_api_token/component';
-import { AuthUsersComponent, AuthUsersSettingsModalComponent } from './auth_users/component';
+import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent } from './auth_users/component';
 
 //-----------------------------------------------------------------------------
 
@@ -21,7 +21,8 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent } from './auth_user
     AuthLoginsComponent,
     AuthApiTokenComponent,
     AuthUsersComponent,
-    AuthUsersSettingsModalComponent
+    AuthUsersSettingsModalComponent,
+    AuthUsersRolesModalComponent
   ],
   imports: [
     CommonModule,
@@ -36,7 +37,8 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent } from './auth_user
     AuthUsersComponent
   ],
   entryComponents: [
-    AuthUsersSettingsModalComponent
+    AuthUsersSettingsModalComponent,
+    AuthUsersRolesModalComponent
   ]
 })
 export class AuthAdminModule
