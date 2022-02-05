@@ -5,25 +5,19 @@ import { NgxPaginationModule } from 'ngx-pagination';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
-import { AuthSessionModule } from '@qbus/auth_session.module';
-import { AuthCommonModule } from '@qbus/auth_common.module';
 
 //-----------------------------------------------------------------------------
 
 // components
-import { AuthLoginsComponent } from './auth_logins/component';
-import { AuthApiTokenComponent } from './auth_api_token/component';
-import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent } from './auth_users/component';
+import { AuthRolesComponent } from './auth_roles/component';
+import { AuthMsgsComponent } from './auth_msgs/component';
 
 //-----------------------------------------------------------------------------
 
 @NgModule({
   declarations: [
-    AuthLoginsComponent,
-    AuthApiTokenComponent,
-    AuthUsersComponent,
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent
+    AuthRolesComponent,
+    AuthMsgsComponent
   ],
   imports: [
     CommonModule,
@@ -31,18 +25,15 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
     NgxPaginationModule,
     TrloModule,
     QbngModule,
-    PageToolbarModule,
-    AuthSessionModule,
-    AuthCommonModule
+    PageToolbarModule
   ],
   exports: [
-    AuthUsersComponent
+    AuthRolesComponent,
+    AuthMsgsComponent
   ],
   entryComponents: [
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent
   ]
 })
-export class AuthAdminModule
+export class AuthCommonModule
 {
 }

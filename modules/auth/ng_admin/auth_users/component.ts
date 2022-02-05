@@ -63,6 +63,8 @@ export class AuthUsersComponent implements OnInit {
 
     }, () => {
 
+      this.fetch ();
+
     });
   }
 

@@ -52,10 +52,20 @@
       <strong>{{item.firstname}} {{item.lastname}}</strong>
     </td>
     <td style="padding-bottom: 0px;">
-      {{item.opt_msgs}}
+      <ng-container *ngIf="item.opt_msgs == 0">
+        <span class="badge badge-secondary width_3em">-</span>
+      </ng-container>
+      <ng-container *ngIf="item.opt_msgs == 1">
+        <span class="badge badge-success width_3em"><i class="far fa-envelope"></i></span>
+      </ng-container>
     </td>
     <td style="padding-bottom: 0px;">
-      {{item.opt_2factor}}
+      <ng-container *ngIf="item.opt_2factor == 0">
+        <span class="badge badge-secondary width_3em">-</span>
+      </ng-container>
+      <ng-container *ngIf="item.opt_2factor == 1">
+        <span class="badge badge-success width_3em"><i class="far fa-shield-alt"></i></span>
+      </ng-container>
     </td>
     <td style="padding-bottom: 0px;">
       {{item.opt_ttl}}

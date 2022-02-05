@@ -5,6 +5,10 @@
 </div>
 <div class="modal-body">
 
+  <auth-msgs [user_ctx]="ctx"></auth-msgs>
+
+  <hr>
+
   <div class="input-group">
     <div class="input-group-prepend">
       <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
@@ -20,8 +24,6 @@
   </div>
 
   <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
-
-  <auth-session-msgs [user_ctx]="ctx"></auth-session-msgs>
 
 </div>
 <div class="modal-footer">

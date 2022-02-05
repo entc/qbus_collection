@@ -1,11 +1,11 @@
 <div class="modal-header">
   <div class="modal-title mr-auto">
-    <strong><i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'AUTH.ROLES' | transloco }}</strong>
+    <strong><i class="fa fa-user-lock"></i>&nbsp;&nbsp;{{ 'AUTH.ROLES' | transloco }}</strong>
   </div>
 </div>
 <div class="modal-body">
 
-
+  <auth-roles [user_ctx]="ctx"></auth-roles>
 
 </div>
 <div class="modal-footer">
