@@ -1,0 +1,65 @@
+<table class="table mt-2" *ngIf="roles_items == null">
+  <tr>
+    <th>
+      <span class="badge badge-secondary width_10em">{{ 'AUTH.ROLE_NAME' | transloco }}</span>
+    </th>
+    <th width="100%">
+      {{ 'AUTH.ROLE_INFO' | transloco }}
+    </th>
+    <th>
+      <button (click)="open_role_add()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus fa-fw"></i></button>
+    </th>
+  </tr>
+  <ng-container *ngFor="let item of roles_items_ui">
+  <tr>
+    <td>
+      <span class="badge badge-primary width_10em">{{item.name}}</span>
+    </td>
+    <td>
+      {{item.description}}
+    </td>
+    <td>
+      <button (click)="open_role_rm (item)" type="button" class="btn btn-outline-secondary btn-sm"><i class="fa fa-trash fa-fw"></i></button>
+    </td>
+  </tr>
+  </ng-container>
+  <ng-container *ngFor="let item of roles_items_wp">
+  <tr>
+    <td>
+      <span class="badge badge-secondary width_10em">{{item.name}}</span>
+    </td>
+    <td>
+      {{item.description}}
+    </td>
+    <td>
+    </td>
+  </tr>
+  </ng-container>
+</table>
+
+<table class="table mt-2" *ngIf="roles_items">
+  <tr>
+    <th>
+      <span class="badge badge-secondary width_10em">{{ 'AUTH.ROLE_NAME' | transloco }}</span>
+    </th>
+    <th width="100%">
+      {{ 'AUTH.ROLE_INFO' | transloco }}
+    </th>
+    <th>
+      <button (click)="close_role_add()" type="button" class="btn btn-danger btn-sm"><i class="fa fa-times fa-fw"></i></button>
+    </th>
+  </tr>
+  <ng-container *ngFor="let item of roles_items">
+  <tr>
+    <td>
+      <span class="badge badge-secondary width_10em">{{item.name}}</span>
+    </td>
+    <td>
+      {{item.description}}
+    </td>
+    <td>
+      <button (click)="role_add (item)" type="button" class="btn btn-outline-success btn-sm"><i class="fa fa-plus fa-fw"></i></button>
+    </td>
+  </tr>
+  </ng-container>
+</table>

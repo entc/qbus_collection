@@ -90,13 +90,14 @@ export class FlowWorkstepsComponent implements OnInit
   {
     var flow_method: string = modal_content ? 'workstep_set' : 'workstep_add';
 
-    this.modalService.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}])}).result.then((result) => {
+    this.modalService.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}])}).result.then((result: IWorkstep) => {
 
       const step_name = result.name;
+      const step_tag = result.tag;
       const step_fctid = Number (result.fctid);
       const pdata = result.pdata;
 
-      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, fctid: step_fctid, pdata: pdata}).subscribe(() => {
+      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, tag: step_tag, fctid: step_fctid, pdata: pdata}).subscribe(() => {
 
         this.workflow_get ();
       });
@@ -341,6 +342,17 @@ class WidgetComponent
     const workstep: IWorkstep = this.workstep_content.value;
 
     workstep.name = value;
+
+    this.workstep_content.next (workstep);
+  }
+
+  //---------------------------------------------------------------------------
+
+  on_tag_change (value: string)
+  {
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    workstep.tag = value;
 
     this.workstep_content.next (workstep);
   }

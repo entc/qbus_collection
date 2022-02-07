@@ -30,8 +30,7 @@ export class AuthSession
   private interval_obj;
   private timer_idle_countdown;
 
-  // use the default values
-  private login_component: Type<any> = AuthSessionLoginComponent;
+  private login_component: Type<any> | null = null
   private login_modal: boolean = true;
 
   private user: string = null;
@@ -635,7 +634,7 @@ export class AuthSession
   {
     if (this.login_modal)
     {
-      this.modal_service.open (AuthSessionLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then(() => {
+      this.modal_service.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then(() => {
 
       }, () => {
 
@@ -822,6 +821,7 @@ export class AuthUserContext
   wpid: number;
   gpid: number;
   userid: number;
+  active: boolean;
 }
 
 //=============================================================================
@@ -1018,7 +1018,7 @@ class AuthRecipients
 @Component({
   selector: 'auth-login-modal-component',
   templateUrl: './modal_login.html'
-}) export class AuthSessionLoginModalComponent {
+}) export class AuthLoginModalComponent {
 
   //---------------------------------------------------------------------------
 
@@ -1029,130 +1029,6 @@ class AuthRecipients
 
 
     });
-  }
-
-}
-
-//=============================================================================
-
-@Component({
-  selector: 'auth-login-component',
-  templateUrl: './component_login.html'
-}) export class AuthSessionLoginComponent implements AuthSessionLoginWidget {
-
-  public user: string;
-  public pass: string;
-  public code: string;
-
-  public sitem: AuthSessionItem = null;
-  public err: boolean = false;
-
-  // this will be set from the auth component directive
-  public on_dismiss: any;
-  public mode: number = 0;
-
-  //---------------------------------------------------------------------------
-
-  constructor (private auth_session: AuthSession)
-  {
-  }
-
-  //---------------------------------------------------------------------------
-
-  login_submit ()
-  {
-    this.auth_session.enable (this.user, this.pass).subscribe ((sitem: AuthSessionItem) => {
-
-      if (sitem)
-      {
-        this.sitem = sitem;
-      }
-      else
-      {
-        this.err = true;
-      }
-
-    });
-
-    this.sitem = null;
-    this.err = false;
-    this.user = '';
-    this.pass = '';
-  }
-
-  //---------------------------------------------------------------------------
-
-  login_again ()
-  {
-    this.err = false;
-  }
-
-  //---------------------------------------------------------------------------
-
-  close ()
-  {
-    this.on_dismiss ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  open_forgot_password ()
-  {
-    this.mode = 1;
-  }
-
-  //---------------------------------------------------------------------------
-
-  cancel ()
-  {
-    this.mode = 0;
-    this.err = false;
-  }
-
-  //---------------------------------------------------------------------------
-
-  send_forgot_password ()
-  {
-    this.auth_session.json_none_rpc ('AUTH', 'ui_fp_send', {user: this.user}).subscribe(() => {
-
-      this.mode = 2;
-      this.code = '';
-
-    }, () => {
-
-      this.err = true;
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  public on_check_password (val: string): void
-  {
-    this.pass = val;
-  }
-
-  //---------------------------------------------------------------------------
-
-  code_forgot_password ()
-  {
-    this.auth_session.json_none_rpc ('AUTH', 'ui_set', {pass: this.pass, user: this.user, code: this.code}).subscribe(() => {
-
-      this.mode = 3;
-
-    }, () => {
-
-      this.err = true;
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  done_forgot_password ()
-  {
-    this.mode = 0;
-    this.err = false;
   }
 }
 

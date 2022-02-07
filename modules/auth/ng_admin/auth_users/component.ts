@@ -57,6 +57,7 @@ export class AuthUsersComponent implements OnInit {
       ctx.wpid = Number(this._wpid);
       ctx.gpid = item.gpid;
       ctx.userid = item.userid;
+      ctx.active = item.active == 1 ? true: false;
     }
 
     this.modal_service.open (AuthUsersSettingsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
@@ -137,6 +138,18 @@ export class AuthUserItem
 
     }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
+
+  //---------------------------------------------------------------------------
+
+  public auth_active_changed (val: boolean)
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_set', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, userid: this.ctx.userid, active: val}).subscribe (() => {
+
+      this.modal_service.open (QbngSpinnerOkModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'sm'});
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
 }
 
 //=============================================================================

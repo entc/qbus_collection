@@ -304,7 +304,8 @@ int flow_workstep_add (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   number_t fctid;
   const CapeString name;
-  
+  const CapeString tag;
+
   number_t prev = 0;
   
   res = flow_workstep__intern__qin_check (self, qin, err);
@@ -333,7 +334,10 @@ int flow_workstep_add (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_workstep_add} missing parameter 'name'");
     goto exit_and_cleanup;
   }
-  
+
+  // optional
+  tag = cape_udc_get_s (qin->cdata, "tag", NULL);
+
   // optional
   pdata = cape_udc_ext (qin->cdata, "pdata");
   
@@ -377,6 +381,11 @@ int flow_workstep_add (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n    (values, "fctid"    , fctid);
     cape_udc_add_s_cp (values, "name"     , name);
     
+    if (tag)
+    {
+      cape_udc_add_s_cp (values, "tag"    , tag);
+    }
+    
     if (prev)
     {
       cape_udc_add_n    (values, "prev"   , prev);
@@ -417,6 +426,7 @@ int flow_workstep_set (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
   FlowWorkstep self = *p_self;
   
   const CapeString name;
+  const CapeString tag;
   number_t fctid;
   
   // local objects
@@ -448,6 +458,9 @@ int flow_workstep_set (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   // values name
   name = cape_udc_get_s (qin->cdata, "name", NULL);
+
+  // values name
+  tag = cape_udc_get_s (qin->cdata, "tag", NULL);
 
   // values name
   fctid = cape_udc_get_n (qin->cdata, "fctid", 0);
@@ -512,7 +525,12 @@ int flow_workstep_set (FlowWorkstep* p_self, QBusM qin, QBusM qout, CapeErr err)
     {
       cape_udc_add_s_cp (values, "name", name);
     }
-    
+
+    if (tag)
+    {
+      cape_udc_add_s_cp (values, "tag", tag);
+    }
+
     if (fctid)
     {
       cape_udc_add_n (values, "fctid", fctid);

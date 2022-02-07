@@ -10,9 +10,10 @@
     <tr>
       <th></th>
       <th>
-        <span class="badge badge-primary">wsid</span>
+        <span class="badge badge-primary width_3em">wsid</span>
       </th>
-      <th width="100%">{{ 'FLOW.WORKSTEPNAME' | transloco }}</th>
+      <th width="100%">{{ 'FLOW.WSNAME' | transloco }}</th>
+      <th><span class="badge badge-secondary width_10em">{{ 'FLOW.WSTAG' | transloco }}</span></th>
       <th>
         <button (click)="modal__workstep_add__open(undefined)" type="button" class="btn btn-sm btn-success"><i class="fa fa-plus"></i></button>
       </th>
@@ -27,12 +28,17 @@
         </button>
       </td>
       <td>
-        <span class="badge badge-primary">{{ws.id}}</span>
+        <span class="badge badge-primary width_3em">{{ws.id}}</span>
       </td>
       <td>
         {{ws.name}}<br>
         <small>{{function_name_get(ws.fctid)}}</small><br>
         <small>{{userform_name_get(ws.usrid)}}</small>
+      </td>
+      <td>
+        <ng-container *ngIf="ws.tag">
+          <span class="badge badge-secondary width_10em">{{ws.tag}}</span>
+        </ng-container>
       </td>
       <td>
         <div class="btn-group mr-3">

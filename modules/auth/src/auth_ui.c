@@ -1209,12 +1209,14 @@ CapeString auth_ui__intern__construct_password (const CapeString q5_user, const 
 
 //-----------------------------------------------------------------------------
 
-int auth_ui_set__q5_users__update (AuthUI self, AdblTrx adbl_trx, number_t userid, const CapeString q5_user, const CapeString secret, CapeErr err)
+int auth_ui_set__q5_users__update_password (AuthUI self, AdblTrx adbl_trx, number_t userid, const CapeString q5_user, const CapeString secret, CapeErr err)
 {
   int res;
 
   // local objects
-  CapeString h1 = auth_ui__intern__construct_password (q5_user, secret, err);
+  CapeString h1 = NULL;
+  
+  h1 = auth_ui__intern__construct_password (q5_user, secret, err);
   if (h1 == NULL)
   {
     res = cape_err_code (err);
@@ -1227,7 +1229,7 @@ int auth_ui_set__q5_users__update (AuthUI self, AdblTrx adbl_trx, number_t useri
     
     cape_udc_add_n     (params, "id"        , userid);
     cape_udc_add_s_mv  (values, "secret"    , &h1);
-    
+
     // execute query
     res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
     if (res)
@@ -1241,6 +1243,34 @@ int auth_ui_set__q5_users__update (AuthUI self, AdblTrx adbl_trx, number_t useri
 exit_and_cleanup:
   
   cape_str_del (&h1);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_set__q5_users__update_active (AuthUI self, AdblTrx adbl_trx, number_t userid, int active, CapeErr err)
+{
+  int res;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n     (params, "id"        , userid);
+    cape_udc_add_b     (values, "active"    , active);
+    
+    // execute query
+    res = adbl_trx_update (adbl_trx, "q5_users", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
   return res;
 }
 
@@ -1352,7 +1382,7 @@ int auth_ui_set__no_authentication (AuthUI* p_self, QBusM qin, QBusM qout, CapeE
     goto exit_and_cleanup;
   }
   
-  res = auth_ui_set__q5_users__update (self, adbl_trx, userid, q5_user, q5_pass, err);
+  res = auth_ui_set__q5_users__update_password (self, adbl_trx, userid, q5_user, q5_pass, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1662,7 +1692,7 @@ int auth_ui_set__rinfo (AuthUI* p_self, QBusM qin, QBusM qout, number_t wpid, Ca
     goto exit_and_cleanup;
   }
   
-  res = auth_ui_set__q5_users__update (self, adbl_trx, userid, q5_user, secret, err);
+  res = auth_ui_set__q5_users__update_password (self, adbl_trx, userid, q5_user, secret, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1696,7 +1726,42 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui_set__admin (AuthUI* p_self, number_t userid, number_t wpid, number_t gpid, const CapeString q5_user, const CapeString q5_pass, CapeErr err)
+int auth_ui_set__admin_active (AuthUI* p_self, number_t userid, number_t wpid, number_t gpid, int active, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  // local objects
+  AdblTrx adbl_trx = NULL;
+
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui_set__q5_users__update_active (self, adbl_trx, userid, active, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_set__admin_password (AuthUI* p_self, number_t userid, number_t wpid, number_t gpid, const CapeString q5_user, const CapeString q5_pass, CapeErr err)
 {
   int res;
   AuthUI self = *p_self;
@@ -1751,7 +1816,7 @@ int auth_ui_set__admin (AuthUI* p_self, number_t userid, number_t wpid, number_t
     goto exit_and_cleanup;
   }
 
-  res = auth_ui_set__q5_users__update (self, adbl_trx, userid, q5_user, q5_pass, err);
+  res = auth_ui_set__q5_users__update_password (self, adbl_trx, userid, q5_user, q5_pass, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1780,9 +1845,8 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   if (qbus_message_role_has (qin, "admin"))
   {
-    const CapeString user;
-    const CapeString pass;
-
+    CapeUdc active_node;
+    
     number_t gpid;
     number_t userid;
     
@@ -1812,22 +1876,33 @@ int auth_ui_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
       res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_GPID");
       goto exit_and_cleanup;
     }
-
-    user = cape_udc_get_s (qin->cdata, "user", NULL);
-    if (NULL == user)
+    
+    active_node = cape_udc_get (qin->cdata, "active");
+    if (active_node)
     {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER");
-      goto exit_and_cleanup;
+      res = auth_ui_set__admin_active (p_self, userid, wpid, gpid, cape_udc_b (active_node, FALSE), err);
     }
-
-    pass = cape_udc_get_s (qin->cdata, "pass", NULL);
-    if (NULL == pass)
+    else
     {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASS");
-      goto exit_and_cleanup;
-    }
+      const CapeString user;
+      const CapeString pass;
 
-    res = auth_ui_set__admin (p_self, userid, wpid, gpid, user, pass, err);
+      user = cape_udc_get_s (qin->cdata, "user", NULL);
+      if (NULL == user)
+      {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER");
+        goto exit_and_cleanup;
+      }
+      
+      pass = cape_udc_get_s (qin->cdata, "pass", NULL);
+      if (NULL == pass)
+      {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASS");
+        goto exit_and_cleanup;
+      }
+      
+      res = auth_ui_set__admin_password (p_self, userid, wpid, gpid, user, pass, err);
+    }
   }
   else
   {

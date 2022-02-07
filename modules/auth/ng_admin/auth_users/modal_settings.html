@@ -25,6 +25,10 @@
 
   <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
 
+  <hr>
+
+  <qbng-switch [val]="ctx.active" (onVal)="auth_active_changed ($event)">{{ 'AUTH.DEACTIVATE' | transloco }}</qbng-switch>
+
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>

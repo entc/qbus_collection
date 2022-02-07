@@ -5,9 +5,15 @@ import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
 import { HttpClientModule } from '@angular/common/http';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import { AuthSession, AuthSessionLoginModalComponent, AuthWorkspacesModalComponent, Auth2FactorModalComponent, AuthSessionComponentDirective, AuthSessionLoginComponent, AuthFirstuseModalComponent } from '@qbus/auth_session';
-import { AuthSessionMenuComponent, AuthSessionInfoModalComponent, AuthSessionRoleDirective, AuthSessionContentComponent, AuthSessionPassResetComponent, AuthSessionLangComponent, AuthSessionPasscheckComponent } from './component';
-import { AuthCommonModule } from '@qbus/auth_common.module';
+import { AuthSession, AuthWorkspacesModalComponent, Auth2FactorModalComponent, AuthSessionComponentDirective, AuthFirstuseModalComponent, AuthLoginModalComponent } from '@qbus/auth_session';
+import { AuthSessionRoleDirective, AuthSessionContentComponent, AuthSessionPassResetComponent, AuthSessionLangComponent } from './component';
+
+// components
+import { AuthRolesComponent } from './auth_roles/component';
+import { AuthMsgsComponent } from './auth_msgs/component';
+import { AuthLoginComponent } from './auth_login/component';
+import { AuthPasscheckComponent } from './auth_passcheck/component';
+import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './auth_info/component';
 
 //import { AuthSessionGuard } from '@qbus/auth_session/route';
 
@@ -18,16 +24,18 @@ import { AuthCommonModule } from '@qbus/auth_common.module';
     AuthWorkspacesModalComponent,
     Auth2FactorModalComponent,
     AuthFirstuseModalComponent,
-    AuthSessionLoginModalComponent,
     AuthSessionMenuComponent,
     AuthSessionComponentDirective,
-    AuthSessionLoginComponent,
     AuthSessionInfoModalComponent,
     AuthSessionRoleDirective,
     AuthSessionContentComponent,
     AuthSessionPassResetComponent,
     AuthSessionLangComponent,
-    AuthSessionPasscheckComponent
+    AuthRolesComponent,
+    AuthMsgsComponent,
+    AuthLoginComponent,
+    AuthLoginModalComponent,
+    AuthPasscheckComponent
   ],
   providers: [
     AuthSession
@@ -39,25 +47,25 @@ import { AuthCommonModule } from '@qbus/auth_common.module';
     TrloModule,
     QbngModule,
     NgbModule,
-    HttpClientModule,
-    AuthCommonModule
+    HttpClientModule
   ],
   entryComponents: [
     AuthWorkspacesModalComponent,
     Auth2FactorModalComponent,
     AuthFirstuseModalComponent,
-    AuthSessionLoginModalComponent,
-    AuthSessionLoginComponent,
-    AuthSessionInfoModalComponent
+    AuthSessionInfoModalComponent,
+    AuthLoginModalComponent
   ],
   exports: [
     AuthSessionMenuComponent,
     AuthSessionRoleDirective,
-    AuthSessionLoginComponent,
     AuthSessionContentComponent,
     AuthSessionPassResetComponent,
     AuthSessionLangComponent,
-    AuthSessionPasscheckComponent
+    AuthRolesComponent,
+    AuthMsgsComponent,
+    AuthLoginComponent,
+    AuthPasscheckComponent
   ]
 })
 export class AuthSessionModule

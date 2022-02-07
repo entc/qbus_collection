@@ -6,7 +6,6 @@ import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { AuthSessionModule } from '@qbus/auth_session.module';
-import { AuthCommonModule } from '@qbus/auth_common.module';
 
 //-----------------------------------------------------------------------------
 
@@ -32,8 +31,7 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
     TrloModule,
     QbngModule,
     PageToolbarModule,
-    AuthSessionModule,
-    AuthCommonModule
+    AuthSessionModule
   ],
   exports: [
     AuthUsersComponent

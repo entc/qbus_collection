@@ -7,6 +7,7 @@ export class IWorkstep {
   public fctid: number;
   public usrid: number;
   public name: string;
+  public tag: string;
   public pdata = {};
 
 }

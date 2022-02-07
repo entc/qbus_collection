@@ -19,6 +19,15 @@
 
     <div class="col-md-6 col-12">
       <div class="form-group">
+        <label>{{ 'FLOW.WSTAG' | transloco }}</label>
+        <div class="input-group">
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.tag" (blur)="on_tag_change ($event.target.value)" name="step_tag">
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-12">
+      <div class="form-group">
         <label>{{ 'FLOW.WSCONDITION' | transloco }}</label>
         <div class="input-group">
           <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.pdata['cond']" (blur)="on_pdata_change ($event.target.value, 'cond')" name="step_cond">

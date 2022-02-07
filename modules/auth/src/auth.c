@@ -7,6 +7,7 @@
 #include "auth_perm.h"
 #include "auth_session.h"
 #include "auth_msgs.h"
+#include "auth_roles.h"
 
 // adbl includes
 #include <adbl.h>
@@ -302,6 +303,45 @@ static int __STDCALL qbus_auth__msgs_rm (QBus qbus, void* ptr, QBusM qin, QBusM 
   
   // run the command
   return auth_msgs_rm (&auth_msgs, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__roles_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthRoles auth_roles = auth_roles_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return auth_roles_get (&auth_roles, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__roles_ui_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthRoles auth_roles = auth_roles_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return auth_roles_ui_get (&auth_roles, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__roles_wp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthRoles auth_roles = auth_roles_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return auth_roles_wp_get (&auth_roles, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -661,6 +701,20 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: gpid
   qbus_register (qbus, "msgs_rm"              , ctx, qbus_auth__msgs_rm, NULL, err);
 
+  // -------- callback methods --------------------------------------------
+  
+  // retrieve all roles
+  //   args:
+  qbus_register (qbus, "roles_get"            , ctx, qbus_auth__roles_get, NULL, err);
+
+  // retrieve all roles for a userid
+  //   args:
+  qbus_register (qbus, "roles_ui_get"         , ctx, qbus_auth__roles_ui_get, NULL, err);
+
+  // retrieve all roles for a userid
+  //   args:
+  qbus_register (qbus, "roles_wp_get"         , ctx, qbus_auth__roles_wp_get, NULL, err);
+  
   // -------- callback methods --------------------------------------------
 
   // all token functions

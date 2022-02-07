@@ -20,7 +20,7 @@
 
   <hr>
 
-  <auth-session-password-checker (onChange)="on_check_password($event)"></auth-session-password-checker>
+  <auth-password-checker (onChange)="on_check_password($event)"></auth-password-checker>
 
   <div class="text-right mt-4" *ngIf="pass_new != null">
     <button (click)="apply ()" type="button" class="btn btn-outline-primary btn-block">{{ 'AUTH.CHANGE' | transloco }}</button>
