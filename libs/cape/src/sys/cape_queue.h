@@ -25,7 +25,7 @@ __CAPE_LIBEX   void        cape_sync_wait          (CapeSync);
 
 struct CapeQueue_s; typedef struct CapeQueue_s* CapeQueue;
 
-typedef void (__STDCALL *cape_queue_cb_fct)(void* ptr, number_t pos);
+typedef void (__STDCALL *cape_queue_cb_fct)(void* ptr, number_t pos, number_t queue_size);
 
 //-----------------------------------------------------------------------------
 

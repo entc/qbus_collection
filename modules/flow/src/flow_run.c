@@ -220,7 +220,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL flow_run__queue_worker (void* ptr, number_t action)
+static void __STDCALL flow_run__queue_worker (void* ptr, number_t action, number_t queue_size)
 {
   int res;
   FlowRun self = ptr;
