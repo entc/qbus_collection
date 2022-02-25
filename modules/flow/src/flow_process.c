@@ -1044,13 +1044,90 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+CapeUdc flow_process__internal__get (FlowProcess self, number_t wpid, number_t psid, number_t psid_root, CapeErr err)
+{
+  CapeUdc ret = NULL;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , psid);
+    
+    if (wpid)
+    {
+      cape_udc_add_n    (params, "wpid"          , wpid);
+    }
+    
+    cape_udc_add_n      (values, "active"        , 0);
+    cape_udc_add_n      (values, "wfid"          , 0);
+    cape_udc_add_n      (values, "tdata"         , 0);
+    cape_udc_add_n      (values, "wsid"          , 0);
+    cape_udc_add_n      (values, "log"           , 0);
+    cape_udc_add_s_cp   (values, "tag"           , NULL);
+    
+    /*
+     flow_process_view
+     
+     select ps.id, ps.wpid, ps.wfid, ps.active, ps.refid, ps.sync, ws.id wsid, ws.tag, ws.log, ps.t_data tdata from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step;
+     */
+    
+    query_results = adbl_session_query (self->adbl_session, "flow_process_view", &params, &values, err);
+    if (NULL == query_results)
+    {
+      cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_PROCESS");
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // extract the first row of the result-set
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_PROCESS");
+    goto exit_and_cleanup;
+  }
+  
+  number_t active = cape_udc_get_n (first_row, "active", 0);
+  if (0 == active)
+  {
+    if (0 == psid_root)
+    {
+      cape_err_set (err, CAPE_ERR_NOT_FOUND, "task is not active anymore");
+      goto exit_and_cleanup;
+    }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "FLOW", "process get", "process is not active anymore, try root process psid = %i", psid_root);
+
+    // if the process is not active anymore, check psid root
+    ret = flow_process__internal__get (self, wpid, psid_root, 0, err);
+  }
+  else
+  {
+    // use the first row as return value
+    ret = cape_udc_mv (&first_row);
+  }
+
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   FlowProcess self = *p_self;
 
   // local objects
-  CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
   CapeString remote = NULL;
   CapeUdc data = NULL;
@@ -1100,59 +1177,21 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   cape_log_fmt (CAPE_LL_TRACE, "FLOW", "process get", "fetch info from process psid = %i, remote = %s", self->psid, remote);
   
-  {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_n      (params, "id"            , self->psid);
-
-    if (self->wpid)
-    {
-      cape_udc_add_n    (params, "wpid"          , self->wpid);
-    }
-
-    cape_udc_add_n      (values, "active"        , 0);
-    cape_udc_add_n      (values, "wfid"          , 0);
-    cape_udc_add_n      (values, "tdata"         , 0);
-    cape_udc_add_n      (values, "wsid"          , 0);
-    cape_udc_add_n      (values, "log"           , 0);
-
-    /*
-     flow_process_view
-     
-     select ps.id, ps.wpid, ps.wfid, ps.active, ps.refid, ps.sync, ws.id wsid, ws.tag, ws.log, ps.t_data tdata from proc_tasks ps left join proc_worksteps ws on ws.id = ps.current_step;
-     */
-    
-    query_results = adbl_session_query (self->adbl_session, "flow_process_view", &params, &values, err);
-    if (query_results == NULL)
-    {
-      goto exit_and_cleanup;
-    }
-  }
-
-  first_row = cape_udc_ext_first (query_results);
+  // try to get the process using psid
+  first_row = flow_process__internal__get (self, self->wpid, self->psid, cape_udc_get_n (qin->cdata, "psid_root", 0), err);
   if (NULL == first_row)
   {
-    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
 
   logtype = cape_udc_get_n (first_row, "log", 0);
-
+  
   wsid = cape_udc_get_n (first_row, "wsid", 0);
   if (wsid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "can't find the process");
     goto exit_and_cleanup;
-  }
-
-  {
-    number_t active = cape_udc_get_n (first_row, "active", 0);
-    if (active == 0)
-    {
-      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "task is not active anymore");
-      goto exit_and_cleanup;
-    }
   }
   
   {
@@ -1200,7 +1239,6 @@ int flow_process_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
-  cape_udc_del (&query_results);
   cape_udc_del (&first_row);
   
   cape_udc_del (&tdata_node);

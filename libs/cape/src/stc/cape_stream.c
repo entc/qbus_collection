@@ -269,11 +269,11 @@ CapeStream cape_stream_deserialize (CapeString source, fct_cape_stream_base64_de
 {
   number_t pos;
   
-  if (cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
+  if (cb_decode && cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
   {
     CapeStream s = cb_decode (source + pos + 8);
     if (s)
-    {
+    {      
       s->mime_type = cape_str_sub (source + 5, pos);
       return s;
     }
