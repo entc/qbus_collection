@@ -993,7 +993,7 @@ struct QbusRouteWorkerCtx_s
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t pos)
+void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t pos, number_t queue_size)
 {
   QbusRouteWorkerCtx ctx = ptr;
   
@@ -1009,7 +1009,7 @@ void __STDCALL qbus_route_request__local_request__worker (void* ptr, number_t po
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_route_request__remote_request__worker (void* ptr, number_t pos)
+void __STDCALL qbus_route_request__remote_request__worker (void* ptr, number_t pos, number_t queue_size)
 {
   QbusRouteWorkerCtx ctx = ptr;
 

@@ -4,7 +4,7 @@
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL cape_queue01_callback (void* ptr, number_t pos)
+static void __STDCALL cape_queue01_callback (void* ptr, number_t pos, number_t queue_size)
 {
   //cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "UT :: queue", "[%i] callback start", h);
 

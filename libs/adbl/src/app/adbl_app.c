@@ -9,7 +9,7 @@
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL worker_part (void* ptr, number_t pos)
+static void __STDCALL worker_part (void* ptr, number_t pos, number_t queue_size)
 {
   AdblTrx trx = NULL;
   AdblSession session = ptr;

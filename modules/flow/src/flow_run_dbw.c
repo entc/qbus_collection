@@ -1309,7 +1309,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action)
+static void __STDCALL flow_run_dbw__queue_worker (void* ptr, number_t action, number_t queue_size)
 {
   int res;
   FlowRunDbw self = ptr;
