@@ -447,7 +447,7 @@ int cape_template_part_eval_datetime_item (CapeTemplatePart self, CapeUdc item, 
   const CapeDatetime* dt = cape_udc_d (item, NULL);
   if (dt)
   {
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval datetime", "evaluate %s = []", cape_udc_name (item));
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval datetime", "evaluate %s = []", cape_udc_name (item));
     
     switch (self->format_type)
     {
@@ -599,7 +599,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
   const CapeString text = cape_udc_s (item, NULL);
   if (text)
   {
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval str", "evaluate %s = '%s'", cape_udc_name (item), text);
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval str", "evaluate %s = '%s'", cape_udc_name (item), text);
     
     switch (self->format_type)
     {
@@ -762,7 +762,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
 
 int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = [%i]", cape_udc_name (item), cape_udc_n (item, 0));
+  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = [%i]", cape_udc_name (item), cape_udc_n (item, 0));
 
   switch (self->format_type)
   {
@@ -806,7 +806,7 @@ int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, 
 
 int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval double", "evaluate %s = []", cape_udc_name (item));
+  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval double", "evaluate %s = []", cape_udc_name (item));
 
   if (self->eval)
   {
@@ -838,7 +838,7 @@ int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, 
 
 int cape_template_part_eval_bool (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval bool", "evaluate %s = []", cape_udc_name (item));
+  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval bool", "evaluate %s = []", cape_udc_name (item));
 
   if (self->eval)
   {

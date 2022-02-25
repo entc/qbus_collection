@@ -300,7 +300,7 @@ void __STDCALL cape_queue__item__on_del (void* ptr)
   
   if (item->on_done)
   {
-    item->on_done (item->ptr, item->pos);
+    item->on_done (item->ptr, item->pos, 0);
   }
   
   cape_sync_dec (item->sync);
@@ -484,6 +484,8 @@ int cape_queue_next (CapeQueue self)
 {
   int ret = TRUE;
   CapeQueueItem item = NULL;
+  
+  number_t queue_size;
  
 #if defined __WINDOWS_OS
 
@@ -536,13 +538,16 @@ int cape_queue_next (CapeQueue self)
     item = cape_list_pop_front (self->queue);
   }
   
+  // get the remaining items in the queue
+  queue_size = cape_list_size (self->queue);
+  
   cape_mutex_unlock (self->mutex);
   
   if (item && ret)
   {
     if (item->on_event)
     {
-      item->on_event (item->ptr, item->pos);
+      item->on_event (item->ptr, item->pos, queue_size);
     }
     
     cape_queue__item__on_del (item);
