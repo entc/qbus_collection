@@ -9,6 +9,9 @@ SET(ADBL_APP_SOURCES
 add_executable          (adbl_app ${ADBL_APP_SOURCES})
 target_link_libraries   (adbl_app adbl2)
 
+# copy the test database
+add_custom_command (TARGET adbl_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/test.db ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/test.db)
+
 #----------------------------------------------------------------------------------
 
 if (PVD_ADBL_DIR)
