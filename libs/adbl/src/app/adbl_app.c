@@ -114,7 +114,7 @@ int main (int argc, char *argv[])
     goto exit;
   }
   
-  ctx = adbl_ctx_new ("pvd_mysql", "adbl2_mysql", err);
+  ctx = adbl_ctx_new ("adbl", "adbl2_sqlite3", err);
   if (ctx == NULL)
   {
     goto exit;

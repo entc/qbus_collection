@@ -27,23 +27,12 @@ INSTALL (TARGETS adbl2 DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
-INCLUDE_DIRECTORIES("." "core")
-
-SET(ADBL_APP_SOURCES
-  app/adbl_app.c
-)
-
-add_executable          (adbl_app ${ADBL_APP_SOURCES})
-target_link_libraries   (adbl_app adbl2)
-set_target_properties   (adbl_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
-
-#----------------------------------------------------------------------------------
-
 SET (PVD_ADBL_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_adbl CACHE PATH "library path to adbl backends")
 message (STATUS "PVD_ADBL_DIR  = ${PVD_ADBL_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
+SUBDIRS(app)
 SUBDIRS(pvd_mysql)
 SUBDIRS(pvd_sqlite)
 
