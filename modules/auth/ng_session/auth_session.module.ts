@@ -15,7 +15,7 @@ import { AuthLoginComponent } from './auth_login/component';
 import { AuthPasscheckComponent } from './auth_passcheck/component';
 import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './auth_info/component';
 
-//import { AuthSessionGuard } from '@qbus/auth_session/route';
+import { AuthSessionGuard } from '@qbus/auth_session/route';
 
 //=============================================================================
 
@@ -38,8 +38,8 @@ import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './auth_
     AuthPasscheckComponent
   ],
   providers: [
-    AuthSession
-//    AuthSessionGuard
+    AuthSession,
+    AuthSessionGuard
   ],
   imports: [
     CommonModule,
