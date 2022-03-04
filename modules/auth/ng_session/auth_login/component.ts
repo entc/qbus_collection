@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, Injector } from '@angular/core';
+import { Component, Input, Output, OnInit, Injector, EventEmitter } from '@angular/core';
 import { AuthSession, AuthSessionItem, AuthUserContext, AuthSessionLoginWidget } from '@qbus/auth_session';
 import { Observable, of } from 'rxjs';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
@@ -10,7 +10,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 @Component({
   selector: 'auth-login',
   templateUrl: './component.html'
-}) export class AuthLoginComponent implements AuthSessionLoginWidget {
+}) export class AuthLoginComponent {
 
   public user: string;
   public pass: string;
@@ -20,7 +20,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   public err: boolean = false;
 
   // this will be set from the auth component directive
-  public on_dismiss: any;
+  @Output() onClose: EventEmitter<boolean> = new EventEmitter();
   public mode: number = 0;
 
   //---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   close ()
   {
-    this.on_dismiss ();
+    this.onClose.emit (true);
   }
 
   //---------------------------------------------------------------------------
