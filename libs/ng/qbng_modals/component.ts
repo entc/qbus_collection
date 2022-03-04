@@ -58,6 +58,8 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
   templateUrl: './modal_error.html'
 }) export class QbngErrorModalComponent implements OnInit {
 
+  public err_code_name: string = 'ERR.CODE_UNKNOWN';
+
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, public err: QbngErrorHolder)
@@ -68,6 +70,16 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 
   ngOnInit()
   {
+    switch (this.err.code)
+    {
+      case  2: this.err_code_name = 'ERR.CODE_NOT_FOUND'; break;
+      case  3: this.err_code_name = 'ERR.CODE_NOT_SUPPORTED'; break;
+      case  4: this.err_code_name = 'ERR.CODE_RUNTIME'; break;
+      case  9: this.err_code_name = 'ERR.CODE_NO_OBJECT'; break;
+      case 10: this.err_code_name = 'ERR.CODE_NO_ROLE'; break;
+      case 13: this.err_code_name = 'ERR.CODE_MISSING_PARAM'; break;
+      case 22: this.err_code_name = 'ERR.CODE_OUT_OF_BOUNDS'; break;
+    }
   }
 
 }
