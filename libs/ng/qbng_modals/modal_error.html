@@ -1,13 +1,21 @@
-  <div class="modal-header border-danger">
-    <div class="modal-title text-danger">
-      <strong><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ 'MISC.ERROR' | transloco }}</strong>
-    </div>
+  <div class="modal-header bg-danger">
+    <h5 class="text-white w-100">
+      <strong>
+        <i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;<span class="text-uppercase">{{ err_code_name | transloco }}</span>
+      </strong>
+    </h5>
+    <span class="badge badge-danger width_10em">{{ 'ERR.CODE' | transloco }} : {{err.code}}</span>
   </div>
-  <div class="modal-body">
+  <div class="modal-body text-center">
 
-    {{ err.text | transloco }}
+    <span class="text-danger">{{ 'ERR.TEXT' | transloco }}</span>
+    <div class="card mt-2">
+      <div class="card-body">
+        {{ err.text | transloco }}
+      </div>
+    </div>
 
   </div>
   <div class="modal-footer border-danger">
-    <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+    <button type="button" class="btn btn-outline-danger btn-block" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
   </div>
