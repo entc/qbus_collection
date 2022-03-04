@@ -1159,7 +1159,46 @@ namespace cape
       cape_udc_add_s_mv (obj, name, &h);
     }
   };
+  
+  //-----------------------------------------------------------------------------------------------------
 
+  class UdcCursor
+  {
+    
+  public:
+    
+    UdcCursor (cape::Udc& udc)
+    : m_cursor (cape_udc_cursor_new (udc.obj(), CAPE_DIRECTION_FORW))
+    {
+    }
+                
+    ~UdcCursor ()
+    {
+      cape_udc_cursor_del (&m_cursor);
+    }
+    
+    bool next ()
+    {
+      return cape_udc_cursor_next (m_cursor) == TRUE;
+    }
+    
+    cape::Udc item () const
+    {
+      return cape::Udc (m_cursor->item);
+    }
+    
+    number_t position () const
+    {
+      return m_cursor->position;
+    }
+
+  private:
+    
+    CapeUdcCursor* m_cursor;
+    
+  };
+  
+  
   //-----------------------------------------------------------------------------------------------------
 
   struct UdcCursorHolder
