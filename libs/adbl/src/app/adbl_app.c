@@ -114,7 +114,7 @@ int main (int argc, char *argv[])
     goto exit;
   }
   
-  ctx = adbl_ctx_new ("pvd_mysql", "adbl2_mysql", err);
+  ctx = adbl_ctx_new ("adbl", "adbl2_sqlite3", err);
   if (ctx == NULL)
   {
     goto exit;
@@ -123,11 +123,7 @@ int main (int argc, char *argv[])
   {
     CapeUdc properties = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_s_cp (properties, "host", "localhost");
-    cape_udc_add_s_cp (properties, "schema", "test");
-    
-    cape_udc_add_s_cp (properties, "user", "test");
-    cape_udc_add_s_cp (properties, "pass", "test");
+    cape_udc_add_s_cp (properties, "dbfile", "test.db");
     
     session = adbl_session_open (ctx, properties, err);
     
