@@ -10,6 +10,13 @@
 #define ADBL_AUTO_SEQUENCE_ID     -300      // the database backend has sequence support -> get a new sequence ID automatically
 #define ADBL_AUTO_INCREMENT       -200      // the database backend supports auto increment for this column
 
+// use this only in combination with group by
+#define ADBL_AGGREGATE_SUM        1         // creates a sum of all column values
+#define ADBL_AGGREGATE_COUNT      2
+#define ADBL_AGGREGATE_AVERAGE    3
+#define ADBL_AGGREGATE_MAX        4
+#define ADBL_AGGREGATE_MIN        5
+
 //=============================================================================
 
 struct AdblCtx_s; typedef struct AdblCtx_s* AdblCtx;
@@ -108,6 +115,10 @@ __CAPE_LIBEX   void          adbl_param_add__loe_than_n      (CapeUdc params, co
 __CAPE_LIBEX   void          adbl_param_add__between_n       (CapeUdc params, const CapeString name, number_t from, number_t until);
 
 __CAPE_LIBEX   void          adbl_param_add__between_d       (CapeUdc params, const CapeString name, const CapeDatetime* from, const CapeDatetime* until);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   void          adbl_values_add__group_by       (CapeUdc values, const CapeString group);
 
 //=============================================================================
 

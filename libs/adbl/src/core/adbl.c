@@ -692,3 +692,10 @@ void adbl_param_add__between_d (CapeUdc params, const CapeString name, const Cap
 }
 
 //-----------------------------------------------------------------------------
+
+void adbl_values_add__group_by (CapeUdc values, const CapeString group)
+{
+  cape_udc_add_s_cp (values, ADBL_SPECIAL__GROUP_BY, group);
+}
+
+//-----------------------------------------------------------------------------

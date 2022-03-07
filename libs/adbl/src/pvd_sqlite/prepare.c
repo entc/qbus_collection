@@ -1,5 +1,6 @@
 #include "prepare.h"
 #include "adbl.h"
+#include "adbl_types.h"
 
 // cape includes
 #include "stc/cape_stream.h"
@@ -19,6 +20,9 @@ struct AdblPrepare_s
   
   CapeList binds;
   
+  CapeString group_by;
+  CapeString order_by;
+
   sqlite3_stmt* stmt;
 };
 
@@ -31,6 +35,9 @@ AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
   self->values = NULL;
   self->params = NULL;
   
+  self->group_by = NULL;
+  self->order_by = NULL;
+
   // check all values
   if (p_values)
   {
@@ -44,7 +51,21 @@ AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
     {
       CapeUdc item = cape_udc_cursor_ext (values, cursor);
       
-      switch (cape_udc_type(item))
+      // the name of the column
+      const CapeString name = cape_udc_name (item);
+      
+      // check for special column entries
+      if (cape_str_equal (name, ADBL_SPECIAL__GROUP_BY))
+      {
+        self->group_by = cape_udc_s_mv (item, NULL);
+        cape_udc_del (&item);
+      }
+      else if (cape_str_equal (name, ADBL_SPECIAL__ORDER_BY))
+      {
+        self->order_by = cape_udc_s_mv (item, NULL);
+        cape_udc_del (&item);
+      }
+      else switch (cape_udc_type (item))
       {
         case CAPE_UDC_STRING:
         case CAPE_UDC_BOOL:
@@ -447,7 +468,67 @@ void adbl_pvd_append_columns (CapeStream stream, CapeUdc values, const char* tab
         cape_stream_append_str (stream, ", ");
       }
       
-      cape_stream_append_str (stream, column_name);
+      switch (cape_udc_type (cursor->item))
+      {
+        case CAPE_UDC_NUMBER:
+        {
+          switch (cape_udc_n (cursor->item, 0))
+          {
+            case ADBL_AGGREGATE_SUM:
+            {
+              cape_stream_append_str (stream, "SUM(" );
+              cape_stream_append_str (stream, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            case ADBL_AGGREGATE_COUNT:
+            {
+              cape_stream_append_str (stream, "COUNT(" );
+              cape_stream_append_str (stream, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            case ADBL_AGGREGATE_AVERAGE:
+            {
+              cape_stream_append_str (stream, "AVG(" );
+              cape_stream_append_str (stream, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            case ADBL_AGGREGATE_MAX:
+            {
+              cape_stream_append_str (stream, "MAX(" );
+              cape_stream_append_str (stream, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            case ADBL_AGGREGATE_MIN:
+            {
+              cape_stream_append_str (stream, "MIN(" );
+              cape_stream_append_str (stream, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            default:
+            {
+              cape_stream_append_str (stream, column_name);
+              break;
+            }
+          }
+          
+          break;
+        }
+        default:
+        {
+          cape_stream_append_str (stream, column_name);
+          break;
+        }
+      }
     }
   }
   

@@ -19,6 +19,8 @@
 #define ADBL_SPECIAL__VALUE            "__val"
 #define ADBL_SPECIAL__GREATER          "__greater"
 #define ADBL_SPECIAL__LESS             "__less"
+#define ADBL_SPECIAL__GROUP_BY         "__groupby"
+#define ADBL_SPECIAL__ORDER_BY         "__orderby"
 
 //-----------------------------------------------------------------------------
 

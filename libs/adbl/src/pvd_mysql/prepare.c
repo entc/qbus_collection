@@ -22,6 +22,9 @@ struct AdblPrepare_s
   
   CapeUdc values;                // will be transfered
   
+  CapeString group_by;
+  CapeString order_by;
+
   AdblBindVars bindsParams;     // owned
   
   AdblBindVars bindsValues;     // will be transfered
@@ -38,6 +41,9 @@ AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
   self->values = NULL;
   self->params = NULL;
   
+  self->group_by = NULL;
+  self->order_by = NULL;
+  
   // check all values
   if (p_values)
   {
@@ -51,7 +57,21 @@ AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
     {
       CapeUdc item = cape_udc_cursor_ext (values, cursor);
       
-      switch (cape_udc_type(item))
+      // the name of the column
+      const CapeString name = cape_udc_name (item);
+      
+      // check for special column entries
+      if (cape_str_equal (name, ADBL_SPECIAL__GROUP_BY))
+      {
+        self->group_by = cape_udc_s_mv (item, NULL);
+        cape_udc_del (&item);
+      }
+      else if (cape_str_equal (name, ADBL_SPECIAL__ORDER_BY))
+      {
+        self->order_by = cape_udc_s_mv (item, NULL);
+        cape_udc_del (&item);
+      }
+      else switch (cape_udc_type(item))
       {
         case CAPE_UDC_STRING:
         case CAPE_UDC_BOOL:
@@ -413,6 +433,26 @@ int adbl_prepare_prepare (AdblPrepare self, AdblPvdSession session, CapeStream s
 
 //-----------------------------------------------------------------------------
 
+void adbl_pvd_append_columns__add (CapeStream stream, int ansi, const CapeString table, const CapeString column_name)
+{
+  if (ansi == TRUE)
+  {
+    cape_stream_append_str (stream, "\"" );
+    cape_stream_append_str (stream, table );
+    cape_stream_append_str (stream, "\".\"" );
+    cape_stream_append_str (stream, column_name);
+    cape_stream_append_str (stream, "\"" );
+  }
+  else
+  {
+    cape_stream_append_str (stream, table );
+    cape_stream_append_str (stream, "." );
+    cape_stream_append_str (stream, column_name);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, const char* table)
 {
   number_t used = 0;
@@ -421,7 +461,6 @@ number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, c
   while (cape_udc_cursor_next (cursor))
   {
     const CapeString column_name = cape_udc_name (cursor->item);
-    
     if (column_name)
     {
       if (cursor->position > 0)
@@ -429,19 +468,66 @@ number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, c
         cape_stream_append_str (stream, ", ");
       }
       
-      if (ansi == TRUE)
+      switch (cape_udc_type (cursor->item))
       {
-        cape_stream_append_str (stream, "\"" );
-        cape_stream_append_str (stream, table );
-        cape_stream_append_str (stream, "\".\"" );
-        cape_stream_append_str (stream, column_name);
-        cape_stream_append_str (stream, "\"" );
-      }
-      else
-      {
-        cape_stream_append_str (stream, table );
-        cape_stream_append_str (stream, "." );
-        cape_stream_append_str (stream, column_name);
+        case CAPE_UDC_NUMBER:
+        {
+          switch (cape_udc_n (cursor->item, 0))
+          {
+            case ADBL_AGGREGATE_SUM:
+            {
+              cape_stream_append_str (stream, "SUM(" );
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              cape_stream_append_str (stream, ")" );
+
+              break;
+            }
+            case ADBL_AGGREGATE_COUNT:
+            {
+              cape_stream_append_str (stream, "COUNT(" );
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              cape_stream_append_str (stream, ")" );
+              
+              break;
+            }
+            case ADBL_AGGREGATE_AVERAGE:
+            {
+              cape_stream_append_str (stream, "AVG(" );
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              cape_stream_append_str (stream, ")" );
+
+              break;
+            }
+            case ADBL_AGGREGATE_MAX:
+            {
+              cape_stream_append_str (stream, "MAX(" );
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              cape_stream_append_str (stream, ")" );
+
+              break;
+            }
+            case ADBL_AGGREGATE_MIN:
+            {
+              cape_stream_append_str (stream, "MIN(" );
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              cape_stream_append_str (stream, ")" );
+
+              break;
+            }
+            default:
+            {
+              adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+              break;
+            }
+          }
+          
+          break;
+        }
+        default:
+        {
+          adbl_pvd_append_columns__add (stream, ansi, table, column_name);
+          break;
+        }
       }
       
       used++;
@@ -716,6 +802,17 @@ number_t adbl_prepare_append_where_clause (CapeStream stream, int ansi, CapeUdc 
 
 //-----------------------------------------------------------------------------
 
+void adbl_prepare_append_group_by (CapeStream stream, int ansi, const CapeString group_by)
+{
+  if (group_by)
+  {
+    cape_stream_append_str (stream, " GROUP BY ");
+    cape_stream_append_str (stream, group_by);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void adbl_pvd_append_table (CapeStream stream, int ansi, const char* schema, const char* table)
 {
   // schema and table name
@@ -753,6 +850,8 @@ int adbl_prepare_statement_select (AdblPrepare self, AdblPvdSession session, con
   adbl_pvd_append_table (stream, ansi, schema, table);
   
   self->params_used = adbl_prepare_append_where_clause (stream, ansi, self->params, table);
+  
+  adbl_prepare_append_group_by (stream, ansi, self->group_by);
   
   res = adbl_prepare_prepare (self, session, stream, err);
   
