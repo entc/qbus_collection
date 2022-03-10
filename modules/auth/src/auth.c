@@ -346,6 +346,32 @@ static int __STDCALL qbus_auth__roles_wp_get (QBus qbus, void* ptr, QBusM qin, Q
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth__roles_ui_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthRoles auth_roles = auth_roles_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return auth_roles_ui_add (&auth_roles, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__roles_ui_rm (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthRoles auth_roles = auth_roles_new (qbus, ctx->adbl_session);
+  
+  // run the command
+  return auth_roles_ui_rm (&auth_roles, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_token_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -714,7 +740,15 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // retrieve all roles for a userid
   //   args:
   qbus_register (qbus, "roles_wp_get"         , ctx, qbus_auth__roles_wp_get, NULL, err);
-  
+
+  // adds a role for a user (only for admin)
+  //   args: userid, roleid
+  qbus_register (qbus, "roles_ui_add"         , ctx, qbus_auth__roles_ui_add, NULL, err);
+
+  // removes a role for a user (only for admin)
+  //   args: userid, roleid, ruid
+  qbus_register (qbus, "roles_ui_rm"          , ctx, qbus_auth__roles_ui_rm, NULL, err);
+
   // -------- callback methods --------------------------------------------
 
   // all token functions

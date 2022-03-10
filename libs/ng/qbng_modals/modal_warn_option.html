@@ -1,14 +1,26 @@
-<div class="modal-header border-warning">
-  <div class="modal-title text-warning">
-    <strong><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ option.header_text | transloco }}</strong>
-  </div>
+<div class="modal-header bg-warning">
+  <h5 class="text-white w-100">
+    <strong>
+      <i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;<span class="text-uppercase">{{ option.header_text | transloco }}</span>
+    </strong>
+  </h5>
 </div>
 <div class="modal-body">
 
-  {{ option.body_text | transloco }}
+  <div class="card mt-2">
+    <div class="card-body">
+      {{ option.body_text | transloco }}
+    </div>
+  </div>
 
 </div>
 <div class="modal-footer border-warning">
-  <button type="button" class="btn btn-outline-warning mr-auto" (click)="modal.close()">{{ option.button_text | transloco }}</button>
-  <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+  <div class="row w-100">
+    <div class="col-6 p-0 pr-1">
+      <button type="button" class="btn btn-warning btn-block" (click)="modal.close()">{{ option.button_text | transloco }}</button>
+    </div>
+    <div class="col-6 p-0 pl-1">
+      <button type="button" class="btn btn-outline-dark btn-block" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+    </div>
+  </div>
 </div>

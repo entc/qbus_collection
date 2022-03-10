@@ -25,7 +25,15 @@ __CAPE_LIBEX   void       auth_roles_del         (AuthRoles*);
 
 __CAPE_LIBEX   int        auth_roles_get         (AuthRoles*, QBusM qin, QBusM qout, CapeErr err);
 
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   int        auth_roles_ui_get      (AuthRoles*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int        auth_roles_ui_add      (AuthRoles*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int        auth_roles_ui_rm       (AuthRoles*, QBusM qin, QBusM qout, CapeErr err);
+
+//-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int        auth_roles_wp_get      (AuthRoles*, QBusM qin, QBusM qout, CapeErr err);
 

@@ -173,6 +173,160 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_roles_ui_add (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthRoles self = *p_self;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    number_t userid;
+    number_t roleid;
+
+    if (NULL == qin->cdata)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
+    userid = cape_udc_get_n (qin->cdata, "userid", 0);
+    if (0 == userid)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_USERID");
+      goto exit_and_cleanup;
+    }
+
+    roleid = cape_udc_get_n (qin->cdata, "roleid", 0);
+    if (0 == roleid)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_ROLEID");
+      goto exit_and_cleanup;
+    }
+
+    // start a new transaction
+    trx = adbl_trx_new (self->adbl_session, err);
+    if (trx == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    {
+      number_t id;
+      CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      // insert values
+      cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+      cape_udc_add_n      (values, "userid"       , userid);
+      cape_udc_add_n      (values, "roleid"       , roleid);
+      
+      // execute query
+      id = adbl_trx_insert (trx, "rbac_users_roles", &values, err);
+      if (0 == id)
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+
+    adbl_trx_commit (&trx, err);
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  
+  auth_roles_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_roles_ui_rm (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthRoles self = *p_self;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    number_t userid;
+    number_t urid;
+    number_t roleid;
+    
+    if (NULL == qin->cdata)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+
+    userid = cape_udc_get_n (qin->cdata, "userid", 0);
+    if (0 == userid)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_USERID");
+      goto exit_and_cleanup;
+    }
+
+    urid = cape_udc_get_n (qin->cdata, "urid", 0);
+    if (0 == urid)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_URID");
+      goto exit_and_cleanup;
+    }
+
+    roleid = cape_udc_get_n (qin->cdata, "roleid", 0);
+    if (0 == roleid)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_ROLEID");
+      goto exit_and_cleanup;
+    }
+
+    // start a new transaction
+    trx = adbl_trx_new (self->adbl_session, err);
+    if (trx == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    {
+      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      // unique key
+      cape_udc_add_n   (params, "id"           , urid);
+      cape_udc_add_n   (params, "userid"       , userid);
+      cape_udc_add_n   (params, "roleid"       , roleid);
+
+      // execute query
+      res = adbl_trx_delete (trx, "rbac_users_roles", &params, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+    
+    adbl_trx_commit (&trx, err);
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+
+  auth_roles_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_roles_wp_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;

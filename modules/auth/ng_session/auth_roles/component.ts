@@ -76,17 +76,58 @@ export class AuthRolesComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
+  public role_rm (item: AuthRolesItem)
+  {
+    this.auth_session.json_rpc ('AUTH', 'roles_ui_rm', {userid: this.user_ctx.userid, urid: item.id, roleid: item.roleid}).subscribe ((data: AuthRolesItem[]) => {
+
+      this.fetch ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //-----------------------------------------------------------------------------
+
   public open_role_rm (item: AuthRolesItem)
   {
+    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.DELETE', 'AUTH.ROLE_REMOVE', 'MISC.DELETE');
 
+    this.modal_service.open (QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
+
+      this.role_rm (item);
+
+    }, () => {
+
+    });
   }
 
   //-----------------------------------------------------------------------------
 
   public role_add (item: AuthRolesItem)
   {
+    this.auth_session.json_rpc ('AUTH', 'roles_ui_add', {userid: this.user_ctx.userid, roleid: item.id}).subscribe ((data: AuthRolesItem[]) => {
 
+      this.close_role_add ();
+      this.fetch ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
   }
+
+  //-----------------------------------------------------------------------------
+
+  public warn_role_add (item: AuthRolesItem)
+  {
+    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.ADD', 'AUTH.ROLE_ADD', 'MISC.ADD');
+
+    this.modal_service.open (QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
+
+      this.role_add (item);
+
+    }, () => {
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
 }
 
 class AuthRolesItem

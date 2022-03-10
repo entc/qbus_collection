@@ -81,22 +81,24 @@ export class FlowEditorComponent implements OnInit {
 
   //---------------------------------------------------------------------------
 
+  public workflow_del (wf: IWorkflow)
+  {
+    this.auth_session.json_rpc ('FLOW', 'workflow_rm', {'wfid' : wf.id}).subscribe(() => {
+
+      this.workflow_get ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //---------------------------------------------------------------------------
+
   public modal__workflow_del__open (wf: IWorkflow)
   {
-    var holder: QbngOptionHolder = new QbngOptionHolder;
-    holder.header_text = 'MISC.DELETE';
-    holder.body_text = 'FLOW.WORKFLOWDELETE';
-    holder.button_text = 'MISC.DELETE';
+    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.DELETE', 'FLOW.WORKFLOWDELETE', 'MISC.DELETE');
 
     this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
 
-      this.auth_session.json_rpc ('FLOW', 'workflow_rm', {'wfid' : wf.id}).subscribe(() => {
-
-        this.workflow_get ();
-
-      });
-
-    }, () => {
+      this.workflow_del (wf);
 
     });
   }

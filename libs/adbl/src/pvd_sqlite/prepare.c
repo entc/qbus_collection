@@ -453,7 +453,7 @@ void adbl_prepare_append_values (AdblPrepare self, CapeStream stream, CapeUdc va
 
 //-----------------------------------------------------------------------------
 
-void adbl_pvd_append_columns (CapeStream stream, CapeUdc values, const char* table)
+void adbl_pvd_append_columns (CapeStream stream, CapeUdc values, const char* table, int is_query)
 {
   CapeUdcCursor* cursor = cape_udc_cursor_new (values, CAPE_DIRECTION_FORW);
   
@@ -468,7 +468,7 @@ void adbl_pvd_append_columns (CapeStream stream, CapeUdc values, const char* tab
         cape_stream_append_str (stream, ", ");
       }
       
-      switch (cape_udc_type (cursor->item))
+      if (is_query) switch (cape_udc_type (cursor->item))
       {
         case CAPE_UDC_NUMBER:
         {
@@ -528,6 +528,10 @@ void adbl_pvd_append_columns (CapeStream stream, CapeUdc values, const char* tab
           cape_stream_append_str (stream, column_name);
           break;
         }
+      }
+      else
+      {
+        cape_stream_append_str (stream, column_name);
       }
     }
   }
@@ -612,7 +616,7 @@ void adbl_prepare_statement_select (AdblPrepare self, const char* schema, const 
 {
   cape_stream_append_str (self->stream, "SELECT ");
   
-  adbl_pvd_append_columns (self->stream, self->values, table);
+  adbl_pvd_append_columns (self->stream, self->values, table, TRUE);
   
   cape_stream_append_str (self->stream, " FROM ");
 
@@ -633,7 +637,7 @@ void adbl_prepare_statement_insert (AdblPrepare self, const char* schema, const 
   
   cape_stream_append_str (self->stream, " (");
   
-  adbl_pvd_append_columns (self->stream, self->values, table);
+  adbl_pvd_append_columns (self->stream, self->values, table, FALSE);
   
   cape_stream_append_str (self->stream, ") VALUES (");
   

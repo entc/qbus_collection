@@ -19,16 +19,13 @@ struct AdblPrepare_s
   number_t params_used; 
   
   CapeUdc params;                // owned
-  
   CapeUdc values;                // will be transfered
   
+  AdblBindVars bindsParams;     // owned
+  AdblBindVars bindsValues;     // will be transfered
+
   CapeString group_by;
   CapeString order_by;
-
-  AdblBindVars bindsParams;     // owned
-  
-  AdblBindVars bindsValues;     // will be transfered
-  
 };
 
 //-----------------------------------------------------------------------------
@@ -453,7 +450,7 @@ void adbl_pvd_append_columns__add (CapeStream stream, int ansi, const CapeString
 
 //-----------------------------------------------------------------------------
 
-number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, const char* table)
+number_t adbl_pvd_append_columns (CapeStream stream, int ansi, int is_query, CapeUdc values, const char* table)
 {
   number_t used = 0;
   CapeUdcCursor* cursor = cape_udc_cursor_new (values, CAPE_DIRECTION_FORW);
@@ -468,7 +465,7 @@ number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, c
         cape_stream_append_str (stream, ", ");
       }
       
-      switch (cape_udc_type (cursor->item))
+      if (is_query) switch (cape_udc_type (cursor->item))
       {
         case CAPE_UDC_NUMBER:
         {
@@ -528,6 +525,10 @@ number_t adbl_pvd_append_columns (CapeStream stream, int ansi, CapeUdc values, c
           adbl_pvd_append_columns__add (stream, ansi, table, column_name);
           break;
         }
+      }
+      else
+      {
+        adbl_pvd_append_columns__add (stream, ansi, table, column_name);
       }
       
       used++;
@@ -843,7 +844,7 @@ int adbl_prepare_statement_select (AdblPrepare self, AdblPvdSession session, con
   cape_stream_append_str (stream, "SELECT ");
   
   // create columns for mysql for all parameters
-  self->columns_used = adbl_pvd_append_columns (stream, ansi, self->values, table);
+  self->columns_used = adbl_pvd_append_columns (stream, ansi, TRUE, self->values, table);
   
   cape_stream_append_str (stream, " FROM ");
   
@@ -875,7 +876,7 @@ int adbl_prepare_statement_insert (AdblPrepare self, AdblPvdSession session, con
   cape_stream_append_str (stream, " (");
   
   // create columns for mysql for all parameters
-  self->columns_used = adbl_pvd_append_columns (stream, ansi, self->values, table);
+  self->columns_used = adbl_pvd_append_columns (stream, ansi, FALSE, self->values, table);
   
   cape_stream_append_str (stream, ") VALUES (");
 
@@ -964,7 +965,7 @@ int adbl_prepare_statement_setins (AdblPrepare self, AdblPvdSession session, con
   cape_stream_append_str (stream, " (");
   
   // create columns for mysql for all parameters
-  self->columns_used = adbl_pvd_append_columns (stream, ansi, self->values, table);
+  self->columns_used = adbl_pvd_append_columns (stream, ansi, FALSE, self->values, table);
   
   cape_stream_append_str (stream, ") VALUES (");
   
