@@ -574,7 +574,10 @@ export class AuthSession
 
   private fetch_session (response: EventEmitter<AuthSessionItem>, code: string)
   {
-    this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1}, response, code).subscribe((data: AuthSessionItem) => {
+    const navigator = window.navigator;
+    const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
+
+    this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((data: AuthSessionItem) => {
 
       if (data)
       {

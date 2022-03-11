@@ -272,6 +272,50 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
+  // add to log
+  // insert into logins
+  {
+    number_t id;
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // parameters
+    cape_udc_add_n      (values, "wpid"         , self->wpid);
+    cape_udc_add_n      (values, "gpid"         , self->gpid);
+    cape_udc_add_n      (values, "userid"       , cape_udc_get_n (qin->rinfo, "userid", 0));
+    
+    {
+      CapeDatetime dt;
+      cape_datetime_utc (&dt);
+      
+      cape_udc_add_d    (values, "ltime"        , &dt);
+    }
+    
+    {
+      const CapeString remote = cape_udc_get_s (qin->rinfo, "remote", NULL);
+      if (remote)
+      {
+        cape_udc_add_s_cp (values, "ip", remote);
+      }
+    }
+    
+    if (qin->cdata)
+    {
+      CapeUdc info = cape_udc_ext (qin->cdata, "info");
+      if (info)
+      {
+        cape_udc_add (values, &info);
+      }
+    }
+    
+    // execute query
+    id = adbl_trx_insert (trx, "auth_logins", &values, err);
+    if (id == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
   {
     CapeUdc node = cape_udc_ext (first_row, "firstname");
     if (node)

@@ -16,7 +16,7 @@
   <tr>
     <td colspan="3">
       <div *ngIf="item.info; else elseBlock">
-        <small>{{item.info.appVersion}}</small>
+        <small>{{item.info.userAgent}}</small>
       </div>
       <ng-template #elseBlock>no info</ng-template>
     </td>
