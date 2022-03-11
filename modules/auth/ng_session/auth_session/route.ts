@@ -22,7 +22,7 @@ export class AuthSessionGuard implements CanActivate {
   canActivate (route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean|UrlTree>|Promise<boolean|UrlTree>|boolean|UrlTree
   {
     // grab the permission array
-    this.permissions = route.data.permissions as string[];
+    this.permissions = route.data['permissions'] as string[];
 
     return this.auth_session.roles.pipe(mergeMap ((data) => {
 
