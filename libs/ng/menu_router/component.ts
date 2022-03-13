@@ -78,19 +78,18 @@ export class MenuRouterComponent implements OnInit {
 
 //-----------------------------------------------------------------------------
 
-class MenuStructureSection
+export class MenuStructureSection
 {
-  name: string;
-  auth: string[];
-  items: MenuStructureItem[];
+  constructor (public name: string | null, public auth: string[] | null, public items: MenuStructureItem[])
+  {
+  }
 }
 
 //-----------------------------------------------------------------------------
 
-class MenuStructureItem
+export class MenuStructureItem
 {
-  name: string;
-  auth: string[];
-  icon: string;
-  link: string;
+  constructor (public name: string, public link: string, public icon: string, public auth: string[] | null)
+  {
+  }
 }
