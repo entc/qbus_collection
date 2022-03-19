@@ -1882,21 +1882,29 @@ number_t cape_str_distcont (const CapeString haystack, const CapeString needle, 
   number_t min = max;
 
   number_t run = max - needle_len;
-  number_t pos;
   
   if (run < 0)
   {
     return needle_len;
   }
 
-  // shift now to check the distances
-  for (pos = 0; pos < run; pos++)
+  if (run == 0)
   {
-    number_t distance = cape_str_distance (haystack + pos, needle_len, needle, needle_len);
-    
-    if (distance < min)
+    min = cape_str_distance (haystack, needle_len, needle, needle_len);
+  }
+  else
+  {
+    number_t pos;
+
+    // shift now to check the distances
+    for (pos = 0; pos < run; pos++)
     {
-      min = distance;
+      number_t distance = cape_str_distance (haystack + pos, needle_len, needle, needle_len);
+      
+      if (distance < min)
+      {
+        min = distance;
+      }
     }
   }
   
