@@ -1229,7 +1229,8 @@ void cape_fs_write_fmt (const void* handle, const char* format, ...)
 #include <share.h>
 #include <fcntl.h>
 #include <io.h>
-#include <sys/stat.h>
+#include <sys\stat.h>
+#include <sys\types.h>
 
 #include <shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")
@@ -1385,6 +1386,32 @@ void cape_dc_del (CapeDirCursor* p_self)
     
     CAPE_DEL(p_self, struct CapeDirCursor_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_dc_level (CapeDirCursor self)
+{
+  return 1;
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_dc_type (CapeDirCursor self)
+{
+  long attr = self->data.dwFileAttributes;
+
+  if (attr & FILE_ATTRIBUTE_DIRECTORY)
+  {
+    return CAPE_DC_TYPE__DIR;
+  }
+
+  if (attr & FILE_ATTRIBUTE_ARCHIVE)
+  {
+    return CAPE_DC_TYPE__FILE;
+  }
+
+  return CAPE_DC_TYPE__NONE;
 }
 
 //-----------------------------------------------------------------------------
