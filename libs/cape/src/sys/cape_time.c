@@ -16,6 +16,14 @@
 
 #include <windows.h>
 
+#define timeradd(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec + (t)->tv_sec, \
+	((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && \
+	((a)->tv_usec -= 1000000, (a)->tv_sec++) )
+
+#define timersub(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec - (t)->tv_sec, \
+	((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && \
+	((a)->tv_usec += 1000000, (a)->tv_sec--) )
+
 #endif
 
 //-----------------------------------------------------------------------------
@@ -876,8 +884,16 @@ time_t cape_datetime_n__unix (const CapeDatetime* dt)
   // this function uses the local timezone info
   //return mktime (&timeinfo);
   
+#if defined __WINDOWS_OS
+
+  return _mkgmtime (&timeinfo);
+
+#else
+
   // this function only exsists on BSD / Linux
   return timegm (&timeinfo);
+
+#endif
 }
 
 
