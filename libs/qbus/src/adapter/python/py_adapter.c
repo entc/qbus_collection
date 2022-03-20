@@ -39,7 +39,9 @@ static int __STDCALL py_qbus_instance__on_init (QBus qbus, void* ptr, void** p_p
   {
     PyObject* arglist = Py_BuildValue ("(O)", qbus_pyobj);
     
-    ctx->obj = PyEval_CallObject (ctx->on_init, arglist);
+    ctx->obj = PyObject_Call (ctx->on_init, arglist, NULL);
+    
+   // ctx->obj = PyEval_CallObject (ctx->on_init, arglist);
   
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "return object: %p", ctx->obj);
 
@@ -75,7 +77,9 @@ static int __STDCALL py_qbus_instance__on_done (QBus qbus, void* ptr, CapeErr er
   {
     PyObject* arglist = Py_BuildValue ("(OO)", qbus_pyobj, ctx->obj);
   
-    result = PyEval_CallObject (ctx->on_done, arglist);
+    ctx->obj = PyObject_Call (ctx->on_done, arglist, NULL);
+    
+    //result = PyEval_CallObject (ctx->on_done, arglist);
     
     Py_DECREF (arglist);
   }

@@ -1208,6 +1208,11 @@ namespace cape
     {
     }
                 
+    UdcCursor (const CapeUdc udc)
+    : m_cursor (cape_udc_cursor_new (udc, CAPE_DIRECTION_FORW))
+    {
+    }
+                
     ~UdcCursor ()
     {
       cape_udc_cursor_del (&m_cursor);
