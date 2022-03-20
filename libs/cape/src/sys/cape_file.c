@@ -818,7 +818,7 @@ off_t cape_fs_file_size (const char* path, CapeErr err)
   LARGE_INTEGER lFileSize;
   
   // local objects
-  HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+  HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
   
   if (hf == INVALID_HANDLE_VALUE)
   {
@@ -1229,8 +1229,8 @@ void cape_fs_write_fmt (const void* handle, const char* format, ...)
 #include <share.h>
 #include <fcntl.h>
 #include <io.h>
-#include <sys\stat.h>
-#include <sys\types.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")

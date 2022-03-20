@@ -5,9 +5,16 @@
 #include <sys/cape_thread.h>
 #include <fmt/cape_json.h>
 
+#if defined __WINDOWS_OS
+
+
+#else
+
 // linux includes
 #include <signal.h>
 #include <unistd.h>
+
+#endif
 
 static int g_running = TRUE;
 
@@ -436,8 +443,15 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   
   if (ctx->cnt > 100000000)
   {
+#if defined __WINDOWS_OS
+
+
+#else
+
     printf ("CNT: %lu\n", ctx->cnt);
     kill (getpid(), SIGINT);    
+
+#endif
   }
     
   return g_running;

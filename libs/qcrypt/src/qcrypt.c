@@ -12,7 +12,8 @@
 
 #include <windows.h>
 #include <wincrypt.h>
-#pragma comment (lib, "Crypt32.lib")
+#pragma comment (lib, "Crypt32.lib")   // will be depricated in future versions of windows
+#pragma comment (lib, "Bcrypt.lib")    // Cryptography API: Next Generation (CNG)
 
 #else
 
@@ -259,6 +260,11 @@ exit_and_cleanup:
 
 CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
 {
+#ifdef __WINDOWS_OS
+
+
+#else
+
   number_t len = ((buflen + 2) / 3 * 4) + 1;
   CapeString ret = CAPE_ALLOC (len);
   
@@ -274,6 +280,8 @@ CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
 
   CAPE_FREE (ret);
   return NULL;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -287,6 +295,11 @@ CapeString qcrypt__encode_base64_m (const CapeStream source)
 
 CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
 {
+#ifdef __WINDOWS_OS
+
+
+#else
+
   number_t len = ((buflen + 3) / 4 * 3) + 1;
   CapeStream ret = cape_stream_new ();
 
@@ -311,6 +324,8 @@ CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
   
   cape_stream_del (&ret);
   return NULL;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -327,39 +342,58 @@ CapeStream qcrypt__hash_sha256__bin_o (const char* bufdat, number_t buflen, Cape
 #if defined __WINDOWS_OS
 
   int res;
-  EcBuffer ret = NULL;
+  CapeStream ret = NULL;
   
   HCRYPTPROV provHandle = (HCRYPTPROV)NULL;
-  HCRYPTHASH hashHandle;
+  HCRYPTHASH hashHandle = (HCRYPTHASH)NULL;
   
-  provHandle = echash_prov_handle (PROV_RSA_AES, err);
-  if (provHandle == NULL)
+  if (!CryptAcquireContext (&provHandle, NULL, NULL, PROV_RSA_AES, 0))
   {
-    return NULL;
+    DWORD errCode = GetLastError();
+
+    if (errCode == NTE_BAD_KEYSET)
+    {
+      if (!CryptAcquireContext(&provHandle, NULL, NULL, PROV_RSA_AES, CRYPT_NEWKEYSET))
+      {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+      }
+    }
   }
-  
+
+  // create a handle for CryptHashData 
   if (!CryptCreateHash (provHandle, CALG_SHA_256, 0, 0, &hashHandle))
   {
-    ecerr_lastErrorOS (err, ENTC_LVL_ERROR);
-    CryptReleaseContext (provHandle, 0);
-    
-    return NULL;
+    cape_err_lastOSError (err);
+    CryptReleaseContext(provHandle, 0);
+
+    goto exit_and_cleanup;
   }
-  
-  // create the buffer for the hash
-  ret = ecbuf_create (32);
-  
-  // retrieve the hash from windows
-  res = echash_hash_retrieve (source, ret, hashHandle, err);
-  if (res)
+
+  if (CryptHashData (hashHandle, bufdat, buflen, 0) == 0)
   {
-    // some error happened -> destroy the buffer
-    ecbuf_destroy (&ret);
+    cape_err_lastOSError(err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeStream stream = cape_stream_new ();
+
+
   }
   
-  CryptDestroyHash (hashHandle);
-  CryptReleaseContext (provHandle, 0);
-  
+exit_and_cleanup:
+
+  if (hashHandle)
+  {
+    CryptDestroyHash (hashHandle);
+  }
+
+  if (provHandle)
+  {
+    CryptReleaseContext (provHandle, 0);
+  }
+
   return ret;
 
 #else

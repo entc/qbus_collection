@@ -1496,8 +1496,6 @@ void cape_template_compiler_module (EcTemplateCompiler self, const CapeString ra
     cape_template_part_add (self->part, tmplpart);
   }
 
-exit_and_cleanup:
-  
   cape_str_del (&name);
   cape_str_del (&cont);
   cape_str_del (&fomt);

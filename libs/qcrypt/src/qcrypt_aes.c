@@ -34,7 +34,7 @@ HCRYPTPROV ecencrypt_aes_acquireContext (DWORD provType, CapeErr err)
     {
       if (!CryptAcquireContext (&provHandle, NULL, NULL, provType, CRYPT_NEWKEYSET))
       {
-        cape_err_os (err);
+        cape_err_lastOSError (err);
         return NULL;
       }
     }

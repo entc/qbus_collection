@@ -131,6 +131,11 @@ void qdecrypt_aes_del (QDecryptAES* p_self)
 
 int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
 {
+#if defined __WINDOWS_OS
+
+
+#else
+
   int res;
   
   // get the cypher
@@ -185,6 +190,8 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
   self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
   
   return CAPE_ERR_NONE;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------

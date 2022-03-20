@@ -2144,6 +2144,7 @@ struct CapeAioSocketIcmp_s
  CapeAioSocketIcmp cape_aio_socket__icmp__new (void* handle)
  {
 
+   return NULL;
  }
 
 //-----------------------------------------------------------------------------

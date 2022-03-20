@@ -60,6 +60,7 @@ exit_and_cleanup:
 void* cape_pipe_create (const char* path, const char* name, CapeErr err)
 {
 
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -67,6 +68,7 @@ void* cape_pipe_create (const char* path, const char* name, CapeErr err)
 void* cape_pipe_connect (const char* path, const char* name, CapeErr err)
 {
 
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -74,6 +76,7 @@ void* cape_pipe_connect (const char* path, const char* name, CapeErr err)
 void* cape_pipe_create_or_connect (const char* path, const char* name, CapeErr err)
 {
 
+  return NULL;
 }
 
 #endif
