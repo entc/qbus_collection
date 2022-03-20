@@ -41,6 +41,7 @@ export class Chart {
 
     svgElement.appendChild (pathElement);
 
+    /*
     const textElement = document.createElementNS (xmlns, "text");
 
     textElement.setAttributeNS(null, "x", '10');
@@ -49,6 +50,7 @@ export class Chart {
     textElement.innerHTML = '0';
 
     svgElement.appendChild (textElement);
+    */
 
     this.rd.appendChild (dom_el, svgElement);
   }
