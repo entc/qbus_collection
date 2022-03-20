@@ -1,6 +1,8 @@
 #include "cape_pipe.h"
 #include "sys/cape_file.h"
 
+#if defined __LINUX_OS || defined __BSD_OS
+
 // c includes
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -48,3 +50,33 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+#elif defined __WINDOWS_OS
+
+#include <windows.h>
+
+//-----------------------------------------------------------------------------
+
+void* cape_pipe_create (const char* path, const char* name, CapeErr err)
+{
+
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+void* cape_pipe_connect (const char* path, const char* name, CapeErr err)
+{
+
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+void* cape_pipe_create_or_connect (const char* path, const char* name, CapeErr err)
+{
+
+  return NULL;
+}
+
+#endif

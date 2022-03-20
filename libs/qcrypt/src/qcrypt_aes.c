@@ -22,7 +22,7 @@
 
 //-----------------------------------------------------------------------------
 
-HCRYPTPROV ecencrypt_aes_acquireContext (DWORD provType, EcErr err)
+HCRYPTPROV ecencrypt_aes_acquireContext (DWORD provType, CapeErr err)
 {
   HCRYPTPROV provHandle = (HCRYPTPROV)NULL;
   
@@ -34,7 +34,7 @@ HCRYPTPROV ecencrypt_aes_acquireContext (DWORD provType, EcErr err)
     {
       if (!CryptAcquireContext (&provHandle, NULL, NULL, provType, CRYPT_NEWKEYSET))
       {
-        ecerr_lastErrorOS (err, ENTC_LVL_ERROR);
+        cape_err_lastOSError (err);
         return NULL;
       }
     }

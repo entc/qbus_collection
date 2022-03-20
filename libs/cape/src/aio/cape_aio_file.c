@@ -8,6 +8,10 @@
 #include <errno.h>
 #include <unistd.h>
 
+#elif defined __WINDOWS_OS
+
+#include <Windows.h>
+
 #endif
 
 //-----------------------------------------------------------------------------
@@ -55,9 +59,16 @@ void cape_aio_freader_del (CapeAioFileReader* p_self)
   // delete the AIO handle
   cape_aio_handle_del (&(self->aioh));
   
+#if defined __BSD_OS || defined __LINUX_OS
+
   // close the file handle
   close ((number_t)(self->handle));
-  
+ 
+#elif defined __WINDOWS_OS
+
+
+#endif
+
   CAPE_FREE(self->bufdat);
   
   CAPE_DEL(p_self, struct CapeAioFileReader_s);
@@ -69,6 +80,8 @@ static int __STDCALL cape_aio_freader_onEvent (void* ptr, int hflags, unsigned l
 {
   CapeAioFileReader self = ptr;
   
+#if defined __BSD_OS || defined __LINUX_OS
+
   number_t bytes_read = read ((number_t)self->handle, self->bufdat, self->buflen);
 
   if (bytes_read > 0)
@@ -78,7 +91,12 @@ static int __STDCALL cape_aio_freader_onEvent (void* ptr, int hflags, unsigned l
       self->on_read (self->ptr, self, self->bufdat, bytes_read);
     }
   }
-  
+
+#elif defined __WINDOWS_OS
+
+
+#endif
+
   return hflags;
 } 
 

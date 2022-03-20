@@ -1,5 +1,11 @@
 #include "qflow.h"
 
+#if defined __WINDOWS_OS
+
+#include <windows.h>
+
+#endif
+
 // cape includes
 #include <stc/cape_map.h>
 #include <sys/cape_types.h>
@@ -94,7 +100,7 @@ QFlowCtx qflow_get_ctx ()
 
     // Only swap if the existing value is null.  If not on Windows,
     // use whatever compare and swap your platform provides.
-    if (InterlockCompareExchangePtr (&g_ctx, ctx, NULL) != NULL)
+    if (InterlockedCompareExchange (&g_ctx, ctx, NULL) != NULL)
     {
       qflow_ctx_del (&ctx);
     }

@@ -271,6 +271,11 @@ void qencrypt_aes_del (QEncryptAES* p_self)
 
 int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, CapeErr err)
 {
+#if defined __WINDOWS_OS
+
+
+#else
+
   int res;
   
   // get the cypher
@@ -337,6 +342,8 @@ int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, C
   }
   
   return CAPE_ERR_NONE;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------

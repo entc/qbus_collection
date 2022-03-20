@@ -10,9 +10,6 @@
 #include "stc/cape_str.h"
 #include "stc/cape_stream.h"
 
-// openssl includes
-#include <openssl/evp.h>
-
 //-----------------------------------------------------------------------------
 
 #define QCRYPT_AES_TYPE_CBC                0x01
@@ -34,7 +31,12 @@
 
 //-----------------------------------------------------------------------------
 
+#if defined __LINUX_OS || defined __BSD_OS
+
 struct QCryptAESKeys_s; typedef struct QCryptAESKeys_s* QCryptAESKeys;
+
+// openssl includes
+#include <openssl/evp.h>
 
 __CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__sha256         (const CapeString secret, const EVP_CIPHER* cypher, CapeErr err);
 
@@ -65,5 +67,7 @@ __CAPE_LIBEX  int                qcrypt_aes__handle_error            (EVP_CIPHER
 __CAPE_LIBEX  const EVP_CIPHER*  qencrypt_aes__get_cipher            (number_t type);
 
 //-----------------------------------------------------------------------------
+
+#endif
 
 #endif

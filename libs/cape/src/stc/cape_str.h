@@ -138,6 +138,11 @@ __CAPE_LIBEX   number_t           cape_str_wchar_utf8    (wchar_t s, char* bufda
                                   /* WARNING: this can't handle UTF-8 characters */
 __CAPE_LIBEX   number_t           cape_str_distance      (const CapeString s1, number_t l1, const CapeString s2, number_t l2);
 
+                                  /* search the needle in the haystack */
+                                  /* using the cape_str_distance method */
+                                  /* returns the minimum the distance returns */
+__CAPE_LIBEX   number_t           cape_str_distcont      (const CapeString haystack, const CapeString needle, number_t needle_len);
+
 //-----------------------------------------------------------------------------
 
                                   /* convert into [0-9] to use as a large number */

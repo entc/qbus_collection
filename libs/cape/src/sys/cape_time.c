@@ -9,12 +9,22 @@
 #if defined __LINUX_OS || defined __BSD_OS
 
 #define _BSD_SOURCE
+#define cape_sscanf sscanf
 
 #include <sys/time.h>
 
 #elif defined __WINDOWS_OS
 
 #include <windows.h>
+#define cape_sscanf sscanf_s
+
+#define timeradd(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec + (t)->tv_sec, \
+	((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && \
+	((a)->tv_usec -= 1000000, (a)->tv_sec++) )
+
+#define timersub(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec - (t)->tv_sec, \
+	((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && \
+	((a)->tv_usec += 1000000, (a)->tv_sec--) )
 
 #endif
 
@@ -876,8 +886,16 @@ time_t cape_datetime_n__unix (const CapeDatetime* dt)
   // this function uses the local timezone info
   //return mktime (&timeinfo);
   
+#if defined __WINDOWS_OS
+
+  return _mkgmtime (&timeinfo);
+
+#else
+
   // this function only exsists on BSD / Linux
   return timegm (&timeinfo);
+
+#endif
 }
 
 
@@ -891,7 +909,7 @@ int cape_datetime__date_de (CapeDatetime* dt, const CapeString datetime_in_text)
   dt->msec = 0;
   dt->usec = 0;
 
-  return sscanf (datetime_in_text, "%u.%u.%u", &(dt->day), &(dt->month), &(dt->year)) == 3;
+  return cape_sscanf (datetime_in_text, "%u.%u.%u", &(dt->day), &(dt->month), &(dt->year)) == 3;
 }
 
 //-----------------------------------------------------------------------------
@@ -904,21 +922,21 @@ int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text
   dt->msec = 0;
   dt->usec = 0;
   
-  return sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
+  return cape_sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_datetime__std_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  return sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%u.%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  return cape_sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%u.%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_datetime__str_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  return sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
 }
 
 //-----------------------------------------------------------------------------
@@ -927,7 +945,7 @@ int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   dt->msec = 0;
   
-  return sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
+  return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
 }
 
 //-----------------------------------------------------------------------------
