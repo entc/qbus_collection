@@ -1876,6 +1876,43 @@ number_t cape_str_distance (const CapeString s1, number_t l1, const CapeString s
 
 //-----------------------------------------------------------------------------
 
+number_t cape_str_distcont (const CapeString haystack, const CapeString needle, number_t needle_len)
+{
+  number_t max = cape_str_size (haystack);
+  number_t min = max;
+
+  number_t run = max - needle_len;
+  
+  if (run < 0)
+  {
+    return needle_len;
+  }
+
+  if (run == 0)
+  {
+    min = cape_str_distance (haystack, needle_len, needle, needle_len);
+  }
+  else
+  {
+    number_t pos;
+
+    // shift now to check the distances
+    for (pos = 0; pos < run; pos++)
+    {
+      number_t distance = cape_str_distance (haystack + pos, needle_len, needle, needle_len);
+      
+      if (distance < min)
+      {
+        min = distance;
+      }
+    }
+  }
+  
+  return min;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_ln_normalize (const CapeString source)
 {
   CapeString copy;
