@@ -330,42 +330,50 @@ class WidgetComponent
 
   //---------------------------------------------------------------------------
 
-  on_content_change (workstep: IWorkstep)
+  public on_name_change (e: Event)
   {
-    this.workstep_content.next (workstep);
+    const target = e.target as HTMLInputElement;
+
+    if (target && target.value)
+    {
+      const workstep: IWorkstep = this.workstep_content.value;
+
+      workstep.name = target.value;
+
+      this.workstep_content.next (workstep);
+    }
   }
 
   //---------------------------------------------------------------------------
 
-  on_name_change (value: string)
+  public on_tag_change (e: Event)
   {
-    const workstep: IWorkstep = this.workstep_content.value;
+    const target = e.target as HTMLInputElement;
 
-    workstep.name = value;
+    if (target && target.value)
+    {
+      const workstep: IWorkstep = this.workstep_content.value;
 
-    this.workstep_content.next (workstep);
+      workstep.tag = target.value;
+
+      this.workstep_content.next (workstep);
+    }
   }
 
   //---------------------------------------------------------------------------
 
-  on_tag_change (value: string)
+  on_pdata_change (e: Event, pdata_name: string)
   {
-    const workstep: IWorkstep = this.workstep_content.value;
+    const target = e.target as HTMLInputElement;
 
-    workstep.tag = value;
+    if (target && target.value)
+    {
+      const workstep: IWorkstep = this.workstep_content.value;
 
-    this.workstep_content.next (workstep);
-  }
+      workstep.pdata[pdata_name] = target.value;
 
-  //---------------------------------------------------------------------------
-
-  on_pdata_change (value: string, pdata_name: string)
-  {
-    const workstep: IWorkstep = this.workstep_content.value;
-
-    workstep.pdata[pdata_name] = value;
-
-    this.workstep_content.next (workstep);
+      this.workstep_content.next (workstep);
+    }
   }
 }
 

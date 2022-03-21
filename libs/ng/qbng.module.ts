@@ -8,6 +8,7 @@ import { QbngSwitchComponent, QbngSwitchMultiComponent, QbngUploadComponent, Qbn
 import { SizeService } from './size_service/service';
 import { SizeDetectorComponent } from './size_service/component';
 import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModalComponent, QbngErrorModalComponent, QbngWarnOptionModalComponent } from './qbng_modals/component';
+import { QbngCastPipe, QbngUsingDirective } from './qbng_common/component';
 
 @NgModule({
   declarations: [
@@ -22,7 +23,9 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     QbngSpinnerOkModalComponent,
     QbngSuccessModalComponent,
     QbngErrorModalComponent,
-    QbngWarnOptionModalComponent
+    QbngWarnOptionModalComponent,
+    QbngCastPipe,
+    QbngUsingDirective
   ],
   imports: [
     CommonModule,
@@ -38,7 +41,9 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     QbngSwitchComponent,
     QbngSwitchMultiComponent,
     QbngUploadComponent,
-    SizeDetectorComponent
+    SizeDetectorComponent,
+    QbngCastPipe,
+    QbngUsingDirective
   ],
   entryComponents: [
     QbngUploadModalComponent,

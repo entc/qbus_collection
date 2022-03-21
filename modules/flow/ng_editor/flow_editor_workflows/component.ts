@@ -205,9 +205,14 @@ export class IWorkflow {
 
   //-----------------------------------------------------------------------------
 
-  public workspace_select (wpid: number)
+  public workspace_select (e: Event)
   {
-    this.wpid = wpid;
+    const target = e.target as HTMLSelectElement;
+
+    if (target && target.value)
+    {
+      this.wpid = Number(target.value);
+    }
   }
 
   //-----------------------------------------------------------------------------
