@@ -10,6 +10,7 @@ proc_worksteps \
 proc_tasks \
 proc_data \
 proc_task_sync \
+proc_task_logs \
 flow_instance \
 flow_log \
 proc_current_workstep_view \

@@ -11,7 +11,7 @@
       <div class="form-group">
         <label>{{ 'FLOW.WSNAME' | transloco }}</label>
         <div class="input-group">
-          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.name" (blur)="on_name_change ($event.target.value)" name="step_name">
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.name" (blur)="on_name_change ($event)" name="step_name">
           <div class="invalid-feedback">please enter a name for this step</div>
         </div>
       </div>
@@ -21,7 +21,7 @@
       <div class="form-group">
         <label>{{ 'FLOW.WSTAG' | transloco }}</label>
         <div class="input-group">
-          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.tag" (blur)="on_tag_change ($event.target.value)" name="step_tag">
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.tag" (blur)="on_tag_change ($event)" name="step_tag">
         </div>
       </div>
     </div>
@@ -30,7 +30,7 @@
       <div class="form-group">
         <label>{{ 'FLOW.WSCONDITION' | transloco }}</label>
         <div class="input-group">
-          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.pdata['cond']" (blur)="on_pdata_change ($event.target.value, 'cond')" name="step_cond">
+          <input type="text" class="form-control" [ngModel] = "(workstep_content | async)?.pdata['cond']" (blur)="on_pdata_change ($event, 'cond')" name="step_cond">
         </div>
       </div>
     </div>
@@ -67,7 +67,7 @@
 
   <div [hidden]="!show_usr" class="pt-4">
 
-    <flow-widget-usrform-component [workstep_content]="workstep_content" (contentChange)="on_content_change($event)"></flow-widget-usrform-component>
+    <flow-widget-usrform-component [workstep_content]="workstep_content"></flow-widget-usrform-component>
 
   </div>
   <div [hidden]="show_usr" class="pt-4">
@@ -76,7 +76,7 @@
       {{ function_service.get_desc (index_fctid) | transloco }}
     </div>
 
-    <flow-widget-function-component [workstep_content]="workstep_content" (contentChange)="on_content_change($event)"></flow-widget-function-component>
+    <flow-widget-function-component [workstep_content]="workstep_content"></flow-widget-function-component>
 
   </div>
 

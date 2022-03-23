@@ -164,7 +164,10 @@ int __STDCALL py_object_qbus_register__on_message (QBus qbus, void* ptr, QBusM q
 
   arglist = Py_BuildValue ("(O)", py_qin);
   
-  result = PyEval_CallObject (pcd->fct, arglist);
+  // depricated
+  //result = PyEval_CallObject (pcd->fct, arglist);
+  
+  result = PyObject_Call (pcd->fct, arglist, NULL);
   if (result)
   {
     qout->cdata = py_transform_to_udc (result);

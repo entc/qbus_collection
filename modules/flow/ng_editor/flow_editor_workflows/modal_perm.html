@@ -18,7 +18,7 @@
   <hr>
 
   <div class="input-group mb-3">
-    <select class="custom-select" (change)="workspace_select ($event.target.value)">
+    <select class="custom-select" (change)="workspace_select ($event)">
       <option [value] = "item.id" *ngFor="let item of workspace_list">[{{item.id}}] {{item.name}}</option>
     </select>
     <div class="input-group-append">
