@@ -1334,6 +1334,13 @@ number_t cape_fh_write_buf (CapeFileHandle self, const char* bufdat, number_t bu
 
 //-----------------------------------------------------------------------------
 
+const CapeString cape_fh_file (CapeFileHandle self)
+{
+  return self->file;
+}
+
+//-----------------------------------------------------------------------------
+
 struct CapeDirCursor_s
 {
   /* the handle */

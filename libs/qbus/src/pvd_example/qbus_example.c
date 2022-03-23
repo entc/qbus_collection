@@ -147,21 +147,21 @@ void qbus_pvd_phy_connection_del (QbusPvdConnection* p_self)
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_send (QbusPvdConnection self, const char* bufdat, number_t buflen, void* userdata)
+void __STDCALL qbus_pvd_send (QbusPvdConnection self, const char* bufdat, number_t buflen, void* userdata)
 {
   cape_aio_socket_send (self->aio_socket, qbus_pvd_conn_aio (self->conn), bufdat, buflen, userdata);
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_mark (QbusPvdConnection self)
+void __STDCALL qbus_pvd_mark (QbusPvdConnection self)
 {
   cape_aio_socket_markSent (self->aio_socket, qbus_pvd_conn_aio (self->conn));
 }
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_cb_raw_set (QbusPvdConnection self, fct_cape_aio_socket_onSent on_sent, fct_cape_aio_socket_onRecv on_recv)
+void __STDCALL qbus_pvd_cb_raw_set (QbusPvdConnection self, fct_cape_aio_socket_onSent on_sent, fct_cape_aio_socket_onRecv on_recv)
 {
   self->on_sent = on_sent;
   self->on_recv = on_recv;
@@ -395,7 +395,7 @@ static void __STDCALL qbus_pvd_listen__on_accept_done (void* ptr)
 
 //------------------------------------------------------------------------------------------------------
 
-int qbus_pvd_listen (QbusPvdEntity self, CapeErr err)
+int __STDCALL qbus_pvd_listen (QbusPvdEntity self, CapeErr err)
 {
   void* socket_handle = cape_sock__tcp__srv_new (self->host, self->port, err);
   
@@ -457,7 +457,7 @@ void __STDCALL qbus_pvd_phy_connection__on_done (void* ptr, void* userdata)
 
 //------------------------------------------------------------------------------------------------------
 
-int qbus_pvd_reconnect (QbusPvdEntity self, CapeErr err)
+int __STDCALL qbus_pvd_reconnect (QbusPvdEntity self, CapeErr err)
 {
   void* sock = cape_sock__tcp__clt_new (self->host, self->port, err);
   if (sock == NULL)
@@ -510,7 +510,7 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* ptr)
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdCtx qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
+QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
 {
   QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
   
@@ -522,7 +522,7 @@ QbusPvdCtx qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_ctx_del (QbusPvdCtx* p_self)
+void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 {
   if (*p_self)
   {
@@ -536,7 +536,7 @@ void qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 
 //------------------------------------------------------------------------------------------------------
 
-QbusPvdEntity qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
+QbusPvdEntity __STDCALL qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr, fct_qbus_pvd_factory__on_new on_new, fct_qbus_pvd_factory__on_del on_del, fct_qbus_pvd_cb__on_connection on_connection)
 {
   QbusPvdEntity ret = qbus_pvd_conn_new (self, options, user_ptr, on_new, on_del, on_connection);
   
@@ -548,7 +548,7 @@ QbusPvdEntity qbus_pvd_ctx_add (QbusPvdCtx self, CapeUdc options, void* user_ptr
 
 //------------------------------------------------------------------------------------------------------
 
-void qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdEntity conn)
+void __STDCALL qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdEntity conn)
 {
   CapeListCursor* cursor = cape_list_cursor_create (self->connections, CAPE_DIRECTION_FORW);
   
