@@ -61,6 +61,11 @@ __CAPE_LIBEX   int               cape_aio_context_add           (CapeAioContext,
                // modify handle
 __CAPE_LIBEX   void              cape_aio_context_mod           (CapeAioContext, CapeAioHandle aioh, void* handle, int hflags, number_t option);
 
+               // tell the AIO system to trigger a callback within the AIO thread
+               // this will be used on the windows platform, to ensure that APC calls are located
+               // on the IOCP wait thread
+__CAPE_LIBEX   void              cape_aio_context_tcb           (CapeAioContext, void* user_ptr, fct_cape_aio_onEvent);
+
 //-----------------------------------------------------------------------------
 
                // add handle for a signals to return a specific status

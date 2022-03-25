@@ -238,7 +238,6 @@ CapeAioTimer cape_aio_timer_new ()
 VOID CALLBACK cape_aio_timer__on_event (LPVOID lpArg, DWORD dwTimerLowValue, DWORD dwTimerHighValue)
 {
   int res = FALSE;
-
   CapeAioTimer self = (CapeAioTimer)lpArg;
 
   if (self->onEvent)
@@ -254,12 +253,49 @@ VOID CALLBACK cape_aio_timer__on_event (LPVOID lpArg, DWORD dwTimerLowValue, DWO
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL cape_aio_timer__on_register (void* ptr, int hflags, unsigned long events, unsigned long extra)
+{
+  CapeAioTimer self = ptr;
+
+  BOOL win_success;
+  LARGE_INTEGER timeout;
+  __int64 qwDueTime = self->timeout_in_ms;
+
+  // copy the relative time into a LARGE_INTEGER.
+  timeout.LowPart = (DWORD)(qwDueTime & 0xFFFFFFFF);
+  timeout.HighPart = (LONG)(qwDueTime >> 32);
+
+  win_success = SetWaitableTimer(self->htimer, &timeout, 1000, cape_aio_timer__on_event, self, FALSE);
+  if (!win_success)
+  {
+    CapeErr err = cape_err_new();
+
+    cape_err_lastOSError(err);
+
+    cape_log_fmt(CAPE_LL_ERROR, "CAPE", "timer set", "can't set timer: %s", cape_err_text(err));
+
+    cape_err_del(&err);
+  }
+
+  cape_log_msg(CAPE_LL_TRACE, "cape", "aio timer", "timer in APC was registered");
+
+  return CAPE_AIO_DONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_aio_timer_add (CapeAioTimer* p_self, CapeAioContext aio)
 {
   CapeAioTimer self = *p_self;
 
-  // TODO
+  // create a user event in the IOCP to trigger a callback
+  // in the callback run the SetWaitableTimer
+  // because the APC uses the current thread for wait operations
+  // when the system gets into a status of 'WAIT' the APC callback will be triggered
+  // wait for IOCP is considered as 'WAIT' operation
+  cape_aio_context_tcb (aio, self, cape_aio_timer__on_register);
 
+  *p_self = NULL;
   return 0;
 }
 
@@ -267,35 +303,17 @@ int cape_aio_timer_add (CapeAioTimer* p_self, CapeAioContext aio)
 
 int cape_aio_timer_set (CapeAioTimer self, long inMs, void* ptr, fct_cape_aio_timer_onEvent on_event, CapeErr err)
 {
-  BOOL win_success;
-  LARGE_INTEGER liDueTime;
-  __int64 qwDueTime = self->timeout_in_ms;
-
   self->timeout_in_ms = inMs;
-
   self->onEvent = on_event;
   self->ptr = ptr;
 
-  // copy the relative time into a LARGE_INTEGER.
-  liDueTime.LowPart  = (DWORD) (qwDueTime & 0xFFFFFFFF);
-  liDueTime.HighPart = (LONG)  (qwDueTime >> 32);
-
+  // allocate the HANDLE
   self->htimer = CreateWaitableTimer (NULL, FALSE, TEXT("cape_timer")); 
   if (self->htimer == NULL)
   {
     cape_err_lastOSError (err);
 
     cape_log_fmt (CAPE_LL_ERROR, "CAPE", "timer set", "can't create timer handle: %s", cape_err_text (err));
-
-    return cape_err_code (err);
-  }
-
-  win_success = SetWaitableTimer (self->htimer, &liDueTime, 2000, cape_aio_timer__on_event, self, FALSE);
-  if (!win_success)
-  {
-    cape_err_lastOSError (err);
-
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "timer set", "can't set timer: %s", cape_err_text (err));
 
     return cape_err_code (err);
   }

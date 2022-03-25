@@ -1254,31 +1254,28 @@ int cape_aio_context_next__overlapped (OVERLAPPED* ovl, int repeat, unsigned lon
 
 int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
 {
-  DWORD numOfBytes;
-  ULONG_PTR ptr;
-  OVERLAPPED* ovl;
-  BOOL iores;
+  OVERLAPPED_ENTRY overlappeds[64];
+  ULONG count;
 
   // wait for any event on the completion port
-  iores = GetQueuedCompletionStatus (self->port, &numOfBytes, &ptr, &ovl, timeout_in_ms);
-  if (iores)
+  if (GetQueuedCompletionStatusEx(self->port, overlappeds, 64, &count, timeout_in_ms, TRUE))
   {
-    if (cape_aio_context_next__overlapped (ovl, TRUE, numOfBytes))
+    ULONG i;
+
+    for (i = 0; i < count; i++)
     {
-      return cape_err_set (err, CAPE_ERR_CONTINUE, "wait abborted");
-    }
-    else
-    {
-      return CAPE_ERR_NONE;
+      if (cape_aio_context_next__overlapped(overlappeds[i].lpOverlapped, TRUE, overlappeds[i].dwNumberOfBytesTransferred))
+      {
+        return cape_err_set(err, CAPE_ERR_CONTINUE, "wait abborted");
+      }
+      else
+      {
+        return CAPE_ERR_NONE;
+      }
     }
   }
   else
   {
-    if (ovl == NULL)  // timeout
-    {
-      //onTimeout ();
-    }
-    else
     {
       DWORD lastError = GetLastError ();
       
@@ -1294,10 +1291,12 @@ int cape_aio_context_next (CapeAioContext self, long timeout_in_ms, CapeErr err)
       }
        */
       
+      /*
       if (cape_aio_context_next__overlapped (ovl, FALSE, numOfBytes))
       {
         return cape_err_set (err, CAPE_ERR_CONTINUE, "wait abborted");
       }
+      */
       
       switch (lastError)
       {
@@ -1360,6 +1359,17 @@ void cape_aio_context_mod (CapeAioContext aio, CapeAioHandle aioh, void* handle,
 {
 
 
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_context_tcb(CapeAioContext self, void* user_ptr, fct_cape_aio_onEvent user_fct)
+{
+  CapeAioHandle aioh = cape_aio_handle_new (0, user_ptr, user_fct, NULL);
+  ULONG key = 0;
+
+  // add this event to the completion port
+  PostQueuedCompletionStatus (self->port, 0, &key, (LPOVERLAPPED)aioh);
 }
 
 //-----------------------------------------------------------------------------

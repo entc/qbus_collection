@@ -25,6 +25,8 @@ int main (int argc, char *argv[])
   // local objects
   CapeAioTimer timer = NULL;
   
+  printf("start test\n");
+
   // start the AIO event handling
   res = cape_aio_context_open (aio, err);
   if (res)
@@ -42,11 +44,15 @@ int main (int argc, char *argv[])
   // timer
   timer = cape_aio_timer_new ();
 
+  printf("set timer\n");
+
   res = cape_aio_timer_set (timer, 5000, NULL, cape_aio_timer__on_event, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
+
+  printf("add timer\n");
 
   res = cape_aio_timer_add (&timer, aio);
   if (res)
@@ -54,8 +60,12 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
+  printf("wait for events\n");
+
   res = cape_aio_context_wait (aio, err);
-  
+
+  printf("wait interupted\n");
+
 exit_and_cleanup:
   
   if (cape_err_code (err))
