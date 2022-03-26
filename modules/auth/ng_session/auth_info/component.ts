@@ -7,6 +7,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
 //-----------------------------------------------------------------------------
 
+/*
 @Component({
   selector: 'auth-session-menu',
   templateUrl: './component.html'
@@ -42,13 +43,13 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   }
 
 }
-
+*/
 //-----------------------------------------------------------------------------
 
 @Component({
-  selector: 'auth-session-info-modal-component',
-  templateUrl: './modal_info.html'
-}) export class AuthSessionInfoModalComponent {
+  selector: 'auth-info',
+  templateUrl: './component.html'
+}) export class AuthSessionInfoComponent {
 
   public sitem: AuthSessionItem;
   public mode: number = 0;
@@ -58,8 +59,6 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
   {
     auth_session.session.subscribe ((data: AuthSessionItem) => {
-
-console.log(data);
 
       if (data)
       {
@@ -155,3 +154,18 @@ console.log(data);
     this.mode = 1;
   }
 }
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-session-info-modal-component',
+  templateUrl: './modal_info.html'
+}) export class AuthSessionInfoModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
+  {
+  }
+
+};

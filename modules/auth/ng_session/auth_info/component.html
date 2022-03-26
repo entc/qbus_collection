@@ -1,15 +1,207 @@
-<div *ngIf="(session | async)?.token; else elseBlock">
-  <button (click)="open_info ()" type="button" class="btn btn-sm btn-outline-primary">
-    <i class="fa fa-desktop"></i>
-<!--
-    &nbsp;&nbsp;{{ (session | async)?.workspace }}&nbsp;&nbsp;
-    /&nbsp;&nbsp;<i class="fa fa-user"></i>&nbsp;&nbsp;{{ (session | async)?.firstname }}&nbsp;{{ (session | async)?.lastname }}
-    /&nbsp;&nbsp;<i class="fa fa-stopwatch"></i>&nbsp;&nbsp;{{ticks}}s
-    -->
-  </button>
-</div>
-<ng-template #elseBlock>
-  <button (click)="login ()" type="button" class="btn btn-sm btn-outline-primary">
-    <i class="fa fa-desktop"></i>&nbsp;&nbsp;{{ 'AUTH.LOGIN' | transloco }}
-  </button>
-</ng-template>
+<ng-container [ngSwitch]="mode">
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="0">
+
+    <div class="row mb-2">
+        <div class="col">
+          <i class="fa fa-user fa-fw"></i>&nbsp;&nbsp;<strong>{{ sitem.firstname }}&nbsp;{{ sitem.lastname }}</strong>
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-primary width_7em">GPID: {{ sitem.gpid }}</span>
+        </div>
+    </div>
+    <hr>
+    <div class="row mb-2">
+        <div class="col">
+          <i class="fa fa-desktop fa-fw"></i>&nbsp;&nbsp;{{ sitem.workspace }}
+        </div>
+        <div class="col text-right">
+          <span class="badge badge-secondary width_7em">WPID: {{ sitem.wpid }}</span>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.LASTLOGIN' | transloco }}
+        </div>
+        <div class="col text-right width_10em" *ngIf="sitem.lt">
+          {{sitem.lt | trlo_locale}}
+        </div>
+    </div>
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.LASTHOST' | transloco }}
+        </div>
+        <div class="col text-right width_10em">
+          {{sitem.remote}}
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button type="button" class="btn btn-outline-secondary btn-sm width_2em" (click)="toogle_edit()"><i class="fa fa-lock"></i></button>
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-danger width_10em" (click)="logout_submit ()"><i class="fa fa-power-off"></i>&nbsp;&nbsp;{{ 'AUTH.LOGOUT' | transloco }}</button>
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="1">
+
+    <div class="row mb-2">
+        <div class="col">
+          <i class="fa fa-user width_2em"></i>&nbsp;&nbsp;{{ sitem.firstname }}&nbsp;{{ sitem.lastname }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-secondary width_10em" (click)="change_name ()">{{ 'AUTH.EDIT' | transloco }}</button>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.CHANGEPASSWORD' | transloco }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-primary width_10em" (click)="change_password ()">{{ 'AUTH.CHANGE' | transloco }}</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.MSG2FACTOR' | transloco }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-secondary width_10em" (click)="open_messages_modal ()"><i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'MISC.SETTINGS' | transloco }}</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <auth-session-lang></auth-session-lang>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          {{ 'AUTH.ACCDEACTIVATE' | transloco }}
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-danger width_10em" (click)="disabe_account ()">{{ 'AUTH.DEACTIVATE' | transloco }}</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button *ngIf="mode == 1" type="button" class="btn btn-outline-secondary btn-sm width_2em" (click)="untoogle_edit()"><i class="fa fa-unlock"></i></button>
+        </div>
+        <div class="col text-right">
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="2">
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.FIRSTNAME' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="sitem.firstname" type="text" class="form-control">
+    </div>
+
+    <div class="input-group mb-1">
+      <div class="input-group-prepend">
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.LASTNAME' | transloco }}</small></span>
+      </div>
+      <input [(ngModel)]="sitem.lastname" type="text" class="form-control">
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-success" (click)="change_name_apply ()"><i class="fas fa-save"></i>&nbsp;&nbsp;{{ 'MISC.APPLY' | transloco }}</button>
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="3">
+
+    <auth-session-passreset [user]="sitem.user"></auth-session-passreset>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+        </div>
+        <div class="col text-right">
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="4">
+
+    <div class="alert alert-danger" role="alert">
+
+    </div>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+        </div>
+        <div class="col text-right">
+          <button type="button" class="btn btn-outline-danger" (click)="disabe_account_apply ()"><i class="fas fa-ban"></i>&nbsp;&nbsp;{{ 'AUTH.ACCDEACTIVATE' | transloco }}</button>
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+  <ng-container *ngSwitchCase="5">
+
+    <auth-msgs></auth-msgs>
+
+    <hr>
+
+    <div class="row mb-2">
+        <div class="col">
+          <button type="button" class="btn btn-outline-secondary" (click)="reset_mode ()">{{ 'MISC.BACK' | transloco }}</button>
+        </div>
+        <div class="col text-right">
+        </div>
+    </div>
+
+  </ng-container>
+
+  <!--  ---------------------------------------------------------------------  -->
+
+</ng-container>
