@@ -6,7 +6,7 @@ export class Chart {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private el_dom: ElementRef, private rd: Renderer2, private data: number[])
+  constructor (private el_dom: ElementRef, private rd: Renderer2, private data: number[], miny: number = 0, maxy: number = 40)
   {
     const dom_el = this.el_dom.nativeElement;
 
@@ -16,9 +16,9 @@ export class Chart {
     this.rd.addClass (svgElement, 'chart-display');
 
     //const textElement = document.createElementNS (xmlns, "text");
+    var range: number = maxy - miny;
 
-
-    svgElement.setAttributeNS(null, "viewBox", `${0} ${0} ${31} ${40}`);
+    svgElement.setAttributeNS(null, "viewBox", `${0} ${0} ${31} ${range}`);
     svgElement.setAttributeNS(null, "preserveAspectRatio", "none");
 
     const pathElement = document.createElementNS (xmlns, "path");
@@ -30,7 +30,7 @@ export class Chart {
     {
       const p: number = data[i];
 //      path = path + `${len - i} ${10 - p}${i == (len - 1) ? "Z" : "L"}`;
-      path = path + `${len - i} ${40 - p}${"L"}`;
+      path = path + `${i} ${range - (p - miny)}${"L"}`;
     }
 
     pathElement.setAttributeNS(null, "d", path);
