@@ -944,9 +944,16 @@ void qwebs_connection_send (QWebsConnection self, CapeStream* p_stream)
 {
   cape_mutex_lock (self->mutex);
   
-  // TODO: memory leak
-  cape_list_push_back (self->send_cache, *p_stream);
-  *p_stream = NULL;
+  if (cape_list_size (self->send_cache) < 30)
+  {
+    cape_list_push_back (self->send_cache, *p_stream);
+    *p_stream = NULL;
+  }
+  else
+  {
+    cape_stream_del (p_stream);
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "connection send", "send buffer reached maximum queue size");
+  }
 
   cape_mutex_unlock (self->mutex);
 
