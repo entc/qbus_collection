@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule } from '@ngneat/transloco';
-import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff } from '@qbus/trlo_service/service';
+import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff, TrloPipeFilesize } from '@qbus/trlo_service/service';
 
 import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';
@@ -34,7 +34,8 @@ export class TranslocoHttpLoader implements TranslocoLoader {
   [
     TrloServiceComponent,
     TrloPipeLocale,
-    TrloPipeTimediff
+    TrloPipeTimediff,
+    TrloPipeFilesize
   ],
   imports:
   [
@@ -45,6 +46,7 @@ export class TranslocoHttpLoader implements TranslocoLoader {
     TrloServiceComponent,
     TrloPipeLocale,
     TrloPipeTimediff,
+    TrloPipeFilesize,
     TranslocoModule
   ],
   providers:

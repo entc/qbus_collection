@@ -35,17 +35,11 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 @Component({
   selector: 'qbng-success-modal-component',
   templateUrl: './modal_success.html'
-}) export class QbngSuccessModalComponent implements OnInit {
+}) export class QbngSuccessModalComponent {
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal)
-  {
-  }
-
-  //---------------------------------------------------------------------------
-
-  ngOnInit()
+  constructor (public modal: NgbActiveModal, public option: QbngOptionHolder)
   {
   }
 
@@ -59,6 +53,7 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 }) export class QbngErrorModalComponent implements OnInit {
 
   public err_code_name: string = 'ERR.CODE_UNKNOWN';
+  public err_text_list: string[] = [];
 
   //---------------------------------------------------------------------------
 
@@ -70,6 +65,24 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 
   ngOnInit()
   {
+    try
+    {
+      var json_obj = JSON.parse(this.err.text);
+
+      if (Array.isArray (json_obj))
+      {
+        this.err_text_list = json_obj;
+      }
+      else
+      {
+        this.err_text_list = [this.err.text];
+      }
+    }
+    catch (e)
+    {
+      this.err_text_list = [this.err.text];
+    }
+
     switch (this.err.code)
     {
       case  2: this.err_code_name = 'ERR.CODE_NOT_FOUND'; break;
@@ -89,17 +102,11 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
 @Component({
   selector: 'qbng-warn-option-modal-component',
   templateUrl: './modal_warn_option.html'
-}) export class QbngWarnOptionModalComponent implements OnInit {
+}) export class QbngWarnOptionModalComponent {
 
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, public option: QbngOptionHolder)
-  {
-  }
-
-  //---------------------------------------------------------------------------
-
-  ngOnInit()
   {
   }
 

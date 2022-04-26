@@ -9,11 +9,11 @@
   <div class="modal-body text-center">
 
     <span class="text-danger">{{ 'ERR.TEXT' | transloco }}</span>
-    <div class="card mt-2">
-      <div class="card-body">
-        {{ err.text | transloco }}
-      </div>
-    </div>
+    <ul class="list-group mt-2 text-left">
+      <li class="list-group-item" *ngFor="let item of err_text_list">
+        <small>{{ item | transloco }}</small>
+      </li>
+    </ul>
 
   </div>
   <div class="modal-footer border-danger">

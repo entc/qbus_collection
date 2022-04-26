@@ -172,3 +172,44 @@ export class TrloPipeTimediff implements PipeTransform {
     }
   }
 }
+
+//=============================================================================
+
+@Pipe({name: 'trlo_filesize'})
+export class TrloPipeFilesize implements PipeTransform {
+
+  constructor (private trlo_service: TrloService)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  private format (bytes: number): string
+  {
+    const UNITS = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const factor = 1024;
+    let index = 0;
+
+    while (bytes >= factor)
+    {
+      bytes /= factor;
+      index++;
+    }
+
+    return parseFloat (bytes.toFixed(2)) + ' ' + UNITS[index];
+  }
+
+  //---------------------------------------------------------------------------
+
+  transform (value: number): string
+  {
+    if (value)
+    {
+      return this.format (Number(value));
+    }
+    else
+    {
+      return '';
+    }
+  }
+}
