@@ -2,6 +2,7 @@
 #define __CAPE_STC__LIST__H 1
 
 #include "sys/cape_export.h"
+#include "sys/cape_types.h"
 
 //=============================================================================
 
@@ -35,6 +36,8 @@ __CAPE_LIBEX   int               cape_list_empty            (CapeList);
 __CAPE_LIBEX   int               cape_list_hasContent       (CapeList);
 
 __CAPE_LIBEX   void*             cape_list_position         (CapeList, int position);
+
+__CAPE_LIBEX   CapeListNode      cape_list_push_max         (CapeList, void* data, number_t max_size);
 
 //-----------------------------------------------------------------------------
 

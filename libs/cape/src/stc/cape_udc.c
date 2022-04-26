@@ -2144,3 +2144,22 @@ void cape_udc_sort_list (CapeUdc self, fct_cape_udc__on_compare on_compare)
 }
 
 //-----------------------------------------------------------------------------
+
+void cape_udc_add_n__max (CapeUdc self, const CapeString name, number_t val, number_t max_length)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_LIST:
+    {
+      CapeUdc h = cape_udc_new (CAPE_UDC_NUMBER, name);
+      
+      cape_udc_set_n (h, val);
+
+      cape_list_push_max (self->data, (void*)h, max_length);
+            
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------

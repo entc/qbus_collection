@@ -56,10 +56,14 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
   
   if (qin->err)
   {
+    cape_log_fmt (CAPE_LL_ERROR, "FLOW", "method sync", "error: %s", cape_err_text (qin->err));
+
     res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
     goto exit_and_cleanup;
   }
 
+  cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "send request");
+  
   if (qin->cdata)
   {
     number_t cb_counter = cape_udc_get_n (qin->cdata, "cb_counter", 0);
@@ -165,6 +169,8 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
     // transfer owership of dbw to self objects
     self->dbw = dbw;
     *p_dbw = NULL;
+    
+    cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "send request");
     
     res = qbus_send (self->qbus, module, method, msg, self, flow_run_step__method__syncron__on_call, err);
     

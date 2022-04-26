@@ -207,6 +207,9 @@ typedef int (__STDCALL *fct_cape_udc__on_compare) (CapeUdc obj1, CapeUdc obj2);
 
 __CAPE_LIBEX   void                 cape_udc_sort_list        (CapeUdc, fct_cape_udc__on_compare);
 
+                                    /* only works for list */
+__CAPE_LIBEX   void                 cape_udc_add_n__max       (CapeUdc, const CapeString name, number_t val, number_t max_length);
+
 //-----------------------------------------------------------------------------
 
 typedef struct
