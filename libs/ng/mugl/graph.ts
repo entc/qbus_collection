@@ -501,6 +501,14 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
+console.log("mouse y = " + event.clientY + " top = " + elem_rect.top + " height = " + elem_rect.height + " window h = " + window.innerHeight);
+
+    // check if it is outside of the boundaries
+    if ((elem_rect.top + elem_rect.height) < event.clientY)
+    {
+      alert ('gheee');
+    }
+
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
     // do a simple move transformation
@@ -663,7 +671,7 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
-  public add_box (id: number, x: number, y: number, w: number, h: number, user_data: any, sync): GraphBox
+  public add_box (id: number, x: number, y: number, w: number, h: number, user_data: any, sync, color): GraphBox
   {
     if (sync)
     {
@@ -672,6 +680,10 @@ export class Graph {
       if (box)
       {
         box.synced = true;
+
+        // update the box values
+        this.rd.setStyle (box.dom_box, 'background-color', color);
+
         return box;
       }
     }
@@ -694,12 +706,14 @@ export class Graph {
     this.box__adjust (box, elem_rect);
 
     this.rd.setProperty (box.dom_box, 'id', 'G_' + id);
+    this.rd.setStyle (box.dom_box, 'background-color', color);
 
     this.rd.listen (box.dom_box, 'mousedown', (event) => this.box__move__on_mousedown (event, dom_el, box));
     this.rd.listen (box.dom_box, 'touchstart', (event) => this.box__move__on_touchstart (event, dom_el, box));
 
     // add class
     this.rd.addClass(box.dom_box, 'box-el');
+    this.rd.addClass(box.dom_box, 'box-opacity');
 
     //this.set_box_attributes (box.dom_box, names, colors);
     this.rd.appendChild (dom_el, box.dom_box);
