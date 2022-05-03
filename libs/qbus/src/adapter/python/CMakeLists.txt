@@ -28,8 +28,9 @@ IF(Python3_FOUND)
   # python loads a module always without the lib prefix and with the suffix
   # regardless on which platform it runs
   # -> default settings will be overidden
-  set_target_properties   (qbus_adapter_python PROPERTIES OUTPUT_NAME qbus)
-  set_target_properties   (qbus_adapter_python PROPERTIES SUFFIX .so)
-  set_target_properties   (qbus_adapter_python PROPERTIES PREFIX "")
+  SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${ADM_QBUS_DIR})
+  SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES OUTPUT_NAME qbus)
+  SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES SUFFIX .so)
+  SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES PREFIX "")
 
 ENDIF()
