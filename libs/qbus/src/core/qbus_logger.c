@@ -132,6 +132,7 @@ void qbus_logger_del (QBusLogger* p_self)
   {
     QBusLogger self = *p_self;
     
+    cape_map_del (&(self->dest));
     
     CAPE_DEL (p_self, struct QBusLogger_s);
   }
