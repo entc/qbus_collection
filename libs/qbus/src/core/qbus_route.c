@@ -460,6 +460,9 @@ void __STDCALL qbus_route_on_msg_method__worker (void* ptr, number_t pos, number
   
   cape_err_del (&err);
 
+  // cleanup
+  qbus_frame_del (&(ctx->frame));
+  
   CAPE_DEL (&ctx, struct QbusRouteResponseWorkerCtx_s);
 }
 
