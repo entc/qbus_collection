@@ -34,7 +34,7 @@ int __STDCALL client02_create_thread (void* ptr)
     
   }
   
-  while (cape_aio_context_next (qbus_aio (qbus), -1, err) == CAPE_ERR_NONE && total_runs > 0);
+  while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
   qbus_del (&qbus);
   cape_udc_del (&remote);
@@ -102,7 +102,7 @@ int __STDCALL client01_create_thread (void* ptr)
     
   }
   
-  while (cape_aio_context_next (qbus_aio (qbus), -1, err) == CAPE_ERR_NONE && total_runs > 0);
+  while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
   qbus_del (&qbus);
   cape_udc_del (&remote);
