@@ -97,12 +97,14 @@ int __STDCALL client01_create_thread (void* ptr)
 
 static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  number_t wait_in_ms = (number_t)(rand() % 10);
+  number_t wait_in_ms = (number_t)(rand() % 4);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "got call, wait -> %lims", wait_in_ms);
 
   cape_thread_sleep (wait_in_ms);
-  
+
+  cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "continue-> %lims", wait_in_ms);
+
   return CAPE_ERR_NONE;
 }
 
@@ -158,7 +160,7 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   }
   
   
-  return diff < 1000;
+  return diff < 100000;
 }
 
 //-----------------------------------------------------------------------------
