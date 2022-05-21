@@ -4,10 +4,12 @@
 #include <sys/cape_log.h>
 #include <sys/cape_thread.h>
 #include <fmt/cape_json.h>
+#include <sys/cape_mutex.h>
 
 #define REQUESTS 10000
 
 static number_t total_runs = REQUESTS;
+CapeMutex mutex = NULL;
 
 //-----------------------------------------------------------------------------
 
@@ -55,7 +57,13 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
     
   }
   
+  cape_mutex_lock (mutex);
+  
   total_runs--;
+
+  printf ("current run: %li\n", total_runs);
+
+  cape_mutex_unlock (mutex);
   
   return CAPE_ERR_NONE;
 }
@@ -232,6 +240,8 @@ int main (int argc, char *argv[])
   CapeThread client01_thread = cape_thread_new ();
   CapeThread client02_thread = cape_thread_new ();
 
+  mutex = cape_mutex_new();
+  
   cape_thread_start (server_thread, server_create_thread, NULL);
   
   cape_thread_sleep (100);
@@ -243,6 +253,8 @@ int main (int argc, char *argv[])
   cape_thread_join (client01_thread);
   cape_thread_join (client02_thread);
 
+  cape_mutex_del (&mutex);
+  
   cape_thread_del (&server_thread);
   cape_thread_del (&client01_thread);
   cape_thread_del (&client02_thread);
