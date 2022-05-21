@@ -6,7 +6,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 10000
+#define REQUESTS 10
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
@@ -34,7 +34,7 @@ int __STDCALL client02_create_thread (void* ptr)
     
   }
   
-  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+  while (cape_aio_context_next (qbus_aio (qbus), -1, err) == CAPE_ERR_NONE && total_runs > 0);
 
   qbus_del (&qbus);
   cape_udc_del (&remote);
@@ -48,7 +48,7 @@ int __STDCALL client02_create_thread (void* ptr)
 static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   number_t i;
-  number_t loop_cnt = (number_t)(rand() % 100000);
+  number_t loop_cnt = 0;//(number_t)(rand() % 100000);
   
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "client01 test01", "on 01 -> %liloops", loop_cnt);
 
@@ -56,14 +56,6 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
   {
     
   }
-  
-  cape_mutex_lock (mutex);
-  
-  total_runs--;
-
-  printf ("current run: %li\n", total_runs);
-
-  cape_mutex_unlock (mutex);
   
   return CAPE_ERR_NONE;
 }
@@ -110,7 +102,7 @@ int __STDCALL client01_create_thread (void* ptr)
     
   }
   
-  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+  while (cape_aio_context_next (qbus_aio (qbus), -1, err) == CAPE_ERR_NONE && total_runs > 0);
 
   qbus_del (&qbus);
   cape_udc_del (&remote);
@@ -123,11 +115,11 @@ int __STDCALL client01_create_thread (void* ptr)
 
 static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  number_t wait_in_ms = (number_t)(rand() % 4);
+  number_t wait_in_ms = (number_t)(rand() % 1);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "got call, wait -> %lims", wait_in_ms);
 
-  cape_thread_sleep (wait_in_ms);
+  //cape_thread_sleep (wait_in_ms);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "continue-> %lims", wait_in_ms);
 
@@ -138,13 +130,13 @@ static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout,
 
 static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
+  cape_mutex_lock (mutex);
   
-  if (qin->rinfo == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
-    goto exit_and_cleanup;
-  }
+  total_runs--;
+  
+  printf ("current run: %li\n", total_runs);
+  
+  cape_mutex_unlock (mutex);
 
 exit_and_cleanup:
   
@@ -185,6 +177,7 @@ int __STDCALL qbus_trigger_thread (void* ptr)
     cape_thread_sleep (0);
   }
   
+  printf ("send request: %li\n", diff);
   
   return diff < REQUESTS;
 }
@@ -217,7 +210,7 @@ int __STDCALL server_create_thread (void* ptr)
     
   }
   
-  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+  while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
   cape_thread_join (trigger_thread);
 
