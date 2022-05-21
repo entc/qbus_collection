@@ -157,6 +157,9 @@ void qbus_connection_onRecv (QBusConnection self, const char* bufdat, number_t b
     // call the route method to deliver the frame
     qbus_route_conn_onFrame (self->route, self, &(self->frame));
 
+    // to be sure
+    qbus_frame_del (&(self->frame));
+    
     // recreate a new frame
     self->frame = qbus_frame_new ();
   }

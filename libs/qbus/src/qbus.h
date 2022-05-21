@@ -56,11 +56,14 @@ typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
 
 //-----------------------------------------------------------------------------
 
+                                                         /* this will initialize qbus (for testing) -> same as wait without waiting */
+__CAPE_LIBEX   int                qbus_init              (QBus, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr);
+
 __CAPE_LIBEX   int                qbus_register          (QBus, const char* method, void* ptr, fct_qbus_onMessage, fct_qbus_onRemoved, CapeErr);
 
 __CAPE_LIBEX   int                qbus_send              (QBus, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage, CapeErr);
 
-__CAPE_LIBEX   int                qbus_test_s           (QBus, const char* module, const char* method, CapeErr);   // Called from java with JNI
+__CAPE_LIBEX   int                qbus_test_s            (QBus, const char* module, const char* method, CapeErr);   // Called from java with JNI
 
 __CAPE_LIBEX   int                qbus_continue          (QBus, const char* module, const char* method, QBusM qin, void** p_ptr, fct_qbus_onMessage, CapeErr);
 

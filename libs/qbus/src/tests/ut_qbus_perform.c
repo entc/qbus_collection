@@ -5,6 +5,10 @@
 #include <sys/cape_thread.h>
 #include <fmt/cape_json.h>
 
+#define REQUESTS 10000
+
+static number_t total_runs = REQUESTS;
+
 //-----------------------------------------------------------------------------
 
 int __STDCALL client02_create_thread (void* ptr)
@@ -22,8 +26,14 @@ int __STDCALL client02_create_thread (void* ptr)
     cape_udc_add_n (remote, "port", 33380);
   }
   
-  res = qbus_wait (qbus, NULL, remote, 5, err);
+  res = qbus_init (qbus, NULL, remote, 5, err);
+  if (res)
+  {
+    
+  }
   
+  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+
   qbus_del (&qbus);
   cape_udc_del (&remote);
   cape_err_del (&err);
@@ -44,6 +54,8 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
   {
     
   }
+  
+  total_runs--;
   
   return CAPE_ERR_NONE;
 }
@@ -84,8 +96,14 @@ int __STDCALL client01_create_thread (void* ptr)
 
   qbus_register (qbus, "test01", NULL, client01_test01, NULL, err);
 
-  res = qbus_wait (qbus, NULL, remote, 5, err);
+  res = qbus_init (qbus, NULL, remote, 5, err);
+  if (res)
+  {
+    
+  }
   
+  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+
   qbus_del (&qbus);
   cape_udc_del (&remote);
   cape_err_del (&err);
@@ -160,7 +178,7 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   }
   
   
-  return diff < 100000;
+  return diff < REQUESTS;
 }
 
 //-----------------------------------------------------------------------------
@@ -185,8 +203,14 @@ int __STDCALL server_create_thread (void* ptr)
 
   cape_thread_start (trigger_thread, qbus_trigger_thread, qbus);
 
-  res = qbus_wait (qbus, bind, NULL, 5, err);
+  res = qbus_init (qbus, bind, NULL, 5, err);
+  if (res)
+  {
+    
+  }
   
+  while (cape_aio_context_next (qbus_aio (qbus), 100, err) == CAPE_ERR_NONE && total_runs > 0);
+
   cape_thread_join (trigger_thread);
 
   cape_thread_del (&trigger_thread);
