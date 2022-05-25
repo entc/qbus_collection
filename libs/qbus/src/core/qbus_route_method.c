@@ -113,7 +113,11 @@ int qbus_method_call_request (QBusMethod self, QBus qbus, QBusFrame frame, CapeE
     res = self->onMsg (qbus, self->ptr, qin, qout, err);
     
     // override the frame content with the output message (expensive)
-    qbus_frame_set_qmsg (frame, qout, err);
+    {
+      // TODO: check why we return the rinfo!!
+      CapeUdc rinfo = qbus_frame_set_qmsg (frame, qout, err);
+      cape_udc_del (&rinfo);
+    }
     
     // cleanup
     qbus_message_del (&qin);

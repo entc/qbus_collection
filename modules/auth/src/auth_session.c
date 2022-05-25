@@ -424,6 +424,7 @@ exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
   
+  cape_udc_del (&query_results);
   cape_udc_del (&roles);
   
   cape_str_del (&session_token);
@@ -733,6 +734,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  cape_str_del (&ha_last);
+  cape_str_del (&ha_current);
   cape_str_del (&session_token_hash);
   cape_udc_del (&query_results);
   cape_str_del (&h1);
