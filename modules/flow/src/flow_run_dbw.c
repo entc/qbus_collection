@@ -640,6 +640,9 @@ int flow_run_dbw__current_task_load (FlowRunDbw self, CapeErr err)
 
 exit_and_cleanup:
 
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+
   return res;
 }
 
