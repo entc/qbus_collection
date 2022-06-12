@@ -528,12 +528,6 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
     }
   }
   
-  {
-    CapeString h = cape_json_to_s (query_results);
-    
-    printf ("PROC_NEXT: %s\n", h);
-  }
-  
   first_row = cape_udc_ext_first (query_results);
 
   if (first_row)
@@ -563,6 +557,9 @@ int flow_run_dbw__next_load (FlowRunDbw self, CapeErr err)
   res = CAPE_ERR_NONE;
 
 exit_and_cleanup:
+
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
 
   return res;
 }

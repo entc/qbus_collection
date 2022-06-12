@@ -297,6 +297,21 @@ FlowChainItem flow_chain_item__new (CapeUdc* p_item)
 
 //-----------------------------------------------------------------------------
 
+void flow_chain_item__del (FlowChainItem* p_self)
+{
+  if (*p_self)
+  {
+    FlowChainItem self = *p_self;
+    
+    cape_udc_del (&(self->item));
+    cape_udc_del (&(self->states));
+    
+    CAPE_DEL (&self, struct FlowChainItem_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_chain_get__tol__prev (CapeMap logs_map, CapeUdc logs, number_t* p_prev, int* p_passed)
 {
   int ret = FALSE;
@@ -465,12 +480,21 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL flow_chain_get__logs__on_del (void* key, void* val)
+{
+  {
+    FlowChainItem fci = val; flow_chain_item__del (&fci);    
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_chain_get__run (AdblTrx trx, number_t psid, CapeUdc logs, CapeErr err)
 {
   int res;
 
   // local objects
-  CapeMap logs_map = cape_map_new (cape_map__compare__n, NULL, NULL);
+  CapeMap logs_map = cape_map_new (cape_map__compare__n, flow_chain_get__logs__on_del, NULL);
   
   // fetch items from the database
   res = flow_chain_get__fetch (trx, psid, logs_map, err);
