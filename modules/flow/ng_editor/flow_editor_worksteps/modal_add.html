@@ -1,6 +1,6 @@
 <div class="modal-header">
   <span class="modal-title">
-    <strong><i class="fa fa-plus-circle"></i>&nbsp;&nbsp;{{ 'FLOW.WORKSTEPADD' | transloco }}</strong>
+    <strong><i class="fa fa-edit"></i>&nbsp;&nbsp;{{ 'FLOW.WORKSTEPEDIT' | transloco }}</strong>
   </span>
 </div>
 <div class="modal-body">
@@ -34,6 +34,12 @@
         </div>
       </div>
     </div>
+
+  </div>
+
+  <hr>
+
+  <div class="row">
 
     <div class="col-md-6 col-12">
       <div class="form-group">
@@ -73,7 +79,7 @@
   <div [hidden]="show_usr" class="pt-4">
 
     <div class="alert alert-info" role="alert">
-      {{ function_service.get_desc (index_fctid) | transloco }}
+      <i class="fa fa-info-circle"></i>&nbsp;&nbsp;{{ function_service.get_desc (index_fctid) | transloco }}
     </div>
 
     <flow-widget-function-component [workstep_content]="workstep_content"></flow-widget-function-component>
@@ -83,5 +89,5 @@
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
-  <button type="button" class="btn btn-outline-success" (click)="submit()">{{ submit_name | transloco }}</button>
+  <button type="button" class="btn btn-outline-success" (click)="apply()">{{ submit_name | transloco }}</button>
 </div>

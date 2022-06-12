@@ -10,7 +10,7 @@ import { PageToolbarModule } from '@qbus/page_toolbar.module';
 //-----------------------------------------------------------------------------
 
 // components
-import { FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsRmModalComponent, FlowWorkstepsAddModalComponent } from './flow_editor_worksteps/component';
+import { FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsAddModalComponent } from './flow_editor_worksteps/component';
 import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
 import { FlowUserFormService, FlowFunctionService } from './flow_editor_worksteps/services';
 import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/widgets';
@@ -24,7 +24,6 @@ import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWait
     FlowEditorAddModalComponent,
     FlowEditorPermModalComponent,
     FlowWorkstepsComponent,
-    FlowWorkstepsRmModalComponent,
     FlowWorkstepsAddModalComponent,
     FlowWidgetFunctionComponent,
     FlowWidgetUsrFormComponent,
@@ -59,7 +58,6 @@ import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWait
   entryComponents: [
     FlowEditorAddModalComponent,
     FlowEditorPermModalComponent,
-    FlowWorkstepsRmModalComponent,
     FlowWorkstepsAddModalComponent,
     FlowWidgetSyncronComponent,
     FlowWidgetAsyncronComponent,

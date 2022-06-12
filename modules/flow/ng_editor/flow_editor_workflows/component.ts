@@ -15,7 +15,7 @@ import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
 })
 export class FlowEditorComponent implements OnInit {
 
-  workflows: Observable<IWorkflow[]>;
+  public workflows: Observable<IWorkflow[]>;
 
   //-----------------------------------------------------------------------------
 
@@ -52,18 +52,9 @@ export class FlowEditorComponent implements OnInit {
 
   public modal__workflow_add__open ()
   {
-    this.modal_service.open(FlowEditorAddModalComponent, {ariaLabelledBy: 'modal-basic-title'}).result.then((result) => {
+    this.modal_service.open(FlowEditorAddModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: IWorkflow, useValue: null}])}).result.then(() => {
 
-      if (result)
-      {
-        this.auth_session.json_rpc ('FLOW', 'workflow_add', {'name' : result.workflow_name}).subscribe(() => {
-
-          this.workflow_get ();
-
-        });
-      }
-
-    }, () => {
+      this.workflow_get ();
 
     });
   }
@@ -110,6 +101,30 @@ export class FlowEditorComponent implements OnInit {
     this.router.navigate(['../flow_editor', wf.id], {relativeTo: this.route});
   }
 
+  //-----------------------------------------------------------------------------
+
+  public workflow_edit (item: IWorkflow)
+  {
+    this.modal_service.open (FlowEditorAddModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: IWorkflow, useValue: item}])}).result.then(() => {
+
+      this.workflow_get ();
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public workstep_sequence_name (sqtid: number): string
+  {
+    switch (sqtid)
+    {
+      case 1: return 'FLOW.SQT_DEFAULT';
+      case 2: return 'FLOW.SQT_ABORT';
+      case 3: return 'FLOW.SQT_FAILOVER';
+      default: return 'FLOW.SQT_USER';
+    }
+  }
+
 //-----------------------------------------------------------------------------
 
 }
@@ -119,9 +134,14 @@ export class FlowEditorComponent implements OnInit {
 export class IWorkflow {
 
   public id: number;
-  public cnt: number;
+  public steps: FlowWorkflowStep[];
   public name: string;
 
+}
+
+class FlowWorkflowStep {
+  sqtid: number;
+  steps: number;
 }
 
 //=============================================================================
@@ -131,10 +151,16 @@ export class IWorkflow {
   templateUrl: './modal_add.html'
 }) export class FlowEditorAddModalComponent implements OnInit {
 
+  public name: string;
+
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal)
+  constructor (private auth_session: AuthSession, private modal_service: NgbModal, public modal: NgbActiveModal, private item: IWorkflow)
   {
+    if (this.item)
+    {
+      this.name = item.name;
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -145,10 +171,24 @@ export class IWorkflow {
 
   //---------------------------------------------------------------------------
 
-  add_submit (form: NgForm)
+  public apply ()
   {
-    this.modal.close (form.value);
-    form.resetForm ();
+    if (this.item)
+    {
+      this.auth_session.json_rpc ('FLOW', 'workflow_set', {wfid: this.item.id, name : this.name}).subscribe(() => {
+
+        this.modal.close ();
+
+      }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+    }
+    else
+    {
+      this.auth_session.json_rpc ('FLOW', 'workflow_add', {name : this.name}).subscribe(() => {
+
+        this.modal.close ();
+
+      }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+    }
   }
 
 }

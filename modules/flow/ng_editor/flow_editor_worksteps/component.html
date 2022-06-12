@@ -10,9 +10,20 @@
     <tr>
       <th></th>
       <th>
-        <span class="badge badge-primary width_3em">wsid</span>
+        <span class="badge badge-primary width_5em">WSID</span>
       </th>
-      <th width="100%">{{ 'FLOW.WSNAME' | transloco }}</th>
+      <th width="100%">
+        <div class="input-group input-group-sm">
+          <div class="input-group-prepend">
+            <label class="input-group-text">{{ 'FLOW.SQTID' | transloco }}</label>
+          </div>
+          <select class="custom-select" (change)="on_sqt_change($event)">
+            <option value="1">{{ 'FLOW.SQT_DEFAULT' | transloco }}</option>
+            <option value="2">{{ 'FLOW.SQT_ABORT' | transloco }}</option>
+            <option value="3">{{ 'FLOW.SQT_FAILOVER' | transloco }}</option>
+          </select>
+        </div>
+      </th>
       <th><span class="badge badge-secondary width_10em">{{ 'FLOW.WSTAG' | transloco }}</span></th>
       <th>
         <button (click)="modal__workstep_add__open(undefined)" type="button" class="btn btn-sm btn-success"><i class="fa fa-plus"></i></button>
@@ -28,7 +39,7 @@
         </button>
       </td>
       <td>
-        <span class="badge badge-primary width_3em">{{ws.id}}</span>
+        <span class="badge badge-primary width_5em">{{ws.id}}</span>
       </td>
       <td>
         {{ws.name}}<br>

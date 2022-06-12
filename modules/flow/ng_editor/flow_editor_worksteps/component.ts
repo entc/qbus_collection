@@ -6,6 +6,8 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { FlowUserFormService, FlowFunctionService, StepFct } from './services';
 import { IWorkstep } from './headers';
 import { IFlowEditorWidget } from './widgets';
+import { QbngErrorModalComponent, QbngWarnOptionModalComponent } from '@qbus/qbng_modals/component';
+import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
 
 //-----------------------------------------------------------------------------
 
@@ -18,10 +20,11 @@ export class FlowWorkstepsComponent implements OnInit
   @Input('wfid') wfid: number;
 
   worksteps = new Array<IWorkstep>();
+  public sqtid: number = 1;
 
   //-----------------------------------------------------------------------------
 
-  constructor(private auth_session: AuthSession, private modalService: NgbModal, public userform_service: FlowUserFormService, public function_service: FlowFunctionService)
+  constructor(private auth_session: AuthSession, private modal_service: NgbModal, public userform_service: FlowUserFormService, public function_service: FlowFunctionService)
   {
   }
 
@@ -30,7 +33,20 @@ export class FlowWorkstepsComponent implements OnInit
   ngOnInit()
   {
     // load all steps
-    this.workflow_get ();
+    this.fetch ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public on_sqt_change(e: Event)
+  {
+    const target = e.target as HTMLInputElement;
+
+    if (target && target.value)
+    {
+      this.sqtid = Number(target.value);
+      this.fetch ();
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -51,17 +67,18 @@ export class FlowWorkstepsComponent implements OnInit
 
   workstep_mv (ws: IWorkstep, direction: number)
   {
-    this.auth_session.json_rpc ('FLOW', 'workstep_mv', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid, 'direction' : direction}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'workstep_mv', {wfid : this.wfid, wsid : ws.id, sqid : ws.sqtid, direction : direction}).subscribe(() => {
 
-      this.workflow_get ();
-    });
+      this.fetch ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
   //-----------------------------------------------------------------------------
 
-  workflow_get ()
+  private fetch ()
   {
-    this.auth_session.json_rpc ('FLOW', 'workflow_get', {'wfid' : this.wfid, 'ordered' : true}).subscribe((data: Array<IWorkstep>) => {
+    this.auth_session.json_rpc ('FLOW', 'workflow_get', {wfid : this.wfid, sqtid : this.sqtid, ordered : true}).subscribe((data: Array<IWorkstep>) => {
 
       this.worksteps = data;
 
@@ -70,49 +87,46 @@ export class FlowWorkstepsComponent implements OnInit
 
   //-----------------------------------------------------------------------------
 
+  private workstep_del (ws: IWorkstep)
+  {
+    this.auth_session.json_rpc ('FLOW', 'workstep_rm', {wfid : this.wfid, wsid : ws.id, sqid : ws.sqtid}).subscribe(() => {
+
+      this.fetch ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //-----------------------------------------------------------------------------
+
   modal__workstep_del__open (ws: IWorkstep)
   {
-    this.modalService.open (FlowWorkstepsRmModalComponent, {ariaLabelledBy: 'modal-basic-title'}).result.then(() => {
+    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.DELETE', 'FLOW.WORKSTEPDELETEINFO', 'MISC.DELETE');
 
-      this.auth_session.json_rpc ('FLOW', 'workstep_rm', {'wfid' : this.wfid, 'wsid' : ws.id, 'sqid' : ws.sqtid}).subscribe(() => {
-
-        this.workflow_get ();
-      });
-
-    }, () => {
-
-    });
+    this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => this.workstep_del (ws));
   }
 
   //-----------------------------------------------------------------------------
 
   modal__workstep_add__open (modal_content: IWorkstep)
   {
-    var flow_method: string = modal_content ? 'workstep_set' : 'workstep_add';
+    var workstep_ctx: FlowWorkstepCtx = new FlowWorkstepCtx (this.wfid, this.sqtid);
 
-    this.modalService.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}])}).result.then((result: IWorkstep) => {
-
-      const step_name = result.name;
-      const step_tag = result.tag;
-      const step_fctid = Number (result.fctid);
-      const pdata = result.pdata;
-
-      this.auth_session.json_rpc ('FLOW', flow_method, {wfid : this.wfid, wsid : modal_content ? modal_content.id : undefined, sqid : 1, name: step_name, tag: step_tag, fctid: step_fctid, pdata: pdata}).subscribe(() => {
-
-        this.workflow_get ();
-      });
-
-    }, () => {
-
-    });
+    this.modal_service.open (FlowWorkstepsAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: IWorkstep, useValue: modal_content}, {provide: FlowWorkstepCtx, useValue: workstep_ctx}])}).result.then(() => this.fetch ());
   }
-
-  //-----------------------------------------------------------------------------
 }
+
+//-----------------------------------------------------------------------------
 
 export class WidgetItem
 {
   constructor (public component: Type<any>) {}
+}
+
+//-----------------------------------------------------------------------------
+
+export class FlowWorkstepCtx
+{
+  constructor (public wfid: number, public sqid: number) {}
 }
 
 //=============================================================================
@@ -257,7 +271,7 @@ class WidgetComponent
   public index_usrid: number = -1;
   public index_fctid: number = -1;
 
-  constructor (public modal: NgbActiveModal, public modal_content: IWorkstep, public userform_service: FlowUserFormService, public function_service: FlowFunctionService, private component_factory_resolver: ComponentFactoryResolver)
+  constructor (private auth_session: AuthSession, private modal_service: NgbModal, public modal: NgbActiveModal, public modal_content: IWorkstep, public userform_service: FlowUserFormService, public function_service: FlowFunctionService, private component_factory_resolver: ComponentFactoryResolver, private workstep_ctx: FlowWorkstepCtx)
   {
     if (modal_content)
     {
@@ -323,9 +337,26 @@ class WidgetComponent
 
   //---------------------------------------------------------------------------
 
-  submit ()
+  public apply ()
   {
-    this.modal.close (this.workstep_content.value);
+    const workstep: IWorkstep = this.workstep_content.value;
+
+    if (this.modal_content)
+    {
+      this.auth_session.json_rpc ('FLOW', 'workstep_set', {wfid : this.workstep_ctx.wfid, sqid : this.workstep_ctx.sqid, wsid : this.modal_content.id, name: workstep.name, tag: workstep.tag, fctid: workstep.fctid, pdata: workstep.pdata}).subscribe(() => {
+
+        this.modal.close ();
+
+      }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+    }
+    else
+    {
+      this.auth_session.json_rpc ('FLOW', 'workstep_add', {wfid : this.workstep_ctx.wfid, sqid : this.workstep_ctx.sqid, name: workstep.name, tag: workstep.tag, fctid: workstep.fctid, pdata: workstep.pdata}).subscribe(() => {
+
+        this.modal.close ();
+
+      }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -374,19 +405,5 @@ class WidgetComponent
 
       this.workstep_content.next (workstep);
     }
-  }
-}
-
-//=============================================================================
-
-@Component({
-  selector: 'flow-worksteps-rm-modal-component',
-  templateUrl: './modal_rm.html'
-}) export class FlowWorkstepsRmModalComponent {
-
-  //---------------------------------------------------------------------------
-
-  constructor (public modal: NgbActiveModal)
-  {
   }
 }

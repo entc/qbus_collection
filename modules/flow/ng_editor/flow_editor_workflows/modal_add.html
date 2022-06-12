@@ -1,4 +1,3 @@
-<form #workflow_add = "ngForm" (ngSubmit) = "add_submit(workflow_add)">
 <div class="modal-header">
   <span class="modal-title">
     <strong><i class="fa fa-plus-circle"></i>&nbsp;&nbsp;{{ 'FLOW.WORKFLOWADD' | transloco }}</strong>
@@ -6,14 +5,13 @@
 </div>
 <div class="modal-body">
     <div class="form-group">
-      <label for="dateOfBirth">{{ 'FLOW.WORKFLOWNAME' | transloco }}</label>
+      <label>{{ 'FLOW.WORKFLOWNAME' | transloco }}</label>
       <div class="input-group">
-        <input type="text" class="form-control" aria-describedby="name" placeholder="enter name" ngModel name = "workflow_name">
+        <input type="text" class="form-control" aria-describedby="name" placeholder="enter name" [(ngModel)]="name">
       </div>
     </div>
   </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-dark" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
-  <button type="submit" class="btn btn-outline-success">{{ 'MISC.ADD' | transloco }}</button>
+  <button type="button" class="btn btn-outline-success" (click)="apply()">{{ 'MISC.APPLY' | transloco }}</button>
 </div>
-</form>

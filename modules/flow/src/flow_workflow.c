@@ -284,10 +284,18 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
   self->wfid = cape_udc_get_n (qin->cdata, "wfid", 0);
   if (self->wfid)
   {
+    number_t sqtid = cape_udc_get_n (qin->cdata, "sqtid", 0);
+    if (sqtid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_SQTID");
+      goto exit_and_cleanup;
+    }
+
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n     (params, "wfid"        , self->wfid);
+    cape_udc_add_n     (params, "sqtid"       , sqtid);
 
     cape_udc_add_n     (values, "id"          , 0);
     cape_udc_add_n     (values, "sqtid"       , 0);
@@ -331,10 +339,16 @@ int flow_workflow_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     cape_udc_add_n     (values, "id"          , 0);
     cape_udc_add_s_cp  (values, "name"        , NULL);
-    cape_udc_add_n     (values, "cnt"         , 0);
+    cape_udc_add_list  (values, "steps"       );
     
     // execute the query
-    // select `wf`.`id` AS `id`,`wf`.`name` AS `name`,(select count(`ws`.`id`) from `proc_worksteps` `ws` where `ws`.`wfid` = `wf`.`id`) AS `cnt` from `proc_workflows` `wf`
+    
+    // flow_workflows_sqt_view
+    // select wf.id, wf.name, sqtid, count(ws.id) steps from proc_workflows wf left join proc_worksteps ws on ws.wfid = wf.id group by wf.id, ws.sqtid
+
+    // flow_workflows_view
+    // select id, name, concat('[', group_concat(concat('{', '"sqtid":', sqtid, ',"steps":', steps, '}')), ']') steps from flow_workflows_sqt_view group by id;
+    
     query_results = adbl_session_query (self->adbl_session, "flow_workflows_view", NULL, &values, err);
     if (query_results == NULL)
     {
