@@ -2,6 +2,7 @@ import { Component, Injectable, Injector, Pipe, PipeTransform } from '@angular/c
 import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
 import { Observable, BehaviorSubject } from 'rxjs';
+import { NgbDatepickerI18n, NgbCalendar, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 //-----------------------------------------------------------------------------
 
@@ -101,6 +102,13 @@ export class TrloService
   public time_date (datetime: number)
   {
     return this.datetime_to_h (datetime);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public translate (val: string): string
+  {
+    return this.translocoService.translate(val);
   }
 }
 
@@ -248,5 +256,38 @@ export class TrloPipeFilesize implements PipeTransform {
     {
       return '';
     }
+  }
+}
+
+//=============================================================================
+
+@Injectable()
+export class TranslocoDatepicker extends NgbDatepickerI18n
+{
+  constructor(private trlo_service: TrloService) { super(); }
+
+  getWeekdayLabel(weekday: number): string
+  {
+    return this.trlo_service.translate('DATE.WEEKDAY_' + weekday);
+  }
+
+  override getWeekLabel (): string
+  {
+    return this.trlo_service.translate('DATE.WEEK');
+  }
+
+  getMonthShortName(month: number): string
+  {
+    return this.trlo_service.translate('DATE.MONTH_SHORT_' + month);
+  }
+
+  getMonthFullName(month: number): string
+  {
+    return this.trlo_service.translate('DATE.MONTH_LONG_' + month);
+  }
+
+  getDayAriaLabel(date: NgbDateStruct): string
+  {
+    return `${date.day}-${date.month}-${date.year}`;
   }
 }

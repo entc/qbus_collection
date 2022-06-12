@@ -346,13 +346,21 @@ int qjobs__intern__event_run (QJobs self, number_t rpid, CapeErr err)
     event.wpid = wpid;
     event.gpid = gpid;
     
-    event.params = cape_udc_get (self->next_list_item, "params");
+    event.params = cape_udc_ext (self->next_list_item, "params");
     event.rinfo_encrypted = cape_udc_get_s (self->next_list_item, "rinfo", NULL);
     
     event.r1id = cape_udc_get_n (self->next_list_item, "ref_id1", 0);
     event.r2id = cape_udc_get_n (self->next_list_item, "ref_id2", 0);
     
+    event.ref_mod = cape_udc_ext_s (self->next_list_item, "ref_mod");
+    event.ref_umi = cape_udc_ext_s (self->next_list_item, "ref_umi");
+
     res = self->user_fct (self, &event, self->user_ptr, err);
+    
+    cape_str_del (&(event.ref_mod));
+    cape_str_del (&(event.ref_umi));
+    
+    cape_udc_del (&(event.params));
   }
   
   return res;
@@ -588,7 +596,10 @@ int qjobs_set (QJobs self, number_t rpid, CapeDatetime* dt, number_t period_in_s
   // add params
   cape_udc_add_n (params, "id", rpid);
   
-  cape_udc_add_d (values, "event_date", dt);
+  if (dt)
+  {
+    cape_udc_add_d (values, "event_date", dt);
+  }
   
   if (p_params)
   {
