@@ -153,7 +153,8 @@ int jobs_list_get (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "id"          , 0);
     cape_udc_add_d      (values, "event_date"  , NULL);
     cape_udc_add_n      (values, "ref_id2"     , 0);
-    
+    cape_udc_add_node   (values, "params"      );
+
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "jobs_list", &params, &values, err);
     if (query_results == NULL)
@@ -322,6 +323,9 @@ int jobs_list_set (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   JobsList self = *p_self;
   
+  // local objects
+  CapeUdc params = NULL;
+  
   // do some security checks
   if (qin->rinfo == NULL)
   {
@@ -359,12 +363,18 @@ int jobs_list_set (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
   res = jobs_list__input__start_date (self, qin, err);
   if (res)
   {
-    goto exit_and_cleanup;
+    // ignore
+    cape_err_clr (err);
   }
+  
+  // optional
+  params = cape_udc_ext (qin->cdata, "params");
 
-  res = qjobs_set (self->jobs, self->rpid, self->dt_start, 0, NULL, NULL, err);
+  res = qjobs_set (self->jobs, self->rpid, self->dt_start, 0, params ? &params : NULL, NULL, err);
   
 exit_and_cleanup:
+  
+  cape_udc_del (&params);
   
   jobs_list_del (p_self);
   return res;

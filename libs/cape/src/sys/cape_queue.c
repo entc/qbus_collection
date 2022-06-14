@@ -522,17 +522,34 @@ int cape_queue_next (CapeQueue self)
   
 #else
   
-  int res = sem_wait (&(self->sem));
+  int res = sem_timedwait (&(self->sem), &ts);
   
   if (res == -1)
   {
-    CapeErr err = cape_err_new ();
-    
-    cape_err_lastOSError (err);
-    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme sem_wait: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
+    switch (errno)
+    {
+      case EINTR:
+      {        
+        return TRUE;
+      }
+      case ETIMEDOUT:
+      {
+        
+        break;
+      }
+      default:
+      {
+        CapeErr err = cape_err_new ();
+        
+        cape_err_lastOSError (err);
+        
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme sem_wait: %s", cape_err_text(err));
+        
+        cape_err_del (&err);
+
+        return FALSE;
+      }
+    }
   }
 
 #endif
