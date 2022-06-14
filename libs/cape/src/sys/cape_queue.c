@@ -358,6 +358,8 @@ void cape_queue_del (CapeQueue* p_self)
   {
     CapeQueue self = *p_self;
     
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down queue processes");
+    
     self->terminated = TRUE;
     
     {
@@ -395,6 +397,8 @@ void cape_queue_del (CapeQueue* p_self)
     
     cape_mutex_del (&(self->mutex));
     
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down done");
+    
     CAPE_DEL (p_self, struct CapeQueue_s);
   }
 }
@@ -403,6 +407,10 @@ void cape_queue_del (CapeQueue* p_self)
 
 static int __STDCALL cape_queue__worker__thread (void* ptr)
 {
+  // disable signale handling in this thread
+  // signal handling must happen outside
+  //cape_thread_nosignals ();
+  
   while (cape_queue_next (ptr));
   
   cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "thread terminated");
