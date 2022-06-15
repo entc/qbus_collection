@@ -26,6 +26,7 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #endif
 
@@ -358,6 +359,8 @@ void cape_queue_del (CapeQueue* p_self)
   {
     CapeQueue self = *p_self;
     
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down queue processes");
+    
     self->terminated = TRUE;
     
     {
@@ -395,6 +398,8 @@ void cape_queue_del (CapeQueue* p_self)
     
     cape_mutex_del (&(self->mutex));
     
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down done");
+    
     CAPE_DEL (p_self, struct CapeQueue_s);
   }
 }
@@ -403,6 +408,10 @@ void cape_queue_del (CapeQueue* p_self)
 
 static int __STDCALL cape_queue__worker__thread (void* ptr)
 {
+  // disable signale handling in this thread
+  // signal handling must happen outside
+  //cape_thread_nosignals ();
+  
   while (cape_queue_next (ptr));
   
   cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "thread terminated");
@@ -480,13 +489,51 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
 
 //-----------------------------------------------------------------------------
 
-int cape_queue_next (CapeQueue self)
+int cape_queue_pull (CapeQueue self, int has_timeout)
 {
   int ret = TRUE;
-  CapeQueueItem item = NULL;
   
   number_t queue_size;
- 
+  CapeQueueItem item = NULL;
+    
+  cape_mutex_lock (self->mutex);
+  
+  ret = !self->terminated;
+  
+  if (ret)
+  {
+    item = cape_list_pop_front (self->queue);
+  }
+  
+  // get the remaining items in the queue
+  queue_size = cape_list_size (self->queue);
+  
+  cape_mutex_unlock (self->mutex);
+  
+  if (item && ret)
+  {
+    if (has_timeout)
+    {
+      cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue next", "queue got stacked, size = %i", queue_size);
+    }
+    
+    if (item->on_event)
+    {
+      item->on_event (item->ptr, item->pos, queue_size);
+    }
+    
+    cape_queue__item__on_del (item);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_queue_next (CapeQueue self)
+{
+  int timeout = FALSE;
+  
 #if defined __WINDOWS_OS
 
   DWORD res = WaitForSingleObject (self->semaphore, INFINITE);
@@ -507,12 +554,16 @@ int cape_queue_next (CapeQueue self)
     cape_err_del (&err);
   }
 
-
 #elif defined __BSD_OS
   
   dispatch_semaphore_wait (self->sem, DISPATCH_TIME_FOREVER);
   
 #else
+  
+  struct timespec ts;
+  
+  ts.tv_sec = 5;
+  ts.tv_nsec = 0;
   
   int res = sem_timedwait (&(self->sem), &ts);
   
@@ -526,7 +577,7 @@ int cape_queue_next (CapeQueue self)
       }
       case ETIMEDOUT:
       {
-        
+        timeout = TRUE;
         break;
       }
       default:
@@ -546,31 +597,7 @@ int cape_queue_next (CapeQueue self)
 
 #endif
   
-  cape_mutex_lock (self->mutex);
-  
-  ret = !self->terminated;
-  
-  if (ret)
-  {
-    item = cape_list_pop_front (self->queue);
-  }
-  
-  // get the remaining items in the queue
-  queue_size = cape_list_size (self->queue);
-  
-  cape_mutex_unlock (self->mutex);
-  
-  if (item && ret)
-  {
-    if (item->on_event)
-    {
-      item->on_event (item->ptr, item->pos, queue_size);
-    }
-    
-    cape_queue__item__on_del (item);
-  }
-  
-  return ret;
+  return cape_queue_pull (self, timeout);
 }
 
 //-----------------------------------------------------------------------------
