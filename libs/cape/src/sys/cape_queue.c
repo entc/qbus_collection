@@ -27,6 +27,7 @@
 #include <sys/sem.h>
 #include <semaphore.h>
 #include <errno.h>
+#include <time.h>
 
 #endif
 
@@ -562,8 +563,20 @@ int cape_queue_next (CapeQueue self)
   
   struct timespec ts;
   
-  ts.tv_sec = 5;
-  ts.tv_nsec = 0;
+  if (clock_gettime (CLOCK_REALTIME, &ts) == -1)
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't get realtime clock: %s", cape_err_text(err));
+    
+    cape_err_del (&err);
+    
+    return FALSE;
+  }
+  
+  ts.tv_sec += 5;
   
   int res = sem_timedwait (&(self->sem), &ts);
   
