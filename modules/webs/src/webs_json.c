@@ -480,6 +480,93 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int webs_json_run_gen__handle_auth (WebsJson* p_self, const CapeString auth_type, const CapeString auth_cont, CapeErr err)
+{
+  int res;
+  WebsJson self = *p_self;
+  
+  // local objects
+  QBusM msg = qbus_message_new (NULL, NULL);
+  
+  qbus_message_clr (msg, CAPE_UDC_NODE);
+  
+  if (cape_str_equal (auth_type, "Bearer"))
+  {
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+    
+    // decode base64
+    {
+      CapeStream content_stream = qcrypt__decode_base64_s (auth_cont);
+      
+      if (content_stream)
+      {
+        msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream), NULL);
+        cape_stream_del (&content_stream);
+      }
+    }
+    
+    res = qbus_send (self->qbus, "AUTH", "session_get", msg, self, qbus_webs__auth__on_ui, err);
+    if (res)
+    {
+      
+    }
+    
+    *p_self = NULL;
+    res = CAPE_ERR_CONTINUE;
+  }
+  else
+  {
+    cape_udc_add_s_cp (msg->cdata, "type", auth_type);
+    
+    // content needs to be base64 encrypted
+    {
+      CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
+      
+      if (h == NULL)
+      {
+        res = cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "can't encode base64");
+        goto exit_and_cleanup;
+      }
+      
+      cape_udc_add_s_mv (msg->cdata, "content", &h);
+    }
+    
+    // remote
+    {
+      CapeString remote = qwebs_request_remote (self->request);
+      if (remote)
+      {
+        cape_udc_add_s_mv (msg->cdata, "remote", &remote);
+      }
+    }
+    
+    res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
+    if (res)
+    {
+      
+    }
+    
+    *p_self = NULL;
+    res = CAPE_ERR_CONTINUE;
+  }
+  
+exit_and_cleanup:
+  
+  qbus_message_del (&msg);
+  
+  webs_json_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int webs_json_run_gen (WebsJson* p_self, CapeErr err)
 {
   int res;
@@ -500,87 +587,13 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
     
     if (cape_tokenizer_split (self->auth, ' ', &auth_type, &auth_cont))
     {
-      if (cape_str_equal (auth_type, "Bearer"))
-      {
-        int res;
-        
-        QBusM msg = qbus_message_new (NULL, NULL);
-        
-        qbus_message_clr (msg, CAPE_UDC_NODE);
-
-        // remote
-        {
-          CapeString remote = qwebs_request_remote (self->request);
-          if (remote)
-          {
-            cape_udc_add_s_mv (msg->cdata, "remote", &remote);
-          }
-        }
-
-        // decode base64
-        {
-          CapeStream content_stream = qcrypt__decode_base64_s (auth_cont);
-
-          if (content_stream)
-          {
-            msg->pdata = cape_json_from_buf (cape_stream_data (content_stream), cape_stream_size (content_stream), NULL);
-            cape_stream_del (&content_stream);
-          }
-        }
-        
-        res = qbus_send (self->qbus, "AUTH", "session_get", msg, self, qbus_webs__auth__on_ui, err);
-        if (res)
-        {
-          
-        }
-        
-        qbus_message_del (&msg);
-        
-        *p_self = NULL;
-        return CAPE_ERR_CONTINUE;
-      }
-      else
-      {
-        int res;
-        
-        QBusM msg = qbus_message_new (NULL, NULL);
-        
-        //cape_log_fmt (CAPE_LL_TRACE, "WEBS", "auth run", "ask AUTH for info");
-        
-        qbus_message_clr (msg, CAPE_UDC_NODE);
-        
-        cape_udc_add_s_cp (msg->cdata, "type", auth_type);
-        
-        // content needs to be base64 encrypted
-        {
-          CapeString h = qcrypt__encode_base64_o (auth_cont, cape_str_size (auth_cont));
-          
-          if (h == NULL)
-          {
-            res = cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "can't encode base64");
-            goto exit_and_cleanup;
-          }
-          
-          cape_udc_add_s_mv (msg->cdata, "content", &h);
-        }
-
-        // remote
-        {
-          CapeString remote = qwebs_request_remote (self->request);
-          if (remote)
-          {
-            cape_udc_add_s_mv (msg->cdata, "remote", &remote);
-          }
-        }
-
-        res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
-        
-        qbus_message_del (&msg);
-        
-        *p_self = NULL;
-        return CAPE_ERR_CONTINUE;
-      }
+      res = webs_json_run_gen__handle_auth (p_self, auth_type, auth_cont, err);
     }
+    
+    cape_str_del (&auth_type);
+    cape_str_del (&auth_cont);
+    
+    return res;
   }
   else if (self->extra_token_t)
   {
