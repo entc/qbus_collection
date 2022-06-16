@@ -29,6 +29,9 @@ FlowContext qbus_flow__ctx__new ()
  
   self->queue = cape_queue_new ();
   
+  self->adbl_ctx = NULL;
+  self->adbl_session = NULL;
+  
   return self;
 }
 
@@ -40,6 +43,9 @@ void qbus_flow__ctx__del (FlowContext* p_self)
   {
     FlowContext self = *p_self;
     
+    adbl_session_close (&(self->adbl_session));
+    adbl_ctx_del (&(self->adbl_ctx));
+
     cape_queue_del (&(self->queue));
     
     CAPE_DEL (p_self, struct FlowContext_s);

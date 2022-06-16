@@ -411,11 +411,11 @@ static int __STDCALL cape_queue__worker__thread (void* ptr)
 {
   // disable signale handling in this thread
   // signal handling must happen outside
-  //cape_thread_nosignals ();
+  cape_thread_nosignals ();
   
   while (cape_queue_next (ptr));
   
-  cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "thread terminated");
+  //cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "thread terminated");
   
   return 0;
 }
@@ -433,7 +433,7 @@ int cape_queue_start  (CapeQueue self, int amount_of_threads, CapeErr err)
     ti->thread = cape_thread_new ();
     ti->queue = self;
     
-    cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "start new thread");
+    //cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "start new thread");
     
     cape_thread_start (ti->thread, cape_queue__worker__thread, self);
     
