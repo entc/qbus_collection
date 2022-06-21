@@ -113,7 +113,7 @@ QBusRoute qbus_route_new (QBus qbus, const CapeString name)
   self->on_changes_callbacks = cape_list_new (qbus_route_callbacks_on_del);
   self->on_changes_mutex = cape_mutex_new ();
   
-  self->queue = cape_queue_new ();
+  self->queue = cape_queue_new (300000);   // maximum of 5 minutes
   
   return self;
 }

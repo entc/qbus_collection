@@ -23,11 +23,11 @@ int main (int argc, char *argv[])
   int res;
   CapeErr err = cape_err_new ();
   
-  CapeQueue queue01 = cape_queue_new ();
+  CapeQueue queue01 = cape_queue_new (4000);
   
   CapeSync sync01 = cape_sync_new ();
   
-  // this creates 10 threads
+  // this creates 3 threads
   cape_queue_start (queue01, 3, err);
   
   // add 10 tasks
