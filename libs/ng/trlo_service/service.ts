@@ -266,12 +266,20 @@ export class TranslocoDatepicker extends NgbDatepickerI18n
 {
   constructor(private trlo_service: TrloService) { super(); }
 
+  // old API
+  getWeekdayShortName (weekday: number): string
+  {
+    return this.getWeekdayLabel (weekday);
+  }
+
+  // new API
   getWeekdayLabel(weekday: number): string
   {
     return this.trlo_service.translate('DATE.WEEKDAY_' + weekday);
   }
 
-  override getWeekLabel (): string
+  // new API
+  getWeekLabel (): string
   {
     return this.trlo_service.translate('DATE.WEEK');
   }
