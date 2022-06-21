@@ -779,6 +779,36 @@ void qbus_route_on_route_methods_request (QBusRoute self, QBusConnection conn, Q
 
 //-----------------------------------------------------------------------------
 
+void qbus_route__on_observable_request (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+{
+  QBusFrame frame = *p_frame;
+  
+  const CapeString module = qbus_frame_get_module (frame);
+  
+  // check if the message was sent to us
+  if (cape_str_compare (module, self->name))
+  {
+
+  }
+  else
+  {
+    
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route__on_observable_response (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+{
+  QBusFrame frame = *p_frame;
+
+  const CapeString chain_key = qbus_frame_get_chainkey (frame);
+
+  
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_conn_onFrame (QBusRoute self, QBusConnection connection, QBusFrame* p_frame)
 {
   QBusFrame frame = *p_frame;
@@ -813,6 +843,16 @@ void qbus_route_conn_onFrame (QBusRoute self, QBusConnection connection, QBusFra
     case QBUS_FRAME_TYPE_METHODS:
     {
       qbus_route_on_route_methods_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_REQ:
+    {
+      qbus_route__on_observable_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_RES:
+    {
+      qbus_route__on_observable_response (self, connection, p_frame);
       break;
     }
   }
