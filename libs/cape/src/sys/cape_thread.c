@@ -101,7 +101,18 @@ void cape_thread_del (CapeThread* p_self)
 
 void cape_thread_cancel (CapeThread self)
 {
-  pthread_cancel (self->tid);
+  int errno = pthread_cancel (self->tid);
+  
+  if (errno)
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "thread", "can't cancel thread: %s", cape_err_text (err));
+    
+    cape_err_del (&err);
+  }
 }
 
 //-----------------------------------------------------------------------------------
@@ -110,11 +121,13 @@ void cape_thread_start (CapeThread self, cape_thread_worker_fct fct, void* ptr)
 {
   // define some special attributes
   pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  pthread_attr_init (&attr);
+  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+    
   // assign the callback parameters
   self->fct = fct;
   self->ptr = ptr;
+
   // finally create the thread
   self->status = (pthread_create(&(self->tid), &attr, cape_thread_run, self) == 0);
 }
@@ -123,7 +136,8 @@ void cape_thread_start (CapeThread self, cape_thread_worker_fct fct, void* ptr)
 
 void cape_thread_join (CapeThread self)
 {
-  if (self->status) {
+  if (self->status)
+  {
     void* status;
     pthread_join(self->tid, &status);
     
