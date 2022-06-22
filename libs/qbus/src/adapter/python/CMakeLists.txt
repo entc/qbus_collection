@@ -1,5 +1,3 @@
-SET(CMAKE_SKIP_RPATH TRUE)
-
 find_package (Python3 COMPONENTS Interpreter Development QUIET)
 
 IF(Python3_FOUND)
