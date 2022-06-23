@@ -601,7 +601,7 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
         
         if (ti->busy_cnt > self->timeout_in_ds)
         {
-          cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue observer", "thread is busy for too long -> cancel");
+          cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
           
           // try to cancel the thread
           cape_thread_cancel (ti->thread);
