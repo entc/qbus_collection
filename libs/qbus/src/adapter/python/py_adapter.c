@@ -312,3 +312,10 @@ PyMODINIT_FUNC PyInit_qbus (void)
 }
 
 //-----------------------------------------------------------------------------
+
+PyMODINIT_FUNC initqbus (void)
+{
+  printf ("ERROR: qbus package was compiled for python3.x, please start with python3\n");
+}
+
+//-----------------------------------------------------------------------------
