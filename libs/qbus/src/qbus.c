@@ -572,6 +572,34 @@ void qbus_conn_request (QBus self, QBusConnection const conn, const char* module
 
 //-----------------------------------------------------------------------------
 
+QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+QBusEmitter qbus_emitter_add (QBus self, const CapeString name, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_emitter_rm (QBus self, QBusEmitter emitter, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_emitter_next (QBus self, QBusEmitter emitter, CapeUdc data)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 QBusM qbus_message_new (const CapeString key, const CapeString sender)
 {
   QBusM self = CAPE_NEW (struct QBusMessage_s);

@@ -9,6 +9,37 @@
 
 //-----------------------------------------------------------------------------
 
+struct QBusRouteRemoteConn_s
+{
+  QBusConnection conn;
+  
+}; typedef struct QBusRouteRemoteConn_s* QBusRouteRemoteConn;
+
+//-----------------------------------------------------------------------------
+
+QBusRouteRemoteConn qbus_route_remote_conn_new (QBusConnection conn)
+{
+  QBusRouteRemoteConn self = CAPE_NEW (struct QBusRouteRemoteConn_s);
+  
+  self->conn = conn;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_remote_conn_del (QBusRouteRemoteConn* p_self)
+{
+  if (*p_self)
+  {
+    QBusRouteRemoteConn self = *p_self;
+    
+    CAPE_DEL (p_self, struct QBusRouteRemoteConn_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusRouteDirectConn_s
 {
   QBusConnection conn;
@@ -308,6 +339,9 @@ void __STDCALL qbus_route_routes_nodes_del (void* key, void* val)
   {
     CapeString h = key; cape_str_del (&h);
   }
+  {
+    QBusRouteRemoteConn h = val; qbus_route_remote_conn_del (&h);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -340,33 +374,51 @@ void qbus_route_items_del (QBusRouteItems* p_self)
 
 //-----------------------------------------------------------------------------
 
+void qbus_route_items_node_add_module (QBusRouteItems self, QBusConnection conn, const CapeString remote_module, CapeUdc emitter)
+{
+  CapeString h = cape_str_cp (remote_module);
+  
+  cape_str_to_upper (h);
+  
+  {
+    CapeMapNode n = cape_map_find (self->routes_node, (void*)h);
+    if (n == NULL)
+    {
+      QBusRouteRemoteConn rc = qbus_route_remote_conn_new (conn);
+      cape_map_insert (self->routes_node, (void*)h, (void*)rc);
+    }
+    else
+    {
+      cape_str_del (&h);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_items_node_add (QBusRouteItems self, QBusConnection conn, CapeUdc item)
 {
   switch (cape_udc_type (item))
   {
+    case CAPE_UDC_NODE:
+    {
+      const CapeString remote_module = cape_udc_get_s (item, "module", NULL);
+      if (remote_module)
+      {
+        qbus_route_items_node_add_module (self, conn, remote_module, cape_udc_get (item, "emitter"));
+      }
+      
+      break;
+    }
     case CAPE_UDC_STRING:
     {
       const CapeString remote_module = cape_udc_s (item, NULL);
       if (remote_module)
       {
-        CapeString h = cape_str_cp (remote_module);
-        
-        cape_str_to_upper (h);
-        
-        {
-          CapeMapNode n = cape_map_find (self->routes_node, (void*)h);
-          if (n == NULL)
-          {
-            //printf ("ROUTE NODES: insert %s -> %p\n", h, conn);
-            
-            cape_map_insert (self->routes_node, (void*)h, (void*)conn);
-          }
-          else
-          {
-            cape_str_del (&h);
-          }
-        }
+        qbus_route_items_node_add_module (self, conn, remote_module, NULL);
       }
+      
+      break;
     }
   }
 }
@@ -401,9 +453,9 @@ void qbus_route_items_nodes_remove_all (QBusRouteItems self, QBusConnection conn
   
   while (cape_map_cursor_next (cursor))
   {
-    QBusConnection conn_remote = cape_map_node_value (cursor->node);
+    QBusRouteRemoteConn rc = cape_map_node_value (cursor->node);
     
-    if (conn_remote == conn)
+    if (rc->conn == conn)
     {
       //printf ("ROUTE NODES: remove %s\n", (CapeString)cape_map_node_key (cursor->node));
       
@@ -416,45 +468,45 @@ void qbus_route_items_nodes_remove_all (QBusRouteItems self, QBusConnection conn
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_items_add (QBusRouteItems self, const CapeString module_name, const CapeString module_uuid, QBusConnection conn, CapeUdc* p_nodes)
+void qbus_route_items_add (QBusRouteItems self, const CapeString module_name, const CapeString module_uuid, QBusConnection conn, CapeUdc* p_content)
 {
-  cape_mutex_lock (self->mutex);
+  QBusRouteDirectContext rdc;
   
-  {
-    CapeString module = cape_str_cp (module_name);
-    
-    cape_str_to_upper (module);
-    
-    CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
-    if (n)
-    {
-      QBusRouteDirectContext rdc = cape_map_node_value (n);
-      
-      qbus_route_direct_context_add (rdc, module_uuid, conn);
-    }
-    else
-    {
-      QBusRouteDirectContext rdc = qbus_route_direct_context_new ();
-      
-      qbus_route_direct_context_add (rdc, module_uuid, conn);
+  // local objects
+  CapeString module = cape_str_cp (module_name);
 
-      cape_map_insert (self->routes_direct, (void*)module, (void*)rdc);
-    }
-    
-    // in the old version the module_uuid is NULL
-    qbus_connection_set (conn, module, module_uuid);
-  }
-  
-exit_and_cleanup:
-  
-  if (*p_nodes)
+  // convert to UPPER CASE
+  cape_str_to_upper (module);
+
+  cape_mutex_lock (self->mutex);
+
+  // replace the connection module and module_uuid
+  // -> in the old version the module_uuid is NULL
+  qbus_connection_set (conn, module, module_uuid);
+
+  CapeMapNode n = cape_map_find (self->routes_direct, (void*)module);
+  if (n)
   {
-    qbus_route_items_nodes_add (self, conn, *p_nodes);
+    rdc = cape_map_node_value (n);
+  }
+  else
+  {
+    rdc = qbus_route_direct_context_new ();
+    cape_map_insert (self->routes_direct, (void*)cape_str_mv (&module), (void*)rdc);
+  }
+
+  qbus_route_direct_context_add (rdc, module_uuid, conn);
+
+  if (*p_content)
+  {
+    qbus_route_items_nodes_add (self, conn, *p_content);
     
-    cape_udc_del (p_nodes);    
+    cape_udc_del (p_content);
   }
   
   cape_mutex_unlock (self->mutex);
+  
+  cape_str_del (&module);
 }
 
 //-----------------------------------------------------------------------------
@@ -507,7 +559,9 @@ QBusConnection qbus_route_items_get (QBusRouteItems self, const CapeString modul
     CapeMapNode n = cape_map_find (self->routes_node, (void*)module);    
     if (n)
     {
-      ret = cape_map_node_value (n);
+      QBusRouteRemoteConn rcc = cape_map_node_value (n);
+      
+      ret = rcc->conn;
       goto exit_and_cleanup;
     }
   }

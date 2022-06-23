@@ -128,6 +128,22 @@ typedef int      (__STDCALL     *fct_qbus_on_done) (QBus, void* ptr, CapeErr);
 
 __CAPE_LIBEX   void               qbus_instance          (const char* name, void* ptr, fct_qbus_on_init, fct_qbus_on_done, int argc, char *argv[]);
 
+//-----------------------------------------------------------------------------
+
+struct QBusSubscriber_s; typedef struct QBusSubscriber_s* QBusSubscriber;
+struct QBusEmitter_s; typedef struct QBusEmitter_s* QBusEmitter;
+
+typedef int      (__STDCALL     *fct_qbus_on_emit) (QBusSubscriber, void* user_ptr, int type, CapeUdc data, CapeErr);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, int type, const CapeString module, const CapeString name, CapeErr);
+
+__CAPE_LIBEX   QBusEmitter        qbus_emitter_add       (QBus, const CapeString name, CapeErr);
+
+__CAPE_LIBEX   int                qbus_emitter_rm        (QBus, QBusEmitter, CapeErr);
+
+__CAPE_LIBEX   void               qbus_emitter_next      (QBus, QBusEmitter, CapeUdc data);
 
 //-----------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 10
+#define REQUESTS 10000
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
@@ -49,6 +49,12 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
 {
   number_t i;
   number_t loop_cnt = 0;//(number_t)(rand() % 100000);
+  
+  if (qin->err)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "TEST", "test01 on01", cape_err_text (qin->err));
+    abort();
+  }
   
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "client01 test01", "on 01 -> %liloops", loop_cnt);
 
@@ -130,6 +136,12 @@ static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout,
 
 static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  if (qin->err)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "TEST", "test01 on01", cape_err_text (qin->err));
+    abort();
+  }
+
   cape_mutex_lock (mutex);
   
   total_runs--;
