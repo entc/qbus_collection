@@ -1,3 +1,4 @@
+
 find_package (Python3 COMPONENTS Interpreter Development QUIET)
 
 IF(Python3_FOUND)
@@ -31,4 +32,20 @@ IF(Python3_FOUND)
   SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES SUFFIX .so)
   SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES PREFIX "")
 
+  
+ELSE ()
+
+find_package (Python2 COMPONENTS Interpreter Development QUIET)
+
+IF(Python2_FOUND)
+
+  message (STATUS "Python2_INCLUDE_DIRS  = ${Python2_INCLUDE_DIRS}")
+  message (STATUS "Python2_LIBRARIES = ${Python2_LIBRARIES}")
+  message (STATUS "Python2_VERSION = ${Python2_VERSION}")
+
+  
 ENDIF()
+
+ENDIF()
+
+  
