@@ -43,9 +43,20 @@ IF(Python2_FOUND)
   message (STATUS "Python2_LIBRARIES = ${Python2_LIBRARIES}")
   message (STATUS "Python2_VERSION = ${Python2_VERSION}")
 
+
+ELSE ()
+
+find_package (Python COMPONENTS Interpreter Development QUIET)
+
+IF(Python_FOUND)
+
+  message (STATUS "Python_INCLUDE_DIRS  = ${Python_INCLUDE_DIRS}")
+  message (STATUS "Python_LIBRARIES = ${Python_LIBRARIES}")
+  message (STATUS "Python_VERSION = ${Python_VERSION}")
+
   
 ENDIF()
 
 ENDIF()
 
-  
+ENDIF()
