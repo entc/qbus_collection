@@ -77,30 +77,9 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
 
+  QBusM msg = NULL;
   CapeUdc roles = NULL;
 
-  // do some security checks
-  if (qin->rinfo == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
-    goto exit_and_cleanup;
-  }
-  
-  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-  if (self->wpid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
-    goto exit_and_cleanup;
-  }
-  
-  self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
-  if (self->gpid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
-    goto exit_and_cleanup;
-  }
-
-  // do some security checks
   if (qin->cdata == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
@@ -114,6 +93,59 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  switch (type)
+  {
+    case 1:
+    {
+      if (qin->rinfo == NULL)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_RINFO");
+        goto exit_and_cleanup;
+      }
+      
+      self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+      if (self->wpid == 0)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+        goto exit_and_cleanup;
+      }
+      
+      self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+      if (self->gpid == 0)
+      {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
+        goto exit_and_cleanup;
+      }
+
+      break;
+    }
+    default:
+    {
+      // only admin can add other types
+      if (qbus_message_role_has (qin, "admin"))
+      {
+        self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+        if (self->wpid == 0)
+        {
+          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+          goto exit_and_cleanup;
+        }
+        
+        self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+        if (self->gpid == 0)
+        {
+          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+          goto exit_and_cleanup;
+        }
+        
+        // optional
+        session_ttl = cape_udc_get_n (qin->cdata, "session_ttl", 0);
+      }
+
+      break;
+    }
+  }
+  
   self->vsec = cape_str_cp (auth_vault__vsec (self->vault, self->wpid));
   if (self->vsec == NULL)
   {
@@ -180,7 +212,21 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  roles = cape_udc_ext (qin->rinfo, "roles");
+  msg = qbus_message_new (NULL, NULL);
+
+  {
+    // use the rinfo classes
+    AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->wpid, self->gpid);
+    
+    // fetch all rinfo from database
+    res = auth_rinfo_get (&rinfo, msg, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  roles = cape_udc_ext (msg->rinfo, "roles");
   if (roles == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
@@ -393,6 +439,7 @@ exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
   
+  cape_udc_del (&query_results);
   cape_udc_del (&roles);
   
   cape_str_del (&session_token);
@@ -702,10 +749,94 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  cape_str_del (&ha_last);
+  cape_str_del (&ha_current);
   cape_str_del (&session_token_hash);
   cape_udc_del (&query_results);
   cape_str_del (&h1);
   cape_udc_del (&roles);
+
+  auth_session_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_session_rm (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthSession self = *p_self;
+
+  number_t seid;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  // do some security checks
+  if (FALSE == qbus_message_role_has (qin, "admin"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+
+  // do some security checks
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+
+  self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  if (self->gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_GPID");
+    goto exit_and_cleanup;
+  }
+
+  seid = cape_udc_get_n (qin->cdata, "seid", 0);
+  if (seid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_SEID");
+    goto exit_and_cleanup;
+  }
+  
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n   (params, "id"           , seid);
+    cape_udc_add_n   (params, "wpid"         , self->wpid);
+    cape_udc_add_n   (params, "gpid"         , self->gpid);
+    
+    // execute query
+    res = adbl_trx_delete (trx, "auth_sessions", &params, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
 
   auth_session_del (p_self);
   return res;
@@ -741,6 +872,76 @@ int auth_session_roles (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 exit_and_cleanup:
   
   cape_udc_del (&roles);
+  
+  auth_session_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_session_wp_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthSession self = *p_self;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  
+  // do some security checks
+  if (FALSE == qbus_message_role_has (qin, "admin"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  if (0 == self->wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+
+  self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  if (0 == self->gpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_GPID");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (params, "gpid"          , self->gpid);
+
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_d      (values, "lt"            , NULL);
+    cape_udc_add_d      (values, "lu"            , NULL);
+    cape_udc_add_n      (values, "vp"            , 0);
+    cape_udc_add_n      (values, "type"          , 0);
+    cape_udc_add_s_cp   (values, "remote"        , NULL);
+    cape_udc_add_s_cp   (values, "ha_value"      , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_sessions", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  
+exit_and_cleanup:
   
   auth_session_del (p_self);
   return res;

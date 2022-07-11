@@ -333,6 +333,11 @@ static void __STDCALL qbus_pvd_listen__on_done (void* ptr, void* userdata)
 {
   QbusPvdConnection self = ptr;
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on disconnect", "tear down qbus connection");
+  
+  // invalidate the socket
+  self->aio_socket = NULL;
+  
   qbus_pvd_internal__connections_rm (self->conn, self);
 }
 
@@ -451,6 +456,9 @@ void __STDCALL qbus_pvd_phy_connection__on_done (void* ptr, void* userdata)
   // add timer for reconnection
   qbus_pvd_internal__timer_enable (self->conn);
 
+  // invalidate the socket
+  self->aio_socket = NULL;
+  
   // remove this connection from the list
   qbus_pvd_internal__connections_rm (self->conn, self);
 }

@@ -389,7 +389,50 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
+int qbus_init (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr err)
+{
+  int res;
+  
+  // initialize the routing
+  res = qbus_route_init (self->route, workers, err);
+  if (res)
+  {
+    return res;
+  }
+  
+  // open the operating system AIO/event subsystem
+  res = cape_aio_context_open (self->aio, err);
+  if (res)
+  {
+    return res;
+  }
+
+  // apply all binds
+  if (binds)
+  {
+    res = qbus_add_income_ports (self, binds, err);
+    if (res)
+    {
+      return res;
+    }
+  }
+  
+  // apply all remotes
+  if (remotes)
+  {
+    res = qbus_add_remote_ports (self, remotes, err);
+    if (res)
+    {
+      return res;
+    }
+  }
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_wait__intern (QBus self, CapeErr err)
 {
   int res;
   
@@ -398,24 +441,6 @@ int qbus_wait__intern (QBus self, CapeUdc binds, CapeUdc remotes, CapeErr err)
   if (res)
   {
     goto exit_and_cleanup;
-  }
-  
-  if (binds)
-  {
-    res = qbus_add_income_ports (self, binds, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-  }
-  
-  if (remotes)
-  {
-    res = qbus_add_remote_ports (self, remotes, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
   }
   
   // wait infinite and let the AIO subsystem handle all events
@@ -437,20 +462,13 @@ int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, Cape
 {
   int res;
   
-  res = qbus_route_init (self->route, workers, err);
-  if (res)
-  {
-    return res;
-  }
-
-  // open the operating system AIO/event subsystem
-  res = cape_aio_context_open (self->aio, err);
+  res = qbus_init (self, binds, remotes, workers, err);
   if (res)
   {
     return res;
   }
   
-  return qbus_wait__intern (self, binds, remotes, err);
+  return qbus_wait__intern (self, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -550,6 +568,34 @@ QBusConnection const qbus_find_conn (QBus self, const char* module)
 void qbus_conn_request (QBus self, QBusConnection const conn, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg)
 {
   qbus_route_conn_request (self->route, conn, module, method, msg, ptr, onMsg, FALSE);
+}
+
+//-----------------------------------------------------------------------------
+
+QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+QBusEmitter qbus_emitter_add (QBus self, const CapeString name, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_emitter_rm (QBus self, QBusEmitter emitter, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_emitter_next (QBus self, QBusEmitter emitter, CapeUdc data)
+{
+  
 }
 
 //-----------------------------------------------------------------------------
@@ -1165,20 +1211,12 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
       
   cape_log_msg (CAPE_LL_TRACE, name, "qbus_instance", "arguments parsed");
   
-  // open the operating system AIO/event subsystem
-  res = cape_aio_context_open (self->aio, err);
+  res = qbus_init (self, bind, remotes, cape_udc_get_n (self->config, "threads", cape_thread_concurrency () * 2), err);
   if (res)
   {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "instance", "error in initialization: %s", cape_err_text(err));    
     goto exit_and_cleanup;
   }
   
-  res = qbus_route_init (self->route, cape_udc_get_n (self->config, "threads", cape_thread_concurrency () * 2), err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
   res = qbus_logger_init (self->logger, self->aio, cape_udc_get (self->config, "logger"), err);
   if (res)
   {
@@ -1220,7 +1258,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);    
 
     // *** main loop ***
-    qbus_wait__intern (self, bind, remotes, err);
+    qbus_wait__intern (self, err);
     
     tcsetattr(STDIN_FILENO, TCSANOW, &saved);
   }

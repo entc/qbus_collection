@@ -1,10 +1,20 @@
-  <div class="modal-header border-success">
-    <div class="modal-title text-success">
-      <strong><i class="fa fa-check-circle"></i>&nbsp;&nbsp;{{ 'MISC.SUCCESS' | transloco }}</strong>
-    </div>
+  <div class="modal-header bg-success">
+    <h5 class="text-white w-100">
+      <strong>
+        <i class="fa fa-check"></i>&nbsp;&nbsp;<span class="text-uppercase">{{ option.header_text | transloco }}</span>
+      </strong>
+    </h5>
   </div>
   <div class="modal-body">
 
+    <div class="card mt-2">
+      <div class="card-body">
+        {{ option.body_text | transloco }}
+      </div>
+      <div class="card-body text-center">
+        <strong>{{ option.button_text}}</strong>
+      </div>
+    </div>
 
   </div>
   <div class="modal-footer border-success">

@@ -26,4 +26,5 @@ flow_process_prev_view \
 flow_process_sync_view \
 flow_workflows_view \
 flow_worksteps_prev_succ_view \
+flow_workflows_sqt_view \
 | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' > ../../../../var/flow.sql

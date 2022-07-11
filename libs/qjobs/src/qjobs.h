@@ -36,6 +36,9 @@ struct QJobsEvent_s
   CapeUdc params;
   const CapeString rinfo_encrypted;
   
+  CapeString ref_mod;
+  CapeString ref_umi;
+
   number_t r1id;
   number_t r2id;
   

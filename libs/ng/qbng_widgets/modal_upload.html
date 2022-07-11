@@ -13,7 +13,7 @@
   <div class="row mb-2">
       <div class="col">
         <strong>{{ 'GBNG.FILESIZE' | transloco }}:</strong><br>
-        {{size}}
+        {{ file.size | trlo_filesize }}
       </div>
       <div class="col text-right">
         <span *ngIf="size_status == 0" class="badge bg-success width_15em p-2 text-right"><small>{{ 'GBNG.ALLOWED' | transloco }}</small>&nbsp;&nbsp;<i class="fas fa-check-circle fa-2x"></i></span>

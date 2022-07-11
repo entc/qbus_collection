@@ -85,10 +85,11 @@ int flow_workstep__intern__last_prev (FlowWorkstep self, number_t* p_prev, CapeE
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n     (params, "wfid"        , self->wfid);    
+    cape_udc_add_n     (params, "sqtid"       , self->sqid);
     cape_udc_add_n     (values, "wsid"        , 0);
     
     // execute the query
-    // select w1.wfid, w1.id wsid from proc_worksteps w1 left join proc_worksteps w2 on w1.id = w2.prev and w1.sqtid = w2.sqtid where w2.id is NULL;
+    // select w1.wfid, w1.sqtid, w1.id wsid from proc_worksteps w1 left join proc_worksteps w2 on w1.id = w2.prev and w1.sqtid = w2.sqtid where w2.id is NULL;
     query_results = adbl_session_query (self->adbl_session, "flow_last_prev_view", &params, &values, err);
     if (query_results == NULL)
     {

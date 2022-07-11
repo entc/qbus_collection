@@ -13,6 +13,7 @@
 
 struct JobsContext_s
 {
+  QBus qbus;    // reference
   AdblCtx adbl_ctx;
   AdblSession adbl_session;
   
@@ -48,6 +49,19 @@ static int __STDCALL qbus_jobs__list_get (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_jobs__list_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  JobsContext ctx = ptr;
+  
+  // create a temporary object
+  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->jobs);
+  
+  // run the command
+  return jobs_list_set (&jobs_list, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 void qbus_jobs__ctx_del (JobsContext* p_self)
 {
   if (*p_self)
@@ -76,6 +90,19 @@ int __STDCALL qbus_jobs__on_event (QJobs jobs, QJobsEvent event, void* user_ptr,
 {
   JobsContext ctx = user_ptr;
   
+  // create a temporary object
+  JobsList jobs_list = jobs_list_new (ctx->qbus, ctx->adbl_session, ctx->jobs);
+  
+  QBusM qin = qbus_message_new (NULL, NULL);
+  
+  qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_n (qin->rinfo, "wpid", event->wpid);
+  cape_udc_add_n (qin->rinfo, "gpid", event->gpid);
+
+  jobs_list_run (&jobs_list, qin, event, err);
+
+  qbus_message_del (&qin);
   
   return CAPE_ERR_EOF;
 }
@@ -87,6 +114,7 @@ static int __STDCALL qbus_jobs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   int res;
   JobsContext ctx = CAPE_NEW (struct JobsContext_s);
 
+  ctx->qbus = qbus;
   ctx->adbl_ctx = NULL;
   ctx->adbl_session = NULL;
 
@@ -121,6 +149,10 @@ static int __STDCALL qbus_jobs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // get all job events
   //   args: 
   qbus_register (qbus, "list_get"       , ctx, qbus_jobs__list_get, NULL, err);
+
+  // change the job event
+  //   args:
+  qbus_register (qbus, "list_set"       , ctx, qbus_jobs__list_set, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

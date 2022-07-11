@@ -1,32 +1,18 @@
+SUBDIRS(src)
 
-INCLUDE_DIRECTORIES(${ENTC_INCLUDE_DIRS} "../../libs/cape/src" "../../libs/qbus/src" "../../libs/adbl/src/core" "../../libs/qcrypt/src" "../../libs/qjobs/src")
+file (STRINGS "version.txt" VERSION_NUMBER)
+SET(CMAKE_BUILD_TYPE Release)                                     # build type
 
-#----------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------
 
-SET (QBUS_MODULES_JOBS_SOURCES
-  "jobs.c"
-  "jobs_list.c"
-)
+# for docker install
+INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/modules/jobs/src)
 
-SET (QBUS_MODULES_JOBS_HEADERS
-  "jobs_list.h"
-)
-
-ADD_EXECUTABLE (qbus_mod_jobs ${QBUS_MODULES_JOBS_SOURCES} ${QBUS_MODULES_JOBS_HEADERS})
-TARGET_LINK_LIBRARIES(qbus_mod_jobs qbus adbl2 qcrypt qjobs)
-
-install (TARGETS qbus_mod_jobs DESTINATION modules)
-
-# set some symlinks for direct starting
-add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/jobs.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/jobs.json)
-add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/etc/adbl_default.json ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl_default.json)
-add_custom_command (TARGET qbus_mod_jobs POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{ADBL_MYSQL_BINDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/adbl)
-
-# for docker
-INSTALL (TARGETS qbus_mod_jobs DESTINATION docker/jobs/mods)
+# for docker install
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists.txt DESTINATION ${CMAKE_BINARY_DIR}/docker/jobs/)
 
 # remove none used ones (needs to fix)
-INSTALL (CODE "execute_process(COMMAND docker image rm qbus_mod_jobs:1.0.0)")
+INSTALL(CODE "execute_process(COMMAND docker image rm qmod/jobs:${VERSION_NUMBER}_buster)")
 
-# build the docker image
-INSTALL (CODE "execute_process(COMMAND docker build -t qbus_mod_jobs:1.0.0 -f ${CMAKE_CURRENT_SOURCE_DIR}/Dockerfile ${CMAKE_INSTALL_PREFIX})")
+# build the docker image with buster
+INSTALL(CODE "execute_process(COMMAND docker build -t qmod/jobs:${VERSION_NUMBER}_buster -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_buster ${CMAKE_BINARY_DIR})")

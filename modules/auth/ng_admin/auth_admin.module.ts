@@ -11,18 +11,17 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 
 // components
 import { AuthLoginsComponent } from './auth_logins/component';
-import { AuthApiTokenComponent } from './auth_api_token/component';
-import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent } from './auth_users/component';
+import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent, AuthUsersSessionsModalComponent } from './auth_users/component';
 
 //-----------------------------------------------------------------------------
 
 @NgModule({
   declarations: [
     AuthLoginsComponent,
-    AuthApiTokenComponent,
     AuthUsersComponent,
     AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent
+    AuthUsersRolesModalComponent,
+    AuthUsersSessionsModalComponent
   ],
   imports: [
     CommonModule,
@@ -38,7 +37,8 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
   ],
   entryComponents: [
     AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent
+    AuthUsersRolesModalComponent,
+    AuthUsersSessionsModalComponent
   ]
 })
 export class AuthAdminModule

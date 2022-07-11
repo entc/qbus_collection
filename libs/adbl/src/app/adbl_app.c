@@ -97,7 +97,7 @@ int main (int argc, char *argv[])
 
   CapeErr err = cape_err_new ();
   
-  CapeQueue queue = cape_queue_new ();
+  CapeQueue queue = cape_queue_new (300000);
   CapeSync sync = cape_sync_new ();
   
   AdblCtx ctx = NULL;

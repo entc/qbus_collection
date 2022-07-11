@@ -106,8 +106,7 @@ void qwebs_request_del (QWebsRequest* p_self)
   {
     QWebsRequest self = *p_self;
     
-    // TODO: check this
-    //qwebs_connection_dec (self->conn);
+    qwebs_connection_dec (self->conn);
 
     cape_str_del (&(self->method));
     cape_str_del (&(self->url));
@@ -629,7 +628,7 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
     
     printf ("PARSER %p\n", &(self->parser));
     
-    //CAPE_DEL (p_self, struct QWebsProtHttp_s);
+    CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
 }
 
@@ -718,12 +717,13 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs,
 {
   QWebsConnection self = CAPE_NEW (struct QWebsConnection_s);
   
+  // set the references
   self->webs = webs;
   self->queue = queue;
-  
+
+  // allocate objects
   self->aio_socket = cape_aio_socket_new (handle);
-  
-  
+    
   self->send_cache = cape_list_new (qwebs_connection__cache__on_del);
   self->mutex = cape_mutex_new ();
   
@@ -731,11 +731,12 @@ QWebsConnection qwebs_connection_new (void* handle, CapeQueue queue, QWebs webs,
   self->active = FALSE;
   
   self->remote = cape_str_cp (remote);
+  self->user_ptr = qwebs_prot_http_new ();
   
+  // set callbacks
   self->on_recv = qwebs_prot_http__on_recv;
   self->on_del = qwebs_prot_http__on_del;
   
-  self->user_ptr = qwebs_prot_http_new ();
   
   return self;
 }
@@ -752,6 +753,11 @@ void qwebs_connection_del (QWebsConnection* p_self)
     cape_mutex_del (&(self->mutex));
     
     cape_str_del (&(self->remote));
+    
+    if (self->on_del)
+    {
+      self->on_del (&(self->user_ptr));
+    }
     
     CAPE_DEL (p_self, struct QWebsConnection_s);
   }
@@ -821,7 +827,7 @@ void qwebs_request_complete (QWebsRequest* p_self, const CapeString method)
 {
   QWebsRequest self = *p_self;
   
-  self->method = cape_str_cp (method);
+  cape_str_replace_cp (&(self->method), method);
   
   //printf ("METHOD %s (COMPLETE %i)\n", request->method, request->is_complete);
   
@@ -944,9 +950,16 @@ void qwebs_connection_send (QWebsConnection self, CapeStream* p_stream)
 {
   cape_mutex_lock (self->mutex);
   
-  // TODO: memory leak
-  cape_list_push_back (self->send_cache, *p_stream);
-  *p_stream = NULL;
+  if (cape_list_size (self->send_cache) < 30)
+  {
+    cape_list_push_back (self->send_cache, *p_stream);
+    *p_stream = NULL;
+  }
+  else
+  {
+    cape_stream_del (p_stream);
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "connection send", "send buffer reached maximum queue size");
+  }
 
   cape_mutex_unlock (self->mutex);
 

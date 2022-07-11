@@ -232,6 +232,9 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
   
 exit_and_cleanup:
 
+  cape_str_del (&h1);
+  cape_str_del (&h2);
+  
   if (cape_err_code (err))
   {
     cape_log_msg (CAPE_LL_ERROR, "WEBS", "on call", cape_err_text (err));
@@ -433,16 +436,21 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
   
   // continue
   // -> use the direct return, otherwise need to check self
-  return qbus_continue (self->qbus, self->module, self->method, qin, (void**)&self, webs_enjs_run__on_call, err);
+  res = qbus_continue (self->qbus, self->module, self->method, qin, (void**)&self, webs_enjs_run__on_call, err);
   
 exit_and_cleanup:
+  
+  cape_str_del (&content);
   
   if (cape_err_code (err))
   {
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "on ui", "auth UI failed = %s", cape_err_text (err));
 
-    // send the error back
-    qwebs_request_send_json (&(self->request), qin->cdata, self->ttl, err);
+    if (self)
+    {
+      // send the error back
+      qwebs_request_send_json (&(self->request), qin->cdata, self->ttl, err);
+    }
   }
   
   webs_enjs_del (&self);
@@ -557,6 +565,9 @@ exit_and_cleanup:
 
   qbus_message_del (&msg);
 
+  cape_str_del (&auth_type);
+  cape_str_del (&auth_cont);
+  
   if (cape_err_code (err))
   {
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "webs run", "got error: %s", cape_err_text(err));

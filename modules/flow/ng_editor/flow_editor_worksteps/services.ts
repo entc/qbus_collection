@@ -94,7 +94,7 @@ export class FlowFunctionService
   {
     // define widgets to all background functions
     this.values = [
-      {id: 3, name: "call module's method (syncron)", desc: '', type: FlowWidgetSyncronComponent},
+      {id: 3, name: "call module's method (syncron)", desc: 'FLOW.METHOD_INFO_CALLSYNC', type: FlowWidgetSyncronComponent},
       {id: 4, name: "call module's method (asyncron)", desc: '', type: FlowWidgetAsyncronComponent},
       {id: 5, name: "wait for list", desc: 'this step waits until a set was sent to each variable within the wait list node. a code can be specified for security reasons.', type: FlowWidgetWaitforlistComponent},
       {id: 10, name: "split flow", desc: '', type: FlowWidgetSplitComponent},

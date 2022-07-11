@@ -85,6 +85,8 @@ static void __STDCALL qbus_engine_tcp_inc_onDone (void* ptr, void* userdata)
 {
   QBusConnection qbus_connection = ptr;
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on disconnect", "tear down qbus connection");
+    
   qbus_connection_del (&qbus_connection);
 }
 

@@ -7,6 +7,7 @@ import { interval } from 'rxjs/internal/observable/interval';
 import * as CryptoJS from 'crypto-js';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
+import { QbngErrorModalComponent } from '@qbus/qbng_modals/component';
 
 //-----------------------------------------------------------------------------
 
@@ -371,18 +372,26 @@ export class AuthSession
     var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
     if (enjs)
     {
-      var req = this.handle_error_session<string> (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text'}));
+      var req = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'response'}));
 
       // decrypt the content
-      return req.pipe (map ((data: string) => {
+      return req.pipe (map ((resp: HttpResponse<string>) => {
 
-        if (data)
+        if (resp.status == 200)
         {
-          return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (data, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T;
+          if (resp.body)
+          {
+            return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (resp.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T;
+          }
+          else
+          {
+            return {} as T;
+            //return new Observable<T>();
+          }
         }
         else
         {
-          return {} as T;
+          throw this.handle_http_headers (resp.headers);
         }
 
       }));
@@ -688,6 +697,53 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  private show_session_expired ()
+  {
+    /*
+    var err: QbngErrorHolder = new QbngErrorHolder;
+
+    err.text = 'ERR.SESSION_EXPIRED';
+    err.code = 401;
+
+    this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}).result.then(() => {
+
+
+    });
+    */
+
+    this.show_login ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private handle_http_headers (headers: HttpHeaders)
+  {
+    const warning = headers.get('warning');
+
+    if (warning)
+    {
+      var i = warning.indexOf(',');
+
+      var eh: QbngErrorHolder = new QbngErrorHolder;
+
+      eh.text = warning.substring(i + 1).trim();
+      eh.code = Number(warning.substring(0, i));
+
+      return throwError (eh);
+    }
+    else
+    {
+      var eh: QbngErrorHolder = new QbngErrorHolder;
+
+      eh.text = 'ERR.UNKNOWN';
+      eh.code = 0;
+
+      return throwError (eh);
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
   private handle_error_login<T> (http_request: Observable<T>, response: EventEmitter<AuthSessionItem>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
@@ -753,29 +809,16 @@ export class AuthSession
 
       if (error.status == 401)
       {
-        this.disable ();
-        this.show_login ();
+        var h = this.handle_http_headers (error.headers);
 
-        return throwError (error);
+        this.disable ();
+        this.show_session_expired ();
+
+        return h;
       }
       else
       {
-        const headers: HttpHeaders = error.headers;
-        const warning = headers.get('warning');
-
-        if (warning)
-        {
-          var i = warning.indexOf(',');
-
-          var eh: QbngErrorHolder = new QbngErrorHolder;
-
-          eh.text = warning.substring(i + 1).trim();
-          eh.code = Number(warning.substring(0, i));
-
-          return throwError (eh);
-        }
-
-        return throwError (error);
+        return this.handle_http_headers (error.headers);
       }
 
     }), map (res => {

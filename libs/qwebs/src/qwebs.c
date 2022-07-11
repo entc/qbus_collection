@@ -210,7 +210,7 @@ QWebs qwebs_new (CapeUdc sites, const CapeString host, number_t port, number_t t
   self->aio_attached = NULL;
   self->accept = NULL;
   
-  self->queue = cape_queue_new ();
+  self->queue = cape_queue_new (1000);  // maximum of 1 second
   
   self->files = qwebs_files_new (self);
   

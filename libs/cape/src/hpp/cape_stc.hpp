@@ -391,7 +391,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    CapeString to_cstr () const
+    const CapeString to_cstr () const
     {
       return cape_stream_to_s (m_obj);
     }
@@ -1183,9 +1183,9 @@ namespace cape
   {
     static void add_cp (CapeUdc obj, const char* name, const cape::Stream& value)
     { 
-      CapeString h = value.to_cstr ();
+      const CapeString h = value.to_cstr ();
 
-      cape_udc_add_s_mv (obj, name, &h);
+      cape_udc_add_s_cp (obj, name, h);
     }
 
     static void add_mv (CapeUdc obj, const char* name, cape::Stream& value)

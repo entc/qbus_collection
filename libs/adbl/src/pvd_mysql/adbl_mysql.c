@@ -244,6 +244,74 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int adbl__set_table_defintion_cache (AdblPvdSession self, number_t table_definition_cache, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString query_string = cape_str_fmt ("set global table_definition_cache = %ui", table_definition_cache);
+  
+  unsigned int error_code = mysql_query (self->mysql, query_string);
+  if (error_code)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "ADBL", "mysql error", "can't set table_definition_cache");
+    cape_log_fmt (CAPE_LL_ERROR, "ADBL", "mysql error", "the following must be set by the database admin: '%s'", query_string);
+    
+    res = CAPE_ERR_3RDPARTY_LIB;
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "ADBL", "mysql error", "successful set table_definition_cache = %ui", table_definition_cache);
+    
+    res = CAPE_ERR_CONTINUE;
+  }
+
+  cape_str_del (&query_string);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int adbl__increase_table_defintion_cache (AdblPvdSession self, CapeErr err)
+{
+  number_t current__table_definition_cache = 0;
+  
+  // fetch the current value
+  {
+    MYSQL_RES* mr;
+    MYSQL_ROW row;
+
+    unsigned int error_code = mysql_query (self->mysql, "select @@table_definition_cache");
+    if (error_code)
+    {
+      cape_log_msg (CAPE_LL_ERROR, "ADBL", "mysql error", "can't select table_definition_cache");
+      return CAPE_ERR_3RDPARTY_LIB;
+    }
+    
+    // fetch from mysql result set
+    mr = mysql_use_result (self->mysql);
+    if (mr == NULL)
+    {
+      cape_log_msg (CAPE_LL_ERROR, "ADBL", "mysql error", "can't fetch 'table_definition_cache'");
+      return CAPE_ERR_3RDPARTY_LIB;
+    }
+    
+    row = mysql_fetch_row (mr);
+
+    // convert the result into an integer
+    current__table_definition_cache = cape_str_to_n (row[0]);
+
+    mysql_free_result(mr);
+  }
+
+  // increase the value by 25%
+  current__table_definition_cache = (number_t)((double)current__table_definition_cache * 1.25);
+  
+  return adbl__set_table_defintion_cache (self, current__table_definition_cache, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int adbl_check_error (AdblPvdSession self, unsigned int error_code, CapeErr err)
 {
   // log the error code
@@ -286,6 +354,21 @@ int adbl_check_error (AdblPvdSession self, unsigned int error_code, CapeErr err)
         cape_log_fmt (CAPE_LL_DEBUG, "ADBL", "mysql error", "successful reconnected");
         return CAPE_ERR_CONTINUE;
       }
+    }
+    case 1615:    // HY000: Prepared statement needs to be re-prepared
+    {
+      cape_log_fmt (CAPE_LL_WARN, "ADBL", "mysql error", "table_definition_cache is too small -> try to increase");
+
+      // the DB has flushed the cached definition tables
+      // see the following bug report
+      // https://bugs.mysql.com/bug.php?id=42041
+      
+      // increase the table_defintion_cache variable seems to solve this issue
+      // let's try to do it
+      // -> it might probably fail because of permission
+      //      -> in this case, this must be handles by the DB-Admin
+      
+      return adbl__increase_table_defintion_cache (self, err);
     }
   }
   

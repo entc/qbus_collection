@@ -29,7 +29,11 @@ __CAPE_LIBEX   int          auth_session_add         (AuthSession*, QBusM qin, Q
 
 __CAPE_LIBEX   int          auth_session_get         (AuthSession*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int          auth_session_rm          (AuthSession*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int          auth_session_roles       (AuthSession*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int          auth_session_wp_get      (AuthSession*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

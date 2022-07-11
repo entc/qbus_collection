@@ -29,7 +29,7 @@ typedef void (__STDCALL *cape_queue_cb_fct)(void* ptr, number_t pos, number_t qu
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   CapeQueue   cape_queue_new          (void);
+__CAPE_LIBEX   CapeQueue   cape_queue_new          (number_t timeout_in_ms);
 
                            /*
                             * frees memory and wait for all threads to terminate
@@ -38,11 +38,6 @@ __CAPE_LIBEX   CapeQueue   cape_queue_new          (void);
 __CAPE_LIBEX   void        cape_queue_del          (CapeQueue*);
 
 //-----------------------------------------------------------------------------
-
-                           /*
-                            * waits for the next event (blocking)
-                            */
-__CAPE_LIBEX   int         cape_queue_next         (CapeQueue);
 
                            /*
                             * adds a new task

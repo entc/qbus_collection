@@ -490,6 +490,19 @@ static int __STDCALL qbus_session_roles (QBus qbus, void* ptr, QBusM qin, QBusM 
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_session_wp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthSession auth_session = auth_session_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_session_wp_get (&auth_session, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_session_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -499,6 +512,19 @@ static int __STDCALL qbus_session_get (QBus qbus, void* ptr, QBusM qin, QBusM qo
   
   // run the command
   return auth_session_get (&auth_session, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_session_rm (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthSession auth_session = auth_session_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_session_rm (&auth_session, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -788,9 +814,17 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: token
   qbus_register (qbus, "session_get"          , ctx, qbus_session_get, NULL, err);
 
+  // removes a session
+  //   args: [token, seid]
+  qbus_register (qbus, "session_rm"           , ctx, qbus_session_rm, NULL, err);
+
   // returns roles
   //   args:
   qbus_register (qbus, "session_roles"        , ctx, qbus_session_roles, NULL, err);
+
+  // return all sessions from a workspace (admin only)
+  //   args: wpid
+  qbus_register (qbus, "session_wp_get"       , ctx, qbus_session_wp_get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

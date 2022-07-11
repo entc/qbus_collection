@@ -162,7 +162,6 @@ export class QbngUploadFile {
 }) export class QbngUploadModalComponent {
 
   public file: File;
-  public size: string;
   public type_status: number;
   public size_status: number;
 
@@ -171,27 +170,8 @@ export class QbngUploadFile {
   constructor (public modal: NgbActiveModal, private item: QbngUploadFile)
   {
     this.file = item.file;
-    this.size = this.format ();
     this.type_status = item.type_status;
     this.size_status = item.size_status;
-  }
-
-  //---------------------------------------------------------------------------
-
-  format (): string
-  {
-    var bytes = this.file.size;
-    const UNITS = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    const factor = 1024;
-    let index = 0;
-
-    while (bytes >= factor)
-    {
-      bytes /= factor;
-      index++;
-    }
-
-    return parseFloat (bytes.toFixed(2)) + ' ' + UNITS[index];
   }
 }
 

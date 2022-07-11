@@ -218,7 +218,7 @@ void cape_aio_context_closeAll (CapeAioContext self)
   {
     cape_list_del (&(self->events));
   }
-  
+
   pthread_mutex_unlock(&(self->mutex));
   
   cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio close", "all handles were closed");
@@ -338,7 +338,7 @@ exit_and_unlock:
   
   // leave monitor
   pthread_mutex_unlock (&(self->mutex));
-  
+
   if (ptr)
   {
     // clsoe handle
@@ -1118,7 +1118,7 @@ void cape_aio_handle_unref (CapeAioHandle self, int close)
 
 void cape_aio_handle_close (CapeAioHandle self)
 {
-  printf ("close handle\n");
+  //printf ("close handle\n");
   
 }
 

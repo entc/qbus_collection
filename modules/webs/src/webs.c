@@ -25,6 +25,15 @@
 
 //-----------------------------------------------------------------------------
 
+struct WebsContext_s
+{
+  QWebs webs;
+  WebsStream s;
+  
+}; typedef struct WebsContext_s* WebsContext;
+
+//-----------------------------------------------------------------------------
+
 static void __STDCALL webs__files__on_del (void* ptr)
 {
   CapeString file = ptr;
@@ -223,10 +232,37 @@ int __STDCALL qbus_webs__on_raise (void* user_ptr, number_t type, QWebsRequest r
 
 //-------------------------------------------------------------------------------------
 
-static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
+WebsContext qbus_webs__context_new ()
+{
+  WebsContext self = CAPE_NEW (struct WebsContext_s);
+  
+  self->webs = NULL;
+  self->s = webs_stream_new ();
+    
+  return self;
+}
+
+//-------------------------------------------------------------------------------------
+
+void qbus_webs__context_del (WebsContext* p_self)
+{
+  if (*p_self)
+  {
+    WebsContext self = *p_self;
+    
+    qwebs_del (&(self->webs));
+    webs_stream_del (&(self->s));
+    
+    CAPE_DEL (p_self, struct WebsContext_s);
+  }
+}
+
+//-------------------------------------------------------------------------------------
+
+int qbus_webs__context_init (WebsContext self, QBus qbus, CapeErr err)
 {
   int res;
-
+  
   // local objects
   CapeUdc sites = cape_udc_cp (qbus_config_node (qbus, "sites"));
   
@@ -240,7 +276,7 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   }
   
   const CapeString host = qbus_config_s (qbus, "host", "127.0.0.1");
-
+  
   // this is the directory to find error pages
   const CapeString pages = qbus_config_s (qbus, "pages", "pages");
   
@@ -251,95 +287,102 @@ static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   
   const CapeString identifier = qbus_config_s (qbus, "identifier", "QWebs");
   const CapeString provider = qbus_config_s (qbus, "provider", "QBUS - Webs Module");
-
-  QWebs webs = qwebs_new (sites, host, port, threads, pages, route_list, identifier, provider);
   
-  //CapeAioTimer timer = cape_aio_timer_new ();
-
-  WebsStream s = webs_stream_new ();
-
-  res = qwebs_reg (webs, "json", qbus, qbus_webs__json, err);
+  // create a new QWEBS instance
+  self->webs = qwebs_new (sites, host, port, threads, pages, route_list, identifier, provider);
+  
+  res = qwebs_reg (self->webs, "json", qbus, qbus_webs__json, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  res = qwebs_reg (webs, "enjs", qbus, qbus_webs__enjs, err);
+  
+  res = qwebs_reg (self->webs, "enjs", qbus, qbus_webs__enjs, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  res = qwebs_reg (webs, "rest", qbus, qbus_webs__rest, err);
+  
+  res = qwebs_reg (self->webs, "rest", qbus, qbus_webs__rest, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  res = qwebs_reg (webs, "imca", s, qbus_webs__imca, err);
+  
+  res = qwebs_reg (self->webs, "imca", self->s, qbus_webs__imca, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  res = qwebs_reg (webs, "post", qbus, qbus_webs__post, err);
+  
+  res = qwebs_reg (self->webs, "post", qbus, qbus_webs__post, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-
-  res = qwebs_attach (webs, qbus_aio (qbus), err);
+  
+  res = qwebs_attach (self->webs, qbus_aio (qbus), err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
   // register a callback in case a security issue was reported
-  qwebs_set_raise (webs, qbus, qbus_webs__on_raise);
-  
-  /*
-  res = cape_aio_timer_set (timer, 1000, s, qbus_webs__stream__on_timer, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  res = cape_aio_timer_add (&timer, qbus_aio (qbus));
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-   */
-
-  // --------- RESTAPI callbacks -----------------------------
-  
-  qbus_register (qbus, "GET", webs, qbus_webs__restapi_get, NULL, err);
-  
-  // --------- register callbacks -----------------------------
-  
-  qbus_register (qbus, "modules_get", webs, qbus_webs__modules_get, NULL, err);
-  
-  qbus_register (qbus, "stream_add", s, qbus_webs__stream_add, NULL, err);
-  qbus_register (qbus, "stream_set", s, qbus_webs__stream_set, NULL, err);
-
-  // --------- register callbacks -----------------------------
-  
-  *p_ptr = webs;
-  
-  return CAPE_ERR_NONE;
+  qwebs_set_raise (self->webs, qbus, qbus_webs__on_raise);
   
 exit_and_cleanup:
   
-  return cape_err_code (err);
+  cape_udc_del (&sites);
+  return res;
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_webs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  WebsContext ctx = qbus_webs__context_new ();
+
+  // run the init procedure
+  res = qbus_webs__context_init (ctx, qbus, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // --------- RESTAPI callbacks -----------------------------
+  
+  qbus_register (qbus, "GET", ctx->webs, qbus_webs__restapi_get, NULL, err);
+  
+  // --------- register callbacks -----------------------------
+  
+  qbus_register (qbus, "modules_get", ctx->webs, qbus_webs__modules_get, NULL, err);
+  
+  qbus_register (qbus, "stream_add", ctx->s, qbus_webs__stream_add, NULL, err);
+  qbus_register (qbus, "stream_set", ctx->s, qbus_webs__stream_set, NULL, err);
+
+  // --------- register callbacks -----------------------------
+  
+  *p_ptr = ctx;
+  ctx = NULL;
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  qbus_webs__context_del (&ctx);
+  return res;
 }
 
 //-------------------------------------------------------------------------------------
 
 static int __STDCALL qbus_webs_done (QBus qbus, void* ptr, CapeErr err)
 {
-  QWebs webs = ptr;
+  WebsContext ctx = ptr;
   
-  qwebs_del (&webs);
+  qbus_webs__context_del (&ctx);
   
   return CAPE_ERR_NONE;
 }

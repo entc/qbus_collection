@@ -5,34 +5,38 @@
 </div>
 <div class="modal-body">
 
-  <ul class="list-group">
-    <li class="list-group-item">state:
+  <ng-container *ngIf="data">
 
-      <div class="form-group">
-          <input type="text" class="form-control" ngModal="data.current_state">
-      </div>
+    <ul class="list-group">
+      <li class="list-group-item">state:
 
-    </li>
-    <li class="list-group-item">psid: {{psid}}</li>
-    <li class="list-group-item">step: {{wsid}}</li>
-    <li class="list-group-item">parent sync id: {{data.sync_pa_id}}</li>
-    <li class="list-group-item">parent sync counter: {{data.sync_pa_cnt}}</li>
-    <li class="list-group-item">parent sync wsid: {{data.sync_pa_wsid}}</li>
-    <li class="list-group-item">child sync id: {{data.sync_ci_id}}</li>
-    <li class="list-group-item">child sync counter: {{data.sync_ci_cnt}}</li>
-    <li class="list-group-item">child sync wsid: {{data.sync_ci_wsid}}</li>
-  </ul>
+        <div class="form-group">
+            <input type="text" class="form-control" ngModal="data.current_state">
+        </div>
 
-  <hr>
+      </li>
+      <li class="list-group-item">psid: {{psid}}</li>
+      <li class="list-group-item">step: {{wsid}}</li>
+      <li class="list-group-item">parent sync id: {{data.sync_pa_id}}</li>
+      <li class="list-group-item">parent sync counter: {{data.sync_pa_cnt}}</li>
+      <li class="list-group-item">parent sync wsid: {{data.sync_pa_wsid}}</li>
+      <li class="list-group-item">child sync id: {{data.sync_ci_id}}</li>
+      <li class="list-group-item">child sync counter: {{data.sync_ci_cnt}}</li>
+      <li class="list-group-item">child sync wsid: {{data.sync_ci_wsid}}</li>
+    </ul>
 
-  <div class="form-group">
-      <label for="PData">pdata</label>
-      <textarea class="form-control" id="PData" rows="2">{{data.pdata_text}}</textarea>
-  </div>
-  <div class="form-group">
-      <label for="TData">tdata</label>
-      <textarea class="form-control" id="TData" rows="10">{{data.tdata_text}}</textarea>
-  </div>
+    <hr>
+
+    <div class="form-group">
+        <label for="PData">pdata</label>
+        <textarea class="form-control" id="PData" rows="2">{{data.pdata_text}}</textarea>
+    </div>
+    <div class="form-group">
+        <label for="TData">tdata</label>
+        <textarea class="form-control" id="TData" rows="10">{{data.tdata_text}}</textarea>
+    </div>
+
+  </ng-container>
 
   <button (click)="rerun_step ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-play-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNSTEP' | transloco }}</button>
   <button (click)="rerun_once ()" class="btn btn-outline-success btn-sm mr-2"><i class="fas fa-dot-circle"></i>&nbsp;&nbsp;{{ 'FLOW.RERUNONCE' | transloco }}</button>

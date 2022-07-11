@@ -107,7 +107,7 @@ export class TimelinePart {
       this.graph.set_dim (600, 140);
     }
 
-    var box: GraphBox = this.graph.add_box (0, 0, 0, 10, 10, null, null);
+    var box: GraphBox = this.graph.add_box (0, 0, 0, 10, 10, null, null, '#ccc');
 
     box.set ({head: this.description, body: 'test', foot: 'test'});
   }

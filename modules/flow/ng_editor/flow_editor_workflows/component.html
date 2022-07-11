@@ -5,24 +5,29 @@
     <table class="table mt-2">
       <tr>
         <th>
-          <span class="badge badge-primary">wfid</span>
+          <span class="badge badge-primary width_5em">WFID</span>
         </th>
-        <th width="100%">{{ 'FLOW.WORKFLOWNAME' | transloco }}</th>
-        <th></th>
+        <th width="50%">{{ 'FLOW.WORKFLOWNAME' | transloco }}</th>
+        <th width="50%"></th>
         <th>
           <button (click)="modal__workflow_add__open()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus"></i></button>
         </th>
       </tr>
       <tr *ngFor="let wf of workflows | async | pageToolBar : toolbar : ['name', 'id']">
         <td>
-          <span class="badge badge-primary">{{wf.id}}</span>
+          <span class="badge badge-primary width_5em">{{wf.id}}</span>
         </td>
-        <td>{{wf.name}} <span class="badge badge-secondary">{{wf.cnt}}</span></td>
         <td>
+          <button (click)="edit_details (wf)" type="button" class="btn btn-link">{{wf.name}}</button>
+        </td>
+        <td>
+          <ng-container *ngFor="let step of wf.steps">
+            <span class="badge badge-secondary badge-pill ml-2"><small>{{workstep_sequence_name(step.sqtid) | transloco}}: {{step.steps}}</small></span>
+          </ng-container>
         </td>
         <td>
           <div class="btn-group mr-3">
-            <button (click)="edit_details (wf)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fa fa-edit"></i></button>
+            <button (click)="workflow_edit (wf)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fa fa-edit"></i></button>
             <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
               <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle><i class="fa fa-bars"></i></button>
               <div class="dropdown-menu" ngbDropdownMenu>

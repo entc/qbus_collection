@@ -27,7 +27,10 @@ FlowContext qbus_flow__ctx__new ()
 {
   FlowContext self = CAPE_NEW (struct FlowContext_s);
  
-  self->queue = cape_queue_new ();
+  self->queue = cape_queue_new (300000);   // maximum of 5min
+
+  self->adbl_ctx = NULL;
+  self->adbl_session = NULL;
   
   return self;
 }
@@ -40,6 +43,9 @@ void qbus_flow__ctx__del (FlowContext* p_self)
   {
     FlowContext self = *p_self;
     
+    adbl_session_close (&(self->adbl_session));
+    adbl_ctx_del (&(self->adbl_ctx));
+
     cape_queue_del (&(self->queue));
     
     CAPE_DEL (p_self, struct FlowContext_s);

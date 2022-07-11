@@ -2,6 +2,7 @@ import { Component, Injectable, Injector, Pipe, PipeTransform } from '@angular/c
 import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
 import { Observable, BehaviorSubject } from 'rxjs';
+import { NgbDatepickerI18n, NgbCalendar, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 //-----------------------------------------------------------------------------
 
@@ -59,35 +60,55 @@ export class TrloService
 
   //---------------------------------------------------------------------------
 
-  public diff_date (date_in_iso: string): string
+  public datetime_to_h (datetime_in_ms: number)
   {
-    var time = new Date().getTime() - new Date(date_in_iso).getTime();
-
-    if (time < 1000)
+    if (datetime_in_ms < 1000)
     {
-      return time + ' ms';
+      return Math.floor (datetime_in_ms) + ' ms';
     }
-    else if (time < 60000)
+    else if (datetime_in_ms < 60000)
     {
-      return Math.floor (time / 1000) + ' sec';
+      return Math.floor (datetime_in_ms / 1000) + ' sec';
     }
-    else if (time < 3600000)
+    else if (datetime_in_ms < 3600000)
     {
-      var min = Math.floor (time / 60000);
-      var sec = Math.floor ((time - min * 60000) / 1000);
+      var min = Math.floor (datetime_in_ms / 60000);
+      var sec = Math.floor ((datetime_in_ms - min * 60000) / 1000);
       return min + ':' + String(sec).padStart(2 ,"0") + ' min';
     }
-    else if (time < 86400000)
+    else if (datetime_in_ms < 86400000)
     {
-      var hrs = Math.floor (time / 3600000);
-      var min = Math.floor ((time - hrs * 3600000) / 60000);
+      var hrs = Math.floor (datetime_in_ms / 3600000);
+      var min = Math.floor ((datetime_in_ms - hrs * 3600000) / 60000);
 
       return hrs + ':' + String(min).padStart(2 ,"0") + ' hrs';
     }
     else
     {
-      return Math.floor (time / 86400000) + ' days';
+      return Math.floor (datetime_in_ms / 86400000) + ' days';
     }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public diff_date (date_in_iso: string): string
+  {
+    var time = new Date().getTime() - new Date(date_in_iso).getTime();
+    return this.datetime_to_h (time);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public time_date (datetime: number)
+  {
+    return this.datetime_to_h (datetime);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public translate (val: string): string
+  {
+    return this.translocoService.translate(val);
   }
 }
 
@@ -170,5 +191,111 @@ export class TrloPipeTimediff implements PipeTransform {
     {
       return '';
     }
+  }
+}
+
+//=============================================================================
+
+@Pipe({name: 'trlo_time_ms'})
+export class TrloPipeTime implements PipeTransform {
+
+  constructor (private trlo_service: TrloService)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  transform (value_in_ms: string): string
+  {
+    if (value_in_ms)
+    {
+      return this.trlo_service.time_date (Number(value_in_ms));
+    }
+    else
+    {
+      return '';
+    }
+  }
+}
+
+//=============================================================================
+
+@Pipe({name: 'trlo_filesize'})
+export class TrloPipeFilesize implements PipeTransform {
+
+  constructor (private trlo_service: TrloService)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  private format (bytes: number): string
+  {
+    const UNITS = ['Bytes', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const factor = 1024;
+    let index = 0;
+
+    while (bytes >= factor)
+    {
+      bytes /= factor;
+      index++;
+    }
+
+    return parseFloat (bytes.toFixed(2)) + ' ' + UNITS[index];
+  }
+
+  //---------------------------------------------------------------------------
+
+  transform (value: number): string
+  {
+    if (value)
+    {
+      return this.format (Number(value));
+    }
+    else
+    {
+      return '';
+    }
+  }
+}
+
+//=============================================================================
+
+@Injectable()
+export class TranslocoDatepicker extends NgbDatepickerI18n
+{
+  constructor(private trlo_service: TrloService) { super(); }
+
+  // old API
+  getWeekdayShortName (weekday: number): string
+  {
+    return this.getWeekdayLabel (weekday);
+  }
+
+  // new API
+  getWeekdayLabel(weekday: number): string
+  {
+    return this.trlo_service.translate('DATE.WEEKDAY_' + weekday);
+  }
+
+  // new API
+  getWeekLabel (): string
+  {
+    return this.trlo_service.translate('DATE.WEEK');
+  }
+
+  getMonthShortName(month: number): string
+  {
+    return this.trlo_service.translate('DATE.MONTH_SHORT_' + month);
+  }
+
+  getMonthFullName(month: number): string
+  {
+    return this.trlo_service.translate('DATE.MONTH_LONG_' + month);
+  }
+
+  getDayAriaLabel(date: NgbDateStruct): string
+  {
+    return `${date.day}-${date.month}-${date.year}`;
   }
 }

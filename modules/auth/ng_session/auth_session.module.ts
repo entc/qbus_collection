@@ -13,7 +13,7 @@ import { AuthRolesComponent } from './auth_roles/component';
 import { AuthMsgsComponent } from './auth_msgs/component';
 import { AuthLoginComponent } from './auth_login/component';
 import { AuthPasscheckComponent } from './auth_passcheck/component';
-import { AuthSessionMenuComponent, AuthSessionInfoModalComponent } from './auth_info/component';
+import { AuthSessionInfoComponent, AuthSessionInfoModalComponent } from './auth_info/component';
 
 import { AuthSessionGuard } from '@qbus/auth_session/route';
 
@@ -24,8 +24,8 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     AuthWorkspacesModalComponent,
     Auth2FactorModalComponent,
     AuthFirstuseModalComponent,
-    AuthSessionMenuComponent,
     AuthSessionComponentDirective,
+    AuthSessionInfoComponent,
     AuthSessionInfoModalComponent,
     AuthSessionRoleDirective,
     AuthSessionContentComponent,
@@ -57,7 +57,6 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     AuthLoginModalComponent
   ],
   exports: [
-    AuthSessionMenuComponent,
     AuthSessionRoleDirective,
     AuthSessionContentComponent,
     AuthSessionPassResetComponent,

@@ -2,7 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule } from '@ngneat/transloco';
-import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff } from '@qbus/trlo_service/service';
+import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff, TrloPipeFilesize, TrloPipeTime, TranslocoDatepicker } from '@qbus/trlo_service/service';
+import { NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
 
 import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';
@@ -34,7 +35,9 @@ export class TranslocoHttpLoader implements TranslocoLoader {
   [
     TrloServiceComponent,
     TrloPipeLocale,
-    TrloPipeTimediff
+    TrloPipeTimediff,
+    TrloPipeFilesize,
+    TrloPipeTime
   ],
   imports:
   [
@@ -45,6 +48,8 @@ export class TranslocoHttpLoader implements TranslocoLoader {
     TrloServiceComponent,
     TrloPipeLocale,
     TrloPipeTimediff,
+    TrloPipeFilesize,
+    TrloPipeTime,
     TranslocoModule
   ],
   providers:
@@ -59,7 +64,8 @@ export class TranslocoHttpLoader implements TranslocoLoader {
         reRenderOnLangChange: true
       })
     },
-    { provide: TRANSLOCO_LOADER, useClass: TranslocoHttpLoader }
+    { provide: TRANSLOCO_LOADER, useClass: TranslocoHttpLoader },
+    { provide: NgbDatepickerI18n, useClass: TranslocoDatepicker }
   ]
 })
 export class TrloModule {}

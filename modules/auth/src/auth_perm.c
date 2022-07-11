@@ -115,7 +115,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_perm_remove__apid (AuthPerm self, number_t apid, CapeErr err)
+int auth_perm_remove__apid (AuthPerm self, number_t apid, number_t wpid, CapeErr err)
 {
   int res;
   
@@ -134,7 +134,8 @@ int auth_perm_remove__apid (AuthPerm self, number_t apid, CapeErr err)
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n (params, "id", apid);
-    
+    cape_udc_add_n (params, "wpid", wpid);
+
     res = adbl_trx_delete (trx, "auth_perm", &params, err);
     if (res)
     {
@@ -1070,17 +1071,29 @@ int auth_perm_rm (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   self->apid = cape_udc_get_n (qin->pdata, "apid", 0);
   if (self->apid)
   {
-    // allow user role or admin role from workspace
-    if (qbus_message_role_has (qin, "admin") == FALSE)
+    if (qbus_message_role_has (qin, "admin"))
     {
-      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing role");
+      // fetch the workspace from the user input
+      self->wpid = cape_udc_get_n (qin->pdata, "wpid", 0);
+    }
+    else
+    {
+      // fetch the workspace from the session
+      self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    }
+
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
       goto exit_and_cleanup;
     }
 
-    res = auth_perm_remove__apid (self, self->apid, err);
+    res = auth_perm_remove__apid (self, self->apid, self->wpid, err);
   }
   else
   {
+    // depricated, will be removed soon
+    // always try to use apid
     token = cape_udc_get_s (qin->pdata, "token", NULL);
     if (token == NULL)
     {

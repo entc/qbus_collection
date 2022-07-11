@@ -23,12 +23,13 @@ struct AdblCtx_s
 
 AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
 {
+  AdblCtx ret = NULL;
+  
   int res;
   AdblPvd pvd;
   
   // local objects
   CapeDl hlib = cape_dl_new ();
-  
   CapeString path_current = NULL;
   CapeString path_resolved = NULL;
 
@@ -37,148 +38,146 @@ AdblCtx adbl_ctx_new (const char* path, const char* backend, CapeErr err)
   if (path_current == NULL)
   {
     cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
-    goto exit;
+    goto exit_and_cleanup;
   }
   
   path_resolved = cape_fs_path_resolve (path_current, err);
   if (path_resolved == NULL)
   {
     cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
-    goto exit;
+    goto exit_and_cleanup;
   }
   
   // try to load the module
   res = cape_dl_load (hlib, path_resolved, backend, err);
   if (res)
   {
-    goto exit;
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_open = cape_dl_funct (hlib, "adbl_pvd_open", err);
   if (pvd.pvd_open == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
 
   pvd.pvd_clone = cape_dl_funct (hlib, "adbl_pvd_clone", err);
   if (pvd.pvd_clone == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_close = cape_dl_funct (hlib, "adbl_pvd_close", err);
   if (pvd.pvd_close == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
 
   pvd.pvd_begin = cape_dl_funct (hlib, "adbl_pvd_begin", err);
   if (pvd.pvd_begin == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_commit = cape_dl_funct (hlib, "adbl_pvd_commit", err);
   if (pvd.pvd_commit == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_rollback = cape_dl_funct (hlib, "adbl_pvd_rollback", err);
   if (pvd.pvd_rollback == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_get = cape_dl_funct (hlib, "adbl_pvd_get", err);
   if (pvd.pvd_get == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_ins = cape_dl_funct (hlib, "adbl_pvd_ins", err);
   if (pvd.pvd_ins == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_set = cape_dl_funct (hlib, "adbl_pvd_set", err);
   if (pvd.pvd_set == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_del = cape_dl_funct (hlib, "adbl_pvd_del", err);
   if (pvd.pvd_del == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_ins_or_set = cape_dl_funct (hlib, "adbl_pvd_ins_or_set", err);
   if (pvd.pvd_ins_or_set == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_cursor_new = cape_dl_funct (hlib, "adbl_pvd_cursor_new", err);
   if (pvd.pvd_cursor_new == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_cursor_del = cape_dl_funct (hlib, "adbl_pvd_cursor_del", err);
   if (pvd.pvd_cursor_del == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_cursor_next = cape_dl_funct (hlib, "adbl_pvd_cursor_next", err);
   if (pvd.pvd_cursor_next == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
   
   pvd.pvd_cursor_get = cape_dl_funct (hlib, "adbl_pvd_cursor_get", err);
   if (pvd.pvd_cursor_get == NULL)
   {
-    goto exit;    
+    goto exit_and_cleanup;
   }
 
   pvd.pvd_atomic_dec = cape_dl_funct (hlib, "adbl_pvd_atomic_dec", err);
   if (pvd.pvd_atomic_dec == NULL)
   {
-    goto exit;
+    goto exit_and_cleanup;
   }
 
   pvd.pvd_atomic_inc = cape_dl_funct (hlib, "adbl_pvd_atomic_inc", err);
   if (pvd.pvd_atomic_inc == NULL)
   {
-    goto exit;
+    goto exit_and_cleanup;
   }
 
   pvd.pvd_atomic_or = cape_dl_funct (hlib, "adbl_pvd_atomic_or", err);
   if (pvd.pvd_atomic_or == NULL)
   {
-    goto exit;
+    goto exit_and_cleanup;
   }
 
-  {
-    AdblCtx self = CAPE_NEW(struct AdblCtx_s);
-    
-    self->hlib = hlib;
-    
-    memcpy(&(self->pvd), &pvd, sizeof(AdblPvd));
-    
-    return self;  
-  }
+  ret = CAPE_NEW (struct AdblCtx_s);
   
-exit:
+  // transfer ownership
+  ret->hlib = hlib;
+  hlib = NULL;
+  
+  memcpy(&(ret->pvd), &pvd, sizeof(AdblPvd));
+  
+exit_and_cleanup:
 
   cape_str_del (&path_current);
   cape_str_del (&path_resolved);
 
   cape_dl_del (&hlib);
-  return NULL;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

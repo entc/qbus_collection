@@ -309,6 +309,8 @@ exit_and_cleanup:
   *p_wpid = wpid;
   *p_gpid = gpid;
   
+  cape_udc_del (&query_results);
+  
   return res;
 }
 
@@ -322,9 +324,6 @@ int flow_process_set (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc first_row;
   number_t wpid;
   number_t gpid;
-
-  // local objects
-  CapeUdc query_results = NULL;
 
   res = flow_process__intern__qin_check (self, qin, err);
   if (res)

@@ -341,33 +341,30 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
 
 void adbl_bind_add__string_options (MYSQL_BIND* bind, CapeUdc item)
 {
-  // options might be set, in case they are JSON encoded
+  // default buffer size
+  number_t buffer_size_for_allocation = ADBL_BIND_BUFFER_SIZE;
+  
+  // check if options are given
   const CapeString options_text = cape_udc_s (item, NULL);
   if (options_text)
   {
-    // decode
+    // decode -> they are are JSON encoded
     CapeUdc options = cape_json_from_s (options_text);
     if (options)
     {
-      number_t size = cape_udc_get_n (options, "size", 0);
-      if (size)
-      {
-        bind->buffer = CAPE_ALLOC(size);
-        memset (bind->buffer, 0, size);
-        
-        bind->buffer_length = size;
-        
-        return;
-      }
+      // override buffer size
+      buffer_size_for_allocation = cape_udc_get_n (options, "size", buffer_size_for_allocation);
+
+      cape_udc_del (&options);
     }
   }
 
-  // default
+  // allocate memory and initialize buffer
+  bind->buffer = CAPE_ALLOC(buffer_size_for_allocation);
+  memset (bind->buffer, 0, buffer_size_for_allocation);
   
-  bind->buffer = CAPE_ALLOC(ADBL_BIND_BUFFER_SIZE);
-  memset (bind->buffer, 0, ADBL_BIND_BUFFER_SIZE);
-  
-  bind->buffer_length = ADBL_BIND_BUFFER_SIZE;
+  // tell mysql the buffer size
+  bind->buffer_length = buffer_size_for_allocation;
 }
 
 //------------------------------------------------------------------------------------------------------

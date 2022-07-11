@@ -113,7 +113,7 @@ QBusRoute qbus_route_new (QBus qbus, const CapeString name)
   self->on_changes_callbacks = cape_list_new (qbus_route_callbacks_on_del);
   self->on_changes_mutex = cape_mutex_new ();
   
-  self->queue = cape_queue_new ();
+  self->queue = cape_queue_new (300000);   // maximum of 5 minutes
   
   return self;
 }
@@ -427,27 +427,59 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_on_msg_method (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+struct QbusRouteResponseWorkerCtx_s
 {
-  QBusFrame frame = *p_frame;
+  QBusRoute route;        // reference
+  QBusConnection conn;    // reference
+  QBusFrame frame;        // owned
   
+}; typedef struct QbusRouteResponseWorkerCtx_s* QbusRouteResponseWorkerCtx;
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_route_on_msg_method__worker (void* ptr, number_t pos, number_t queue_size)
+{
+  QbusRouteResponseWorkerCtx ctx = ptr;
+
+  // local objects
   CapeErr err = cape_err_new ();
   
-  QBusMethod qmeth = qbus_route__find_method (self, qbus_frame_get_method (frame), err);
+  QBusMethod qmeth = qbus_route__find_method (ctx->route, qbus_frame_get_method (ctx->frame), err);
   if (qmeth)
   {
-    qbus_method_handle_request (qmeth, self->qbus, self, conn, self->name, p_frame);
+    qbus_method_handle_request (qmeth, ctx->route->qbus, ctx->route, ctx->conn, ctx->route->name, &(ctx->frame));
   }
   else
   {
-    qbus_frame_set_type (frame, QBUS_FRAME_TYPE_MSG_RES, self->name);
-    qbus_frame_set_err (frame, err);
+    qbus_frame_set_type (ctx->frame, QBUS_FRAME_TYPE_MSG_RES, ctx->route->name);
+    qbus_frame_set_err (ctx->frame, err);
     
     // finally send the frame
-    qbus_connection_send (conn, p_frame);
+    qbus_connection_send (ctx->conn, &(ctx->frame));
   }
   
   cape_err_del (&err);
+
+  // cleanup
+  qbus_frame_del (&(ctx->frame));
+  
+  CAPE_DEL (&ctx, struct QbusRouteResponseWorkerCtx_s);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_on_msg_method (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+{
+  QbusRouteResponseWorkerCtx ctx = CAPE_NEW (struct QbusRouteResponseWorkerCtx_s);
+  
+  ctx->route = self;
+  ctx->conn = conn;
+  
+  // transfer frame
+  ctx->frame = *p_frame;
+  *p_frame = NULL;
+  
+  cape_queue_add (self->queue, NULL, qbus_route_on_msg_method__worker, NULL, ctx, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -616,19 +648,19 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_on_msg_response (QBusRoute self, QBusFrame* p_frame)
+void __STDCALL qbus_route_on_msg_response__worker (void* ptr, number_t pos, number_t queue_size)
 {
-  QBusFrame frame = *p_frame;
+  QbusRouteResponseWorkerCtx ctx = ptr;
   
-  const CapeString chain_key = qbus_frame_get_chainkey (frame);
+  const CapeString chain_key = qbus_frame_get_chainkey (ctx->frame);
   
   if (chain_key)
   {
-    QBusMethod qmeth = qbus_route__find_chain (self, chain_key);
-
+    QBusMethod qmeth = qbus_route__find_chain (ctx->route, chain_key);
+    
     if (qmeth)
     {
-      qbus_route__response__method (self, qmeth, p_frame);
+      qbus_route__response__method (ctx->route, qmeth, &(ctx->frame));
 
       qbus_method_del (&qmeth);
     }
@@ -637,6 +669,26 @@ void qbus_route_on_msg_response (QBusRoute self, QBusFrame* p_frame)
       
     }
   }
+
+  // cleanup context
+  qbus_frame_del (&(ctx->frame));
+  
+  CAPE_DEL (&ctx, struct QbusRouteResponseWorkerCtx_s);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_on_msg_response (QBusRoute self, QBusFrame* p_frame)
+{
+  QbusRouteResponseWorkerCtx ctx = CAPE_NEW (struct QbusRouteResponseWorkerCtx_s);
+  
+  ctx->route = self;
+  
+  // transfer frame
+  ctx->frame = *p_frame;
+  *p_frame = NULL;
+
+  cape_queue_add (self->queue, NULL, qbus_route_on_msg_response__worker, NULL, ctx, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -727,6 +779,36 @@ void qbus_route_on_route_methods_request (QBusRoute self, QBusConnection conn, Q
 
 //-----------------------------------------------------------------------------
 
+void qbus_route__on_observable_request (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+{
+  QBusFrame frame = *p_frame;
+  
+  const CapeString module = qbus_frame_get_module (frame);
+  
+  // check if the message was sent to us
+  if (cape_str_compare (module, self->name))
+  {
+
+  }
+  else
+  {
+    
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route__on_observable_response (QBusRoute self, QBusConnection conn, QBusFrame* p_frame)
+{
+  QBusFrame frame = *p_frame;
+
+  const CapeString chain_key = qbus_frame_get_chainkey (frame);
+
+  
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_conn_onFrame (QBusRoute self, QBusConnection connection, QBusFrame* p_frame)
 {
   QBusFrame frame = *p_frame;
@@ -761,6 +843,16 @@ void qbus_route_conn_onFrame (QBusRoute self, QBusConnection connection, QBusFra
     case QBUS_FRAME_TYPE_METHODS:
     {
       qbus_route_on_route_methods_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_REQ:
+    {
+      qbus_route__on_observable_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_RES:
+    {
+      qbus_route__on_observable_response (self, connection, p_frame);
       break;
     }
   }
