@@ -33,6 +33,8 @@ __CAPE_LIBEX   int         jobs_list_add          (JobsList*, QBusM qin, QBusM q
 
 __CAPE_LIBEX   int         jobs_list_set          (JobsList*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int         jobs_list_rm           (JobsList*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int         jobs_list_run          (JobsList*, QBusM qin, QJobsEvent event, CapeErr err);
 
 //-----------------------------------------------------------------------------

@@ -62,6 +62,19 @@ static int __STDCALL qbus_jobs__list_set (QBus qbus, void* ptr, QBusM qin, QBusM
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_jobs__list_rm (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  JobsContext ctx = ptr;
+  
+  // create a temporary object
+  JobsList jobs_list = jobs_list_new (qbus, ctx->adbl_session, ctx->jobs);
+  
+  // run the command
+  return jobs_list_rm (&jobs_list, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 void qbus_jobs__ctx_del (JobsContext* p_self)
 {
   if (*p_self)
@@ -153,6 +166,10 @@ static int __STDCALL qbus_jobs_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // change the job event
   //   args:
   qbus_register (qbus, "list_set"       , ctx, qbus_jobs__list_set, NULL, err);
+
+  // remove or removes job/s event/s
+  //   args:
+  qbus_register (qbus, "list_rm"        , ctx, qbus_jobs__list_rm, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

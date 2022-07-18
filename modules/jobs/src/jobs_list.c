@@ -382,6 +382,108 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int jobs_list_rm (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  JobsList self = *p_self;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdcCursor* cursor = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing rinfo");
+    goto exit_and_cleanup;
+  }
+  
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing wpid");
+    goto exit_and_cleanup;
+  }
+  
+  self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  if (self->gpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "missing gpid");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "cdata is missing");
+    goto exit_and_cleanup;
+  }
+  
+  self->ref_mod = cape_udc_ext_s (qin->cdata, "ref_mod");
+  if (self->ref_mod == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_REF_MOD");
+    goto exit_and_cleanup;
+  }
+
+  self->ref_umi = cape_udc_ext_s (qin->cdata, "ref_umi");
+  if (self->ref_umi == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_REF_UMI");
+    goto exit_and_cleanup;
+  }
+  
+  self->ref_id1 = cape_udc_get_n (qin->cdata, "ref_id1", 0);
+  if (self->ref_id1 == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.MISSING_REF_ID1");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"        , self->wpid);
+    cape_udc_add_n      (params, "gpid"        , self->gpid);
+    cape_udc_add_s_mv   (params, "ref_mod"     , &(self->ref_mod));
+    cape_udc_add_s_mv   (params, "ref_umi"     , &(self->ref_umi));
+    cape_udc_add_n      (params, "ref_id1"     , self->ref_id1);
+    
+    cape_udc_add_n      (values, "id"          , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "jobs_list", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  cursor = cape_udc_cursor_new (query_results, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    res = qjobs_rm (self->jobs, cape_udc_get_n (cursor->item, "id", 0), err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_cursor_del (&cursor);
+  cape_udc_del (&query_results);
+  
+  jobs_list_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 static int __STDCALL jobs_list_run__on_call (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
