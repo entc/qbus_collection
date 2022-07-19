@@ -4,7 +4,6 @@ INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 SUBDIRS(core)
 SUBDIRS(adapter/java)
 SUBDIRS(adapter/python)
-SUBDIRS(engines/tcp)
 SUBDIRS(tests)
 
 set(WSRV_SOURCES
@@ -20,7 +19,7 @@ set(WSRV_HEADERS
 #----------------------------------------------------------------------------------
 
 add_library             (qbus SHARED ${WSRV_SOURCES} ${WSRV_HEADERS})
-target_link_libraries   (qbus qbus_core qbus_engine_tcp cape qcrypt qbus_pvd_tcp)
+target_link_libraries   (qbus qbus_core cape qcrypt qbus_pvd_tcp)
 set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 INSTALL (TARGETS qbus DESTINATION lib)
