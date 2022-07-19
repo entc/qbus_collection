@@ -5,6 +5,7 @@
 #include "stc/cape_list.h"
 #include "sys/cape_mutex.h"
 #include "stc/cape_stream.h"
+#include "sys/cape_log.h"
 
 //-----------------------------------------------------------------------------
 
@@ -184,6 +185,15 @@ void qbus_connection_send (QBusConnection self, QBusFrame* p_frame)
   // add the stream buffer to the queue
   cape_list_push_back (self->cache_qeue, (void*)cs);
 
+  {
+    number_t queue_size = cape_list_size (self->cache_qeue);
+    
+    if (queue_size > 10)
+    {
+      cape_log_fmt (CAPE_LL_WARN, "QBUS", "send", "queue size high filling = %i", queue_size);
+    }
+  }
+  
   // leave monitor
   cape_mutex_unlock (self->mutex);
 
