@@ -148,7 +148,8 @@ int qbus_route_init (QBusRoute self, number_t threads, CapeErr err)
 {
   cape_log_fmt (CAPE_LL_INFO, "QBUS", "route init", "start with %i worker threads", threads);
   
-  return cape_queue_start (self->queue, threads, err);
+  // TODO: to avoid that qbus get stuck try 1 thread here
+  return cape_queue_start (self->queue, 1, err);
 }
 
 //-----------------------------------------------------------------------------

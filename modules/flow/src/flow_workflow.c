@@ -411,6 +411,7 @@ int flow_workflow_perm_get (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr
     query_results = adbl_session_query (self->adbl_session, "flow_workspaces", &params, &values, err);
     if (query_results == NULL)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }
@@ -487,6 +488,7 @@ int flow_workflow_perm_set (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr
     query_results = adbl_session_query (self->adbl_session, "flow_workspaces", &params, &values, err);
     if (query_results == NULL)
     {
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }

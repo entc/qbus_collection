@@ -183,16 +183,19 @@ CapeListNode cape_list_push_max (CapeList self, void* data, number_t max_size)
 {
   CapeListNode node = cape_list_push_back (self, data);
   
-  while (self->size > max_size)
+  if (max_size > 0)
   {
-    void* data_to_delete = cape_list_pop_front (self);
-    
-    if (data_to_delete && self->onDestroy)
+    while (self->size > max_size)
     {
-      self->onDestroy (data_to_delete);
+      void* data_to_delete = cape_list_pop_front (self);
+      
+      if (data_to_delete && self->onDestroy)
+      {
+        self->onDestroy (data_to_delete);
+      }
     }
   }
-  
+    
   return node;
 }
 

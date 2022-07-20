@@ -42,6 +42,8 @@ static void* cape_thread_run (void* params)
 {
   CapeThread self = params;
   
+  cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread created");
+
   if (self->fct)
   {
     while (self->fct (self->ptr))
@@ -57,7 +59,7 @@ static void* cape_thread_run (void* params)
     self->on_done (self->ptr);
   }
 
-  //cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
+  cape_log_msg (CAPE_LL_TRACE, "CAPE", "thread", "thread terminated");
   
   return NULL;
 }
