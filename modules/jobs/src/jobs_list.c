@@ -145,7 +145,7 @@ int jobs_list_get (JobsList* p_self, QBusM qin, QBusM qout, CapeErr err)
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n      (params, "wpid"        , self->wpid);
-    cape_udc_add_n      (params, "gpid"        , self->gpid);
+    //cape_udc_add_n      (params, "gpid"        , self->gpid);
     cape_udc_add_s_mv   (params, "ref_mod"     , &(self->ref_mod));
     cape_udc_add_s_mv   (params, "ref_umi"     , &(self->ref_umi));
     cape_udc_add_n      (params, "ref_id1"     , self->ref_id1);
