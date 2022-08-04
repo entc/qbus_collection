@@ -189,11 +189,11 @@ void qbus_connection_send (QBusConnection self, QBusFrame* p_frame)
     {
       if (queue_size > 20)
       {
-        cape_log_fmt (CAPE_LL_ERROR, "QBUS", "conn send", "cache queue is critical high = %i", queue_size);
+        cape_log_fmt (CAPE_LL_ERROR, "QBUS", "conn send", "cache queue is critical high = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
       }
       else
       {
-        cape_log_fmt (CAPE_LL_WARN, "QBUS", "conn send", "cache queue is filing up = %i", queue_size);
+        cape_log_fmt (CAPE_LL_WARN, "QBUS", "conn send", "cache queue is filing up = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
       }
     }
   }
