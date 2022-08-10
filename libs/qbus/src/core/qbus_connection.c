@@ -170,6 +170,8 @@ void qbus_connection_onRecv (QBusConnection self, const char* bufdat, number_t b
 
 void qbus_connection_send (QBusConnection self, QBusFrame* p_frame)
 {
+  number_t queue_size;
+  
   // create a new buffer stream
   CapeStream cs = cape_stream_new ();
 
@@ -182,27 +184,28 @@ void qbus_connection_send (QBusConnection self, QBusFrame* p_frame)
   // enter monitor
   cape_mutex_lock (self->mutex);
   
-  {
-    number_t queue_size = cape_list_size (self->cache_qeue);
-    
-    if (queue_size > 10)
-    {
-      if (queue_size > 20)
-      {
-        cape_log_fmt (CAPE_LL_ERROR, "QBUS", "conn send", "cache queue is critical high = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
-      }
-      else
-      {
-        cape_log_fmt (CAPE_LL_WARN, "QBUS", "conn send", "cache queue is filing up = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
-      }
-    }
-  }
-  
+  // get the current queue size
+  queue_size = cape_list_size (self->cache_qeue);
+
   // add the stream buffer to the queue
   cape_list_push_back (self->cache_qeue, (void*)cs);
   
   // leave monitor
   cape_mutex_unlock (self->mutex);
+
+  if (queue_size > 10)
+  {
+    qbus_route_log_msg (self->route, self->module_name, "critical cache queue");
+    
+    if (queue_size > 20)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "conn send", "cache queue is critical high = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
+    }
+    else
+    {
+      cape_log_fmt (CAPE_LL_WARN, "QBUS", "conn send", "cache queue is filing up = %i on module = %s, uuid = %s", queue_size, self->module_name, self->module_uuid);
+    }
+  }
 
   // trigger the underlaying engine to process the buffer
   self->fct_mark (self->ptr1, self->ptr2);

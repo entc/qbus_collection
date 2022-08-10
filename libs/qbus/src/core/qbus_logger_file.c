@@ -27,10 +27,12 @@ QbusLogCtx __STDCALL qbus_logger_file__dst_new (CapeAioContext aio, CapeUdc conf
   // local objects
   CapeFileHandle fh = cape_fh_new (path, file);
   
-  if (cape_fh_open (fh, O_WRONLY, err))
+  if (cape_fh_open (fh, O_WRONLY | O_CREAT | O_APPEND, err))
   {
     return NULL;
   }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "file logger", "sucessfully open log path = %s, file = %s", path, file);
   
   {
     QbusLogCtx self = CAPE_NEW (struct QbusLogCtx_s);
@@ -38,7 +40,7 @@ QbusLogCtx __STDCALL qbus_logger_file__dst_new (CapeAioContext aio, CapeUdc conf
     self->fh = fh;
     fh = NULL;
     
-    return (QbusLogCtx)self;
+    return self;
   }
 }
 
@@ -72,6 +74,7 @@ void __STDCALL qbus_logger_file__dst_msg (QbusLogCtx ctx, const CapeString remot
   cape_stream_append_str (s, remote);
   cape_stream_append_str (s, ": qbus-5-0: ");
   cape_stream_append_str (s, message);
+  cape_stream_append_c (s, '\n');
 
   cape_fh_write_buf (self->fh, cape_stream_data (s), cape_stream_size (s));
   
