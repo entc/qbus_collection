@@ -9,6 +9,22 @@ int main (int argc, char *argv[])
   
   cape_datetime_utc (&utc_time);
   
+  {
+    CapeString s = cape_datetime_s__fmt_lcl (&utc_time, "%Y-%m-%d %H:%M:%S");
+
+    printf ("-> FMT LCL : '%s'\n", s);
+    
+    cape_str_del (&s);
+  }
+
+  {
+    CapeString s = cape_datetime_s__fmt_utc (&utc_time, "%Y-%m-%d %H:%M:%S");
+    
+    printf ("-> FMT UTC : '%s'\n", s);
+    
+    cape_str_del (&s);
+  }
+
   // print certain formats
   {
     CapeString s = cape_datetime_s__str (&utc_time);

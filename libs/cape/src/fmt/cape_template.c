@@ -429,7 +429,7 @@ void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, 
   
   // apply format
   {
-    CapeString h2 = cape_datetime_s__fmt (dt, self->eval);
+    CapeString h2 = cape_datetime_s__fmt_lcl (dt, self->eval);
     
     if (cb->on_text)
     {
@@ -643,7 +643,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           
           // apply format
           {
-            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
             if (cb->on_text)
             {
@@ -663,7 +663,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           
           // apply format
           {
-            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
             if (cb->on_text)
             {
@@ -683,7 +683,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           
           // apply format
           {
-            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
             if (cb->on_text)
             {
@@ -703,7 +703,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           
           // apply format
           {
-            CapeString h = cape_datetime_s__fmt (&dt, self->eval);
+            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
             if (cb->on_text)
             {
