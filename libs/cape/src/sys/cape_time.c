@@ -699,6 +699,34 @@ void cape_datetime__add_n (const CapeDatetime* self, number_t period, CapeDateti
 
 //-----------------------------------------------------------------------------
 
+void cape_datetime__sub_n (const CapeDatetime* self, number_t period, CapeDatetime* result)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  struct timeval time_timeval;
+  struct tm* time_tm;
+  
+  // convert cape datetime into c time struct
+  time_timeval.tv_sec = cape_datetime_n__unix (self);
+  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  
+  // append the period
+  time_timeval.tv_sec -= period;
+  
+  // convert into time struct
+  time_tm = gmtime (&(time_timeval.tv_sec));
+  
+  // convert into result
+  cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 {
   if (dt1 == NULL)
