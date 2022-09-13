@@ -2,6 +2,7 @@
 
 // cape includes
 #include "stc/cape_str.h"
+#include "sys/cape_file.h"
 
 #ifdef __WINDOWS_OS
 #include <windows.h>
@@ -73,9 +74,16 @@ unsigned long cape_err_code (CapeErr self)
 
 //-----------------------------------------------------------------------------
 
-int cape_err_set (CapeErr self, unsigned long code, const char* error_message)
+int cape_err_set__i (CapeErr self, int line_number, const char* file, unsigned long code, const char* error_message)
 {
-  self->code = code;  
+  self->code = code;
+  
+  // returns only the file
+  const CapeString file_relative = cape_fs_split (file, NULL);
+  
+  // print to STDERR
+  fprintf (stderr, "{%s:%i} | %s\n", file_relative, line_number, error_message);
+  
   cape_str_replace_cp (&(self->text), error_message);
   
   return code;
@@ -83,7 +91,7 @@ int cape_err_set (CapeErr self, unsigned long code, const char* error_message)
 
 //-----------------------------------------------------------------------------
 
-int cape_err_set_fmt (CapeErr self, unsigned long code, const char* error_message, ...)
+int cape_err_set_fmt__i (CapeErr self, int line_number, const char* file, unsigned long code, const char* error_message, ...)
 {
   char buffer [1002];
   
@@ -103,7 +111,7 @@ int cape_err_set_fmt (CapeErr self, unsigned long code, const char* error_messag
   vsnprintf (buffer, 1000, error_message, ptr);
 #endif
   
-  cape_err_set (self, code, buffer);
+  cape_err_set__i (self, line_number, file, code, buffer);
   
   va_end(ptr);
   
@@ -112,7 +120,7 @@ int cape_err_set_fmt (CapeErr self, unsigned long code, const char* error_messag
 
 //-----------------------------------------------------------------------------
 
-int cape_err_formatErrorOS (CapeErr self, unsigned long errCode)
+int cape_err_formatErrorOS_i (CapeErr self, int line_number, const char* file, unsigned long errCode)
 {
 #ifdef __WINDOWS_OS
 
@@ -125,7 +133,7 @@ int cape_err_formatErrorOS (CapeErr self, unsigned long errCode)
     {
       if (res > 0)
       {
-        cape_err_set (self, CAPE_ERR_OS, buffer);
+        cape_err_set__i (self, line_number, file, CAPE_ERR_OS, buffer);
       }
       // release buffer
       LocalFree (buffer);
@@ -135,20 +143,20 @@ int cape_err_formatErrorOS (CapeErr self, unsigned long errCode)
   return CAPE_ERR_OS;
 
 #else
-  return cape_err_set (self, CAPE_ERR_OS, strerror(errCode));
+  return cape_err_set__i (self, line_number, file, CAPE_ERR_OS, strerror(errCode));
 #endif
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_err_lastOSError (CapeErr self)
+int cape_err_lastOSError_i (CapeErr self, int line_number, const char* file)
 {
   if (self)
   {
     #ifdef __WINDOWS_OS
-      return cape_err_formatErrorOS (self, GetLastError ());
+      return cape_err_formatErrorOS_i (self, line_number, file, GetLastError ());
     #else
-      return cape_err_formatErrorOS (self, errno);
+      return cape_err_formatErrorOS_i (self, line_number, file, errno);
     #endif
   }
   

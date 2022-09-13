@@ -33,6 +33,13 @@
 #define CAPE_ERR_OUT_OF_BOUNDS      22
 #define CAPE_ERR_VALIDATION         23
 
+//-----------------------------------------------------------------------------
+
+#define cape_err_set(err, err_code, err_message) cape_err_set__i(err, __LINE__, __FILE__, err_code, err_message)
+#define cape_err_set_fmt(err, err_code, err_message, ...) cape_err_set_fmt__i(err, __LINE__, __FILE__, err_code, err_message, __VA_ARGS__)
+#define cape_err_lastOSError(err) cape_err_lastOSError_i(err, __LINE__, __FILE__)
+#define cape_err_formatErrorOS(err, err_code) cape_err_formatErrorOS_i(err, __LINE__, __FILE__, err_code)
+
 //=============================================================================
 
 struct CapeErr_s; typedef struct CapeErr_s* CapeErr;
@@ -47,17 +54,17 @@ __CAPE_LIBEX   void              cape_err_del           (CapeErr*);         // r
 
 __CAPE_LIBEX   void              cape_err_clr           (CapeErr);
 
-__CAPE_LIBEX   int               cape_err_set           (CapeErr, unsigned long errCode, const char* error_message);
+__CAPE_LIBEX   int               cape_err_set__i        (CapeErr, int line_number, const char* file, unsigned long err_code, const char* error_message);
 
-__CAPE_LIBEX   int               cape_err_set_fmt       (CapeErr, unsigned long errCode, const char* error_message, ...);
+__CAPE_LIBEX   int               cape_err_set_fmt__i    (CapeErr, int line_number, const char* file, unsigned long err_code, const char* error_message, ...);
 
 __CAPE_LIBEX   const char*       cape_err_text          (CapeErr);
 
 __CAPE_LIBEX   unsigned long     cape_err_code          (CapeErr);
 
-__CAPE_LIBEX   int               cape_err_lastOSError   (CapeErr);
+__CAPE_LIBEX   int               cape_err_lastOSError_i   (CapeErr, int line_number, const char* file);
 
-__CAPE_LIBEX   int               cape_err_formatErrorOS (CapeErr, unsigned long errCode);
+__CAPE_LIBEX   int               cape_err_formatErrorOS_i (CapeErr, int line_number, const char* file, unsigned long errCode);
 
 //-----------------------------------------------------------------------------
 
