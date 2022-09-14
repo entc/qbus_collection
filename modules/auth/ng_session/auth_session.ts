@@ -367,6 +367,56 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  public json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, cb_progress, cb_done, cb_error)
+  {
+    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
+    if (enjs)
+    {
+      let subscriber = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event) => {
+
+        switch (event.type)
+        {
+          case 1:  // update
+          {
+            cb_progress (Math.round(100 * (event.loaded / event.total)));
+            break;
+          }
+          case 4:  // final event
+          {
+            if (event.body)
+            {
+              cb_done (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))));
+            }
+            else
+            {
+              subscriber.unsubscribe();
+              cb_done ({});
+            }
+
+            break;
+          }
+        }
+
+      }, (err: QbngErrorHolder) => cb_error (err));
+    }
+    else
+    {
+      // construct url
+      var url: string = this.session_url (qbus_module, qbus_method);
+
+      // construct other values
+      var params: string = JSON.stringify (qbus_params);
+
+      this.handle_error_session (this.http.post(url, params, {observe: 'events', reportProgress: true})).subscribe ((event) => {
+
+alert ('we run out of coffee, so it is not implemented');
+
+      }, (err: QbngErrorHolder) => cb_error (err));
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
   public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
   {
     var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);

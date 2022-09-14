@@ -13,7 +13,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 })
 export class AuthUsersComponent implements OnInit {
 
-  public users: Observable<AuthUserItem[]>;
+  public users: Observable<AuthUserItem[]> = null;
   private _wpid: number = null;
 
   //-----------------------------------------------------------------------------
