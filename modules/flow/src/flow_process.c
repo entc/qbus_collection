@@ -82,13 +82,13 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
   self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
   if (self->wpid == 0)
   {
-    return cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
   }
   
   self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
   if (self->gpid == 0)
   {
-    return cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
   }
   
   if (qin->cdata == NULL)
@@ -1436,39 +1436,6 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-static int __STDCALL flow_process_once__on_switch (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
-{
-  int res;
-  FlowProcess self = ptr;
-  
-  if (qin->err)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
-    goto exit_and_cleanup;
-  }
-
-  res = flow_process__intern__qin_check (self, qin, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  {
-    CapeString h = cape_json_to_s (qin->rinfo);
-    
-    printf ("RINFO: %s\n", h);
-  }
-  
-  res = flow_process_once__dbw (&self, qin, qout, err);
-  
-exit_and_cleanup:
-  
-  flow_process_del (&self);
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
 int flow_process_once (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -1524,21 +1491,81 @@ int flow_process_once (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_put_n (qin->rinfo, "wpid", wpid);
 
     self->wpid = wpid;
-    
-    /*
-    // clean up
-    qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
-    
-    qin->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_n (qin->pdata, "wpid", wpid);
-    cape_udc_add_n (qin->pdata, "gpid", gpid);
-
-    res = qbus_continue (self->qbus, "AUTH", "ui_switch", qin, (void**)p_self, flow_process_once__on_switch, err);
-     */
   }
 
   res = flow_process_once__dbw (p_self, qin, qout, err);
+  
+exit_and_cleanup:
+  
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_next__dbw (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+  
+  // create a new run database wrapper
+  FlowRunDbw flow_run_dbw = flow_run_dbw_new (self->qbus, self->adbl_session, self->queue, self->wpid, self->psid, cape_udc_get_s (qin->rinfo, "remote", NULL), qin->rinfo, 0);
+  
+  // forward business logic to this class
+  res = flow_run_dbw_next (&flow_run_dbw, err);
+  
+exit_and_cleanup:
+  
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_process_next (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+  
+  number_t wpid;
+  number_t gpid;
+  
+  if (!qbus_message_role_has (qin, "flow_wp_fa_w"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+    goto exit_and_cleanup;
+  }
+  
+  res = flow_process__intern__qin_check (self, qin, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // support both versions
+  self->psid = cape_udc_get_n (qin->cdata, "psid", cape_udc_get_n (qin->cdata, "taid", 0));
+  if (self->psid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_process_once} missing parameter 'psid'");
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "process next", "using psid = %i", self->psid);
+  
+  // check if the instance exists and fetch the original wpid and gpid
+  res = flow_process__process_check (self, &wpid, &gpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // switch to another wpid
+  // TODO: dirty workaround
+  cape_udc_put_n (qin->rinfo, "wpid", wpid);
+  
+  self->wpid = wpid;
+  
+  res = flow_process_next__dbw (p_self, qin, qout, err);
   
 exit_and_cleanup:
   
