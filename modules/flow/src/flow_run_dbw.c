@@ -1265,7 +1265,7 @@ int flow_run_dbw__run_step (FlowRunDbw* p_self, number_t action, CapeErr err)
 
   // transfer ownership and business logic to step class
   // -> in return self might be NULL
-  res = flow_run_step_set (&run_step, p_self, action, self->params, err);
+  res = flow_run_step_set (&run_step, p_self, action, &(self->params), err);
   if (res)
   {
     goto exit_and_cleanup;

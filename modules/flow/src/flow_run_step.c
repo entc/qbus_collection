@@ -725,7 +725,7 @@ int flow_run_step__place_message (FlowRunStep* p_self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, CapeUdc params, CapeErr err)
+int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, CapeUdc* p_params, CapeErr err)
 {
   int res;
   FlowRunStep self = *p_self;
@@ -735,7 +735,7 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
   {
     case FLOW_ACTION__ABORT:
     {
-      flow_run_dbw_tdata__merge_to (self->dbw, params);
+      flow_run_dbw_tdata__merge_to (self->dbw, p_params);
 
       res = flow_run_dbw_sqt (p_dbw, FLOW_SEQUENCE__ABORT, 0, 0, err);
       goto exit_and_cleanup;
@@ -766,7 +766,7 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
   {
     case 3:    // call another module's method (syncron)
     {
-      res = flow_run_step__method__syncron (p_self, p_dbw, params, err);
+      res = flow_run_step__method__syncron (p_self, p_dbw, *p_params, err);
       break;
     }
     case 4:    // call another module's method (async)
@@ -776,7 +776,7 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     }
     case 5:    // wait
     {
-      res = flow_run_step__method__wait (p_self, p_dbw, params, err);
+      res = flow_run_step__method__wait (p_self, p_dbw, *p_params, err);
       break;
     }
     case 10:   // split into several taskflows, sync at the end and continue this taskflow
