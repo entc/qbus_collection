@@ -1,0 +1,33 @@
+.menu_overlay_bottom {
+  height: 0%;
+  width: 100%;
+  position: fixed;
+  z-index: 10;
+  bottom: 0;
+  left: 0;
+  background-color: rgb(108,117,125);
+  background-color: rgba(108,117,125, 0.95);
+  overflow-y: hidden;
+  transition: 0.5s;
+  padding-bottom: 58px;
+}
+
+.nav-page {
+  display: table;
+  width: 100%;
+}
+
+.nav-page-content,
+.nav-sidebar-15em {
+  display: table-cell;
+  margin: 0px;
+  padding-right: 0px;
+}
+
+.nav-sidebar-15em {
+  width: 15em;
+}
+
+.nav-page-content {
+  width: 100%;
+}

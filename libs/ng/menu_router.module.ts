@@ -5,12 +5,14 @@ import { TrloModule } from '@qbus/trlo.module';
 import { SizeService } from './size_service/service';
 import { RouterModule } from '@angular/router';
 import { AuthSessionModule } from '@qbus/auth_session.module';
-import { MenuRouterComponent, MenuRouterModalComponent } from './menu_router/component';
+import { MenuRouterComponent, MenuRouterModalComponent, MenuRouterOverlayComponent } from './menu_router/component';
+import { MenuRouterService } from './menu_router/service';
 
 @NgModule({
   declarations: [
     MenuRouterComponent,
-    MenuRouterModalComponent
+    MenuRouterModalComponent,
+    MenuRouterOverlayComponent
   ],
   imports: [
     CommonModule,
@@ -20,7 +22,11 @@ import { MenuRouterComponent, MenuRouterModalComponent } from './menu_router/com
     AuthSessionModule
   ],
   exports: [
-    MenuRouterComponent
+    MenuRouterComponent,
+    MenuRouterOverlayComponent
+  ],
+  providers: [
+    MenuRouterService
   ],
   entryComponents: [
     MenuRouterModalComponent

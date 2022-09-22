@@ -1,0 +1,28 @@
+
+  <ng-container *ngFor="let submenu of menu_structure">
+
+    <ng-container *authSessionRole="submenu.auth">
+
+      <!--
+      <div class="text-muted text-right mt-2" *ngIf="submenu.name">
+        {{ submenu.name | transloco }}
+      </div>
+      -->
+
+      <ul class="navbar-nav pl-4 pr-4">
+
+        <ng-container *ngFor="let item of submenu.items">
+
+          <li class="nav-item">
+            <a *authSessionRole="item.auth" (click)="menu_service.toggle()" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="btn btn-outline-light nav-link mt-1 text-left pl-2 pr-2">
+              <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
+            </a>
+          </li>
+
+        </ng-container>
+
+      </ul>
+
+    </ng-container>
+
+  </ng-container>

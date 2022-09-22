@@ -1,53 +1,46 @@
-<ng-container *ngIf="mobile_size == true">
+<div class="nav-page menu-height">
+  <div class="nav-sidebar-15em d-none d-lg-block">
 
-  <div class="fixed-top p-1">
-    <button type="button" class="btn btn-primary" (click)="open_menu()">menu</button>
-  </div>
+    <div class="ml-2">
 
-  <div class="container-fluid">
+      <ng-container *ngFor="let submenu of menu_structure">
 
-    <router-outlet></router-outlet>
+        <ng-container *authSessionRole="submenu.auth">
 
-  </div>
+          <div class="text-muted text-right mt-2" *ngIf="submenu.name">
+            {{ submenu.name | transloco }}
+          </div>
 
-</ng-container>
-<ng-container *ngIf="mobile_size == false">
+          <div class="list-group mt-2">
 
-  <div class="nav-page">
-    <div class="nav-sidebar-15em">
+            <ng-container *ngFor="let item of submenu.items">
 
-      <div class="ml-2">
+              <a *authSessionRole="item.auth" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="list-group-item list-group-item-action">
+                <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
+              </a>
 
-        <ng-container *ngFor="let submenu of menu_structure">
+            </ng-container>
 
-          <ng-container *authSessionRole="submenu.auth">
-
-            <div class="text-muted text-right mt-2" *ngIf="submenu.name">
-              {{ submenu.name | transloco }}
-            </div>
-
-            <div class="list-group mt-2">
-
-              <ng-container *ngFor="let item of submenu.items">
-
-                <a *authSessionRole="item.auth" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="list-group-item list-group-item-action">
-                  <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
-                </a>
-
-              </ng-container>
-
-            </div>
-
-          </ng-container>
+          </div>
 
         </ng-container>
 
-      </div>
+      </ng-container>
 
     </div>
-    <div class="nav-page-content pl-4 pr-4">
-      <router-outlet></router-outlet>
-    </div>
+
   </div>
+  <div class="nav-page-content pl-4 pr-4">
+    <router-outlet></router-outlet>
+  </div>
+</div>
 
-</ng-container>
+<div menu-router-overlay [menu]="menu_structure" class="menu_overlay_bottom d-lg-none"></div>
+
+<nav class="navbar fixed-bottom navbar-expand-lg navbar-dark bg-secondary d-lg-none">
+
+  <button (click)="menu_service.toggle()" class="navbar-toggler ml-auto" type="button" data-toggle="collapse" data-target="#nav-content" aria-controls="nav-content" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+</nav>
