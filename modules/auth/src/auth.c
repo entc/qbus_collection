@@ -125,6 +125,19 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_add (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_add (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_ui_pp (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -693,6 +706,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // change password for an user account
   //   args: usid, password
   qbus_register (qbus, "ui_set"               , ctx, qbus_auth_ui_set, NULL, err);
+
+  // change password for an user account
+  //   args: username, password
+  qbus_register (qbus, "ui_add"               , ctx, qbus_auth_ui_add, NULL, err);
 
   // check password by password policy
   //   args: password

@@ -50,15 +50,12 @@ export class AuthUsersComponent implements OnInit {
   {
     var ctx: AuthUserContext | null = null;
 
-    if (this._wpid)
-    {
-      ctx = new AuthUserContext;
+    ctx = new AuthUserContext;
 
-      ctx.wpid = Number(this._wpid);
-      ctx.gpid = item.gpid;
-      ctx.userid = item.userid;
-      ctx.active = item.active == 1 ? true: false;
-    }
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = item.gpid;
+    ctx.userid = item.userid;
+    ctx.active = item.active == 1 ? true: false;
 
     this.modal_service.open (AuthUsersSettingsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
@@ -75,14 +72,11 @@ export class AuthUsersComponent implements OnInit {
   {
     var ctx: AuthUserContext | null = null;
 
-    if (this._wpid)
-    {
-      ctx = new AuthUserContext;
+    ctx = new AuthUserContext;
 
-      ctx.wpid = Number(this._wpid);
-      ctx.gpid = item.gpid;
-      ctx.userid = item.userid;
-    }
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = item.gpid;
+    ctx.userid = item.userid;
 
     this.modal_service.open (AuthUsersRolesModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
@@ -111,7 +105,13 @@ export class AuthUsersComponent implements OnInit {
 
   public open_add ()
   {
+    var ctx: AuthUserContext | null = new AuthUserContext;
 
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = null;
+    ctx.userid = null;
+
+    this.modal_service.open (AuthUsersAddModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
   }
 }
 
@@ -189,6 +189,35 @@ export class AuthUserItem
 
   constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
   {
+  }
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-users-add-modal',
+  templateUrl: './modal_add.html'
+}) export class AuthUsersAddModalComponent {
+
+  public name: string;
+  public pass: string;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public apply ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_add', {wpid: this.ctx.wpid, username: this.name, password: this.pass}).subscribe (() => {
+
+      this.modal.close();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
 }

@@ -1931,6 +1931,215 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  CapeString domain = NULL;
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"               , self->wpid);
+    cape_udc_add_s_cp   (values, "domain"           , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_workspaces", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (query_results == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "workspace not found");
+    goto exit_and_cleanup;
+  }
+  
+  domain = cape_udc_ext_s (first_row, "domain");
+  if (domain == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "domain not found");
+    goto exit_and_cleanup;
+  }
+  
+  cape_str_replace_mv (p_domain, &domain);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__intern__encode (const CapeString domain, const CapeString vsec, const CapeString name, const CapeString pass, CapeString* p_name_encoded, CapeString* p_pass_encoded, CapeString* p_vsec_encoded, CapeString* p_login, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeStream login = cape_stream_new ();
+  
+  CapeString name_encoded = NULL;
+  CapeString pass_encoded = NULL;
+  CapeString vsec_encoded = NULL;
+  CapeString login_text = NULL;
+  
+  cape_stream_append_str   (login, name);
+  cape_stream_append_c     (login, '@');
+  cape_stream_append_str   (login, domain);
+  
+  name_encoded = qcrypt__hash_sha256__hex_m (login, err);
+  if (NULL == name_encoded)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  login_text = cape_stream_to_s (login);
+  cape_log_fmt (CAPE_LL_TRACE, "WSPC", "users add", "create a new login '%s'", login_text);
+  
+  cape_stream_clr (login);
+  
+  cape_stream_append_str   (login, name);
+  cape_stream_append_c     (login, '@');
+  cape_stream_append_str   (login, domain);
+  cape_stream_append_c     (login, ':');
+  cape_stream_append_str   (login, pass);
+  
+  pass_encoded = qcrypt__hash_sha256__hex_m (login, err);
+  if (pass_encoded == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  vsec_encoded = qcrypt__encrypt (pass, vsec, err);
+  if (vsec_encoded == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+  cape_str_replace_mv (p_name_encoded, &name_encoded);
+  cape_str_replace_mv (p_pass_encoded, &pass_encoded);
+  cape_str_replace_mv (p_vsec_encoded, &vsec_encoded);
+  
+  if (p_login)
+  {
+    cape_str_replace_mv (p_login, &login_text);
+  }
+  
+exit_and_cleanup:
+  
+  cape_str_del (&login_text);
+  cape_str_del (&name_encoded);
+  cape_str_del (&pass_encoded);
+  cape_str_del (&vsec_encoded);
+  
+  cape_stream_del (&login);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  const CapeString vsec;
+
+  // local objects
+  CapeString user = NULL;
+  CapeString pass = NULL;
+  CapeString domain = NULL;
+  CapeString user_encoded = NULL;
+  CapeString pass_encoded = NULL;
+  CapeString vsec_encoded = NULL;
+  CapeString login = NULL;
+
+  if (NULL == qin->cdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  }
+  else if (qbus_message_role_has (qin, "auth_wacc"))
+  {
+    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  }
+
+  if (0 == self->wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+
+  user = cape_udc_ext_s (qin->cdata, "username");
+  if (NULL == user)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USERNAME");
+    goto exit_and_cleanup;
+  }
+
+  pass = cape_udc_ext_s (qin->cdata, "password");
+  if (NULL == pass)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASSWORD");
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui__intern__check_workspace (self, &domain, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  vsec = auth_vault__vsec (self->vault, self->wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "no vault");
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_ui__intern__encode (domain, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  
+  
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_str_del (&domain);
+  cape_str_del (&pass);
+  cape_str_del (&user);
+
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_pp (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -3011,7 +3220,7 @@ int auth_ui_users (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 
     wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
   }
-  else if (qbus_message_role_has (qin, "auth_wp_lu"))
+  else if (qbus_message_role_or2 (qin, "auth_wp_lu", "auth_wacc"))
   {
     wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
   }

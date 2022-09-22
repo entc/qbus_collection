@@ -77,7 +77,7 @@ int auth_msgs_get (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-  else
+  else if (qbus_message_role_has (qin, "auth_wacc"))
   {
     // do some security checks
     if (qin->rinfo == NULL)
@@ -85,9 +85,20 @@ int auth_msgs_get (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
       res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
       goto exit_and_cleanup;
     }
-
+    
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
     self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
   }
   
   if (0 == self->wpid)
@@ -177,7 +188,7 @@ int auth_msgs_add (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-  else
+  else if (qbus_message_role_has (qin, "auth_wacc"))
   {
     // do some security checks
     if (qin->rinfo == NULL)
@@ -187,9 +198,14 @@ int auth_msgs_add (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
     
     self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-  
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
+  }
+
   if (0 == self->wpid)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
@@ -302,7 +318,7 @@ int auth_msgs_set (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-  else
+  else if (qbus_message_role_has (qin, "auth_wacc"))
   {
     // do some security checks
     if (qin->rinfo == NULL)
@@ -312,7 +328,12 @@ int auth_msgs_set (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
     
     self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
   }
   
   if (0 == self->wpid)
@@ -430,17 +451,21 @@ int auth_msgs_rm (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
     self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-  else
+  else if (qbus_message_role_has (qin, "auth_wacc"))
   {
-    // do some security checks
-    if (qin->rinfo == NULL)
+    if (qin->cdata == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
       goto exit_and_cleanup;
     }
     
     self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
   }
   
   if (0 == self->wpid)

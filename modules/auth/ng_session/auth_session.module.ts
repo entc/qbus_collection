@@ -9,7 +9,6 @@ import { AuthSession, AuthWorkspacesModalComponent, Auth2FactorModalComponent, A
 import { AuthSessionRoleDirective, AuthSessionContentComponent, AuthSessionPassResetComponent, AuthSessionLangComponent } from './component';
 
 // components
-import { AuthRolesComponent } from './auth_roles/component';
 import { AuthMsgsComponent } from './auth_msgs/component';
 import { AuthLoginComponent } from './auth_login/component';
 import { AuthPasscheckComponent } from './auth_passcheck/component';
@@ -31,7 +30,6 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     AuthSessionContentComponent,
     AuthSessionPassResetComponent,
     AuthSessionLangComponent,
-    AuthRolesComponent,
     AuthMsgsComponent,
     AuthLoginComponent,
     AuthLoginModalComponent,
@@ -61,7 +59,6 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     AuthSessionContentComponent,
     AuthSessionPassResetComponent,
     AuthSessionLangComponent,
-    AuthRolesComponent,
     AuthMsgsComponent,
     AuthLoginComponent,
     AuthPasscheckComponent

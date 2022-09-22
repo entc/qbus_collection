@@ -158,7 +158,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
       this.new_item = null;
       this.fetch_msgs ();
 
-    });
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
   //---------------------------------------------------------------------------
@@ -180,12 +180,18 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   apply (item: AuthMsgsItem)
   {
+    if (this.user_ctx)
+    {
+      item['wpid'] = this.user_ctx.wpid;
+      item['gpid'] = this.user_ctx.gpid;
+    }
+
     this.auth_session.json_rpc ('AUTH', 'msgs_set', item).subscribe (() => {
 
       item.mode = 0;
       this.fetch_msgs ();
 
-    });
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
   //---------------------------------------------------------------------------
