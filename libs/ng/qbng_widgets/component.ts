@@ -68,6 +68,10 @@ export class QbngSwitchItem
 
 //-----------------------------------------------------------------------------
 
+
+
+//-----------------------------------------------------------------------------
+
 @Component({
   selector: 'qbng-upload',
   templateUrl: './widget_upload.html'
@@ -78,6 +82,7 @@ export class QbngUploadComponent {
   @Input('size_max') size_max: number;
   @Input('mimes') mimes: string[];
   @Output('onFile') onChange = new EventEmitter ();
+  @Input('class_names') class_names: string = 'btn btn-primary mb-0';
 
   public upload_id: string;
 
@@ -92,13 +97,7 @@ export class QbngUploadComponent {
 
   open_modal_upload_apply (item: QbngUploadFile)
   {
-    this.modal_service.open (QbngUploadModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngUploadFile, useValue: item}])}).result.then(() => {
-
-      this.onChange.emit (item.file);
-
-    }, () => {
-
-    });
+    this.modal_service.open (QbngUploadModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngUploadFile, useValue: item}])}).result.then(() => this.onChange.emit (item.file));
   }
 
   //-----------------------------------------------------------------------------
