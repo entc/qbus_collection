@@ -1,5 +1,5 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
@@ -372,16 +372,16 @@ export class AuthSession
     var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
     if (enjs)
     {
-      let subscriber = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event) => {
+      let subscriber = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
 
         switch (event.type)
         {
-          case 1:  // update
+          case HttpEventType.UploadProgress:  // update
           {
             cb_progress (Math.round(100 * (event.loaded / event.total)));
             break;
           }
-          case 4:  // final event
+          case HttpEventType.Response:  // final event
           {
             if (event.body)
             {
