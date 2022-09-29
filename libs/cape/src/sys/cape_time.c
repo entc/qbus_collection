@@ -798,16 +798,36 @@ int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_datetime_s__fmt (const CapeDatetime* dt, const CapeString format)
+CapeString cape_datetime_s__fmt_lcl (const CapeDatetime* self, const CapeString format)
 {
   CapeString ret = (CapeString)CAPE_ALLOC (100);
   
   {
     struct tm timeinfo;
     
-    cape_datetime__convert_cape (&timeinfo, dt);
+    cape_datetime__convert_cape (&timeinfo, self);
     
+    // convert into local time
+    // using local timezone settings
     mktime (&timeinfo);
+    
+    // create buffer with timeinfo as string
+    strftime (ret, 99, format, &timeinfo);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime_s__fmt_utc (const CapeDatetime* self, const CapeString format)
+{
+  CapeString ret = (CapeString)CAPE_ALLOC (100);
+  
+  {
+    struct tm timeinfo;
+    
+    cape_datetime__convert_cape (&timeinfo, self);
     
     // create buffer with timeinfo as string
     strftime (ret, 99, format, &timeinfo);
@@ -849,14 +869,14 @@ CapeString cape_datetime_s__log (const CapeDatetime* dt)
 CapeString cape_datetime_s__gmt (const CapeDatetime* dt)
 {
   // TODO: use the same method as cape_datetime_s__str
-  return cape_datetime_s__fmt (dt, "%a, %d %b %Y %H:%M:%S GMT");
+  return cape_datetime_s__fmt_lcl (dt, "%a, %d %b %Y %H:%M:%S GMT");
 }
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_datetime_s__aph (const CapeDatetime* dt)
 {
-  return cape_datetime_s__fmt (dt, "%a, %e %b %Y %H:%M:%S %z");
+  return cape_datetime_s__fmt_lcl (dt, "%a, %e %b %Y %H:%M:%S %z");
 }
 
 //-----------------------------------------------------------------------------
@@ -864,7 +884,7 @@ CapeString cape_datetime_s__aph (const CapeDatetime* dt)
 CapeString cape_datetime_s__pre (const CapeDatetime* dt)
 {
   // TODO: use the same method as cape_datetime_s__str
-  return cape_datetime_s__fmt (dt, "%Y_%m_%d__%H_%M_%S__");
+  return cape_datetime_s__fmt_lcl (dt, "%Y_%m_%d__%H_%M_%S__");
 }
 
 //-----------------------------------------------------------------------------
@@ -872,7 +892,7 @@ CapeString cape_datetime_s__pre (const CapeDatetime* dt)
 CapeString cape_datetime_s__ISO8601 (const CapeDatetime* dt)
 {
   // TODO: use the same method as cape_datetime_s__str
-  return cape_datetime_s__fmt (dt, "%Y%m%dT%H%M%SZ");
+  return cape_datetime_s__fmt_lcl (dt, "%Y%m%dT%H%M%SZ");
 }
 
 //-----------------------------------------------------------------------------

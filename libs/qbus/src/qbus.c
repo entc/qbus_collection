@@ -654,18 +654,21 @@ void qbus_message_clr (QBusM self, u_t cdata_udc_type)
 
 void qbus_message_del (QBusM* p_self)
 {
-  QBusM self = *p_self;
-  
-  qbus_message_clr (self, CAPE_UDC_UNDEFINED);
-
-  // only clear it here
-  cape_udc_del (&(self->rinfo));
-  cape_udc_del (&(self->files));
-
-  cape_str_del (&(self->chain_key));
-  cape_str_del (&(self->sender));
-  
-  CAPE_DEL (p_self, struct QBusMessage_s);
+  if (*p_self)
+  {
+    QBusM self = *p_self;
+    
+    qbus_message_clr (self, CAPE_UDC_UNDEFINED);
+    
+    // only clear it here
+    cape_udc_del (&(self->rinfo));
+    cape_udc_del (&(self->files));
+    
+    cape_str_del (&(self->chain_key));
+    cape_str_del (&(self->sender));
+    
+    CAPE_DEL (p_self, struct QBusMessage_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1220,6 +1223,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   res = qbus_logger_init (self->logger, self->aio, cape_udc_get (self->config, "logger"), err);
   if (res)
   {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "instance", "error in initialization: %s", cape_err_text(err));
     goto exit_and_cleanup;
   }
   

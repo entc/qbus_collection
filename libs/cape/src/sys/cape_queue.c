@@ -401,6 +401,8 @@ void cape_queue_del (CapeQueue* p_self)
 #else
         sem_post (&(self->sem));
 #endif
+
+        cape_thread_join (cape_list_node_data (cursor->node));
       }
       
       cape_list_cursor_destroy (&cursor);
@@ -409,6 +411,15 @@ void cape_queue_del (CapeQueue* p_self)
     // wait for the observer thread to terminate
     cape_thread_join (self->observer_thread);
 
+    {
+      number_t left_queues = cape_list_size (self->queue);
+
+      if (left_queues > 0)
+      {
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue del", "%i left in queue", left_queues);
+      }
+    }
+    
     // wait for all worker threads
     cape_list_del (&(self->threads));
 
@@ -505,7 +516,7 @@ int cape_queue_next (CapeQueue self, CapeThreadItem ti)
   
   #elif defined __BSD_OS
   
-  dispatch_semaphore_wait (self->sem, DISPATCH_TIME_FOREVER);
+  dispatch_semaphore_wait (self->sem, dispatch_time (DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
   
   #else
   
@@ -580,53 +591,62 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
 {
   CapeQueue self = ptr;
 
-  number_t busy_threads = 0;
-  
   cape_thread_nosignals ();
 
-  cape_thread_sleep (100);
-  
+  while (self->terminated == FALSE)
   {
-    CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
-    
-    while (cape_list_cursor_next (cursor))
+    number_t busy_threads = 0;
+
+    cape_thread_sleep (2000);
+
     {
-      CapeThreadItem ti = cape_list_node_data (cursor->node);
+      CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
       
-      if (ti->item)
+      while (cape_list_cursor_next (cursor))
       {
-        busy_threads++;
+        CapeThreadItem ti = cape_list_node_data (cursor->node);
         
-        (ti->busy_cnt)++;
-        
-        if (ti->busy_cnt > self->timeout_in_ds)
+        if (ti->item)
         {
-          cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
+          busy_threads++;
           
-          // try to cancel the thread
-          cape_thread_cancel (ti->thread);
+          (ti->busy_cnt)++;
+          
+          if (ti->busy_cnt > self->timeout_in_ds)
+          {
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
             
-          // release the item allocations and call the on_done method
-          // -> not all memory might be released
-          // -> this depends on the user function implementations
-          cape_queue__item__on_del (ti->item);
-          
-          // reset the state
-          ti->busy_cnt = 0;
-          ti->item = NULL;
-          
-          // restart the thread
-          cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
+            // try to cancel the thread
+            cape_thread_cancel (ti->thread);
+            
+            // release the item allocations and call the on_done method
+            // -> not all memory might be released
+            // -> this depends on the user function implementations
+            cape_queue__item__on_del (ti->item);
+            
+            // reset the state
+            ti->busy_cnt = 0;
+            ti->item = NULL;
+            
+            // restart the thread
+            cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
+          }
         }
       }
+      
+      cape_list_cursor_destroy (&cursor);
     }
+
+    /*
+    cape_mutex_lock (self->mutex);
     
-    cape_list_cursor_destroy (&cursor);
+    printf ("B: %lu, L: %lu\n", busy_threads, cape_list_size (self->queue));
+    
+    cape_mutex_unlock (self->mutex);
+     */
   }
   
-  //printf ("B: %lu\n", busy_threads);
-
-  return (self->terminated == FALSE);
+  return FALSE;
 }
 
 //-----------------------------------------------------------------------------

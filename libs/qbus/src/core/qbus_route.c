@@ -149,7 +149,9 @@ int qbus_route_init (QBusRoute self, number_t threads, CapeErr err)
   cape_log_fmt (CAPE_LL_INFO, "QBUS", "route init", "start with %i worker threads", threads);
   
   // TODO: to avoid that qbus get stuck try 1 thread here
-  return cape_queue_start (self->queue, 10, err);
+  //return cape_queue_start (self->queue, 1, err);
+  
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -480,7 +482,9 @@ void qbus_route_on_msg_method (QBusRoute self, QBusConnection conn, QBusFrame* p
   ctx->frame = *p_frame;
   *p_frame = NULL;
   
-  cape_queue_add (self->queue, NULL, qbus_route_on_msg_method__worker, NULL, ctx, 0);
+  qbus_route_on_msg_method__worker (ctx, 0, 0);
+  
+  //cape_queue_add (self->queue, NULL, qbus_route_on_msg_method__worker, NULL, ctx, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -689,7 +693,9 @@ void qbus_route_on_msg_response (QBusRoute self, QBusFrame* p_frame)
   ctx->frame = *p_frame;
   *p_frame = NULL;
 
-  cape_queue_add (self->queue, NULL, qbus_route_on_msg_response__worker, NULL, ctx, 0);
+  qbus_route_on_msg_response__worker (ctx, 0, 0);
+  
+  //cape_queue_add (self->queue, NULL, qbus_route_on_msg_response__worker, NULL, ctx, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -1138,9 +1144,9 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
     ctx->conn = NULL;
     ctx->cont = FALSE;
     
-    //qbus_route_request__local_request (self, method, qin, ptr, onMsg);
-
-    cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, ctx, 0);
+    qbus_route_request__local_request__worker (ctx, 0, 0);
+    
+    //cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, ctx, 0);
     
     return CAPE_ERR_CONTINUE;
   }
@@ -1164,7 +1170,9 @@ int qbus_route_request (QBusRoute self, const char* module, const char* method, 
       ctx->conn = conn;
       ctx->cont = cont;
 
-      cape_queue_add (self->queue, NULL, qbus_route_request__remote_request__worker, NULL, ctx, 0);
+      qbus_route_request__remote_request__worker (ctx, 0, 0);
+      
+      //cape_queue_add (self->queue, NULL, qbus_route_request__remote_request__worker, NULL, ctx, 0);
 
       //qbus_route_conn_request (self, conn, module, method, msg, ptr, onMsg, cont);
       
@@ -1256,6 +1264,13 @@ void qbus_route_response (QBusRoute self, const char* module, QBusM msg, CapeErr
 CapeUdc qbus_route_modules (QBusRoute self)
 {
   return qbus_route_items_nodes (self->route_items);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_log_msg (QBusRoute self, const CapeString remote, const CapeString message)
+{
+  qbus_log_msg (self->qbus, remote, message);
 }
 
 //-----------------------------------------------------------------------------

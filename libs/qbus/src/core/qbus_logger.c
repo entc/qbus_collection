@@ -9,6 +9,7 @@
 #include "sys/cape_file.h"
 #include <stc/cape_map.h>
 #include <sys/cape_socket.h>
+#include <sys/cape_queue.h>
 
 //-----------------------------------------------------------------------------
 
@@ -111,6 +112,7 @@ void __STDCALL qbus_logger__entity__on_del (void* key, void* val)
 struct QBusLogger_s
 {
   CapeMap dest;
+  CapeQueue queue;
 };
 
 //-----------------------------------------------------------------------------
@@ -120,6 +122,7 @@ QBusLogger qbus_logger_new (void)
   QBusLogger self = CAPE_NEW(struct QBusLogger_s);
   
   self->dest = cape_map_new (NULL, qbus_logger__entity__on_del, NULL);
+  self->queue = cape_queue_new (2000);
   
   return self;
 }
@@ -133,6 +136,7 @@ void qbus_logger_del (QBusLogger* p_self)
     QBusLogger self = *p_self;
     
     cape_map_del (&(self->dest));
+    cape_queue_del (&(self->queue));
     
     CAPE_DEL (p_self, struct QBusLogger_s);
   }
@@ -165,7 +169,16 @@ int qbus_logger_init__dest (QBusLogger self, CapeAioContext aio, CapeUdc dest, C
       }
       else if (cape_str_equal (type, "file"))
       {
-        
+        QBusLoggerEntity le = qbus_logger_entity__factory__file (aio, cursor->item, err);
+        if (le)
+        {
+          cape_map_insert (self->dest, (void*)cape_str_cp (cape_udc_name (cursor->item)), (void*)le);
+        }
+        else
+        {
+          res = cape_err_code (err);
+          goto exit_and_cleanup;
+        }
       }
     }
   }
@@ -203,11 +216,37 @@ int qbus_logger_init (QBusLogger self, CapeAioContext aio, CapeUdc config, CapeE
     }
   }
   
-  res = CAPE_ERR_NONE;
+  // init the queue
+  res = cape_queue_start (self->queue, 1, err);
 
 exit_and_cleanup:
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+struct QBusLoggerWorkerItem_s
+{
+  QBusLoggerEntity le;
+  
+  CapeString remote;
+  CapeString message;
+  
+}; typedef struct QBusLoggerWorkerItem_s* QBusLoggerWorkerItem;
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_logger_msg__worker (void* ptr, number_t pos, number_t queue_size)
+{
+  QBusLoggerWorkerItem self = ptr;
+  
+  qbus_logger_entity_msg (self->le, self->remote, self->message);
+
+  cape_str_del (&(self->remote));
+  cape_str_del (&(self->message));
+
+  CAPE_DEL (&self, struct QBusLoggerWorkerItem_s);
 }
 
 //-----------------------------------------------------------------------------
@@ -218,9 +257,14 @@ void qbus_logger_msg (QBusLogger self, const CapeString remote, const CapeString
   
   while (cape_map_cursor_next (cursor))
   {
-    QBusLoggerEntity le = cape_map_node_value (cursor->node);
+    QBusLoggerWorkerItem item = CAPE_NEW (struct QBusLoggerWorkerItem_s);
     
-    qbus_logger_entity_msg (le, remote, message);
+    item->le = cape_map_node_value (cursor->node);
+    
+    item->remote = cape_str_cp (remote);
+    item->message = cape_str_cp (message);
+    
+    cape_queue_add (self->queue, NULL, qbus_logger_msg__worker, NULL, item, 0);
   }
   
   cape_map_cursor_destroy (&cursor);

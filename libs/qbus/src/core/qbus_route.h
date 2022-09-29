@@ -42,6 +42,8 @@ __CAPE_LIBEX   void              qbus_route_response      (QBusRoute, const char
 
 __CAPE_LIBEX   CapeUdc           qbus_route_modules       (QBusRoute);
 
+__CAPE_LIBEX   void              qbus_route_log_msg       (QBusRoute, const CapeString remote, const CapeString message);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   QBusConnection const  qbus_route_module_find (QBusRoute, const char* module_origin);
