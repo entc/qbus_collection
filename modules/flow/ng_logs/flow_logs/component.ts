@@ -281,9 +281,9 @@ export class FlowDetailsItem
 
   //-----------------------------------------------------------------------------
 
-  rerun_step ()
+  rerun_next ()
   {
-    this.auth_session.json_rpc ('FLOW', 'process_set', {psid: this.psid}).subscribe(() => {
+    this.auth_session.json_rpc ('FLOW', 'process_next', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);
       console.log('set step done');
@@ -295,6 +295,7 @@ export class FlowDetailsItem
 
   rerun_once ()
   {
+    // this is missleading, this will run the process and also continues
     this.auth_session.json_rpc ('FLOW', 'process_once', {psid: this.psid}).subscribe(() => {
 
     //  this.refresh.emit (true);

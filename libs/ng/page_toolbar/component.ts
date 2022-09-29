@@ -129,14 +129,53 @@ export class PageToolbarPipe implements PipeTransform {
 @Pipe({
   name: "qbngSort"
 })
-export class QbngSortPipe implements PipeTransform {
-  transform(items: any[], field: string, reverse: boolean = false): any[] {
+export class QbngSortPipe implements PipeTransform
+{
+  private on_compare (a: string, b: string)
+  {
+    if (a)
+    {
+      if (b)
+      {
+        return a > b ? 1 : -1;
+      }
+      else
+      {
+        return 1;
+      }
+    }
+    else
+    {
+      return -1;
+    }
+  }
+
+  transform(items: any[], field: string, reverse: boolean = false): any[]
+  {
     if (!items) return [];
 
-    if (field) items.sort((a, b) => (a[field] > b[field] ? 1 : -1));
-    else items.sort((a, b) => (a > b ? 1 : -1));
-
-    if (reverse) items.reverse();
+    if (field)
+    {
+      if (reverse)
+      {
+        items.sort((a, b) => this.on_compare (b[field], a[field]));
+      }
+      else
+      {
+        items.sort((a, b) => this.on_compare (a[field], b[field]));
+      }
+    }
+    else
+    {
+      if (reverse)
+      {
+        items.sort((a, b) => this.on_compare (b, a));
+      }
+      else
+      {
+        items.sort((a, b) => this.on_compare (a, b));
+      }
+    }
 
     return items;
   }
@@ -147,8 +186,11 @@ export class QbngSortPipe implements PipeTransform {
 @Pipe({
   name: 'qbngFilter'
 })
-export class QbngFilterPipe implements PipeTransform {
-  transform(items: any[], searchText: string, filters: string[]): any[] {
+export class QbngFilterPipe implements PipeTransform
+{
+
+  transform(items: any[], searchText: string, filters: string[]): any[]
+  {
     if (!items) return [];
     if (!searchText) return items;
 
@@ -181,6 +223,24 @@ export class QbngFilterPipe implements PipeTransform {
       })
     })
     return filteredItems;
+  }
+}
+
+//=============================================================================
+
+@Pipe({name: 'qbngFile'})
+export class QbngFSPipeFile implements PipeTransform {
+
+  transform (filepath: string): string
+  {
+    if (filepath)
+    {
+      return filepath.split('\\').pop().split('/').pop();
+    }
+    else
+    {
+      return '';
+    }
   }
 }
 

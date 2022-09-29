@@ -61,6 +61,9 @@ __CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_
                             /* reruns the step, but don't continues */
 __CAPE_LOCAL   int          flow_run_dbw_once              (FlowRunDbw*, CapeErr err);
 
+                            /* ignores the current status and runs the next setp */
+__CAPE_LOCAL   int          flow_run_dbw_next              (FlowRunDbw*, CapeErr err);
+
 //-----------------------------------------------------------------------------
 // getter
 

@@ -294,6 +294,19 @@ static int __STDCALL qbus_flow__process__once (QBus qbus, void* ptr, QBusM qin, 
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__process__next (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_next (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__process__prev (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -514,6 +527,11 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // run the current process step once
   //   args: psid
   qbus_register (qbus, "process_once"        , ctx, qbus_flow__process__once, NULL, err);
+
+  // ignores the current state of a process
+  // runs the next step
+  //   args: psid
+  qbus_register (qbus, "process_next"        , ctx, qbus_flow__process__next, NULL, err);
 
   // switch to the previous step
   //   args: psid

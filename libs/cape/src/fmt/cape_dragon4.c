@@ -2032,7 +2032,7 @@ void cape_dragon4_del (CapeDragon4* p_self)
 {
   if (*p_self)
   {
-    CapeDragon4 self = *p_self;
+    // CapeDragon4 self = *p_self;
 
     
     

@@ -393,6 +393,11 @@ int auth_tokens_fetch__database_perm (AuthTokens self, const CapeString token, Q
   {
     goto exit_and_cleanup;
   }
+  else if (res == CAPE_ERR_MISSING_PARAM)
+  {
+    // can't be authenticated
+    goto exit_and_cleanup;
+  }
   else
   {
     // try another method

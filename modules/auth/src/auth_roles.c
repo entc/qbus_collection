@@ -51,7 +51,7 @@ int auth_roles_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
   // local objects
   CapeUdc query_results = NULL;
   
-  if (qbus_message_role_has (qin, "admin"))
+  if (qbus_message_role_or2 (qin, "admin", "auth_wacc"))
   {
     // query
     {
@@ -86,81 +86,126 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_roles_ui_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
+int auth_roles__internal__input (QBusM qin, number_t* p_wpid, number_t* p_gpid, number_t* p_userid, CapeErr err)
 {
-  int res;
-  AuthRoles self = *p_self;
+  number_t wpid;
+  number_t gpid;
+  number_t userid;
 
-  // local objects
-  CapeUdc query_results = NULL;
-  
   if (qbus_message_role_has (qin, "admin"))
   {
-    number_t wpid;
-    number_t gpid;
-    number_t userid;
-    
     if (NULL == qin->cdata)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    userid = cape_udc_get_n (qin->cdata, "userid", 0);
-    if (0 == userid)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_USERID");
-      goto exit_and_cleanup;
+      return cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
     }
     
     wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     if (0 == wpid)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_WPID");
-      goto exit_and_cleanup;
+      return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
     }
     
     gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
     if (0 == gpid)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_GPID");
-      goto exit_and_cleanup;
+      return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
     }
     
-    // query
+    userid = cape_udc_get_n (qin->cdata, "userid", 0);
+    if (0 == userid)
     {
-      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-      CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      cape_udc_add_n      (params, "userid"           , userid);
-      cape_udc_add_n      (params, "wpid"             , wpid);
-      cape_udc_add_n      (params, "gpid"             , gpid);
-      
-      cape_udc_add_n      (values, "id"               , 0);
-      cape_udc_add_n      (values, "roleid"           , 0);
-      cape_udc_add_s_cp   (values, "name"             , NULL);
-      cape_udc_add_s_cp   (values, "description"      , NULL);
-
-      /*
-       auth_roles_ui_view
-       
-       select ur.id, ur.userid, ru.wpid, ru.gpid, ur.roleid, rr.name, rr.description from rbac_users_roles ur join rbac_users ru on ru.userid = ur.userid join rbac_roles rr on rr.id = ur.roleid;
-
-       */
-      
-      // execute the query
-      query_results = adbl_session_query (self->adbl_session, "auth_roles_ui_view", &params, &values, err);
-      if (query_results == NULL)
-      {
-        res = cape_err_code (err);
-        goto exit_and_cleanup;
-      }
+      return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_USERID");
+    }
+  }
+  else if (qbus_message_role_has (qin, "auth_wacc"))
+  {
+    if (NULL == qin->cdata)
+    {
+      return cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
     }
     
-    // set output
-    cape_udc_replace_mv (&(qout->cdata), &query_results);
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    if (0 == wpid)
+    {
+      return cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_WPID");
+    }
+    
+    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+    if (0 == gpid)
+    {
+      return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
+    }
+    
+    userid = cape_udc_get_n (qin->cdata, "userid", 0);
+    if (0 == userid)
+    {
+      return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_USERID");
+    }
+  }
+  else
+  {
+    return cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
   }
   
+  *p_wpid = wpid;
+  *p_gpid = gpid;
+  *p_userid = userid;
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_roles_ui_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthRoles self = *p_self;
+
+  number_t gpid;
+  number_t userid;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  number_t wpid = 0;
+
+  res = auth_roles__internal__input (qin, &wpid, &gpid, &userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "userid"           , userid);
+    cape_udc_add_n      (params, "wpid"             , wpid);
+    cape_udc_add_n      (params, "gpid"             , gpid);
+    
+    cape_udc_add_n      (values, "id"               , 0);
+    cape_udc_add_n      (values, "roleid"           , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    cape_udc_add_s_cp   (values, "description"      , NULL);
+    
+    /*
+     auth_roles_ui_view
+     
+     select ur.id, ur.userid, ru.wpid, ru.gpid, ur.roleid, rr.name, rr.description from rbac_users_roles ur join rbac_users ru on ru.userid = ur.userid join rbac_roles rr on rr.id = ur.roleid;
+     
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_roles_ui_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  // set output
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
@@ -332,74 +377,49 @@ int auth_roles_wp_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthRoles self = *p_self;
 
+  number_t gpid;
+  number_t userid;
+  
   // local objects
   CapeUdc query_results = NULL;
-  
-  if (qbus_message_role_has (qin, "admin"))
+  number_t wpid = 0;
+
+  res = auth_roles__internal__input (qin, &wpid, &gpid, &userid, err);
+  if (res)
   {
-    number_t wpid;
-    number_t gpid;
-    number_t userid;
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    if (NULL == qin->cdata)
+    cape_udc_add_n      (params, "wpid"             , wpid);
+    
+    cape_udc_add_n      (values, "id"               , 0);
+    cape_udc_add_n      (values, "roleid"           , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    cape_udc_add_s_cp   (values, "description"      , NULL);
+    
+    /*
+     auth_roles_wp_view
+     
+     select wr.id, wr.wpid, wr.roleid, rr.name, rr.description from rbac_workspaces_roles wr join rbac_roles rr on rr.id = wr.roleid;
+     
+     */
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_roles_wp_view", &params, &values, err);
+    if (query_results == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
-    
-    userid = cape_udc_get_n (qin->cdata, "userid", 0);
-    if (0 == userid)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_USERID");
-      goto exit_and_cleanup;
-    }
-    
-    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    if (0 == wpid)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_WPID");
-      goto exit_and_cleanup;
-    }
-    
-    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-    if (0 == gpid)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_GPID");
-      goto exit_and_cleanup;
-    }
-    
-    // query
-    {
-      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-      CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      cape_udc_add_n      (params, "wpid"             , wpid);
-      
-      cape_udc_add_n      (values, "id"               , 0);
-      cape_udc_add_n      (values, "roleid"           , 0);
-      cape_udc_add_s_cp   (values, "name"             , NULL);
-      cape_udc_add_s_cp   (values, "description"      , NULL);
-      
-      /*
-       auth_roles_wp_view
-       
-       select wr.id, wr.wpid, wr.roleid, rr.name, rr.description from rbac_workspaces_roles wr join rbac_roles rr on rr.id = wr.roleid;
-       
-       */
-      
-      // execute the query
-      query_results = adbl_session_query (self->adbl_session, "auth_roles_wp_view", &params, &values, err);
-      if (query_results == NULL)
-      {
-        res = cape_err_code (err);
-        goto exit_and_cleanup;
-      }
-    }
-    
-    // set output
-    cape_udc_replace_mv (&(qout->cdata), &query_results);
   }
   
+  // set output
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+
   res = CAPE_ERR_NONE;
 
 exit_and_cleanup:

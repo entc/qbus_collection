@@ -410,12 +410,6 @@ void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString 
   // unique key
   cape_udc_add_s_cp   (values, "token"        , self->token);
   
-  // the code is optional
-  if (self->code)
-  {
-    cape_udc_add_s_mv   (values, "code"        , &(self->code));
-  }
-  
   // created datetime
   {
     CapeDatetime dt; cape_datetime_utc (&dt);
@@ -447,6 +441,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString content = NULL;
   CapeString rinfo = NULL;
   CapeString token = NULL;
+  CapeString code_hash = NULL;
   AdblTrx trx = NULL;
 
   // do some security checks
@@ -496,6 +491,16 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  if (self->code)
+  {
+    code_hash = qcrypt__hash_sha256__hex_o (self->code, cape_str_size(self->code), err);
+    if (code_hash == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
   // start a new transaction
   trx = adbl_trx_new (self->adbl_session, err);
   if (trx == NULL)
@@ -515,6 +520,13 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     // workspace ID
     cape_udc_add_n      (values, "wpid"         , self->wpid);
     
+    // activate the code handling
+    if (self->code)
+    {
+      cape_udc_add_n    (values, "code_active"  , 1);
+      cape_udc_add_s_mv (values, "code", &code_hash);
+    }
+
     // add values
     auth_perm__intern__values (self, values, token, &rinfo, &content);
     
@@ -557,6 +569,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  cape_str_del (&code_hash);
   cape_str_del (&content);
   cape_str_del (&rinfo);
   cape_str_del (&token);
@@ -820,6 +833,8 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
   
   if (code_active)
   {
+    cape_log_msg (CAPE_LL_TRACE, "AUTH", "perm get", "code is active -> compare codes");
+    
     if (qin->cdata == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing content");
@@ -848,7 +863,7 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
       
       if (!cape_str_equal (code_hash, cape_udc_get_s (first_row, "code", NULL)))
       {
-        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code mismatch");
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "code mismatch");
         goto exit_and_cleanup;
       }
     }

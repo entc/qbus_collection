@@ -26,11 +26,12 @@
 //-----------------------------------------------------------------------------
 
 #define FORMAT_TYPE_NONE        0
-#define FORMAT_TYPE_DATE        1
+#define FORMAT_TYPE_DATE_LCL    1
 #define FORMAT_TYPE_ENCRYPTED   2
 #define FORMAT_TYPE_DECIMAL     3
 #define FORMAT_TYPE_PIPE        4
 #define FORMAT_TYPE_SUBSTR      5
+#define FORMAT_TYPE_DATE_UTC    6
 
 //-----------------------------------------------------------------------------
 
@@ -81,7 +82,12 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     
     if (cape_str_equal (h, "date"))
     {
-      self->format_type = FORMAT_TYPE_DATE;
+      self->format_type = FORMAT_TYPE_DATE_LCL;
+      self->eval = cape_str_trim_utf8 (f2);
+    }
+    else if (cape_str_equal (h, "date_utc"))
+    {
+      self->format_type = FORMAT_TYPE_DATE_UTC;
       self->eval = cape_str_trim_utf8 (f2);
     }
     else if (cape_str_equal (h, "substr"))
@@ -419,7 +425,7 @@ int cape__evaluate_expression__in (const CapeString left, const CapeString right
 
 //-----------------------------------------------------------------------------
 
-void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
+void cape_template_part_eval_datetime__lcl (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
 {
   // set the original as UTC
   dt->is_utc = TRUE;
@@ -438,6 +444,20 @@ void cape_template_part_eval_datetime (CapeTemplatePart self, CapeDatetime* dt, 
     
     cape_str_del (&h2);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_template_part_eval_datetime__utc (CapeTemplatePart self, CapeDatetime* dt, CapeTemplateCB cb)
+{
+  CapeString h = cape_datetime_s__fmt_utc (dt, self->eval);
+  
+  if (cb->on_text)
+  {
+    cb->on_text (cb->ptr, h);
+  }
+  
+  cape_str_del (&h);
 }
 
 //-----------------------------------------------------------------------------
@@ -464,14 +484,24 @@ int cape_template_part_eval_datetime_item (CapeTemplatePart self, CapeUdc item, 
         
         break;
       }
-      case FORMAT_TYPE_DATE:
+      case FORMAT_TYPE_DATE_LCL:
       {
         CapeDatetime* h1 = cape_datetime_cp (dt);
 
-        cape_template_part_eval_datetime (self, h1, cb);
+        cape_template_part_eval_datetime__lcl (self, h1, cb);
         
         cape_datetime_del (&h1);
         
+        break;
+      }
+      case FORMAT_TYPE_DATE_UTC:
+      {
+        CapeDatetime* h1 = cape_datetime_cp (dt);
+        
+        cape_template_part_eval_datetime__utc (self, h1, cb);
+        
+        cape_datetime_del (&h1);
+
         break;
       }
     }
@@ -628,7 +658,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
       {
         return cape_template_part_eval_substr (self, text, cb, err);
       }
-      case FORMAT_TYPE_DATE:
+      case FORMAT_TYPE_DATE_LCL:
       {
         CapeDatetime dt;
         
@@ -1156,9 +1186,14 @@ int cape_template_mod_apply__date (CapeTemplatePart self, CapeList node_stack, C
         
         break;
       }
-      case FORMAT_TYPE_DATE:
+      case FORMAT_TYPE_DATE_LCL:
       {
-        cape_template_part_eval_datetime (self, value, cb);
+        cape_template_part_eval_datetime__lcl (self, value, cb);
+        break;
+      }
+      case FORMAT_TYPE_DATE_UTC:
+      {
+        cape_template_part_eval_datetime__utc (self, value, cb);
         break;
       }
     }

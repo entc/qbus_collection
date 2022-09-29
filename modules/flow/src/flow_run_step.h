@@ -32,7 +32,7 @@ struct FlowRunStep_s; typedef struct FlowRunStep_s* FlowRunStep;
 
 __CAPE_LIBEX   FlowRunStep    flow_run_step_new         (QBus);
 
-__CAPE_LIBEX   int            flow_run_step_set         (FlowRunStep*, FlowRunDbw*, number_t action, CapeUdc params, CapeErr err);
+__CAPE_LIBEX   int            flow_run_step_set         (FlowRunStep*, FlowRunDbw*, number_t action, CapeUdc* p_params, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
