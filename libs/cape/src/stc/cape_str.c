@@ -185,7 +185,14 @@ number_t cape_str_len (const CapeString s)
 
 number_t cape_str_size (const CapeString s)
 {
-  return (number_t)strlen (s);
+  if (s)
+  {
+    return (number_t)strlen (s);
+  }
+  else
+  {
+    return 0;
+  }
 }
 
 //-----------------------------------------------------------------------------

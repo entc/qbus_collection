@@ -1,6 +1,6 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, Subject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
@@ -417,11 +417,62 @@ alert ('we run out of coffee, so it is not implemented');
 
   //---------------------------------------------------------------------------
 
-  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
+  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Subject<T>
   {
+    const response: Subject<T> = new Subject<T>();
+
     var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
     if (enjs)
     {
+      let subscriber = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.Response:  // final event
+          {
+            if (event.body)
+            {
+              response.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+              response.complete();
+            }
+            else
+            {
+              response.next ({} as T);
+              response.complete();
+            }
+
+            break;
+          }
+        }
+      }, (err: QbngErrorHolder) => response.error (err));
+    }
+    else
+    {
+      let subscriber = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.Response:  // final event
+          {
+            if (event.body)
+            {
+              response.next (JSON.parse(event.body) as T);
+              response.complete();
+            }
+            else
+            {
+              response.next ({} as T);
+              response.complete();
+            }
+
+            break;
+          }
+        }
+      }, (err: QbngErrorHolder) => response.error (err));
+    }
+
+/*
+
       var req = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'response'}));
 
       // decrypt the content
@@ -445,6 +496,7 @@ alert ('we run out of coffee, so it is not implemented');
         }
 
       }));
+
     }
     else
     {
@@ -456,6 +508,9 @@ alert ('we run out of coffee, so it is not implemented');
 
       return this.handle_error_session<T> (this.http.post<T>(url, params, {}));
     }
+    */
+
+    return response;
   }
 
   //---------------------------------------------------------------------------
@@ -636,6 +691,8 @@ alert ('we run out of coffee, so it is not implemented');
     const navigator = window.navigator;
     const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
+    console.log('request session');
+
     this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((data: AuthSessionItem) => {
 
       if (data)
@@ -680,10 +737,21 @@ alert ('we run out of coffee, so it is not implemented');
       }
       else
       {
+        /*
+        var err: QbngErrorHolder = new QbngErrorHolder;
+
+        err.text = 'ERR.SESSION_EMPTY';
+        err.code = 401;
+
+        this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
+        */
+
         response.emit (null);
       }
 
-    }, () => {
+    }, (err: QbngErrorHolder) => {
+
+      //this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
 
       response.emit (null);
 

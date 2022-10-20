@@ -21,6 +21,7 @@ struct FlowProcess_s
   number_t psid;               // process id
   number_t fiid;               // flow instance ID
 
+  CapeString modp;             // the name of the module
   number_t refid;              // reference id
   number_t syncid;             // process sync id
   
@@ -46,6 +47,7 @@ FlowProcess flow_process_new (QBus qbus, AdblSession adbl_session, CapeQueue que
   self->sqid = 0;
   self->fiid = 0;
   
+  self->modp = NULL;
   self->refid = 0;
   self->syncid = 0;
   
@@ -63,6 +65,7 @@ void flow_process_del (FlowProcess* p_self)
   {
     FlowProcess self = *p_self;
     
+    cape_str_del (&(self->modp));
     cape_udc_del (&(self->tmp_data));
     
     CAPE_DEL (p_self, struct FlowProcess_s);
@@ -101,19 +104,31 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeErr err)
+int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeString* p_cb_module, CapeString* p_cb_method, CapeUdc* p_cb_params, CapeErr err)
 {
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
   
-  cape_udc_add_n    (values, "wpid"         , self->wpid);
-  cape_udc_add_n    (values, "gpid"         , self->gpid);
-  cape_udc_add_n    (values, "wfid"         , self->wfid);
-  cape_udc_add_n    (values, "refid"        , self->refid);
-  cape_udc_add_n    (values, "psid"         , self->psid);
+  cape_udc_add_n      (values, "wpid"         , self->wpid);
+  cape_udc_add_n      (values, "gpid"         , self->gpid);
+  cape_udc_add_n      (values, "wfid"         , self->wfid);
+  cape_udc_add_s_cp   (values, "modp"         , self->modp);
+  cape_udc_add_n      (values, "refid"        , self->refid);
+  cape_udc_add_n      (values, "psid"         , self->psid);
 
   {
     CapeDatetime dt; cape_datetime_utc (&dt);    
     cape_udc_add_d (values, "toc", &dt);
+  }
+  
+  if (*p_cb_module && *p_cb_method)
+  {
+    cape_udc_add_s_mv   (values, "module"         , p_cb_module);
+    cape_udc_add_s_mv   (values, "method"         , p_cb_method);
+    
+    if (*p_cb_params)
+    {
+      cape_udc_add_name (values, p_cb_params, "params");
+    }
   }
   
   // execute the query
@@ -130,7 +145,7 @@ int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int flow_process_add__init (FlowProcess self, FlowRunDbw flow_run_dbw, CapeErr err)
+int flow_process_add__init (FlowProcess self, FlowRunDbw flow_run_dbw, CapeString* p_cb_module, CapeString* p_cb_method, CapeUdc* p_cb_params, CapeErr err)
 {
   int res;
   AdblTrx trx = NULL;
@@ -149,7 +164,7 @@ int flow_process_add__init (FlowProcess self, FlowRunDbw flow_run_dbw, CapeErr e
     goto exit_and_cleanup;
   }
   
-  res = flow_process_add__instance (self, trx, err);
+  res = flow_process_add__instance (self, trx, p_cb_module, p_cb_method, p_cb_params, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -166,6 +181,18 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+/*
+update database
+ 
+alter table flow_instance add column modp varchar(20) not null default 'MISC';
+alter table flow_instance drop index uc_flow_instance, add unique key uc_flow_instance (wfid, modp, refid);
+ 
+alter table flow_instance add column module varchar(30);
+alter table flow_instance add column method varchar(50);
+alter table flow_instance add column params varchar(1000);
+ 
+*/
+
 int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -173,7 +200,10 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
   
   // local objects
   FlowRunDbw flow_run_dbw = NULL;
-
+  CapeString cb_module = NULL;
+  CapeString cb_method = NULL;
+  CapeUdc cb_params = NULL;
+  
   res = flow_process__intern__qin_check (self, qin, err);
   if (res)
   {
@@ -194,6 +224,9 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // still optional
+  self->modp = cape_str_cp (cape_udc_get_s (qin->cdata, "modp", "MISC"));
+  
   self->refid = cape_udc_get_n (qin->cdata, "refid", 0);
   if (self->refid == 0)
   {
@@ -224,9 +257,20 @@ int flow_process_add (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
+  {
+    CapeUdc cb = cape_udc_get (qin->cdata, "_cb");
+    if (cb)
+    {
+      // callback (optional)
+      cb_module = cape_udc_ext_s (cb, "module");
+      cb_method = cape_udc_ext_s (cb, "method");
+      cb_params = cape_udc_ext (cb, "params");
+    }
+  }
+  
   // initialize the new flow process
   // -> checks for uniqueness
-  res = flow_process_add__init (self, flow_run_dbw, err);
+  res = flow_process_add__init (self, flow_run_dbw, &cb_module, &cb_method, &cb_params, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -250,7 +294,11 @@ exit_and_cleanup:
   {
     cape_log_msg (CAPE_LL_ERROR, "FLOW", "on add", cape_err_text (err));
   }
-  
+
+  cape_str_del (&cb_module);
+  cape_str_del (&cb_method);
+  cape_udc_del (&cb_params);
+
   flow_run_dbw_del (&flow_run_dbw);
   
   flow_process_del (p_self);
