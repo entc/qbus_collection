@@ -6,22 +6,18 @@ import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
 import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { AuthSessionModule } from '@qbus/auth_session.module';
+import { AuthCommonModule } from '@qbus/auth_common.module';
 
 //-----------------------------------------------------------------------------
 
 // components
-import { AuthLoginsComponent } from './auth_logins/component';
-import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent, AuthUsersSessionsModalComponent } from './auth_users/component';
+import { AuthLoginsComponent } from '@qbus/auth_logins/component';
 
 //-----------------------------------------------------------------------------
 
 @NgModule({
   declarations: [
-    AuthLoginsComponent,
-    AuthUsersComponent,
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent,
-    AuthUsersSessionsModalComponent
+    AuthLoginsComponent
   ],
   imports: [
     CommonModule,
@@ -30,15 +26,12 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
     TrloModule,
     QbngModule,
     PageToolbarModule,
-    AuthSessionModule
+    AuthSessionModule,
+    AuthCommonModule
   ],
   exports: [
-    AuthUsersComponent
   ],
   entryComponents: [
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent,
-    AuthUsersSessionsModalComponent
   ]
 })
 export class AuthAdminModule

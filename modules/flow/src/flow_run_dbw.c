@@ -1063,6 +1063,72 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_run_dbw_done__callback (FlowRunDbw self, CapeErr err)
+{
+  int res;
+  
+  CapeUdc first_row;
+
+  // local objects
+  CapeUdc query_results = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"          , self->psid);
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_s_cp   (values, "module"        , NULL);
+    cape_udc_add_s_cp   (values, "method"        , NULL);
+    cape_udc_add_node   (values, "params"        );
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_instance", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_get_first (query_results);
+  if (first_row)
+  {
+    const CapeString module = cape_udc_get_s (first_row, "module", NULL);
+    const CapeString method = cape_udc_get_s (first_row, "method", NULL);
+
+    if (module && method)
+    {
+      QBusM msg = qbus_message_new (NULL, NULL);
+      
+      msg->rinfo = cape_udc_cp (self->rinfo);
+      msg->cdata = cape_udc_ext (first_row, "params");
+      
+      if (msg->cdata == NULL)
+      {
+        msg->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+      }
+      
+      cape_udc_add_n (msg->cdata, "refid", self->refid);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "FLOW", "callback", "found callback to module = %s, method = %s, refid = %lu", module, method, self->refid);
+      
+      qbus_send (self->qbus, module, method, msg, NULL, NULL, err);
+      
+      qbus_message_del (&msg);
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
 {
   int res;
@@ -1099,6 +1165,14 @@ int flow_run_dbw_done (FlowRunDbw self, CapeErr err)
       {
         goto exit_and_cleanup;
       }
+    }
+  }
+  else
+  {
+    res = flow_run_dbw_done__callback (self, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
     }
   }
   
@@ -1581,7 +1655,7 @@ int flow_run_dbw_sqt__syncid_children (FlowRunDbw self, number_t sequence_id, nu
       }
       
       // abort the parent process
-      res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, 0, self->psid, err);
+      res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, 0, self->psid, NULL, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -1602,7 +1676,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err)
+int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_child, number_t from_parent, CapeUdc* p_params, CapeErr err)
 {
   int res;
   FlowRunDbw self = *p_self;
@@ -1633,7 +1707,7 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     }
 
     // abort the parent process
-    res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, self->psid, 0, err);
+    res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, self->psid, 0, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -1661,6 +1735,22 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     // clone the task with different sequence ID
     dbw_cloned = flow_run_dbw_clone (self, self->psid, sequence_id, self->refid);
 
+    // apply extra params from input
+    if (dbw_cloned->tdata)
+    {
+      if (p_params)
+      {
+        cape_udc_merge_mv (dbw_cloned->tdata, p_params);
+      }
+    }
+    else
+    {
+      if (p_params)
+      {
+        dbw_cloned->tdata = cape_udc_mv (p_params);
+      }
+    }
+    
     trx = adbl_trx_new (self->adbl_session, err);
     if (NULL == trx)
     {
@@ -2572,6 +2662,7 @@ int flow_run_dbw_xdata__create_node (FlowRunDbw self, CapeErr err)
   // names of objects in the user data
   const CapeString node_name = NULL;
   CapeUdc variables;
+  CapeUdc varsmv;
 
   // local objects
   CapeUdc node_create = NULL;
@@ -2581,23 +2672,12 @@ int flow_run_dbw_xdata__create_node (FlowRunDbw self, CapeErr err)
   {
     node_name = cape_udc_get_s (self->pdata, "node_name", NULL);
     variables = cape_udc_get (self->pdata, "variables");
+    varsmv = cape_udc_get (self->pdata, "varsmv");
   }
   
   if (node_name == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'node_name' is empty or missing");
-    goto exit_and_cleanup;
-  }
-  
-  if (variables == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "parameter 'variables' is empty or missing");
-    goto exit_and_cleanup;
-  }
-
-  if (cape_udc_type (variables) != CAPE_UDC_LIST)
-  {
-    res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "parameter 'variables' is not a list");
     goto exit_and_cleanup;
   }
   
@@ -2615,33 +2695,73 @@ int flow_run_dbw_xdata__create_node (FlowRunDbw self, CapeErr err)
   {
     node_create = cape_udc_new (CAPE_UDC_NODE, node_name);
   }
-
-  cursor = cape_udc_cursor_new (variables, CAPE_DIRECTION_FORW);
   
-  // try to find all variables
-  while (cape_udc_cursor_next (cursor))
+  if (variables)
   {
-    const CapeString name = cape_udc_s (cursor->item, NULL);
-    if (name)
+    switch (cape_udc_type (variables))
     {
-      // check if this variable exists in tdata
-      CapeUdc var = cape_udc_get (self->tdata, name);
-      if (var == NULL)
+      case CAPE_UDC_LIST:
       {
-        res = cape_err_set_fmt (err, CAPE_ERR_MISSING_PARAM, "parameter '%s' is empty or missing", name);
-        goto exit_and_cleanup;
+        cursor = cape_udc_cursor_new (variables, CAPE_DIRECTION_FORW);
+        
+        // try to find all variables
+        while (cape_udc_cursor_next (cursor))
+        {
+          const CapeString name = cape_udc_s (cursor->item, NULL);
+          if (name)
+          {
+            // check if this variable exists in tdata
+            CapeUdc var = cape_udc_get (self->tdata, name);
+            if (var == NULL)
+            {
+              res = cape_err_set_fmt (err, CAPE_ERR_MISSING_PARAM, "parameter '%s' is empty or missing", name);
+              goto exit_and_cleanup;
+            }
+            
+            {
+              CapeUdc clone = cape_udc_cp (var);
+              cape_udc_add (node_create, &clone);
+            }
+          }
+        }
+
+        break;
       }
-      
+      case CAPE_UDC_NODE:
       {
-        CapeUdc clone = cape_udc_cp (var);
-        cape_udc_add (node_create, &clone);
+        
+        break;
+      }
+    }
+  }
+  
+  if (varsmv)
+  {
+    switch (cape_udc_type (varsmv))
+    {
+      case CAPE_UDC_NODE:
+      {
+        cursor = cape_udc_cursor_new (varsmv, CAPE_DIRECTION_FORW);
+        
+        // try to find all variables
+        while (cape_udc_cursor_next (cursor))
+        {
+          // check if this variable exists in tdata
+          CapeUdc var = cape_udc_ext (self->tdata, cape_udc_name (cursor->item));
+          if (var)
+          {
+            cape_udc_add_name (node_create, &var, cape_udc_s (cursor->item, "var"));
+          }
+        }
+        
+        break;
       }
     }
   }
 
   // finally add the node
   cape_udc_add (self->tdata, &node_create);
-
+  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:

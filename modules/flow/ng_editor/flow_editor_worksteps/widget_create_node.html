@@ -2,11 +2,25 @@
   <div class="col-md-6 col-12">
 
     <div class="form-group">
-      <label>node name</label>
+      <label>{{ 'FLOW.NODE_NAME' | transloco }}</label>
       <div class="input-group">
         <input type="text" class="form-control" [ngModel]="(workstep | async).pdata['node_name']" (ngModelChange)="on_pdata_change($event, 'node_name')">
       </div>
     </div>
 
+  </div>
+  <div class="col-12">
+    <hr>
+    <div>
+      {{ 'FLOW.VARS_MOVE' | transloco }}
+    </div>
+    <qbng-params [model]="(workstep | async).pdata['varsmv']" (modelChange)="on_pdata_change($event, 'varsmv')"></qbng-params>
+  </div>
+  <div class="col-12">
+    <hr>
+    <div>
+      {{ 'FLOW.VARS_COPY' | transloco }}
+    </div>
+    <qbng-params [model]="(workstep | async).pdata['variables']" (modelChange)="on_pdata_change($event, 'variables')"></qbng-params>
   </div>
 </div>
