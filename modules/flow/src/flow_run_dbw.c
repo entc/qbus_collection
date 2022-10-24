@@ -1655,7 +1655,7 @@ int flow_run_dbw_sqt__syncid_children (FlowRunDbw self, number_t sequence_id, nu
       }
       
       // abort the parent process
-      res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, 0, self->psid, err);
+      res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, 0, self->psid, NULL, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -1676,7 +1676,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err)
+int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_child, number_t from_parent, CapeUdc* p_params, CapeErr err)
 {
   int res;
   FlowRunDbw self = *p_self;
@@ -1707,7 +1707,7 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     }
 
     // abort the parent process
-    res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, self->psid, 0, err);
+    res = flow_run_dbw_sqt (&dbw_cloned, sequence_id, self->psid, 0, NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -1735,6 +1735,22 @@ int flow_run_dbw_sqt (FlowRunDbw* p_self, number_t sequence_id, number_t from_ch
     // clone the task with different sequence ID
     dbw_cloned = flow_run_dbw_clone (self, self->psid, sequence_id, self->refid);
 
+    // apply extra params from input
+    if (dbw_cloned->tdata)
+    {
+      if (p_params)
+      {
+        cape_udc_merge_mv (dbw_cloned->tdata, p_params);
+      }
+    }
+    else
+    {
+      if (p_params)
+      {
+        dbw_cloned->tdata = cape_udc_mv (p_params);
+      }
+    }
+    
     trx = adbl_trx_new (self->adbl_session, err);
     if (NULL == trx)
     {

@@ -11,7 +11,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   selector: 'auth-users',
   templateUrl: './component.html'
 })
-export class AuthUsersComponent implements OnInit {
+export class AuthUsersComponent {
 
   public users: Observable<AuthUserItem[]> = null;
   private _wpid: number = null;
@@ -20,13 +20,6 @@ export class AuthUsersComponent implements OnInit {
 
   constructor (private auth_session: AuthSession, private modal_service: NgbModal)
   {
-  }
-
-  //-----------------------------------------------------------------------------
-
-  ngOnInit()
-  {
-    this.fetch ();
   }
 
   //-----------------------------------------------------------------------------

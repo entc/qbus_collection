@@ -56,7 +56,7 @@ __CAPE_LOCAL   int          flow_run_dbw_continue          (FlowRunDbw*, number_
 __CAPE_LOCAL   int          flow_run_dbw_inherit           (FlowRunDbw, number_t wfid, number_t syncid, number_t refid, CapeUdc* p_params, CapeErr err);
 
                             /* change the sequence id of a process */
-__CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, number_t from_child, number_t from_parent, CapeErr err);
+__CAPE_LOCAL   int          flow_run_dbw_sqt               (FlowRunDbw*, number_t sequence_id, number_t from_child, number_t from_parent, CapeUdc* p_params, CapeErr err);
 
                             /* reruns the step, but don't continues */
 __CAPE_LOCAL   int          flow_run_dbw_once              (FlowRunDbw*, CapeErr err);
