@@ -70,12 +70,15 @@ AuthTokens auth_tokens_new (AdblSession adbl_session, AuthVault vault)
 
 void auth_tokens_del (AuthTokens* p_self)
 {
-  AuthTokens self = *p_self;
-  
-  cape_map_del (&(self->tokens));
-  cape_mutex_del (&(self->mutex));
-  
-  CAPE_DEL (p_self, struct AuthTokens_s);
+  if (*p_self)
+  {
+    AuthTokens self = *p_self;
+    
+    cape_map_del (&(self->tokens));
+    cape_mutex_del (&(self->mutex));
+    
+    CAPE_DEL (p_self, struct AuthTokens_s);
+  }
 }
 
 //-----------------------------------------------------------------------------

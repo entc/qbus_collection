@@ -61,12 +61,15 @@ AuthVault auth_vault_new (void)
 
 void auth_vault_del (AuthVault* p_self)
 {
-  AuthVault self = *p_self;
-  
-  cape_map_del (&(self->contexts));
-  cape_mutex_del (&(self->mutex));
-  
-  CAPE_DEL (p_self, struct AuthVault_s);
+  if (*p_self)
+  {
+    AuthVault self = *p_self;
+    
+    cape_map_del (&(self->contexts));
+    cape_mutex_del (&(self->mutex));
+    
+    CAPE_DEL (p_self, struct AuthVault_s);
+  }  
 }
 
 //-----------------------------------------------------------------------------
