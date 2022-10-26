@@ -94,7 +94,7 @@ export class TrloService
   public diff_date (date_in_iso: string): string
   {
     var time = new Date().getTime() - new Date(date_in_iso).getTime();
-    return this.datetime_to_h (time);
+    return this.datetime_to_h (Math.abs(time));
   }
 
   //---------------------------------------------------------------------------

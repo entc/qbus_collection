@@ -405,15 +405,23 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString token, CapeString* p_rinfo, CapeString* p_content)
+void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString token, number_t ttl, CapeString* p_rinfo, CapeString* p_content)
 {
   // unique key
   cape_udc_add_s_cp   (values, "token"        , self->token);
   
   // created datetime
   {
-    CapeDatetime dt; cape_datetime_utc (&dt);
-    cape_udc_add_d (values, "toc", &dt);
+    CapeDatetime time_of_creation; cape_datetime_utc (&time_of_creation);
+    cape_udc_add_d (values, "toc", &time_of_creation);
+    
+    if (ttl)
+    {
+      CapeDatetime time_of_invalidation;
+      cape_datetime__add_n (&time_of_creation, ttl, &time_of_invalidation);
+
+      cape_udc_add_d (values, "toe", &time_of_invalidation);
+    }
   }
 
   // add rinfo
@@ -461,18 +469,6 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
       cape_udc_del (&ttl_node);
     }
   }
-
-  /*
-  // TODO: depricated -> remove userid
-  // for backward compatibility the userid is still
-  // added to the rinfo for the token object
-  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
-  if (self->usid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
-    goto exit_and_cleanup;
-  }
-   */
   
   // encrypt cdata and rinfo into rinfo and content
   res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
@@ -510,8 +506,6 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
 
   {
-    number_t id;
-    
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     // insert values
@@ -528,11 +522,11 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
 
     // add values
-    auth_perm__intern__values (self, values, token, &rinfo, &content);
+    auth_perm__intern__values (self, values, token, ttl, &rinfo, &content);
     
     // execute query
-    id = adbl_trx_insert (trx, "auth_perm", &values, err);
-    if (id == 0)
+    self->apid = adbl_trx_insert (trx, "auth_perm", &values, err);
+    if (self->apid == 0)
     {
       res = cape_err_code (err);
       goto exit_and_cleanup;
@@ -552,7 +546,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
 
       // add a job to remove this token
       // don't use rinfo and vsec
-      res = qjobs_add (self->jobs, &dt_event, ttl, &params, NULL, "AUTH", "PERM", id, 0, NULL, err);
+      res = qjobs_add (self->jobs, &dt_event, ttl, &params, NULL, "AUTH", "PERM", self->apid, 0, NULL, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -566,6 +560,7 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   // add output
   qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
   cape_udc_add_s_mv (qout->cdata, "token", &token);
+  cape_udc_add_n (qout->cdata, "apid", self->apid);
   
 exit_and_cleanup:
   
@@ -599,18 +594,6 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   {
     goto exit_and_cleanup;
   }
-
-  /*
-  // TODO: depricated -> remove userid
-  // for backward compatibility the userid is still
-  // added to the rinfo for the token object
-  self->usid = cape_udc_get_n (qin->rinfo, "userid", 0);
-  if (self->usid == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing userid");
-    goto exit_and_cleanup;
-  }
-   */
 
   // check extra rfid
   self->rfid = cape_udc_get_n (qin->pdata, "rfid", 0);
@@ -661,7 +644,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "id"           , self->apid);
     
     // add values
-    auth_perm__intern__values (self, values, token, &rinfo, &content);
+    auth_perm__intern__values (self, values, token, 0, &rinfo, &content);
     
     // execute query
     res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
@@ -684,7 +667,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "wpid"         , self->wpid);
     
     // add values
-    auth_perm__intern__values (self, values, token, &rinfo, &content);
+    auth_perm__intern__values (self, values, token, 0, &rinfo, &content);
     
     // execute query
     self->apid = adbl_trx_insert (trx, "auth_perm", &values, err);
