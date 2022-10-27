@@ -19,6 +19,29 @@
     <input type="password" class="form-control" [(ngModel)]="pass">
   </div>
 
+  <hr>
+
+  <div class="input-group mt-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em">{{ 'AUTH.TITLE' | transloco }}</span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="title">
+  </div>
+
+  <div class="input-group mt-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em">{{ 'AUTH.FIRSTNAME' | transloco }}</span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="firstname">
+  </div>
+
+  <div class="input-group mt-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em">{{ 'AUTH.LASTNAME' | transloco }}</span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="lastname">
+  </div>
+
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>

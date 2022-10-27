@@ -2,7 +2,7 @@ import { Component, EventEmitter, Directive, Input, Output, ElementRef, Template
 import { HttpErrorResponse } from '@angular/common/http';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { BehaviorSubject, of } from 'rxjs';
-import { AuthSession, AuthSessionItem, AuthUserContext } from '@qbus/auth_session';
+import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
 import { QbngErrorModalComponent } from '@qbus/qbng_modals/component';
 

@@ -413,3 +413,89 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int auth_wp_add (AdblTrx trx, const CapeString vsec, number_t wpid, CapeUdc gpdata, number_t* p_gpid, CapeErr err)
+{
+  int res;
+  
+  // prepare the insert query
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // insert values
+  cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+  cape_udc_add_n      (values, "wpid"         , wpid);
+  
+  {
+    const CapeString h1 = cape_udc_get_s (gpdata, "title", NULL);
+    if (h1)
+    {
+      CapeString h2 = qcrypt__encrypt (vsec, h1, err);
+      if (h2)
+      {
+        cape_udc_add_s_mv (values, "title", &h2);
+      }
+      else
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  {
+    const CapeString h1 = cape_udc_get_s (gpdata, "firstname", NULL);
+    if (h1)
+    {
+      CapeString h2 = qcrypt__encrypt (vsec, h1, err);
+      if (h2)
+      {
+        cape_udc_add_s_mv (values, "firstname", &h2);
+      }
+      else
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  {
+    const CapeString h1 = cape_udc_get_s (gpdata, "lastname", NULL);
+    if (h1)
+    {
+      CapeString h2 = qcrypt__encrypt (vsec, h1, err);
+      if (h2)
+      {
+        cape_udc_add_s_mv (values, "lastname", &h2);
+      }
+      else
+      {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  {
+    number_t id;
+    
+    // execute query
+    id = adbl_trx_insert (trx, "glob_persons", &values, err);
+    if (id == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    *p_gpid = id;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&values);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------

@@ -980,14 +980,6 @@ export class AuthSessionItem
   remote: string;
 }
 
-export class AuthUserContext
-{
-  wpid: number;
-  gpid: number;
-  userid: number;
-  active: boolean;
-}
-
 //=============================================================================
 
 export abstract class AuthSessionLoginWidget

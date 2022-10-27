@@ -1,6 +1,7 @@
 #include "auth_ui.h"
 #include "auth_rinfo.h"
 #include "auth_perm.h"
+#include "auth_gp.h"
 
 // cape includes
 #include <fmt/cape_json.h>
@@ -2054,6 +2055,38 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_ui__intern__users_add (AdblTrx adbl_trx, number_t userid, number_t wpid, number_t gpid, const CapeString vsec_encrypted, number_t* p_ruid, CapeErr err)
+{
+  int res;
+  number_t ruid;
+  
+  // prepare the insert query
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // insert values
+  cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+  cape_udc_add_n      (values, "wpid"         , wpid);
+  cape_udc_add_n      (values, "userid"       , userid);
+  cape_udc_add_n      (values, "gpid"         , gpid);
+  cape_udc_add_s_cp   (values, "secret"       , vsec_encrypted);
+  
+  // execute query
+  ruid = adbl_trx_insert (adbl_trx, "rbac_users", &values, err);
+  if (0 == ruid)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    *p_ruid = ruid;
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -2062,6 +2095,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   const CapeString vsec;
 
   // local objects
+  AdblTrx trx = NULL;
   CapeString user = NULL;
   CapeString pass = NULL;
   CapeString domain = NULL;
@@ -2069,6 +2103,9 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString pass_encoded = NULL;
   CapeString vsec_encoded = NULL;
   CapeString login = NULL;
+  number_t gpid;
+  number_t ruid;
+  CapeUdc gpdata = NULL;
 
   if (NULL == qin->cdata)
   {
@@ -2105,6 +2142,13 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  gpdata = cape_udc_ext (qin->cdata, "gpdata");
+  if (NULL == gpdata)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_GPDATA");
+    goto exit_and_cleanup;
+  }
+  
   res = auth_ui__intern__check_workspace (self, &domain, err);
   if (res)
   {
@@ -2124,12 +2168,58 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    // prepare the insert query
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // insert values
+    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+    cape_udc_add_s_cp   (values, "secret"       , pass_encoded);
+    cape_udc_add_s_cp   (values, "user512"      , user_encoded);
+    
+    // execute query
+    self->userid = adbl_trx_insert (trx, "q5_users", &values, err);
+    if (self->userid == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = auth_wp_add (trx, vsec, self->wpid, gpdata, &gpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
   
+  res = auth_ui__intern__users_add (trx, self->userid, self->wpid, gpid, vsec_encoded, &ruid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
   
   res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+  
+  // add output
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  cape_udc_add_n (qout->cdata, "userid", self->userid);
+  cape_udc_add_n (qout->cdata, "ruid", ruid);
+  cape_udc_add_n (qout->cdata, "gpid", gpid);
 
 exit_and_cleanup:
   
+  adbl_trx_rollback (&trx, err);
+
   cape_str_del (&domain);
   cape_str_del (&pass);
   cape_str_del (&user);

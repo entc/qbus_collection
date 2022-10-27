@@ -37,4 +37,8 @@ __CAPE_LIBEX   int      auth_wp_get       (AuthGP*, QBusM qin, QBusM qout, CapeE
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LOCAL   int      auth_wp_add       (AdblTrx trx, const CapeString vsec, number_t wpid, CapeUdc gpdata, number_t* p_gpid, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 #endif
