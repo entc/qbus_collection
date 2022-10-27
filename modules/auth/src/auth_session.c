@@ -890,7 +890,7 @@ int auth_session_wp_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err
   // do some security checks
   if (FALSE == qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_ROLE");
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
     goto exit_and_cleanup;
   }
   

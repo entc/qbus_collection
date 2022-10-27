@@ -48,7 +48,7 @@ int __STDCALL client02_create_thread (void* ptr)
 static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   number_t i;
-  number_t loop_cnt = 0;//(number_t)(rand() % 100000);
+  number_t loop_cnt = (number_t)(rand() % 100000);
   
   if (qin->err)
   {
@@ -77,6 +77,48 @@ static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qou
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
   }
 
+  number_t splitter = (number_t)(rand() % 5);
+  
+  switch (splitter)
+  {
+    case 1:
+    {
+      // clean up
+      qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
+      
+      return qbus_continue (qbus, "NODE1", "test02", qin, (void**)NULL, client01_test01__on01, err);
+      
+      break;
+    }
+    case 2:
+    {
+      return cape_err_set (err, CAPE_ERR_RUNTIME, "some error");
+      
+      break;
+    }
+    default:
+    {
+      // clean up
+      qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
+      
+      return qbus_continue (qbus, "NODE0", "test01", qin, (void**)NULL, client01_test01__on01, err);
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL client01_test02 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  
+  if (qin->rinfo == NULL)
+  {
+    return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
+  }
+  
   // clean up
   qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
   
@@ -101,7 +143,8 @@ int __STDCALL client01_create_thread (void* ptr)
   }
 
   qbus_register (qbus, "test01", NULL, client01_test01, NULL, err);
-
+  qbus_register (qbus, "test02", NULL, client01_test02, NULL, err);
+  
   res = qbus_init (qbus, NULL, remote, 5, err);
   if (res)
   {
@@ -121,11 +164,11 @@ int __STDCALL client01_create_thread (void* ptr)
 
 static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  number_t wait_in_ms = (number_t)(rand() % 1);
+  number_t wait_in_ms = (number_t)(rand() % 100);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "got call, wait -> %lims", wait_in_ms);
 
-  //cape_thread_sleep (wait_in_ms);
+  cape_thread_sleep (wait_in_ms);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "continue-> %lims", wait_in_ms);
 
@@ -136,12 +179,19 @@ static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout,
 
 static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  int res;
+  
   if (qin->err)
   {
-    cape_log_msg (CAPE_LL_ERROR, "TEST", "test01 on01", cape_err_text (qin->err));
-    abort();
-  }
+    cape_log_msg (CAPE_LL_DEBUG, "TEST", "test01 on01", cape_err_text (qin->err));
 
+    res = cape_err_code (qin->err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
   cape_mutex_lock (mutex);
   
   total_runs--;
@@ -149,10 +199,10 @@ static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, Q
   printf ("current run: %li\n", total_runs);
   
   cape_mutex_unlock (mutex);
-
+  
 exit_and_cleanup:
   
-  return CAPE_ERR_NONE;
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -213,7 +263,7 @@ int __STDCALL server_create_thread (void* ptr)
   }
   
   qbus_register (qbus, "test01", NULL, server_test01, NULL, err);
-
+  
   cape_thread_start (trigger_thread, qbus_trigger_thread, qbus);
 
   res = qbus_init (qbus, bind, NULL, 5, err);

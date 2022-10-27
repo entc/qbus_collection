@@ -11,7 +11,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   selector: 'auth-users',
   templateUrl: './component.html'
 })
-export class AuthUsersComponent {
+export class AuthUsersComponent implements OnInit {
 
   public users: Observable<AuthUserItem[]> = null;
   private _wpid: number = null;
@@ -28,6 +28,34 @@ export class AuthUsersComponent {
   {
     this._wpid = wpid;
     this.fetch ();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngAfterViewInit()
+  {
+    this.auth_session.session.subscribe ((data) => {
+
+      if (data)
+      {
+        if (this.users == null)
+        {
+          // backup to display users of the workspace
+          this.users = this.auth_session.json_rpc ('AUTH', 'ui_users', {});
+        }
+      }
+      else
+      {
+        this.users = null;
+      }
+
+    });
   }
 
   //-----------------------------------------------------------------------------
@@ -82,16 +110,13 @@ export class AuthUsersComponent {
 
   public open_sessions (item: AuthUserItem)
   {
-    if (this._wpid)
-    {
-      var ctx: AuthUserContext = new AuthUserContext;
+    var ctx: AuthUserContext = new AuthUserContext;
 
-      ctx.wpid = Number(this._wpid);
-      ctx.gpid = item.gpid;
-      ctx.userid = item.userid;
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = item.gpid;
+    ctx.userid = item.userid;
 
-      this.modal_service.open (AuthUsersSessionsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
-    }
+    this.modal_service.open (AuthUsersSessionsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
   }
 
   //-----------------------------------------------------------------------------
