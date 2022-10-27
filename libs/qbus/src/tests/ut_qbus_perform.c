@@ -6,7 +6,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 10000
+#define REQUESTS 100000
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
