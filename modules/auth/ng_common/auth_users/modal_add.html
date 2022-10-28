@@ -12,13 +12,18 @@
     <input type="text" class="form-control" [(ngModel)]="name">
   </div>
 
+  <hr>
+
+  <auth-password-checker (onChange)="on_check_password($event)"></auth-password-checker>
+
+<!--
   <div class="input-group mt-2">
     <div class="input-group-prepend">
       <span class="input-group-text width_10em">{{ 'AUTH.PASSWORD' | transloco }}</span>
     </div>
     <input type="password" class="form-control" [(ngModel)]="pass">
   </div>
-
+-->
   <hr>
 
   <div class="input-group mt-2">

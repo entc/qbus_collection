@@ -25,7 +25,10 @@
       Locale
     </th>
     <th>
-      <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add()"><i class="fa fa-plus fa-fw"></i></button>
+      <div class="btn-group" role="group" aria-label="Basic example">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
+        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add()"><i class="fa fa-plus fa-fw"></i></button>
+      </div>
     </th>
   </tr>
   <ng-container *ngFor="let item of users | async">

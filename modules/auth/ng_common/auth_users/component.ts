@@ -15,6 +15,7 @@ export class AuthUsersComponent implements OnInit {
 
   public users: Observable<AuthUserItem[]> = null;
   private _wpid: number = null;
+  private _auth: boolean = false;
 
   //-----------------------------------------------------------------------------
 
@@ -27,7 +28,7 @@ export class AuthUsersComponent implements OnInit {
   @Input() set wpid (wpid: number)
   {
     this._wpid = wpid;
-    this.fetch ();
+    this.fetch();
   }
 
   //-----------------------------------------------------------------------------
@@ -44,25 +45,30 @@ export class AuthUsersComponent implements OnInit {
 
       if (data)
       {
-        if (this.users == null)
-        {
-          // backup to display users of the workspace
-          this.users = this.auth_session.json_rpc ('AUTH', 'ui_users', {});
-        }
+        this._auth = true;
       }
       else
       {
-        this.users = null;
+        this._auth = false;
       }
+
+      this.fetch();
 
     });
   }
 
   //-----------------------------------------------------------------------------
 
-  fetch ()
+  public fetch ()
   {
-    this.users = this.auth_session.json_rpc ('AUTH', 'ui_users', {wpid: this._wpid});
+    if (this._auth)
+    {
+      this.users = this.auth_session.json_rpc ('AUTH', 'ui_users', {wpid: this._wpid});
+    }
+    else
+    {
+      this.users = null;
+    }
   }
 
   //-----------------------------------------------------------------------------
@@ -244,6 +250,13 @@ export class AuthUserContext
       this.modal.close();
 
     }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public on_check_password (val: string): void
+  {
+    this.pass = val;
   }
 
 }
