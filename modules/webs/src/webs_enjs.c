@@ -572,8 +572,11 @@ exit_and_cleanup:
   {
     cape_log_fmt (CAPE_LL_ERROR, "WEBS", "webs run", "got error: %s", cape_err_text(err));
 
-    // send the error back
-    qwebs_request_send_json (&(self->request), NULL, self->ttl, err);
+    if (*p_self)
+    {
+      // send the error back
+      qwebs_request_send_json (&(self->request), NULL, self->ttl, err);
+    }
   }
 
   webs_enjs_del (p_self);
