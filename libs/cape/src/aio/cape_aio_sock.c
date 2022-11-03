@@ -343,6 +343,8 @@ void cape_aio_socket_write (CapeAioSocket self, long sockfd)
 
           if (self->send_buftos == self->send_buflen)
           {
+            printf ("BYTES SENT: %lu\n", self->send_buftos);
+            
             self->mask &= ~CAPE_AIO_WRITE;
 
             self->send_buflen = 0;
@@ -2683,7 +2685,10 @@ int cape_aio_socket_cache_send_s (CapeAioSocketCache self, CapeStream* p_stream,
 
   if (res == CAPE_ERR_NONE)
   {
-    cape_aio_socket_markSent (self->aio_socket, self->aio_ctx);
+    if (self->aio_socket)
+    {
+      cape_aio_socket_markSent (self->aio_socket, self->aio_ctx);
+    }
   }
 
   return res;
