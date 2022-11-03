@@ -805,6 +805,8 @@ static void __STDCALL qwebs_connection__internal__on_send_ready (void* ptr, Cape
   
   if (s)
   {
+    printf ("SENT BYTES: %lu\n", cape_stream_size (s));
+    
     // if we do have a stream send it to the socket
     cape_aio_socket_send (self->aio_socket, self->aio_attached, cape_stream_get (s), cape_stream_size (s), s);
   }
