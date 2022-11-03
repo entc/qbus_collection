@@ -55,6 +55,59 @@ void auth_msgs_del (AuthMsgs* p_self)
 
 //-----------------------------------------------------------------------------
 
+int auth_msgs__intern__check_input (AuthMsgs self, QBusM qin, CapeErr err)
+{
+  if (qin->rinfo == NULL)
+  {
+    return cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+  }
+  
+  switch (cape_udc_get_n (qin->cdata, "scope", 0))
+  {
+    case 0:
+    {
+      self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+      self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+      
+      break;
+    }
+    case 1:
+    {
+      if (qbus_message_role_has (qin, "admin"))
+      {
+        self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+        self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+      }
+      else if (qbus_message_role_has (qin, "auth_wacc"))
+      {
+        self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+        self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+      }
+      
+      break;
+    }
+  }
+  
+  if (0 == self->wpid)
+  {
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+  }
+  
+  if (0 == self->gpid)
+  {
+    return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
+  }
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_msgs_get (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -66,50 +119,9 @@ int auth_msgs_get (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeUdcCursor* cursor = NULL;
 
-  if (qbus_message_role_has (qin, "admin"))
+  res = auth_msgs__intern__check_input (self, qin, err);
+  if (res)
   {
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else if (qbus_message_role_has (qin, "auth_wacc"))
-  {
-    // do some security checks
-    if (qin->rinfo == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
-      goto exit_and_cleanup;
-    }
-    
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->wpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->gpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
     goto exit_and_cleanup;
   }
 
@@ -177,61 +189,19 @@ int auth_msgs_add (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
   AdblTrx trx = NULL;
   CapeString h1 = NULL;
 
-  if (qbus_message_role_has (qin, "admin"))
+  res = auth_msgs__intern__check_input (self, qin, err);
+  if (res)
   {
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else if (qbus_message_role_has (qin, "auth_wacc"))
-  {
-    // do some security checks
-    if (qin->rinfo == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
     goto exit_and_cleanup;
   }
 
-  if (0 == self->wpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->gpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
-    goto exit_and_cleanup;
-  }
-  
   vsec = auth_vault__vsec (self->vault, self->wpid);
   if (vsec == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
     goto exit_and_cleanup;
   }
-  
-  // do some security checks
-  if (qin->cdata == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
-    goto exit_and_cleanup;
-  }
-  
+    
   type = cape_udc_get_n (qin->cdata, "type", 0);
   if (type == 0)
   {
@@ -307,58 +277,16 @@ int auth_msgs_set (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
   AdblTrx trx = NULL;
   CapeString h1 = NULL;
 
-  if (qbus_message_role_has (qin, "admin"))
+  res = auth_msgs__intern__check_input (self, qin, err);
+  if (res)
   {
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else if (qbus_message_role_has (qin, "auth_wacc"))
-  {
-    // do some security checks
-    if (qin->rinfo == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
     goto exit_and_cleanup;
   }
-  
-  if (0 == self->wpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->gpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
-    goto exit_and_cleanup;
-  }
-  
+
   vsec = auth_vault__vsec (self->vault, self->wpid);
   if (vsec == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
-    goto exit_and_cleanup;
-  }
-
-  // do some security checks
-  if (qin->cdata == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
     goto exit_and_cleanup;
   }
 
@@ -440,50 +368,9 @@ int auth_msgs_rm (AuthMsgs* p_self, QBusM qin, QBusM qout, CapeErr err)
   // local objects
   AdblTrx trx = NULL;
   
-  if (qbus_message_role_has (qin, "admin"))
+  res = auth_msgs__intern__check_input (self, qin, err);
+  if (res)
   {
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else if (qbus_message_role_has (qin, "auth_wacc"))
-  {
-    if (qin->cdata == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
-      goto exit_and_cleanup;
-    }
-    
-    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-    self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
-  }
-  else
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->wpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
-    goto exit_and_cleanup;
-  }
-  
-  if (0 == self->gpid)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
-    goto exit_and_cleanup;
-  }
-
-  // do some security checks
-  if (qin->cdata == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
     goto exit_and_cleanup;
   }
   

@@ -85,20 +85,39 @@ export class AuthSessionRoleDirective {
 
   public sitem: AuthSessionItem | null = null;
 
+  @Output() on_login = new EventEmitter();
+
   //---------------------------------------------------------------------------
 
   constructor (public auth_session: AuthSession)
   {
+  }
+
+  //---------------------------------------------------------------------------
+
+  ngOnInit ()
+  {
     this.auth_session.session.subscribe ((data: AuthSessionItem) => {
 
-      this.sitem = data;
+      if (data)
+      {
+        this.sitem = data;
+      }
+      else
+      {
+        this.sitem = null;
+
+        console.log('disable content view');
+
+        this.on_login.emit(true);
+      }
 
     });
   }
 
   //---------------------------------------------------------------------------
 
-  on_close ()
+  public on_closed ()
   {
   }
 }

@@ -22,6 +22,8 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   opt_msgs: boolean = false;
   opt_2factor: boolean = false;
 
+  private session_obj;
+
   @Input() user_ctx: AuthUserContext;
 
   //---------------------------------------------------------------------------
@@ -34,7 +36,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   ngOnInit()
   {
-    this.auth_session.session.subscribe ((data) => {
+    this.session_obj = this.auth_session.session.subscribe ((data) => {
 
       if (data)
       {
@@ -49,6 +51,13 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     });
   }
 
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.session_obj.unsubscribe();
+  }
+
   //---------------------------------------------------------------------------
 
   fetch_msgs ()
@@ -57,7 +66,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
     if (this.user_ctx)
     {
-      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid}
+      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid, scope: 1};
     }
 
     this.auth_session.json_rpc ('AUTH', 'msgs_get', params).subscribe ((data: AuthMsgsItem[]) => {
@@ -87,7 +96,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
     if (this.user_ctx)
     {
-      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid}
+      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid, scope: 1}
     }
 
     this.auth_session.json_rpc ('AUTH', 'ui_config_get', params).subscribe ((data: AuthConfigItem) => {
@@ -154,6 +163,13 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   new_apply ()
   {
+    if (this.user_ctx)
+    {
+      this.new_item['wpid'] = this.user_ctx.wpid;
+      this.new_item['gpid'] = this.user_ctx.gpid;
+      this.new_item['scope'] = 1;
+    }
+
     this.auth_session.json_rpc ('AUTH', 'msgs_add', this.new_item).subscribe (() => {
 
       this.new_item = null;
@@ -185,6 +201,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     {
       item['wpid'] = this.user_ctx.wpid;
       item['gpid'] = this.user_ctx.gpid;
+      item['scope'] = 1;
     }
 
     this.auth_session.json_rpc ('AUTH', 'msgs_set', item).subscribe (() => {
@@ -206,6 +223,13 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   rm_apply (item: AuthMsgsItem)
   {
+    if (this.user_ctx)
+    {
+      item['wpid'] = this.user_ctx.wpid;
+      item['gpid'] = this.user_ctx.gpid;
+      item['scope'] = 1;
+    }
+
     this.auth_session.json_rpc ('AUTH', 'msgs_rm', item).subscribe (() => {
 
       item.mode = 0;

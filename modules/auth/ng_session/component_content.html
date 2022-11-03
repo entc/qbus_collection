@@ -1,7 +1,7 @@
 <ng-container *ngIf="sitem == null">
 
   <!-- display the login component -->
-  <auth-session-component (onClose)="on_close()"></auth-session-component>
+  <auth-session-component (onClose)="on_closed()"></auth-session-component>
 </ng-container>
 <ng-container *ngIf="sitem">
 

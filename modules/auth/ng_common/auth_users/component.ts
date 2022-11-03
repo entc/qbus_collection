@@ -16,6 +16,7 @@ export class AuthUsersComponent implements OnInit {
   public users: Observable<AuthUserItem[]> = null;
   private _wpid: number = null;
   private _auth: boolean = false;
+  private session_obj;
 
   //-----------------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ export class AuthUsersComponent implements OnInit {
 
   ngAfterViewInit()
   {
-    this.auth_session.session.subscribe ((data) => {
+    this.session_obj = this.auth_session.session.subscribe ((data) => {
 
       if (data)
       {
@@ -55,6 +56,13 @@ export class AuthUsersComponent implements OnInit {
       this.fetch();
 
     });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.session_obj.unsubscribe();
   }
 
   //-----------------------------------------------------------------------------
