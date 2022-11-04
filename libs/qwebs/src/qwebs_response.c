@@ -21,6 +21,11 @@ void qwebs_response__internal__identification (CapeStream s, const CapeString se
   cape_stream_append_str (s, "\r\nX-Powered-By: ");
   cape_stream_append_str (s, provider);
   cape_stream_append_str (s, "\r\n");
+  
+  // some extra fields
+  {
+    cape_stream_append_str (s, "Tk: N\r\n");
+  }
 }
 
 //-----------------------------------------------------------------------------
