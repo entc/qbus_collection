@@ -26,6 +26,8 @@ void qwebs_response__internal__identification (CapeStream s, const CapeString se
   {
     cape_stream_append_str (s, "Tk: N\r\n");
   }
+
+  cape_stream_append_str (s, "cache-control: no-cache, no-store, max-age=0, no-transform, private\r\n");
 }
 
 //-----------------------------------------------------------------------------
