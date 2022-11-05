@@ -471,6 +471,14 @@ int webs_enjs_run__check_header (WebsEnjs self, CapeErr err)
     {
       self->mime = cape_map_node_value (n);
     }
+    else
+    {
+      n = cape_map_find (header_values, "content-type");
+      if (n)
+      {
+        self->mime = cape_map_node_value (n);
+      }
+    }
   }
   
   // check for auth
@@ -479,6 +487,14 @@ int webs_enjs_run__check_header (WebsEnjs self, CapeErr err)
     if (n)
     {
       self->auth = cape_map_node_value (n);
+    }
+    else
+    {
+      n = cape_map_find (header_values, "authorization");
+      if (n)
+      {
+        self->auth = cape_map_node_value (n);
+      }
     }
   }
   
