@@ -674,14 +674,83 @@ alert ('we run out of coffee, so it is not implemented');
     {
       // use the old crypt4 authentication mechanism
       // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)})};
+      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)}), observe: 'events', reportProgress: true};
     }
     else
     {
-      header = {};
+      header = {observe: 'events', reportProgress: true};
     }
 
     return this.handle_error_login<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), header), response);
+  }
+
+  //---------------------------------------------------------------------------
+
+  private fetch_session__handle_event (event: HttpEvent<AuthSessionItem>, response: EventEmitter<AuthSessionItem>)
+  {
+    switch (event.type)
+    {
+      case HttpEventType.Response:  // final event
+      {
+        let data: AuthSessionItem = event.body;
+
+        if (data)
+        {
+          // set the user
+          data.user = this.user;
+
+          switch (data.state)
+          {
+            case 1:
+            {
+              // activate to use the session already
+              this.roles.next (data['roles']);
+              this.storage_set (data);
+
+              // to disable the login background
+              this.session.next (data);
+
+              this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
+
+                this.storage_set (data);
+                this.session.next (data);
+
+                response.emit (data);
+
+              }, () => {
+
+              });
+
+              break;
+            }
+            case 2:
+            {
+              this.roles.next (data['roles']);
+              this.storage_set (data);
+
+              response.emit (data);
+
+              break;
+            }
+          }
+        }
+        else
+        {
+          /*
+          var err: QbngErrorHolder = new QbngErrorHolder;
+
+          err.text = 'ERR.SESSION_EMPTY';
+          err.code = 401;
+
+          this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
+          */
+
+          response.emit (null);
+        }
+
+        break;
+      }
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -693,69 +762,32 @@ alert ('we run out of coffee, so it is not implemented');
 
     console.log('request session');
 
-    this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((data: AuthSessionItem) => {
+    let request = this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((event: HttpEvent<AuthSessionItem>) => {
 
-      if (data)
+      this.fetch_session__handle_event (event, response);
+
+    }, (err: QbngErrorHolder) => response.emit (null));
+
+    setTimeout(() => {
+
+      if (request.closed)
       {
-        // set the user
-        data.user = this.user;
 
-        switch (data.state)
-        {
-          case 1:
-          {
-            // activate to use the session already
-            this.roles.next (data['roles']);
-            this.storage_set (data);
-
-            // to disable the login background
-            this.session.next (data);
-
-            this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
-
-              this.storage_set (data);
-              this.session.next (data);
-
-              response.emit (data);
-
-            }, () => {
-
-            });
-
-            break;
-          }
-          case 2:
-          {
-            this.roles.next (data['roles']);
-            this.storage_set (data);
-
-            response.emit (data);
-
-            break;
-          }
-        }
       }
       else
       {
-        /*
         var err: QbngErrorHolder = new QbngErrorHolder;
 
-        err.text = 'ERR.SESSION_EMPTY';
-        err.code = 401;
+        err.text = 'ERR.BROWSER_ISSUE';
+        err.code = 100;
 
         this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
-        */
 
         response.emit (null);
+        request.unsubscribe();
       }
 
-    }, (err: QbngErrorHolder) => {
-
-      //this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
-
-      response.emit (null);
-
-    });
+    }, 10000);
   }
 
   //---------------------------------------------------------------------------

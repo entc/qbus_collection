@@ -14,29 +14,44 @@
     </ng-container>
     <ng-container *ngIf="err == false">
 
-      <div class="input-group mb-1">
-        <div class="input-group-prepend">
-          <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+      <ng-container *ngIf="running == true">
+
+        <div class="text-center">
+
+          <div class="mt-4 mb-4 text-secondary">
+            <i class="fa fa-spinner fa-pulse fa-7x"></i>
+          </div>
+
         </div>
-        <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
-      </div>
 
-      <div class="input-group mb-1">
-        <div class="input-group-prepend">
-          <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+      </ng-container>
+      <ng-container *ngIf="running == false">
+
+        <div class="input-group mb-1">
+          <div class="input-group-prepend">
+            <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+          </div>
+          <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
         </div>
-        <input type="password" class="form-control" id="InputPassword" required [(ngModel)]="pass">
-      </div>
 
-      <div class="text-right mt-2">
-        <button (click)="login_submit ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.LOGIN' | transloco }}</button>
-      </div>
+        <div class="input-group mb-1">
+          <div class="input-group-prepend">
+            <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+          </div>
+          <input type="password" class="form-control" id="InputPassword" required [(ngModel)]="pass">
+        </div>
 
-      <hr>
+        <div class="text-right mt-2">
+          <button (click)="login_submit ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.LOGIN' | transloco }}</button>
+        </div>
 
-      <div class="text-right">
-        <button (click)="open_forgot_password ()" type="button" class="btn btn-link">{{ 'AUTH.PASSFORGOT' | transloco }}</button>
-      </div>
+        <hr>
+
+        <div class="text-right">
+          <button (click)="open_forgot_password ()" type="button" class="btn btn-link">{{ 'AUTH.PASSFORGOT' | transloco }}</button>
+        </div>
+
+      </ng-container>
 
     </ng-container>
   </ng-container>

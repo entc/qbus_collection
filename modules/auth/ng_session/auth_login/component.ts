@@ -23,6 +23,8 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   @Output() onClose: EventEmitter<boolean> = new EventEmitter();
   public mode: number = 0;
 
+  public running: boolean = false;
+
   //---------------------------------------------------------------------------
 
   constructor (private auth_session: AuthSession)
@@ -33,7 +35,11 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   login_submit ()
   {
+    this.running = true;
+
     this.auth_session.enable (this.user, this.pass).subscribe ((sitem: AuthSessionItem) => {
+
+      this.running = false;
 
       if (sitem)
       {

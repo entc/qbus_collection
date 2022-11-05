@@ -259,7 +259,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     if (self->last_header_field)
     {
       CapeString h = cape_str_sub (at, length);
-      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
       
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
@@ -434,27 +434,17 @@ void qwebs_request_switching_protocols (QWebsRequest* p_self, QWebsUpgrade upgra
     // delete this before upgrade / otherwise race condition  
     qwebs_request_del (p_self);
     
-    printf ("PSELF #1: %p\n", *p_self);
-
     qwebs_upgrade_conn (upgrade, conn, user_ptr);
   }
 
-  printf ("PSELF #2: %p\n", *p_self);
-  
 exit_and_cleanup:
 
   cape_stream_del (&s);
 
-  printf ("PSELF #3: %p\n", *p_self);
-
   cape_map_del (&return_headers);
-
-  printf ("PSELF #4: %p\n", *p_self);
 
   cape_err_del (&err);
 
-  printf ("PSELF #5: %p\n", *p_self);
-  
   qwebs_request_del (p_self);
 }
 
@@ -590,11 +580,7 @@ QWebsProtHttp qwebs_prot_http_new ()
 {
   QWebsProtHttp self = CAPE_NEW (struct QWebsProtHttp_s);
 
-  printf ("PSELF PROT #1: %p\n", self);
-
   http_parser_init (&(self->parser), HTTP_REQUEST);
-  
-  printf ("PARSER #1 %p\n", &(self->parser));
   
   // initialize the HTTP parser
   http_parser_settings_init (&(self->settings));
@@ -611,8 +597,6 @@ QWebsProtHttp qwebs_prot_http_new ()
   self->settings.on_chunk_header = NULL;
   self->settings.on_chunk_complete = NULL;
   
-  printf ("PSELF PROT #2: %p\n", self);
-  
   return self;
 }
 
@@ -622,11 +606,7 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
 {
   if (*p_self)
   {
-    printf ("PSELF PROT: %p\n", *p_self);
-    
     QWebsProtHttp self = *p_self;
-    
-    printf ("PARSER %p\n", &(self->parser));
     
     CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
