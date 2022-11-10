@@ -259,7 +259,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     if (self->last_header_field)
     {
       CapeString h = cape_str_sub (at, length);
-      printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
       
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);

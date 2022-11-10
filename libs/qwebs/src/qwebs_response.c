@@ -16,7 +16,7 @@
 
 void qwebs_response__internal__identification (CapeStream s, const CapeString server_identifier, const CapeString provider)
 {
-  cape_stream_append_str (s, "server: ");
+  cape_stream_append_str (s, "Server: ");
   cape_stream_append_str (s, server_identifier);
   cape_stream_append_str (s, "\r\nx-powered-by: ");
   cape_stream_append_str (s, provider);
@@ -28,7 +28,7 @@ void qwebs_response__internal__identification (CapeStream s, const CapeString se
   }
 
   // deactive caching
-  cape_stream_append_str (s, "cache-control: no-cache, no-store, max-age=0, no-transform, private\r\n");
+//  cape_stream_append_str (s, "cache-control: no-cache, no-store, max-age=0, no-transform, private\r\n");
 
   // tell the browser not to sniff for the correct mime type
   cape_stream_append_str (s, "x-content-type-options: nosniff\r\n");
@@ -38,7 +38,7 @@ void qwebs_response__internal__identification (CapeStream s, const CapeString se
 
 void qwebs_response__internal__content_length (CapeStream s, number_t buflen)
 {
-  cape_stream_append_str (s, "content-length: ");
+  cape_stream_append_str (s, "Content-Length: ");
   cape_stream_append_n (s, buflen);
   cape_stream_append_str (s, "\r\n");
   cape_stream_append_str (s, "\r\n");
@@ -152,7 +152,7 @@ int qwebs_response_file__data_uri (CapeStream s, CapeUdc file_node, int is_encry
       
       // mime type
       {
-        cape_stream_append_str (s, "content-type: ");
+        cape_stream_append_str (s, "Content-Type: ");
         cape_stream_append_str (s, lu);
         cape_stream_append_str (s, "\r\n");
       }
@@ -162,7 +162,7 @@ int qwebs_response_file__data_uri (CapeStream s, CapeUdc file_node, int is_encry
   {
     // mime type
     {
-      cape_stream_append_str (s, "content-type: ");
+      cape_stream_append_str (s, "Content-Type: ");
       cape_stream_append_str (s, lh);
       cape_stream_append_str (s, "\r\n");
     }
@@ -206,7 +206,7 @@ int qwebs_response_file__content (CapeStream s, CapeUdc file_node, int is_encryp
 
   // mime type
   {
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, cape_udc_get_s (file_node, "mime", "application/json"));
     cape_stream_append_str (s, "\r\n");
   }
@@ -390,7 +390,7 @@ void qwebs_response_json (CapeStream s, QWebs webs, CapeUdc content, number_t tt
   
   // mime type for JSON
   {
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, "application/json;charset=UTF-8");
     cape_stream_append_str (s, "\r\n");
   }
@@ -414,7 +414,7 @@ void qwebs_response_image (CapeStream s, QWebs webs, const CapeString buf)
   
   // mime type for JSON
   {
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, "text/plain");
     cape_stream_append_str (s, "\r\n");
   }
@@ -438,7 +438,7 @@ void qwebs_response_buf (CapeStream s, QWebs webs, const CapeString buf, const C
 
   // mime type
   {
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, mime_type);
     cape_stream_append_str (s, "\r\n");
   }
@@ -517,7 +517,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
   
   if (cape_err_code (err))
   {
-    cape_stream_append_str (s, "warning: ");
+    cape_stream_append_str (s, "Warning: ");
     cape_stream_append_n (s, cape_err_code (err));
     cape_stream_append_str (s, ", ");
     cape_stream_append_str (s, cape_err_text (err));
@@ -527,7 +527,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
   if (content)
   {
     // mime type for JSON
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, "application/json; charset=UTF-8");
     cape_stream_append_str (s, "\r\n");
     
@@ -553,7 +553,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
         {
           cape_log_fmt (CAPE_LL_WARN, "QWEBS", "send json", "can't open pages file = %s", file);
           
-          cape_stream_append_str (s, "content-type: ");
+          cape_stream_append_str (s, "Content-Type: ");
           cape_stream_append_str (s, "text/html; charset=utf-8");
           cape_stream_append_str (s, "\r\n");
           
@@ -561,7 +561,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
         }
         else
         {
-          cape_stream_append_str (s, "content-type: ");
+          cape_stream_append_str (s, "Content-Type: ");
           cape_stream_append_str (s, "text/html; charset=utf-8");   // the loaded file should be a HTM file
           cape_stream_append_str (s, "\r\n");
           
@@ -577,7 +577,7 @@ void qwebs_response_err (CapeStream s, QWebs webs, CapeUdc content, const CapeSt
       }
     }
 
-    cape_stream_append_str (s, "content-type: ");
+    cape_stream_append_str (s, "Content-Type: ");
     cape_stream_append_str (s, mime ? mime : "text/html; charset=utf-8");
     cape_stream_append_str (s, "\r\n");
     

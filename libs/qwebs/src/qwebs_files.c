@@ -41,6 +41,8 @@ QWebsFiles qwebs_files_new (QWebs webs)
   cape_map_insert (self->mime_types, "jpg",   "image/jpeg");
   cape_map_insert (self->mime_types, "jpe",   "image/jpeg");
   cape_map_insert (self->mime_types, "svg",   "image/svg+xml");
+  cape_map_insert (self->mime_types, "json",  "application/json; charset=utf-8");
+  cape_map_insert (self->mime_types, "pdf",   "application/pdf");
 
   return self;
 }
