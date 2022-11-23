@@ -31,10 +31,30 @@ int qcrypt__decrypt_process (QDecryptAES dec, const char* bufdat, number_t bufle
   // local objects
   CapeStream data = NULL;
   
+  if (buflen == 0)
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  if (bufdat == NULL)
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  if (bufdat[0] == '#')
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
   // convert from base64 to binary
   data = qcrypt__decode_base64_o (bufdat, buflen);
   if (data == NULL)
   {
+    printf ("INVALID: '%s'\n", bufdat);
+    
     res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
     goto exit_and_cleanup;
   }
