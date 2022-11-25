@@ -943,6 +943,10 @@ int cape_aio_context_set_interupts (CapeAioContext self, int sigint, int term, C
 
   // null the sigset
   res = sigemptyset (&sigset);
+  if (res == -1)
+  {
+    return cape_err_lastOSError (err);
+  }
   
   if (sigint)
   {

@@ -45,7 +45,7 @@ int py_object_qbus_init (PyObject_QBus* self, PyObject *args, PyObject *kwds)
   }
 
   // create a new qbus object
-  self->qbus = qbus_new (PyUnicode_AsUTF8(name));
+  self->qbus = qbus_new (PYOBJECT_AS_STRING(name));
   
   return 0;
 }
@@ -236,10 +236,10 @@ PyObject* py_object_qbus_register (PyObject_QBus* self, PyObject* args, PyObject
     
     pcd->fct = cbfct;
     
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "register callback %s", PyUnicode_AsUTF8 (name));
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "register callback %s", PYOBJECT_AS_STRING (name));
     
     {
-      int res = qbus_register (self->qbus, PyUnicode_AsUTF8 (name), pcd, py_object_qbus_register__on_message, py_object_qbus_register__on_removed, err);
+      int res = qbus_register (self->qbus, PYOBJECT_AS_STRING (name), pcd, py_object_qbus_register__on_message, py_object_qbus_register__on_removed, err);
       if (res)
       {
         goto exit_and_error;
@@ -287,25 +287,25 @@ PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* 
   
   if (PyUnicode_Check (default_val))
   {
-    const CapeString h = qbus_config_s (self->qbus, PyUnicode_AsUTF8 (name), PyUnicode_AsUTF8 (default_val));
+    const CapeString h = qbus_config_s (self->qbus, PYOBJECT_AS_STRING (name), PYOBJECT_AS_STRING (default_val));
 
     ret = PyUnicode_FromString (h);
   }
   else if (PyLong_Check (default_val))
   {
-    number_t h = qbus_config_n (self->qbus, PyUnicode_AsUTF8 (name), PyLong_AsLong (default_val));
+    number_t h = qbus_config_n (self->qbus, PYOBJECT_AS_STRING (name), PyLong_AsLong (default_val));
     
     ret = PyLong_FromLong (h);
   }
   else if (PyFloat_Check (default_val))
   {
-    double h = qbus_config_f (self->qbus, PyUnicode_AsUTF8 (name), PyFloat_AsDouble (default_val));
+    double h = qbus_config_f (self->qbus, PYOBJECT_AS_STRING (name), PyFloat_AsDouble (default_val));
     
     ret = PyFloat_FromDouble (h);
   }
   else if (PyBool_Check (default_val))
   {
-    int h = qbus_config_b (self->qbus, PyUnicode_AsUTF8 (name), default_val == Py_True);
+    int h = qbus_config_b (self->qbus, PYOBJECT_AS_STRING (name), default_val == Py_True);
     
     ret = PyBool_FromLong (h);
   }

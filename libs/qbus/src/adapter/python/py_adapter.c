@@ -181,7 +181,7 @@ static PyObject* py_qbus_instance (PyObject* self, PyObject* args, PyObject* kwd
       if (PyUnicode_Check (arg))
       {
         // this is not a copy
-        argv[i] = PyUnicode_AsUTF8 (arg);
+        argv[i] = PYOBJECT_AS_STRING (arg);
       }
     }
   }
@@ -193,7 +193,7 @@ static PyObject* py_qbus_instance (PyObject* self, PyObject* args, PyObject* kwd
     ctx->on_done = on_done;
     ctx->obj = NULL;
     
-    qbus_instance (PyUnicode_AsUTF8 (name), ctx, py_qbus_instance__on_init, py_qbus_instance__on_done, argc, (char**)argv);
+    qbus_instance (PYOBJECT_AS_STRING (name), ctx, py_qbus_instance__on_init, py_qbus_instance__on_done, argc, (char**)argv);
   }
   
   CAPE_FREE(argv);
@@ -231,6 +231,56 @@ static PyObject* py_qbus_log (PyObject* self, PyObject* args, PyObject* kwds)
 
 //-----------------------------------------------------------------------------
 
+static PyMethodDef module_methods[] =
+{
+  {"instance",  (PyCFunction)py_qbus_instance, METH_VARARGS, "run a QBUS instance"},
+  {"log",       (PyCFunction)py_qbus_log, METH_VARARGS, "log something"},
+  {NULL}
+};
+
+//-----------------------------------------------------------------------------
+
+#if PY_MAJOR_VERSION == 2  // support also old python versions
+
+//-----------------------------------------------------------------------------
+
+PyMODINIT_FUNC PyInit_qbus (void)
+{
+  printf ("ERROR: this package was compiled for Python 2.x\n");
+  
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+PyMODINIT_FUNC initqbus (void)
+{
+  PyObject *m;
+
+  if (PyType_Ready (&PyTypeObject_QBus) < 0)
+  {
+    return NULL;
+  }
+
+  // this is important, otherwise it will crash
+  if (PyType_Ready (&PyTypeObject_QBusIntern) < 0)
+  {
+    return NULL;
+  }
+
+  m = Py_InitModule ("qbus", module_methods);
+
+  PyModule_AddObject(m, "QBus", (PyObject*)&PyTypeObject_QBus);
+
+  return m;
+}
+
+//-----------------------------------------------------------------------------
+
+#else
+
+//-----------------------------------------------------------------------------
+
 struct module_state
 {
   PyObject *error;
@@ -240,19 +290,10 @@ struct module_state
 
 //-----------------------------------------------------------------------------
 
-static PyMethodDef module_methods[] = 
-{
-  {"instance",  (PyCFunction)py_qbus_instance, METH_VARARGS, "run a QBUS instance"},
-  {"log",       (PyCFunction)py_qbus_log, METH_VARARGS, "log something"},
-  {NULL}
-};
-
-//-----------------------------------------------------------------------------
-
 static int module_traverse (PyObject* m, visitproc visit, void* arg)
-{ 
+{
   struct module_state *st = GETSTATE(m);
-
+  
   Py_VISIT(st->error);
   return 0;
 }
@@ -262,14 +303,14 @@ static int module_traverse (PyObject* m, visitproc visit, void* arg)
 static int module_clear (PyObject* m)
 {
   struct module_state *st = GETSTATE(m);
-
+  
   Py_CLEAR(st->error);
   return 0;
 }
 
 //-----------------------------------------------------------------------------
 
-static struct PyModuleDef moduledef = 
+static struct PyModuleDef moduledef =
 {
   PyModuleDef_HEAD_INIT,
   "qbus",
@@ -292,22 +333,22 @@ PyMODINIT_FUNC PyInit_qbus (void)
   {
     return NULL;
   }
-    
+  
   // this is important, otherwise it will crash
   if (PyType_Ready (&PyTypeObject_QBusIntern) < 0)
   {
     return NULL;
   }
-    
+  
   m = PyModule_Create (&moduledef);
   if (m == NULL)
   {
     return NULL;
   }
-    
+  
   Py_INCREF(&PyTypeObject_QBus);
   PyModule_AddObject(m, "QBus", (PyObject *) &PyTypeObject_QBus);
-
+  
   return m;
 }
 
@@ -315,7 +356,11 @@ PyMODINIT_FUNC PyInit_qbus (void)
 
 PyMODINIT_FUNC initqbus (void)
 {
-  printf ("ERROR: qbus package was compiled for python3.x, please start with python3\n");
+  printf ("ERROR: this package was compiled for Python 3.x\n");
 }
 
 //-----------------------------------------------------------------------------
+
+#endif
+
+

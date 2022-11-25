@@ -78,6 +78,14 @@ int webs_post__header (WebsPost self, CapeErr err)
     {
       self->mime = cape_map_node_value (n);
     }
+    else
+    {
+      n = cape_map_find (header_values, "content-type");
+      if (n)
+      {
+        self->mime = cape_map_node_value (n);
+      }
+    }
   }
   
   res = CAPE_ERR_NONE;

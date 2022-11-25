@@ -101,7 +101,7 @@ CapeUdc py_transform_to_udc_node (PyObject* o)
     
     if (PyUnicode_Check (key))
     {
-      name = PyUnicode_AsUTF8(key);
+      name = PYOBJECT_AS_STRING(key);
     }
     else
     {
@@ -220,7 +220,7 @@ CapeUdc py_transform_to_udc (PyObject* o)
   {
     ret = cape_udc_new (CAPE_UDC_STRING, NULL);
     
-    cape_udc_set_s_cp (ret, PyUnicode_AsUTF8 (o));
+    cape_udc_set_s_cp (ret, PYOBJECT_AS_STRING (o));
   }
   else if (PyLong_Check (o))
   {

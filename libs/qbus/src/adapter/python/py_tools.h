@@ -10,6 +10,14 @@
 
 //-----------------------------------------------------------------------------
 
+#if PY_MAJOR_VERSION == 2  // support also old python versions
+  #define PYOBJECT_AS_STRING(s) PyString_AsString(s)
+#else
+  #define PYOBJECT_AS_STRING(s) PyUnicode_AsUTF8(s)
+#endif
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   PyObject*   py_transform_to_pyo     (CapeUdc o);
 
 __CAPE_LIBEX   CapeUdc     py_transform_to_udc     (PyObject* o);
