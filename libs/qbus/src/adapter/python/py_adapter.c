@@ -247,8 +247,6 @@ static PyMethodDef module_methods[] =
 PyMODINIT_FUNC PyInit_qbus (void)
 {
   printf ("ERROR: this package was compiled for Python 2.x\n");
-  
-  return NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -259,20 +257,18 @@ PyMODINIT_FUNC initqbus (void)
 
   if (PyType_Ready (&PyTypeObject_QBus) < 0)
   {
-    return NULL;
+    return;
   }
 
   // this is important, otherwise it will crash
   if (PyType_Ready (&PyTypeObject_QBusIntern) < 0)
   {
-    return NULL;
+    return;
   }
 
   m = Py_InitModule ("qbus", module_methods);
 
   PyModule_AddObject(m, "QBus", (PyObject*)&PyTypeObject_QBus);
-
-  return m;
 }
 
 //-----------------------------------------------------------------------------
