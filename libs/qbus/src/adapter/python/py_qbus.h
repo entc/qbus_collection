@@ -1,11 +1,11 @@
 #ifndef __QBUS_PY_QBUS__H
 #define __QBUS_PY_QBUS__H 1
 
-#include "sys/cape_export.h"
-
 // python includes
 #include <Python.h>
 #include "structmember.h"
+
+#include "sys/cape_export.h"
 
 // qbus
 #include "qbus.h"

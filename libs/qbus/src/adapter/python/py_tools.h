@@ -1,12 +1,12 @@
 #ifndef __QBUS_PY_TOOLS__H
 #define __QBUS_PY_TOOLS__H 1
 
-#include "sys/cape_export.h"
-#include "stc/cape_udc.h"
-
 // python includes
 #include <Python.h>
 #include "structmember.h"
+
+#include "sys/cape_export.h"
+#include "stc/cape_udc.h"
 
 //-----------------------------------------------------------------------------
 
