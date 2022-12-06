@@ -4,6 +4,7 @@ INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 SUBDIRS(core)
 SUBDIRS(adapter/java)
 SUBDIRS(adapter/python)
+SUBDIRS(adapter_example)
 SUBDIRS(tests)
 
 set(WSRV_SOURCES

@@ -34,6 +34,7 @@ if(DEFINED ENV{python_target})
     if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
 
       find_package (PythonLibs 2 REQUIRED)
+      find_package (PythonInterp 2 REQUIRED)
 
       IF(PYTHONLIBS_FOUND)
 
@@ -43,10 +44,15 @@ if(DEFINED ENV{python_target})
         SET(PYTHON_TARGET_VERSION ${PYTHONLIBS_VERSION_STRING})
 
       ENDIF()
+      IF(PYTHONINTERP_FOUND)
+
+        SET(PYTHON_TARGET_EXEC ${PYTHON_EXECUTABLE} CACHE PATH "python executable")
+
+      ENDIF()
 
     else()
 
-      find_package (Python2 COMPONENTS Development REQUIRED)
+      find_package (Python2 COMPONENTS Interpreter Development REQUIRED)
 
       IF(Python2_FOUND)
 
@@ -54,6 +60,7 @@ if(DEFINED ENV{python_target})
         SET(PYTHON_TARGET_INCLUDES ${Python2_INCLUDE_DIRS})
         SET(PYTHON_TARGET_LIBRARIES ${Python2_LIBRARIES})
         SET(PYTHON_TARGET_VERSION ${Python2_VERSION})
+        SET(PYTHON_TARGET_EXEC ${Python2_EXECUTABLE} CACHE PATH "python executable")
 
       ENDIF()
 
@@ -67,6 +74,7 @@ if(DEFINED ENV{python_target})
     if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
 
       find_package (PythonLibs 3 REQUIRED)
+      find_package (PythonInterp 3 REQUIRED)
 
       IF(PYTHONLIBS_FOUND)
 
@@ -76,10 +84,15 @@ if(DEFINED ENV{python_target})
         SET(PYTHON_TARGET_VERSION ${PYTHONLIBS_VERSION_STRING})
 
       ENDIF()
+      IF(PYTHONINTERP_FOUND)
+
+        SET(PYTHON_TARGET_EXEC ${PYTHON_EXECUTABLE} CACHE PATH "python executable")
+
+      ENDIF()
 
     else()
 
-      find_package (Python3 COMPONENTS Development REQUIRED)
+      find_package (Python3 COMPONENTS Interpreter Development REQUIRED)
 
       IF(Python3_FOUND)
 
@@ -87,6 +100,7 @@ if(DEFINED ENV{python_target})
         SET(PYTHON_TARGET_INCLUDES ${Python3_INCLUDE_DIRS})
         SET(PYTHON_TARGET_LIBRARIES ${Python3_LIBRARIES})
         SET(PYTHON_TARGET_VERSION ${Python3_VERSION})
+        SET(PYTHON_TARGET_EXEC ${Python3_EXECUTABLE} CACHE PATH "python executable")
 
       ENDIF()
 
@@ -106,6 +120,7 @@ ELSE()
     SET(PYTHON_TARGET_INCLUDES ${Python3_INCLUDE_DIRS})
     SET(PYTHON_TARGET_LIBRARIES ${Python3_LIBRARIES})
     SET(PYTHON_TARGET_VERSION ${Python3_VERSION})
+    SET(PYTHON_TARGET_EXEC ${Python3_EXECUTABLE} CACHE PATH "python executable")
 
   ELSE()
 
@@ -117,10 +132,12 @@ ELSE()
       SET(PYTHON_TARGET_INCLUDES ${Python2_INCLUDE_DIRS})
       SET(PYTHON_TARGET_LIBRARIES ${Python2_LIBRARIES})
       SET(PYTHON_TARGET_VERSION ${Python2_VERSION})
+      SET(PYTHON_TARGET_EXEC ${Python2_EXECUTABLE} CACHE PATH "python executable")
 
     ELSE()
 
       find_package (PythonLibs)
+      find_package (PythonInterp)
 
       IF(PYTHONLIBS_FOUND)
 
@@ -130,6 +147,12 @@ ELSE()
         SET(PYTHON_TARGET_VERSION ${PYTHONLIBS_VERSION_STRING})
 
       ENDIF()
+      IF(PYTHONINTERP_FOUND)
+
+        SET(PYTHON_TARGET_EXEC ${PYTHON_EXECUTABLE} CACHE PATH "python executable")
+
+      ENDIF()
+
 
     ENDIF()
 
@@ -139,8 +162,9 @@ ENDIF()
 
 IF(PYTHON_TARGET_FOUND)
 
+  message (STATUS "PYTHON_VERSION   = ${PYTHON_TARGET_VERSION}")
   message (STATUS "PYTHON_INCLUDES  = ${PYTHON_TARGET_INCLUDES}")
   message (STATUS "PYTHON_LIBRARIES = ${PYTHON_TARGET_LIBRARIES}")
-  message (STATUS "PYTHON_VERSION   = ${PYTHON_TARGET_VERSION}")
+  message (STATUS "PYTHON_EXEC      = ${PYTHON_TARGET_EXEC}")
 
 ENDIF()
