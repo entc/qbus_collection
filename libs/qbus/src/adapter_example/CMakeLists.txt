@@ -4,7 +4,8 @@ if (TARGET qbus_adapter_python)
   add_custom_target (qbus_mod_python ALL COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 
   # install the python file
-  install(TARGETS qbus_adapter_python DESTINATION mods)
+  # TODO: the following command does not work on older cmake
+  #install(TARGETS qbus_adapter_python DESTINATION mods)
   INSTALL(FILES module.py DESTINATION mods)
 
   # set some symlinks for direct starting
