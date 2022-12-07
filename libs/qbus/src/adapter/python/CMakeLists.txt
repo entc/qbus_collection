@@ -28,6 +28,8 @@ IF(PYTHON_TARGET_FOUND)
   SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES SUFFIX .so)
   SET_TARGET_PROPERTIES   (qbus_adapter_python PROPERTIES PREFIX "")
 
+  install (TARGETS qbus_adapter_python DESTINATION mods)
+
 ENDIF()
 
 
