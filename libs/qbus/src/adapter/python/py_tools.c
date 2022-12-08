@@ -19,7 +19,7 @@ PyObject* py_transform_to_pyo (CapeUdc o)
         CapeUdc item = cursor->item;
         
         PyObject* h = py_transform_to_pyo (item);
-        PyObject* n = PyUnicode_FromString (cape_udc_name(item));
+        PyObject* n = PYOBJECT_FROM_STRING (cape_udc_name(item));
         
         if (h)
         {
