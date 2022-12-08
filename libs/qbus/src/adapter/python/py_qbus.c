@@ -39,7 +39,7 @@ int py_object_qbus_init (PyObject_QBus* self, PyObject *args, PyObject *kwds)
     return -1;
   }  
 
-  if (!PyUnicode_Check (name))
+  if (!PYOBJECT_IS_STRING (name))
   {
     return -1;
   }
@@ -219,7 +219,7 @@ PyObject* py_object_qbus_register (PyObject_QBus* self, PyObject* args, PyObject
     goto exit_and_error;
   }
   
-  if (!PyUnicode_Check (name))
+  if (!PYOBJECT_IS_STRING (name))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
     goto exit_and_error;
@@ -279,17 +279,17 @@ PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* 
     goto exit_and_error;
   }
 
-  if (!PyUnicode_Check (name))
+  if (!PYOBJECT_IS_STRING (name))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
     goto exit_and_error;
   }
   
-  if (PyUnicode_Check (default_val))
+  if (PYOBJECT_IS_STRING (default_val))
   {
     const CapeString h = qbus_config_s (self->qbus, PYOBJECT_AS_STRING (name), PYOBJECT_AS_STRING (default_val));
 
-    ret = PyUnicode_FromString (h);
+    ret = PYOBJECT_FROM_STRING (h);
   }
   else if (PyLong_Check (default_val))
   {

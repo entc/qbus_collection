@@ -59,7 +59,7 @@ PyObject* py_transform_to_pyo (CapeUdc o)
     }
     case CAPE_UDC_STRING:
     {
-      ret = PyUnicode_FromString (cape_udc_s (o, ""));
+      ret = PYOBJECT_FROM_STRING (cape_udc_s (o, ""));
       break;      
     }
     case CAPE_UDC_NUMBER:
@@ -99,7 +99,7 @@ CapeUdc py_transform_to_udc_node (PyObject* o)
     CapeUdc h;
     const char* name = NULL;
     
-    if (PyUnicode_Check (key))
+    if (PYOBJECT_IS_STRING (key))
     {
       name = PYOBJECT_AS_STRING(key);
     }
@@ -216,7 +216,7 @@ CapeUdc py_transform_to_udc (PyObject* o)
     // TODO
     
   }
-  else if (PyUnicode_Check (o))
+  else if (PYOBJECT_IS_STRING (o))
   {
     ret = cape_udc_new (CAPE_UDC_STRING, NULL);
     

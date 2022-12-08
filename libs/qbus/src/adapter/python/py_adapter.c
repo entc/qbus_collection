@@ -129,7 +129,7 @@ static PyObject* py_qbus_instance (PyObject* self, PyObject* args, PyObject* kwd
     goto exit_and_error;
   }
   
-  if (!PyUnicode_Check (name))
+  if (!PYOBJECT_IS_STRING (name))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
     goto exit_and_error;
@@ -178,7 +178,7 @@ static PyObject* py_qbus_instance (PyObject* self, PyObject* args, PyObject* kwd
     {
       PyObject* arg = PyList_GetItem (py_argv, i);
       
-      if (PyUnicode_Check (arg))
+      if (PYOBJECT_IS_STRING (arg))
       {
         // this is not a copy
         argv[i] = PYOBJECT_AS_STRING (arg);

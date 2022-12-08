@@ -12,8 +12,12 @@
 
 #if PY_MAJOR_VERSION == 2  // support also old python versions
   #define PYOBJECT_AS_STRING(s) PyString_AsString(s)
+  #define PYOBJECT_IS_STRING(o) PyString_Check(o)
+  #define PYOBJECT_FROM_STRING(s) PyString_FromString(s)
 #else
   #define PYOBJECT_AS_STRING(s) PyUnicode_AsUTF8(s)
+  #define PYOBJECT_IS_STRING(o) PyUnicode_Check(o)
+  #define PYOBJECT_FROM_STRING(s) PyUnicode_FromString(s)
 #endif
 
 //-----------------------------------------------------------------------------
