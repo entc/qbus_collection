@@ -19,6 +19,7 @@ struct FlowRun_s
   
   number_t wpid;               // workspace id
   
+  CapeString name;
   CapeString module;
   CapeString method;
 
@@ -93,17 +94,19 @@ int flow_run_add__create_run_in_database (FlowRun self, CapeErr err)
   {
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
 
-    cape_udc_add_n (values, "wpid"      , self->wpid);
-    cape_udc_add_n (values, "state"     , QFLOW_STATE_INITIAL);       // started
+    cape_udc_add_n     (values, "wpid"      , self->wpid);
+    cape_udc_add_n     (values, "state"     , QFLOW_STATE_INITIAL);       // started
 
+    cape_udc_add_s_cp  (values, "fdesc"     , self->name);
+    
     {
       CapeDatetime dt; cape_datetime_utc (&dt);
       
-      cape_udc_add_d (values, "created", &dt);
+      cape_udc_add_d   (values, "created"   , &dt);
     }
 
-    cape_udc_add_s_cp (values, "module", self->module);
-    cape_udc_add_s_cp (values, "method", self->method);
+    cape_udc_add_s_cp  (values, "module"    , self->module);
+    cape_udc_add_s_cp  (values, "method"    , self->method);
 
     // execute the query
     self->raid = adbl_trx_insert (trx, "flow_run", &values, err);
@@ -294,6 +297,13 @@ int flow_run_add (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
+  self->name = cape_udc_ext_s (qin->cdata, "fdesc");
+  if (NULL == self->name)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "{flow_run_add} missing fdesc");
+    goto exit_and_cleanup;
+  }
+
   // use the input as params
   cape_udc_replace_mv (&(self->params), &(qin->cdata));
   
@@ -361,18 +371,24 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow run get", "try to find flowrun with raid = %lu", self->raid);
+  
   // fetch main master entry
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "id"               , self->raid);
+    cape_udc_add_n      (params, "raid"             , self->raid);
     cape_udc_add_n      (params, "wpid"             , self->wpid);
     
     cape_udc_add_n      (values, "state"            , 0);
-    cape_udc_add_s_cp   (values, "created"          , NULL);
+    cape_udc_add_s_cp   (values, "fdesc"            , NULL);
+    cape_udc_add_d      (values, "created"          , NULL);
     cape_udc_add_f      (values, "time_passed"      , .0);
-    cape_udc_add_list   (values, "sections"         );
+    cape_udc_add_n      (values, "rsid"             , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    cape_udc_add_n      (values, "max"              , 0);
+    cape_udc_add_n      (values, "cur"              , 0);
 
     // default size is 4000 -> increase to 20000 bytes
     cape_udc_add_s_cp   (values, "rdata"          , "{\"size\": 20000}");
@@ -388,7 +404,7 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     first_row = cape_udc_ext_first (query_results);
     if (first_row == NULL)
     {
-      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "dataset not found");
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_DATASET");
       goto exit_and_cleanup;
     }
   }
