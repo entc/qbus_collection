@@ -343,6 +343,7 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
   CapeString rdata_text = NULL;
+  CapeStopTimer st = NULL;
 
   // do some security checks
   if (qin->rinfo == NULL)
@@ -371,6 +372,10 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  st = cape_stoptimer_new ();
+  
+  cape_stoptimer_start (st);
+  
   cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow run get", "try to find flowrun with raid = %lu", self->raid);
   
   // fetch main master entry
@@ -409,6 +414,10 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
 
+  cape_stoptimer_stop (st);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "flow run get", "found entries = %i in %fs", cape_udc_size(query_results) + 1, cape_stoptimer_get (st) / 1000);
+
   // extract the rdata as text
   rdata_text = cape_udc_ext_s (first_row, "rdata");
   if (rdata_text)
@@ -429,6 +438,7 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     
 exit_and_cleanup:
 
+  cape_stoptimer_del (&st);
   cape_str_del (&rdata_text);
   
   cape_udc_del (&query_results);
