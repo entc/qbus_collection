@@ -1733,6 +1733,23 @@ void cape_str_to_lower (CapeString self)
 
 //-----------------------------------------------------------------------------
 
+void cape_str_override (CapeString self, number_t offset_start, number_t offset_end, char with)
+{
+  number_t max = cape_str_len (self) - offset_end;
+  char* pos_s = self;
+  number_t pos_i = 0;
+  
+  for (; *pos_s; pos_s++, pos_i++)
+  {
+    if ((pos_i >= offset_start) && (pos_i < max))
+    {
+      *pos_s = with;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 number_t cape_str_wchar_utf8 (wchar_t wc, char* bufdat)
 {
   if ( 0 <= wc && wc <= 0x7f )

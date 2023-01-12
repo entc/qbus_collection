@@ -118,6 +118,8 @@ __CAPE_LIBEX   void               cape_str_to_upper      (CapeString);
 
 __CAPE_LIBEX   void               cape_str_to_lower      (CapeString);
 
+__CAPE_LIBEX   void               cape_str_override      (CapeString, number_t offset_start, number_t offset_end, char with);
+
 //-----------------------------------------------------------------------------
 
                                   /* returns the character size, invalid = 1 */
