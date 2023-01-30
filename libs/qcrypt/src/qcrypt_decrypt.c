@@ -22,6 +22,140 @@
 
 //-----------------------------------------------------------------------------
 
+struct QDecryptBase64_s
+{
+  CapeStream product;
+  
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  EVP_ENCODE_CTX* ctx;
+
+#endif
+};
+
+//-----------------------------------------------------------------------------
+
+QDecryptBase64 qdecrypt_base64_new (CapeStream r_product)
+{
+  QDecryptBase64 self = CAPE_NEW (struct QDecryptBase64_s);
+  
+  self->product = r_product;
+  
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  
+  self->ctx = CAPE_NEW (EVP_ENCODE_CTX);
+  
+#else
+  
+  // it only allocates the memory
+  self->ctx = EVP_ENCODE_CTX_new ();
+  
+#endif
+  
+  // this is important to initialize the structure
+  EVP_DecodeInit (self->ctx);
+  
+#endif
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qdecrypt_base64_del (QDecryptBase64* p_self)
+{
+  if (*p_self)
+  {
+    QDecryptBase64 self = *p_self;
+    
+#if defined __WINDOWS_OS
+    
+    
+#else
+    
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    
+    CAPE_DEL (&(self->ctx), EVP_ENCODE_CTX);
+    
+#else
+    
+    EVP_ENCODE_CTX_free (self->ctx);
+    
+#endif
+    
+#endif
+    
+    CAPE_DEL (p_self, struct QDecryptBase64_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+number_t qdecrypt_base64_size (number_t size)
+{
+  return size;
+}
+
+//-----------------------------------------------------------------------------
+
+int qdecrypt_base64_process (QDecryptBase64 self, const char* bufdat, number_t buflen, CapeErr err)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  int len;
+  
+  // increase the stream to fit the expected size of the base64 serialization
+  cape_stream_cap (self->product, qdecrypt_base64_size (buflen));
+  
+  // call the crypt librarie's function
+  EVP_DecodeUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &len, (const unsigned char*)bufdat, buflen);
+  
+  // adjust the stream to the correct written bytes
+  cape_stream_set (self->product, len);
+  
+  return CAPE_ERR_NONE;
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+int qdecrypt_base64_finalize (QDecryptBase64 self, CapeErr err)
+{
+#if defined __WINDOWS_OS
+  
+  
+#else
+  
+  int len;
+  
+  // base64 alignment is 24bit, use 5 bytes to be on the safe side
+  cape_stream_cap (self->product, 5);
+  
+  // the base64 encoding needs to be finalized to align to a certain amount of bytes
+  EVP_DecodeFinal (self->ctx, (unsigned char*)cape_stream_pos (self->product), &len);
+  
+  // adjust the stream to the correct written bytes
+  cape_stream_set (self->product, len);
+  
+  return CAPE_ERR_NONE;
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 struct QDecryptAES_s
 {
   CapeStream product;

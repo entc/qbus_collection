@@ -14,6 +14,18 @@
 
 //-----------------------------------------------------------------------------
 
+struct QDecryptBase64_s; typedef struct QDecryptBase64_s* QDecryptBase64;
+
+__CAPE_LIBEX  QDecryptBase64  qdecrypt_base64_new       (CapeStream r_product);
+
+__CAPE_LIBEX  void            qdecrypt_base64_del       (QDecryptBase64*);
+
+__CAPE_LIBEX  int             qdecrypt_base64_process   (QDecryptBase64, const char* bufdat, number_t buflen, CapeErr err);
+
+__CAPE_LIBEX  int             qdecrypt_base64_finalize  (QDecryptBase64, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 struct QDecryptAES_s; typedef struct QDecryptAES_s* QDecryptAES;
 
 __CAPE_LIBEX  QDecryptAES     qdecrypt_aes_new          (CapeStream r_product, const CapeString secret, number_t cypher_type, number_t key_type);
