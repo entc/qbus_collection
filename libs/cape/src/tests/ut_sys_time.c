@@ -76,5 +76,29 @@ int main (int argc, char *argv[])
    printf ("-> UNIX    : '%lu'\n", unix_timestamp);
  }
  
+  // cross out datetime
+  {
+    CapeDatetime tmp_time;
+    cape_datetime_utc (&tmp_time);
+
+    tmp_time.day = 0;
+    tmp_time.month = 0;
+    
+    {
+      CapeString s = cape_datetime_s__fmt_lcl (&tmp_time, "%Y-%m-%d %H:%M:%S");
+      
+      printf ("-> CROSS   : '%s'\n", s);
+      
+      cape_str_del (&s);
+    }
+    {
+      CapeString s = cape_datetime_s__fmt_utc (&tmp_time, "%x %X");
+      
+      printf ("-> CROSS   : '%s'\n", s);
+      
+      cape_str_del (&s);
+    }
+  }
+  
  return 0;
 }

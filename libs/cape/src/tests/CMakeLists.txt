@@ -8,6 +8,9 @@ target_link_libraries   (ut_fmt_json cape)
 add_executable          (ut_stc_map ut_stc_map.c)
 target_link_libraries   (ut_stc_map cape)
 
+add_executable          (ut_stc_list ut_stc_list.c)
+target_link_libraries   (ut_stc_list cape)
+
 add_executable          (ut_stc_string ut_stc_string.c)
 target_link_libraries   (ut_stc_string cape)
 

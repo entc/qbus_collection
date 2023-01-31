@@ -826,22 +826,87 @@ int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_datetime_s__fmt_lcl (const CapeDatetime* self, const CapeString format)
+void cape_datetime__internal__cross_out_format (CapeString* p_format)
 {
+  // replace complex placeholders
+  cape_str_replace (p_format, "%X", "%H:%M:%S");
+  cape_str_replace (p_format, "%x", "%m/%d/%y");
+  
+  // replace date placeholders
+  cape_str_replace (p_format, "%Y", "XXXX");
+  cape_str_replace (p_format, "%y", "XX");
+  cape_str_replace (p_format, "%m", "XX");
+
+  // replace time placeholders
+  cape_str_replace (p_format, "%H", "XX");
+  cape_str_replace (p_format, "%M", "XX");
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime__internal__fmt_lcl (const CapeDatetime* self, const CapeString format)
+{
+  struct tm timeinfo;
   CapeString ret = (CapeString)CAPE_ALLOC (100);
   
+  cape_datetime__convert_cape (&timeinfo, self);
+  
+  // convert into local time
+  // using local timezone settings
+  mktime (&timeinfo);
+  
+  // create buffer with timeinfo as string
+  strftime (ret, 99, format, &timeinfo);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime_s__fmt_lcl (const CapeDatetime* self, const CapeString format)
+{
+  CapeString ret = NULL;
+  
+  if (self)
   {
-    struct tm timeinfo;
-    
-    cape_datetime__convert_cape (&timeinfo, self);
-    
-    // convert into local time
-    // using local timezone settings
-    mktime (&timeinfo);
-    
-    // create buffer with timeinfo as string
-    strftime (ret, 99, format, &timeinfo);
+    if ((self->day == 0) && (self->month == 0))  // special case to cross out the date
+    {
+      // copy of self and format
+      CapeDatetime* copy_self = cape_datetime_cp (self);
+      CapeString copy_format = cape_str_cp (format);
+      
+      // correct day and month to the first
+      copy_self->day = 1;
+      copy_self->month = 1;
+      
+      // cross out content in the format
+      cape_datetime__internal__cross_out_format (&copy_format);
+      
+      ret = cape_datetime__internal__fmt_lcl (copy_self, copy_format);
+      
+      cape_str_del (&copy_format);
+      cape_datetime_del (&copy_self);
+    }
+    else
+    {
+      ret = cape_datetime__internal__fmt_lcl (self, format);
+    }
   }
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime__internal__fmt_utc (const CapeDatetime* self, const CapeString format)
+{
+  struct tm timeinfo;
+  CapeString ret = (CapeString)CAPE_ALLOC (100);
+  
+  cape_datetime__convert_cape (&timeinfo, self);
+  
+  // create buffer with timeinfo as string
+  strftime (ret, 99, format, &timeinfo);
   
   return ret;
 }
@@ -850,15 +915,32 @@ CapeString cape_datetime_s__fmt_lcl (const CapeDatetime* self, const CapeString 
 
 CapeString cape_datetime_s__fmt_utc (const CapeDatetime* self, const CapeString format)
 {
-  CapeString ret = (CapeString)CAPE_ALLOC (100);
+  CapeString ret = NULL;
   
+  if (self)
   {
-    struct tm timeinfo;
-    
-    cape_datetime__convert_cape (&timeinfo, self);
-    
-    // create buffer with timeinfo as string
-    strftime (ret, 99, format, &timeinfo);
+    if ((self->day == 0) && (self->month == 0))  // special case to cross out the date
+    {
+      // copy of self and format
+      CapeDatetime* copy_self = cape_datetime_cp (self);
+      CapeString copy_format = cape_str_cp (format);
+      
+      // correct day and month to the first
+      copy_self->day = 1;
+      copy_self->month = 1;
+      
+      // cross out content in the format
+      cape_datetime__internal__cross_out_format (&copy_format);
+      
+      ret = cape_datetime__internal__fmt_utc (copy_self, copy_format);
+      
+      cape_str_del (&copy_format);
+      cape_datetime_del (&copy_self);
+    }
+    else
+    {
+      ret = cape_datetime__internal__fmt_utc (self, format);
+    }
   }
   
   return ret;
