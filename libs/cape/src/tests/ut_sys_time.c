@@ -81,22 +81,46 @@ int main (int argc, char *argv[])
     CapeDatetime tmp_time;
     cape_datetime_utc (&tmp_time);
 
-    tmp_time.day = 0;
-    tmp_time.month = 0;
+    cape_datetime_cross__set (&tmp_time);
     
     {
       CapeString s = cape_datetime_s__fmt_lcl (&tmp_time, "%Y-%m-%d %H:%M:%S");
       
-      printf ("-> CROSS   : '%s'\n", s);
+      printf ("-> CROSS L : '%s'\n", s);
       
       cape_str_del (&s);
     }
     {
       CapeString s = cape_datetime_s__fmt_utc (&tmp_time, "%x %X");
       
-      printf ("-> CROSS   : '%s'\n", s);
+      printf ("-> CROSS U : '%s'\n", s);
       
       cape_str_del (&s);
+    }
+  }
+  
+  {
+    CapeDatetime tmp_time;
+    cape_datetime_utc (&tmp_time);
+
+    cape_datetime_cross__set (&tmp_time);
+
+    {
+      CapeDatetime cross_time;
+      CapeString h = cape_datetime_s__fmt_lcl (&tmp_time, "%Y-%m-%d %H:%M:%S");
+
+      // convert into datetime
+      cape_datetime__str_msec (&cross_time, h);
+
+      {
+        CapeString s = cape_datetime_s__fmt_utc (&cross_time, "%Y-%m-%d %H:%M:%S");
+        
+        printf ("-> CROSS H : '%s'\n", s);
+        
+        cape_str_del (&s);
+      }
+      
+      cape_str_del (&h);
     }
   }
   

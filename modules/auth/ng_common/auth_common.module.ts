@@ -12,6 +12,8 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 // components
 import { AuthRolesComponent } from './auth_roles/component';
 import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent, AuthUsersSessionsModalComponent, AuthUsersAddModalComponent } from './auth_users/component';
+import { AuthSessionInfoComponent, AuthSessionInfoModalComponent } from './auth_info/component';
+import { AuthMsgsComponent } from './auth_msgs/component';
 
 //-----------------------------------------------------------------------------
 
@@ -22,7 +24,10 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
     AuthUsersSettingsModalComponent,
     AuthUsersRolesModalComponent,
     AuthUsersSessionsModalComponent,
-    AuthUsersAddModalComponent
+    AuthUsersAddModalComponent,
+    AuthSessionInfoComponent,
+    AuthSessionInfoModalComponent,
+    AuthMsgsComponent
   ],
   imports: [
     CommonModule,
@@ -41,7 +46,8 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
     AuthUsersSettingsModalComponent,
     AuthUsersRolesModalComponent,
     AuthUsersSessionsModalComponent,
-    AuthUsersAddModalComponent
+    AuthUsersAddModalComponent,
+    AuthSessionInfoModalComponent
   ]
 })
 export class AuthCommonModule

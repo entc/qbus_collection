@@ -153,6 +153,50 @@ export class QbngUploadFile {
   }
 }
 
+export class QbngDownloadFile
+{
+
+  //---------------------------------------------------------------------------
+
+  static download (blob: Blob, extension: string, content_disposition: string)
+  {
+    let name = QbngDownloadFile.get_name_from__content_disposition (content_disposition);
+
+    var a = window.document.createElement('a');
+
+    a.href = window.URL.createObjectURL (blob);
+    a.download = name + '.' + extension;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  //---------------------------------------------------------------------------
+
+  static get_name_from__content_disposition (cdis: string): string
+  {
+    var ret: string = 'file';  // default name
+
+    if (cdis)
+    {
+      cdis.split(';').forEach ((e) => {
+
+        var kv = e.split('=');
+        var key = kv[0].trim();
+
+        if (key === 'name')
+        {
+          ret = kv[1].trim().replace(/"/g, '');
+        }
+
+      });
+    }
+
+    return ret;
+  }
+
+}
+
 //=============================================================================
 
 @Component({

@@ -826,6 +826,20 @@ int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 
 //-----------------------------------------------------------------------------
 
+void cape_datetime_cross__set (CapeDatetime* self)
+{
+  self->month = 0;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime_cross__is (const CapeDatetime* self)
+{
+  return (self->day > 0) && (self->month == 0);
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime__internal__cross_out_format (CapeString* p_format)
 {
   // replace complex placeholders
@@ -869,14 +883,13 @@ CapeString cape_datetime_s__fmt_lcl (const CapeDatetime* self, const CapeString 
   
   if (self)
   {
-    if ((self->day == 0) && (self->month == 0))  // special case to cross out the date
+    if (cape_datetime_cross__is (self))  // special case to cross out the date
     {
       // copy of self and format
       CapeDatetime* copy_self = cape_datetime_cp (self);
       CapeString copy_format = cape_str_cp (format);
       
       // correct day and month to the first
-      copy_self->day = 1;
       copy_self->month = 1;
       
       // cross out content in the format
@@ -919,14 +932,13 @@ CapeString cape_datetime_s__fmt_utc (const CapeDatetime* self, const CapeString 
   
   if (self)
   {
-    if ((self->day == 0) && (self->month == 0))  // special case to cross out the date
+    if (cape_datetime_cross__is (self))  // special case to cross out the date
     {
       // copy of self and format
       CapeDatetime* copy_self = cape_datetime_cp (self);
       CapeString copy_format = cape_str_cp (format);
       
       // correct day and month to the first
-      copy_self->day = 1;
       copy_self->month = 1;
       
       // cross out content in the format
@@ -1066,7 +1078,19 @@ int cape_datetime__std_msec (CapeDatetime* dt, const CapeString datetime_in_text
 
 int cape_datetime__str_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
+  {
+    dt->year = 0;
+    dt->month = 0;
+    dt->hour = 0;
+    dt->minute = 0;
+    
+    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u.%u", &(dt->day), &(dt->sec), &(dt->msec)) == 7;
+  }
+  else
+  {
+    return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  }
 }
 
 //-----------------------------------------------------------------------------

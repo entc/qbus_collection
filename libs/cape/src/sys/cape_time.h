@@ -76,6 +76,10 @@ __CAPE_LIBEX   void            cape_datetime_local        (CapeDatetime*);
 
 __CAPE_LIBEX   void            cape_datetime_to_local     (CapeDatetime*);
 
+__CAPE_LIBEX   void            cape_datetime_cross__set   (CapeDatetime*);
+
+__CAPE_LIBEX   int             cape_datetime_cross__is    (const CapeDatetime*);
+
                                // append the datetime to the certain time period defined in delta string format
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime_add_s        (CapeDatetime*, const CapeString delta);
