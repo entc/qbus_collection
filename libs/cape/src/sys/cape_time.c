@@ -1085,7 +1085,7 @@ int cape_datetime__str_msec (CapeDatetime* dt, const CapeString datetime_in_text
     dt->hour = 0;
     dt->minute = 0;
     
-    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u.%u", &(dt->day), &(dt->sec), &(dt->msec)) == 7;
+    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u.%u", &(dt->day), &(dt->sec), &(dt->msec)) == 3;
   }
   else
   {
@@ -1099,7 +1099,19 @@ int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   dt->msec = 0;
   
-  return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
+  if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
+  {
+    dt->year = 0;
+    dt->month = 0;
+    dt->hour = 0;
+    dt->minute = 0;
+
+    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u", &(dt->day), &(dt->sec)) == 2;
+  }
+  else
+  {
+    return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
+  }
 }
 
 //-----------------------------------------------------------------------------
