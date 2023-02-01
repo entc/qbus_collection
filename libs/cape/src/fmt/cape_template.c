@@ -663,7 +663,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
         CapeDatetime dt;
         
         // convert text into dateformat
-        if (cape_datetime__str_msec (&dt, text))
+        if (cape_datetime__str_msec (&dt, text) || cape_datetime__str (&dt, text) || cape_datetime__std_msec (&dt, text) || cape_datetime__date_de (&dt, text))
         {
           // set the original as UTC
           dt.is_utc = TRUE;
@@ -675,65 +675,13 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
-            if (cb->on_text)
             {
-              cb->on_text (cb->ptr, h);
-            }
-            
-            cape_str_del (&h);
-          }
-        }
-        else if (cape_datetime__str (&dt, text))
-        {
-          // set the original as UTC
-          dt.is_utc = TRUE;
+              CapeString h2 = cape_datetime_s__std (&dt);
+              
+              cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template eval", "applied date format = '%s' >> '%s' -> '%s'", self->eval, h2, h);
 
-          // convert into local time
-          cape_datetime_to_local (&dt);
-          
-          // apply format
-          {
-            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
-            
-            if (cb->on_text)
-            {
-              cb->on_text (cb->ptr, h);
+              cape_str_del (&h2);
             }
-            
-            cape_str_del (&h);
-          }
-        }
-        else if (cape_datetime__std_msec (&dt, text))
-        {
-          // set the original as UTC
-          dt.is_utc = TRUE;
-
-          // convert into local time
-          cape_datetime_to_local (&dt);
-          
-          // apply format
-          {
-            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
-            
-            if (cb->on_text)
-            {
-              cb->on_text (cb->ptr, h);
-            }
-            
-            cape_str_del (&h);
-          }
-        }
-        else if (cape_datetime__date_de (&dt, text))
-        {
-          // set the original as UTC
-          dt.is_utc = TRUE;
-
-          // convert into local time
-          cape_datetime_to_local (&dt);
-          
-          // apply format
-          {
-            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
             if (cb->on_text)
             {
