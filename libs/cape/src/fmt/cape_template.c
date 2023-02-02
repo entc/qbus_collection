@@ -675,13 +675,7 @@ int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, Cap
           {
             CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
             
-            {
-              CapeString h2 = cape_datetime_s__std (&dt);
-              
-              cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template eval", "applied date format = '%s' >> '%s' -> '%s'", self->eval, h2, h);
-
-              cape_str_del (&h2);
-            }
+            cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template eval", "applied date '%s' >> '%s' -> '%lu.%lu.%lu' -> '%s'", text, self->eval, dt.day, dt.month, dt.year, h);
             
             if (cb->on_text)
             {
