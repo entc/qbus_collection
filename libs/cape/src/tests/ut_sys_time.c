@@ -109,15 +109,20 @@ int main (int argc, char *argv[])
       CapeDatetime cross_time;
       CapeString h = cape_datetime_s__fmt_lcl (&tmp_time, "%Y-%m-%d %H:%M:%S");
 
-      // convert into datetime
-      cape_datetime__str_msec (&cross_time, h);
-
+      printf ("-> CROSS O : '%s'\n", h);
+      
+      // convert text into dateformat
+      if (cape_datetime__str_msec (&cross_time, h) || cape_datetime__str (&cross_time, h) || cape_datetime__std_msec (&cross_time, h) || cape_datetime__date_de (&cross_time, h))
       {
-        CapeString s = cape_datetime_s__fmt_utc (&cross_time, "%Y-%m-%d %H:%M:%S");
+        CapeString s = cape_datetime_s__fmt_utc (&cross_time, "%d%m%Y");
         
         printf ("-> CROSS H : '%s'\n", s);
         
         cape_str_del (&s);
+      }
+      else
+      {
+        printf ("ERROR: can't convert into date format\n");
       }
       
       cape_str_del (&h);
