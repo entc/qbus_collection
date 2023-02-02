@@ -263,7 +263,7 @@ void cape_datetime_to_local (CapeDatetime* dt)
 
 #else
 
-  if (dt->is_utc)
+  if (dt->is_utc && dt->month)
   {
     struct tm timeinfo;
     struct tm* l01;
