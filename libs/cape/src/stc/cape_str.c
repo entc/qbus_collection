@@ -526,6 +526,33 @@ int cape_str_begins_i (const CapeString s1, const CapeString s2)
 
 //-----------------------------------------------------------------------------
 
+int cape_str_ends (const CapeString self, const CapeString ends_with)
+{
+  if (self == NULL)
+  {
+    return FALSE;
+  }
+  
+  if (ends_with == NULL)
+  {
+    return FALSE;
+  }
+  
+  {
+    size_t len_self = strlen (self);
+    size_t len_seek = strlen (ends_with);
+    
+    if (len_seek > len_self)
+    {
+      return FALSE;
+    }
+    
+    return strncmp (self + len_self - len_seek, ends_with, len_seek) == 0;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_str_find (const CapeString haystack, const CapeString needle, number_t* p_pos)
 {
   if (p_pos)

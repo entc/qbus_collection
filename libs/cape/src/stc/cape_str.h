@@ -61,6 +61,8 @@ __CAPE_LIBEX   int                cape_str_begins        (const CapeString, cons
 
 __CAPE_LIBEX   int                cape_str_begins_i      (const CapeString, const CapeString);          // case insensitive
 
+__CAPE_LIBEX   int                cape_str_ends          (const CapeString, const CapeString);          // case sensitive
+
 __CAPE_LIBEX   int                cape_str_find          (const CapeString, const CapeString, number_t* pos);
 
 __CAPE_LIBEX   int                cape_str_find_utf8     (const CapeString, const CapeString, number_t* pos_len, number_t* pos_size);
