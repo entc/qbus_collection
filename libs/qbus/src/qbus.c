@@ -1,9 +1,8 @@
 #include "qbus.h" 
-#include "qbus_engine.h"
+#include "qbus_config.h"
 #include "qbus_route.h"
-#include "qbus_connection.h"
-#include "qbus_types.h"
 #include "qbus_logger.h"
+#include "qbus_engines.h"
 
 // c includes
 #include <stdlib.h>
@@ -25,7 +24,6 @@
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
 #include "stc/cape_str.h"
-#include "stc/cape_map.h"
 #include "aio/cape_aio_sock.h"
 #include "fmt/cape_args.h"
 #include "fmt/cape_json.h"
@@ -33,57 +31,20 @@
 #include "sys/cape_btrace.h"
 #include "sys/cape_thread.h"
 
-// engines
-#include "../engines/tcp/engine_tcp.h"
-
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engines__on_del (void* key, void* val)
-{
-  {
-    CapeString h = key; cape_str_del (&h);
-  }
-  {
-    QBusEngine h = val; qbus_engine_del (&h);
-  }
-}
-
 //-----------------------------------------------------------------------------
 
 struct QBus_s
 {
   CapeAioContext aio;
   
-  CapeString name;
-  
   QBusRoute route;
   
-  // config
-  CapeUdc config;
-  
-  CapeString config_file;
-  
-  CapeMap engines;
+  QBusEngines engines;
   
   QBusLogger logger;
+  
+  QBusConfig config;
 };
-
-//-----------------------------------------------------------------------------
-
-void qbus_new__internal__set_default_engines (QBus self)
-{
-  {
-    QBusEngine engine = qbus_engine_default (self->route);
-    
-    cape_map_insert (self->engines, (void*)cape_str_cp ("socket"), engine);
-  }
-  {
-    QBusEngine engine = qbus_engine_default (self->route);
-
-    cape_map_insert (self->engines, (void*)cape_str_cp ("tcp"), engine);
-  }
-}
 
 //-----------------------------------------------------------------------------
 
@@ -91,23 +52,16 @@ QBus qbus_new (const char* module_origin)
 {
   QBus self = CAPE_NEW(struct QBus_s);
 
-  // create an upper name
-  self->name = cape_str_cp (module_origin);  
-  cape_str_to_upper (self->name);
-  
+  //
+  self->config = qbus_config_new (module_origin);
+
+  self->engines = qbus_engines_new ();
+
   self->logger = qbus_logger_new ();
-  self->route = qbus_route_new (self, self->name);
+
+  self->route = qbus_route_new (self, qbus_config_get_name (self->config));
   
   self->aio = cape_aio_context_new ();
-  
-  //self->engine_tcp_inc = NULL;
-  //self->engine_tcp_out = NULL;
-  
-  self->config = NULL;
-  self->config_file = NULL;
-  
-  self->engines = cape_map_new (NULL, qbus_engines__on_del, NULL);
-  qbus_new__internal__set_default_engines (self);
   
   return self;
 }
@@ -117,288 +71,26 @@ QBus qbus_new (const char* module_origin)
 void qbus_del (QBus* p_self)
 {
   QBus self = *p_self;
-  
-  cape_aio_context_del (&(self->aio));
-  
-  cape_str_del (&(self->name));
-  
-  //qbus_engine_tcp_inc_del (&(self->engine_tcp_inc));
-  //qbus_engine_tcp_out_del (&(self->engine_tcp_out));
-  
+
   qbus_route_del (&(self->route));
   qbus_logger_del (&(self->logger));
 
-  cape_udc_del (&(self->config));
-  cape_str_del (&(self->config_file));
+  qbus_engines_del (&(self->engines));
   
-  cape_map_del (&(self->engines));
+  qbus_config_del (&(self->config));
+  
+  cape_aio_context_del (&(self->aio));
+  
+  //cape_str_del (&(self->name));
   
   CAPE_DEL (p_self, struct QBus_s);
 }
 
 //-----------------------------------------------------------------------------
 
-QBusEngine qbus_load_engine__library (QBus self, const CapeString path, const CapeString name, CapeErr err)
-{
-  QBusEngine ret = NULL;
-  
-  CapeMapNode n = cape_map_find (self->engines, (void*)name);
-  if (n)
-  {
-    ret = cape_map_node_value (n);
-  }
-  else
-  {
-    ret = qbus_engine_new (self->route);
-
-    // try to load the engine
-    // -> returns a cape error code
-    if (qbus_engine_load (ret, path, name, err))
-    {
-      // cleanup
-      qbus_engine_del (&ret);
-    }
-    else
-    {
-      // append the engine to the engines map
-      cape_map_insert (self->engines, (void*)cape_str_cp (name), ret);
-    }
-  }
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-typedef struct {
-  
-  QbusPvdEntity entity;
-  QBusEngine engine;
-  
-} QbusEngineResult;
-
-//-----------------------------------------------------------------------------
-
-int qbus_load_engine (QBus self, const CapeString name, CapeUdc remote, QbusEngineResult* result, CapeErr err)
+int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
 {
   int res;
-  const CapeString path = "qbus";
-
-  // local objects
-  QbusPvdCtx ctx = NULL;
-
-  // load and register the engine
-  result->engine = qbus_load_engine__library (self, path, name, err);
-  if (result->engine == NULL)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in loading the engine = %s", name);
-    
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  ctx = qbus_engine_ctx_add (result->engine, self->aio, self->name, err);
-  if (ctx == NULL)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error in initializing the engine = %s", name);
-    
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  result->entity = qbus_engine_add (result->engine, ctx, remote, err);
-
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_add_remote_port (QBus self, CapeUdc remote, CapeErr err)
-{
-  int res;
-  
-  const CapeString type = cape_udc_get_s (remote, "type", NULL);
-  
-  if (type == NULL)
-  {
-    res = CAPE_ERR_NONE;
-    goto exit_and_cleanup;
-  }
-  
-  {
-    QbusEngineResult result;
-    
-    result.engine = NULL;
-    result.entity = NULL;
-    
-    res = qbus_load_engine (self, type, remote, &result, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    // to be on the safe side
-    if (NULL == result.engine || NULL == result.entity)
-    {
-      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.INTERNAL_ERROR");
-      goto exit_and_cleanup;
-    }
-    
-    res = qbus_engine_reconnect (result.engine, result.entity, err);
-  }
-  
-exit_and_cleanup:
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_add_income_port (QBus self, CapeUdc bind, CapeErr err)
-{
-  int res;
-  
-  const CapeString type = cape_udc_get_s (bind, "type", NULL);
-  
-  if (type == NULL)
-  {
-    res = CAPE_ERR_NONE;
-    goto exit_and_cleanup;
-  }
-  
-  {
-    QbusEngineResult result;
-    
-    result.engine = NULL;
-    result.entity = NULL;
-
-    res = qbus_load_engine (self, type, bind, &result, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    // to be on the safe side
-    if (NULL == result.engine || NULL == result.entity)
-    {
-      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.INTERNAL_ERROR");
-      goto exit_and_cleanup;
-    }
-
-    res = qbus_engine_listen (result.engine, result.entity, err);
-  }
-
-exit_and_cleanup:
-  
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_add_income_ports (QBus self, CapeUdc binds, CapeErr err)
-{
-  int res;
-  
-  // local objects
-  CapeUdcCursor* cursor = NULL;
-
-  switch (cape_udc_type (binds))
-  {
-    case CAPE_UDC_LIST:
-    {
-      cursor = cape_udc_cursor_new (binds, CAPE_DIRECTION_FORW);
-      
-      while (cape_udc_cursor_next (cursor))
-      {
-        res = qbus_add_income_port (self, cursor->item, err);
-        if (res)
-        {
-          goto exit_and_cleanup;
-        }
-      }
-      
-      res = CAPE_ERR_NONE;
-      break;
-    }
-    case CAPE_UDC_NODE:
-    {
-      res = qbus_add_income_port (self, binds, err);
-      break;
-    }
-    default:
-    {
-      res = CAPE_ERR_NONE;
-      break;
-    }
-  }
-
-exit_and_cleanup:
-  
-  cape_udc_cursor_del (&cursor);
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_add_remote_ports (QBus self, CapeUdc remotes, CapeErr err)
-{
-  int res;
-  
-  // local objects
-  CapeUdcCursor* cursor = NULL;
-  
-  switch (cape_udc_type (remotes))
-  {
-    case CAPE_UDC_LIST:
-    {
-      cursor = cape_udc_cursor_new (remotes, CAPE_DIRECTION_FORW);
-      
-      while (cape_udc_cursor_next (cursor))
-      {
-        res = qbus_add_remote_port (self, cursor->item, err);
-        if (res)
-        {
-          goto exit_and_cleanup;
-        }
-      }
-      
-      res = CAPE_ERR_NONE;
-      break;
-    }
-    case CAPE_UDC_NODE:
-    {
-      res = qbus_add_remote_port (self, remotes, err);
-      break;
-    }
-    default:
-    {
-      res = CAPE_ERR_NONE;
-      break;
-    }
-  }
-  
-exit_and_cleanup:
-  
-  cape_udc_cursor_del (&cursor);
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_init (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr err)
-{
-  int res;
-  
-  // initialize the routing
-  res = qbus_route_init (self->route, workers, err);
-  if (res)
-  {
-    return res;
-  }
   
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
@@ -407,26 +99,13 @@ int qbus_init (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, Cape
     return res;
   }
 
-  // apply all binds
-  if (binds)
+  // load all engines and initialize the connection contexts
+  res = qbus_engines__init_pvds (self->engines, pvds, self->aio, err);
+  if (res)
   {
-    res = qbus_add_income_ports (self, binds, err);
-    if (res)
-    {
-      return res;
-    }
+    return res;
   }
   
-  // apply all remotes
-  if (remotes)
-  {
-    res = qbus_add_remote_ports (self, remotes, err);
-    if (res)
-    {
-      return res;
-    }
-  }
-
   return CAPE_ERR_NONE;
 }
 
@@ -458,11 +137,11 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr err)
+int qbus_wait (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
 {
   int res;
   
-  res = qbus_init (self, binds, remotes, workers, err);
+  res = qbus_init (self, pvds, workers, err);
   if (res)
   {
     return res;
@@ -475,7 +154,6 @@ int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, Cape
 
 int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage onMsg, fct_qbus_onRemoved onRm, CapeErr err)
 {
-  qbus_route_meth_reg (self->route, method, ptr, onMsg, onRm);
 
   return CAPE_ERR_NONE;
 }
@@ -484,24 +162,6 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
 {
-  // correct chain key
-  // -> the key for the start must be NULL
-  cape_str_del (&(msg->chain_key));
-  
-  qbus_route_request (self->route, module, method, msg, ptr, onMsg, FALSE, err);
-
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_test_s (QBus self, const char* module, const char* method, CapeErr err)
-{  
-    /*
-  QBusM message = qbus_message_new(NULL, NULL);
-  message->cdata = cape_json_from_s(request);
-  qbus_route_request (self->route, module, method, message, ptr, onMsg, FALSE);
-  */
 
   return CAPE_ERR_NONE;
 }
@@ -512,17 +172,7 @@ int qbus_continue (QBus self, const char* module, const char* method, QBusM qin,
 {
   int res;
   
-  if (p_ptr)
-  {
-    res = qbus_route_request (self->route, module, method, qin, *p_ptr, on_msg, TRUE, err);
-
-    *p_ptr = NULL;
-  }
-  else
-  {
-    res = qbus_route_request (self->route, module, method, qin, NULL, on_msg, TRUE, err);
-  }
-    
+  
   return res;
 }
 
@@ -530,7 +180,6 @@ int qbus_continue (QBus self, const char* module, const char* method, QBusM qin,
 
 int qbus_response (QBus self, const char* module, QBusM msg, CapeErr err)
 {
-  qbus_route_response (self->route, module, msg, NULL);
   
   return CAPE_ERR_NONE;
 }
@@ -539,7 +188,7 @@ int qbus_response (QBus self, const char* module, QBusM msg, CapeErr err)
 
 const CapeString qbus_name (QBus self)
 {
-  return self->name;
+  return qbus_config_get_name (self->config);
 }
 
 //-----------------------------------------------------------------------------
@@ -553,21 +202,7 @@ CapeAioContext qbus_aio (QBus self)
 
 CapeUdc qbus_modules (QBus self)
 {
-  return qbus_route_modules (self->route);
-}
-
-//-----------------------------------------------------------------------------
-
-QBusConnection const qbus_find_conn (QBus self, const char* module)
-{
-  return qbus_route_module_find (self->route, module);
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_conn_request (QBus self, QBusConnection const conn, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg)
-{
-  qbus_route_conn_request (self->route, conn, module, method, msg, ptr, onMsg, FALSE);
+  
 }
 
 //-----------------------------------------------------------------------------
@@ -760,291 +395,6 @@ int qbus_message_role_or2 (QBusM self, const CapeString role01, const CapeString
 
 //-----------------------------------------------------------------------------
 
-void qbus_check_param__string (CapeUdc data, const CapeUdc string_param)
-{
-  const CapeString h = cape_udc_s (string_param, NULL);
-  if (h)
-  {
-    CapeList options = cape_tokenizer_buf (h, strlen(h), ':');
-    
-    if (cape_list_size(options) == 3)
-    {
-      CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      CapeListCursor* cursor = cape_list_cursor_create (options, CAPE_DIRECTION_FORW);
-      
-      if (cape_list_cursor_next (cursor))
-      {
-        cape_udc_add_s_cp (n, "type", cape_list_node_data (cursor->node));
-      }
-      
-      if (cape_list_cursor_next (cursor))
-      {
-        cape_udc_add_s_cp (n, "host", cape_list_node_data (cursor->node));
-      }
-      
-      if (cape_list_cursor_next (cursor))
-      {
-        cape_udc_add_n (n, "port", strtol (cape_list_node_data (cursor->node), NULL, 10));
-      }
-      
-      cape_list_cursor_destroy (&cursor);
-      
-      cape_udc_add (data, &n);
-    }
-    
-    cape_list_del (&options);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_check_param (CapeUdc data, const CapeUdc param)
-{
-  switch (cape_udc_type (param))
-  {
-    case CAPE_UDC_NODE:
-    {
-      CapeUdc h = cape_udc_cp (param);
-      cape_udc_add (data, &h);
-      break;
-    }
-    case CAPE_UDC_LIST:
-    {
-      CapeUdcCursor* cursor = cape_udc_cursor_new (param, CAPE_DIRECTION_FORW);
-
-      while (cape_udc_cursor_next (cursor))
-      {
-        qbus_check_param (data, cursor->item);
-      }
-      
-      cape_udc_cursor_del (&cursor);
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      qbus_check_param__string (data, param);
-      break;
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_config_load__find_file (QBus self, CapeErr err)
-{
-  CapeString filename = cape_str_catenate_2 (self->name, ".json");
-
-  self->config_file = cape_args_config_file ("etc", filename);
-  
-  cape_str_del (&filename);
-}
-
-//-----------------------------------------------------------------------------
-
-CapeUdc qbus_config_load__local (QBus self)
-{
-  CapeUdc ret = NULL;
-  CapeErr err = cape_err_new ();
-
-  // create or find the config file
-  qbus_config_load__find_file (self, err);
-  
-  if (self->config_file)
-  {
-    // try to load
-    ret = cape_json_from_file (self->config_file, err);
-  }
-  
-  if (cape_err_code (err))
-  {
-    // dump error text
-    cape_log_msg (CAPE_LL_ERROR, self->name, "config load", cape_err_text (err));
-  }
-  
-  cape_err_del (&err);
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeUdc qbus_config_load__global (QBus self)
-{
-  CapeUdc ret = NULL;
-
-  // local objects
-  CapeErr err = cape_err_new ();
-  CapeString global_config_file = cape_args_config_file ("etc", "qbus_default.json");
-
-  if (global_config_file)
-  {
-    // try to load
-    ret = cape_json_from_file (global_config_file, err);
-  }
-  
-  if (cape_err_code (err))
-  {
-    // dump error text
-    cape_log_msg (CAPE_LL_ERROR, self->name, "config load", cape_err_text (err));
-  }
-
-  cape_str_del (&global_config_file);
-  cape_err_del (&err);
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_config_save (QBus self, CapeUdc config)
-{
-  // try to load
-  if (self->config && cape_udc_size (config))
-  {
-    int res;
-    CapeErr err = cape_err_new ();
-    
-    res = cape_json_to_file (self->config_file, config, err);
-    if (res)
-    {
-      // dump error text
-      cape_log_fmt (CAPE_LL_ERROR, self->name, "config save: %s", cape_err_text (err), self->config_file);
-    }
-    
-    cape_err_del (&err);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-const CapeString qbus_config_s (QBus self, const char* name, const CapeString default_val)
-{
-  CapeUdc config_node;
-  
-  if (self->config == NULL)
-  {
-    return default_val;
-  }
-  
-  // search for UDC
-  config_node = cape_udc_get (self->config, name);
-  
-  if (config_node)
-  {
-    return cape_udc_s (config_node, default_val);
-  }
-  else
-  {
-    cape_udc_add_s_cp (self->config, name, default_val);
-
-    return default_val;
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-CapeUdc qbus_config_node (QBus self, const char* name)
-{
-  CapeUdc config_node;
-
-  if (self->config == NULL)
-  {
-    return NULL;
-  }
-  
-  // search for UDC
-  config_node = cape_udc_get (self->config, name);
-  
-  if (config_node)
-  {
-    return config_node;
-  }
-  else
-  {
-    return cape_udc_add_node (self->config, name);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-number_t qbus_config_n (QBus self, const char* name, number_t default_val)
-{
-  CapeUdc config_node;
-  
-  if (self->config == NULL)
-  {
-    return default_val;
-  }
-  
-  // search for UDC
-  config_node = cape_udc_get (self->config, name);
-  
-  if (config_node)
-  {
-    return cape_udc_n (config_node, default_val);
-  }
-  else
-  {    
-    cape_udc_add_n (self->config, name, default_val);
-
-    return default_val;
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-double qbus_config_f (QBus self, const char* name, double default_val)
-{
-  CapeUdc config_node;
-  
-  if (self->config == NULL)
-  {
-    return default_val;
-  }
-  
-  // search for UDC
-  config_node = cape_udc_get (self->config, name);
-  
-  if (config_node)
-  {
-    return cape_udc_f (config_node, default_val);
-  }
-  else
-  {    
-    cape_udc_add_f (self->config, name, default_val);
-    
-    return default_val;
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_config_b (QBus self, const char* name, int default_val)
-{
-  CapeUdc config_node;
-  
-  if (self->config == NULL)
-  {
-    return default_val;
-  }
-  
-  // search for UDC
-  config_node = cape_udc_get (self->config, name);
-  
-  if (config_node)
-  {
-    return cape_udc_b (config_node, default_val);
-  }
-  else
-  {    
-    cape_udc_add_b (self->config, name, default_val);
-    
-    return default_val;
-  }
-}
-
-//-----------------------------------------------------------------------------
-
 void qbus_log_msg (QBus self, const CapeString remote, const CapeString message)
 {
   qbus_logger_msg (self->logger, remote, message);
@@ -1081,19 +431,16 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   CapeFileLog log = NULL;
 
   QBus self = NULL;
-
-  CapeUdc bind = NULL;
-  CapeUdc remotes = NULL;
   CapeUdc args = NULL;
   
   void* user_ptr= NULL;
   
-  printf ("    ooooooo  oooooooooo ooooo  oooo oooooooo8  \n");
-  printf ("  o888   888o 888    888 888    88 888         \n");
-  printf ("  888     888 888oooo88  888    88  888oooooo  \n");
-  printf ("  888o  8o888 888    888 888    88         888 \n");
-  printf ("    88ooo88  o888ooo888   888oo88  o88oooo888  \n");
-  printf ("         88o8                                  \n");
+  printf ("          _                     \n");
+  printf ("   __ _  | |__    _   _   ___   \n");
+  printf ("  / _` | | '_ \\  | | | | / __|  \n");
+  printf (" | (_| | | |_) | | |_| | \\__ \\  \n");
+  printf ("  \\__, | |_.__/   \\__,_| |___/  \n");
+  printf ("     |_|                        \n");
   printf ("\n");
 
   res = cape_btrace_activate (err);
@@ -1107,120 +454,29 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
   // replace name from the parameters
   module_name = cape_udc_get_s (args, "n", name);
-  
+
   // start a new qbus instance
   self = qbus_new (module_name);
-  
-  // create params
-  self->config = cape_udc_new (CAPE_UDC_NODE, NULL);
-  
-  if (args)
-  {
-    cape_udc_merge_mv (self->config, &args);
-  }
-  
-  {
-    // load config from local file
-    CapeUdc config_part = qbus_config_load__local (self);
 
-    if (config_part)
-    {
-      // save the config back
-      qbus_config_save (self, config_part);
-
-      cape_udc_merge_mv (self->config, &config_part);
-    }
-  }
-
-  {
-    // load config from a global file
-    CapeUdc config_part = qbus_config_load__global (self);
-
-    if (config_part)
-    {
-      cape_udc_merge_mv (self->config, &config_part);
-    }
-  }
-
-  // filelogging
-  {
-    CapeUdc arg_l = cape_udc_get (self->config, "log_file");
-   
-    if (arg_l) switch (cape_udc_type (arg_l))
-    {
-      case CAPE_UDC_STRING:
-      {
-        log = cape_log_new (cape_udc_s (arg_l, NULL));
-        break;
-      }
-    }
-  }
+  // set name and args to the config
+  qbus_config_set_args (self->config, &args);
   
-  // debug output
-  {
-    // use this as default
-    CapeLogLevel log_level = CAPE_LL_INFO;
-    
-    CapeUdc arg_d = cape_udc_get (self->config, "log_level");
-    
-    if (arg_d) switch (cape_udc_type (arg_d))
-    {
-      case CAPE_UDC_STRING:
-      {
-        log_level = cape_log_level_from_s (cape_udc_s (arg_d, NULL), log_level);
-        break;
-      }
-      case CAPE_UDC_NUMBER:
-      {
-        log_level = cape_udc_n (arg_d, log_level);
-        break;
-      }
-    }
-    
-    // adjust the global log level
-    cape_log_set_level (log_level);
-  }
-  
-  // debug
-  {
-    CapeString h = cape_json_to_s (self->config);
-    
-    cape_log_fmt (CAPE_LL_INFO, name, "qbus_instance", "params: %s", h);
-    
-    cape_str_del (&h);
-  }
-  
-  // check for remotes
-  {
-    CapeUdc arg_r = cape_udc_get (self->config, "d");
-    if (arg_r)
-    {
-      remotes = cape_udc_new (CAPE_UDC_LIST, NULL);
-      
-      qbus_check_param (remotes, arg_r);
-    }
-  }
-      
-  // check for binds
-  {
-    CapeUdc arg_b = cape_udc_get (self->config, "b");
-    if (arg_b)
-    {
-      bind = cape_udc_new (CAPE_UDC_LIST, NULL);
-      
-      qbus_check_param (bind, arg_b);
-    }
-  }
-      
-  cape_log_msg (CAPE_LL_TRACE, name, "qbus_instance", "arguments parsed");
-  
-  res = qbus_init (self, bind, remotes, cape_udc_get_n (self->config, "threads", cape_thread_concurrency () * 2), err);
+  // run the config
+  res = qbus_config_init (self->config, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
-  res = qbus_logger_init (self->logger, self->aio, cape_udc_get (self->config, "logger"), err);
+  cape_log_msg (CAPE_LL_TRACE, module_name, "qbus_instance", "arguments parsed");
+  
+  res = qbus_init (self, qbus_config_get_pvds (self->config), qbus_config_get_threads (self->config), err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = qbus_logger_init (self->logger, self->aio, qbus_config_get_logger (self->config), err);
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "instance", "error in initialization: %s", cape_err_text(err));
@@ -1276,9 +532,6 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
 exit_and_cleanup:
   
-  cape_udc_del (&bind);
-  cape_udc_del (&remotes);
-  
   qbus_del (&self);
   
   cape_err_del (&err);
@@ -1289,21 +542,21 @@ exit_and_cleanup:
 
 void* qbus_add_on_change (QBus self, void* ptr, fct_qbus_on_route_change on_change)
 {
-  return qbus_route_add_on_change (self->route, ptr, on_change);
+  
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_rm_on_change (QBus self, void* obj)
 {
-  qbus_route_rm_on_change (self->route, obj);
+  
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_methods (QBus self, const char* module, void* ptr, fct_qbus_on_methods on_methods)
 {
-  qbus_route_methods (self->route, module, ptr, on_methods);
+  
 }
 
 //-----------------------------------------------------------------------------

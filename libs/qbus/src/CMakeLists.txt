@@ -1,44 +1,91 @@
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" "route" "logger" "engines" ".")
 
-SUBDIRS(core)
-SUBDIRS(adapter/java)
-SUBDIRS(adapter/python)
-SUBDIRS(adapter_example)
-SUBDIRS(tests)
-
-set(WSRV_SOURCES
+SET(QBUS_SOURCES
   qbus.c
+
+# include core classes
+  core/qbus_config.c
+
+# include route classes
+  route/qbus_route.c
+
+# include logger classes
+  logger/qbus_logger.c
+  logger/qbus_logger_file.c
+  logger/qbus_logger_udp.c
+
+# include engine classes
+  engines/qbus_engines.c
+  engines/qbus_engines_pvd.c
 )
 
-set(WSRV_HEADERS
+SET(QBUS_HEADERS
   qbus.h
   qbus.hpp
   qbus_types.h
+ 
+# include core classes
+  core/qbus_config.h
+
+# include route classes
+  route/qbus_route.h
+
+# include logger classes
+  logger/qbus_logger.h
+  logger/qbus_logger_file.h
+  logger/qbus_logger_udp.h
+
+# include engine classes
+  engines/qbus_engines.h
+  engines/qbus_engines_pvd.h
+  engines/qbus_pvd.h
 )
 
 #----------------------------------------------------------------------------------
 
-add_library             (qbus SHARED ${WSRV_SOURCES} ${WSRV_HEADERS})
-target_link_libraries   (qbus qbus_core cape qcrypt qbus_pvd_tcp)
-set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
-
-INSTALL (TARGETS qbus DESTINATION lib)
+add_library             (qbus2 SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
+target_link_libraries   (qbus2 cape qcrypt)
+set_target_properties   (qbus2 PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 #----------------------------------------------------------------------------------
 
 # for local install
-INSTALL (TARGETS qbus DESTINATION lib)
+INSTALL (TARGETS qbus2 DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
-SET (PVD_QBUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_qbus CACHE PATH "library path to qbus engines")
-message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
+SET (PVD_QBUS2_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_qbus CACHE PATH "library path to qbus engines")
+message (STATUS "PVD_QBUS2_DIR  = ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR}")
 
-SET (ADM_QBUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/adm_qbus CACHE PATH "library path to qbus adapters")
-message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
+SET (ADM_QBUS2_DIR ${CMAKE_CURRENT_BINARY_DIR}/adm_qbus CACHE PATH "library path to qbus adapters")
+message (STATUS "ADM_QBUS2_DIR  = ${ADM_QBUS2_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
-SUBDIRS(pvd_example)
-SUBDIRS(pvd_tcp)
+set(QBUS_APP_SOURCES
+  app/qbus_app.c
+)
+
+set(QBUS_APP_HEADERS
+
+)
+
+#----------------------------------------------------------------------------------
+
+add_executable          (qbus2_app ${QBUS_APP_SOURCES} ${QBUS_APP_HEADERS})
+target_link_libraries   (qbus2_app qbus2)
+
+#----------------------------------------------------------------------------------------
+
+if (ETC_LOCATION)
+  add_custom_command (TARGET qbus2_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
+endif()
+
+if (PVD_QBUS2_DIR)
+  add_custom_command (TARGET qbus2_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus2)
+endif()
+
+SUBDIRS(engines/pvd_tcp)
+
+
