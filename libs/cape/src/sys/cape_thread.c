@@ -163,6 +163,13 @@ void cape_thread_cb (CapeThread self, cape_thread_on_done on_done)
 
 //-----------------------------------------------------------------------------
 
+void cape_thread_signal (CapeThread self)
+{
+  pthread_kill (self->tid, SIGUSR1);
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_thread_nosignals ()
 {
   sigset_t set;
