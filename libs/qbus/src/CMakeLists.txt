@@ -44,22 +44,22 @@ SET(QBUS_HEADERS
 
 #----------------------------------------------------------------------------------
 
-add_library             (qbus2 SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
-target_link_libraries   (qbus2 cape qcrypt)
-set_target_properties   (qbus2 PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
+add_library             (qbus SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
+target_link_libraries   (qbus cape qcrypt)
+set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 #----------------------------------------------------------------------------------
 
 # for local install
-INSTALL (TARGETS qbus2 DESTINATION lib)
+INSTALL (TARGETS qbus DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
 SET (PVD_QBUS2_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_qbus CACHE PATH "library path to qbus engines")
-message (STATUS "PVD_QBUS2_DIR  = ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR}")
+message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 SET (ADM_QBUS2_DIR ${CMAKE_CURRENT_BINARY_DIR}/adm_qbus CACHE PATH "library path to qbus adapters")
-message (STATUS "ADM_QBUS2_DIR  = ${ADM_QBUS2_DIR}/${CMAKE_CFG_INTDIR}")
+message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
@@ -73,17 +73,17 @@ set(QBUS_APP_HEADERS
 
 #----------------------------------------------------------------------------------
 
-add_executable          (qbus2_app ${QBUS_APP_SOURCES} ${QBUS_APP_HEADERS})
-target_link_libraries   (qbus2_app qbus2)
+add_executable          (qbus_app ${QBUS_APP_SOURCES} ${QBUS_APP_HEADERS})
+target_link_libraries   (qbus_app qbus)
 
 #----------------------------------------------------------------------------------------
 
 if (ETC_LOCATION)
-  add_custom_command (TARGET qbus2_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
+  add_custom_command (TARGET qbus_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
 endif()
 
-if (PVD_QBUS2_DIR)
-  add_custom_command (TARGET qbus2_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus2)
+if (PVD_QBUS_DIR)
+  add_custom_command (TARGET qbus_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus)
 endif()
 
 SUBDIRS(engines/pvd_tcp)

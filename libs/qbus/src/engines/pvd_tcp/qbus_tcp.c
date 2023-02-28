@@ -13,7 +13,7 @@
 
 struct QBusPvdCtx_s
 {
-  number_t socket_fd;     // accept socket
+  void* socket_fd;     // accept socket
   
   CapeThread worker;
 };
@@ -31,24 +31,22 @@ int __STDCALL pvd2_ctx__accept_worker (void* ptr)
   fd_set rfds;
   
   FD_ZERO(&rfds);
-  FD_SET(self->socket_fd, &rfds);
+  FD_SET((long)self->socket_fd, &rfds);
   
   //sigfillset (&sigset);
   //sigdelset (&sigset, SIGUSR1);
   
+  cape_thread_nosignals ();
+  
   sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
+  sigaddset(&sigset, SIGUSR2);
   
-  if (pthread_sigmask (SIG_BLOCK, &sigset, &orig_mask) < 0) {
-    perror ("pthread_sigmask");
-    return NULL;
-  }
   
-//  sigprocmask(SIG_BLOCK, &sigset, NULL);
+  sigprocmask(SIG_BLOCK, &sigset, &orig_mask);
   
   int res = pselect (1, &rfds, NULL, NULL, NULL, &orig_mask);
   
-//  sigwait (&sigset, &sig);
+  //sigwait (&sigset, &sig);
   
   printf ("SIGNAL !!\n");
   
@@ -112,6 +110,8 @@ void __STDCALL pvd2_ctx_del (QBusPvdCtx* p_self)
   if (*p_self)
   {
     QBusPvdCtx self = *p_self;
+    
+    printf ("send signal\n");
     
     // send a signal to the thread to break out of select
     cape_thread_signal (self->worker);
