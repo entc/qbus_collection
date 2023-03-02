@@ -13,8 +13,9 @@
 struct QBusEnginesPvd_s
 {
   CapeDl hlib;         // handle for the shared library
-  CapeList ctxs;       // list of all contexts
-  QBusPvd2 pvd2;
+  CapeList entities;   // list of all entities
+  QBusPvd2 pvd2;       // function pointers
+  QBusPvdCtx ctx;      // library context
 };
 
 //-----------------------------------------------------------------------------
@@ -23,9 +24,12 @@ QBusEnginesPvd qbus_engines_pvd_new ()
 {
   QBusEnginesPvd self = CAPE_NEW (struct QBusEnginesPvd_s);
 
-  self->ctxs = cape_list_new (NULL);
+  self->entities = cape_list_new (NULL);
   self->hlib = cape_dl_new ();
-
+  self->ctx = NULL;
+  
+  memset (&(self->pvd2), 0, sizeof(QBusPvd2));
+  
   return self;
 }
 
@@ -39,20 +43,28 @@ void qbus_engines_pvd_del (QBusEnginesPvd* p_self)
     
     cape_log_msg (CAPE_LL_TRACE, "QBUS", "engines", "release engine");
     
+    /*
     {
-      CapeListCursor* cursor = cape_list_cursor_create (self->ctxs, CAPE_DIRECTION_FORW);
+      CapeListCursor* cursor = cape_list_cursor_create (self->entities, CAPE_DIRECTION_FORW);
       
       while (cape_list_cursor_next (cursor))
       {
-        QBusPvdCtx ctx = cape_list_cursor_extract (self->ctxs, cursor);
+        QBusPvdEntity entity = cape_list_cursor_extract (self->entities, cursor);
         
-        self->pvd2.ctx_del (&ctx);
+        self->pvd2.entity_del (&entity);
       }
       
       cape_list_cursor_destroy (&cursor);
     }
+    */
     
-    cape_list_del (&(self->ctxs));
+    cape_list_del (&(self->entities));
+    
+    if (self->pvd2.ctx_del)
+    {
+      self->pvd2.ctx_del (&(self->ctx));
+    }
+    
     cape_dl_del (&(self->hlib));
     
     CAPE_DEL (p_self, struct QBusEnginesPvd_s);
@@ -61,7 +73,7 @@ void qbus_engines_pvd_del (QBusEnginesPvd* p_self)
 
 //-----------------------------------------------------------------------------
 
-int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const CapeString name, CapeErr err)
+int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const CapeString name, CapeAioContext aio_context, CapeErr err)
 {
   int res;
   
@@ -94,7 +106,7 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
   {
     goto exit_and_cleanup;
   }
-  
+
   self->pvd2.ctx_new = cape_dl_funct (self->hlib, "pvd2_ctx_new", err);
   if (self->pvd2.ctx_new == NULL)
   {
@@ -109,12 +121,28 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
     goto exit_and_cleanup;
   }
   
-  self->pvd2.ctx_cb = cape_dl_funct (self->hlib, "pvd2_ctx_cb", err);
-  if (self->pvd2.ctx_cb == NULL)
+  self->pvd2.entity_new = cape_dl_funct (self->hlib, "pvd2_entity_new", err);
+  if (self->pvd2.entity_new == NULL)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
+  
+  self->pvd2.entity_del = cape_dl_funct (self->hlib, "pvd2_entity_del", err);
+  if (self->pvd2.entity_del == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  self->pvd2.entity_cb = cape_dl_funct (self->hlib, "pvd2_entity_cb", err);
+  if (self->pvd2.entity_cb == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  self->ctx = self->pvd2.ctx_new (aio_context, err);
   
   res = CAPE_ERR_NONE;
 
@@ -129,12 +157,12 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qbus_engines_pvd__ctx_new (QBusEnginesPvd self, const CapeUdc config, CapeAioContext aio_context, CapeErr err)
+int qbus_engines_pvd__entity_new (QBusEnginesPvd self, const CapeUdc config, CapeErr err)
 {
   int res;
   
-  QBusPvdCtx ctx = self->pvd2.ctx_new (config, aio_context, err);
-  if (ctx == NULL)
+  QBusPvdEntity entity = self->pvd2.entity_new (self->ctx, config, err);
+  if (entity == NULL)
   {
     res = cape_err_code (err);
     if (res)
@@ -146,9 +174,9 @@ int qbus_engines_pvd__ctx_new (QBusEnginesPvd self, const CapeUdc config, CapeAi
     goto exit_and_cleanup;
   }
   
-  cape_list_push_back (self->ctxs, (void*)ctx);
+  cape_list_push_back (self->entities, (void*)entity);
   
-  self->pvd2.ctx_cb (ctx);
+  self->pvd2.entity_cb (entity);
   
   res = CAPE_ERR_NONE;
   

@@ -19,9 +19,9 @@ __CAPE_LOCAL   void               qbus_engines_pvd_del          (QBusEnginesPvd*
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   int                qbus_engines_pvd_load         (QBusEnginesPvd, const CapeString path, const CapeString name, CapeErr err);
+__CAPE_LOCAL   int                qbus_engines_pvd_load         (QBusEnginesPvd, const CapeString path, const CapeString name, CapeAioContext aio_context, CapeErr err);
 
-__CAPE_LOCAL   int                qbus_engines_pvd__ctx_new     (QBusEnginesPvd, const CapeUdc config, CapeAioContext aio_context, CapeErr err);
+__CAPE_LOCAL   int                qbus_engines_pvd__entity_new  (QBusEnginesPvd, const CapeUdc config, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

@@ -9,11 +9,17 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBusPvdCtx    __STDCALL pvd2_ctx_new      (CapeUdc config, CapeAioContext aio_context, CapeErr);
+__CAPE_LIBEX   QBusPvdCtx      __STDCALL pvd2_ctx_new         (CapeAioContext aio_context, CapeErr);
 
-__CAPE_LIBEX   void          __STDCALL pvd2_ctx_del      (QBusPvdCtx*);
+__CAPE_LIBEX   void            __STDCALL pvd2_ctx_del         (QBusPvdCtx*);
 
-__CAPE_LIBEX   void          __STDCALL pvd2_ctx_cb       (QBusPvdCtx);
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   QBusPvdEntity   __STDCALL pvd2_entity_new      (QBusPvdCtx, CapeUdc config, CapeErr);
+
+__CAPE_LIBEX   void            __STDCALL pvd2_entity_del      (QBusPvdEntity*);
+
+__CAPE_LIBEX   void            __STDCALL pvd2_entity_cb       (QBusPvdEntity);
 
 //-----------------------------------------------------------------------------
 
