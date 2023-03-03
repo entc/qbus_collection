@@ -52,7 +52,7 @@ struct QBusPvdFD_s
 // forwarded functions
 QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx, const CapeString host);
 void pvd2_entity__on_done (QBusPvdEntity*, int allow_reconnect);
-void* pvd2_entity__connect (QBusPvdEntity);
+void* pvd2_entity__reconnect (QBusPvdEntity);
 
 //-----------------------------------------------------------------------------
 
@@ -183,10 +183,7 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
   {
     case QBUS_PVD_MODE_REMOTE:
     case QBUS_PVD_MODE_CLIENT: // read
-    {
-      int so_err; socklen_t size = sizeof(int);
-      
-      
+    {      
       char buffer[1024];
       
       ssize_t readBytes = recv ((long)self->handle, buffer, 1024, 0);
@@ -301,7 +298,7 @@ void pvd2_ctx__check_connects (QBusPvdCtx self)
   {
     QBusPvdFD pfd = cape_list_node_data (cursor->node);
     
-    void* handle = pvd2_entity__connect (pfd->entity);
+    void* handle = pvd2_entity__reconnect (pfd->entity);
 
     if (handle)
     {
@@ -499,74 +496,25 @@ struct QBusPvdEntity_s
   number_t port;
   
   int reconnect;
+  
+  QBusPvdFcts fcts;
+  void* user_ptr;
 };
 
 //-----------------------------------------------------------------------------
 
-QBusPvdEntity __STDCALL pvd2_entity_new (QBusPvdCtx ctx, CapeUdc config, CapeErr err)
+QBusPvdEntity pvd2_entity_new (QBusPvdCtx ctx, int reconnect, QBusPvdFcts* fcts, void* user_ptr)
 {
-  QBusPvdEntity self = NULL;
+  QBusPvdEntity self = CAPE_NEW (struct QBusPvdEntity_s);
   
-  {
-    CapeString h = cape_json_to_s (config);
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "new TCP context", "params: %s", h);
-    
-    cape_str_del (&h);
-  }
+  self->ctx = ctx;
+  self->reconnect = reconnect;
+  
+  self->host = NULL;
+  self->port = 0;
 
-  switch (cape_udc_get_n (config, "mode", 0))
-  {
-    case QBUS_PVD_MODE_CLIENT:
-    {
-      self = CAPE_NEW (struct QBusPvdEntity_s);
-      
-      self->ctx = ctx;
-
-      self->host = cape_str_cp (cape_udc_get_s (config, "host", ""));
-      self->port = cape_udc_get_n (config, "port", 33350);
-      
-      self->reconnect = TRUE;
-      
-      void* handle = pvd2_entity__connect (self);
-      
-      if (handle == NULL)
-      {
-        pvd2_ctx__register_connect (self->ctx, self);
-      }
-      else
-      {
-        pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_CLIENT);
-      }
-      
-      break;
-    }
-    case QBUS_PVD_MODE_LISTEN:
-    {
-      self = CAPE_NEW (struct QBusPvdEntity_s);
-
-      self->ctx = ctx;
-      self->reconnect = FALSE;
-      
-      {
-        void* handle = cape_sock__tcp__srv_new (cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350), err);
-        if (handle == 0)
-        {
-          pvd2_entity_del (&self);
-          break;
-        }
-
-        pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_LISTEN);
-      }
-      
-      break;
-    }
-    default:
-    {
-      cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "mode not supported");
-      break;
-    }
-  }
+  memcpy (&(self->fcts), fcts, sizeof(QBusPvdFcts));
+  self->user_ptr = user_ptr;
   
   return self;
 }
@@ -587,9 +535,147 @@ void __STDCALL pvd2_entity_del (QBusPvdEntity* p_self)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL pvd2_entity_cb (QBusPvdEntity self)
+void* pvd2_entity__bind (QBusPvdEntity self)
 {
+  CapeErr err = cape_err_new ();
   
+  void* handle = cape_sock__tcp__srv_new (self->host, self->port, err);
+  
+  if (handle)
+  {
+    // always set noneblocking
+    if (cape_sock__noneblocking (handle, err))
+    {
+      cape_sock__close (handle);
+      handle = NULL;
+    }
+  }
+  
+  if (cape_err_code (err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "QBUS", "bind", cape_err_text (err));    
+  }
+  
+  cape_err_del (&err);
+  
+  return handle;
+}
+
+//-----------------------------------------------------------------------------
+
+void pvd2_entity__listen (QBusPvdEntity* p_self, const CapeString host, number_t port)
+{
+  QBusPvdEntity self = *p_self;
+  
+  self->host = cape_str_cp (host);
+  self->port = port;
+    
+  // try to bind to host
+  {
+    void* handle = pvd2_entity__bind (self);
+    
+    if (handle == NULL)
+    {
+      // remove this entity
+      pvd2_entity_del (p_self);
+    }
+    else
+    {
+      // move ownership to context
+      pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_LISTEN);
+      *p_self = NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void* pvd2_entity__reconnect (QBusPvdEntity self)
+{
+  CapeErr err = cape_err_new ();
+  
+  void* handle = cape_sock__tcp__clt_new (self->host, self->port, err);
+  
+  if (handle)
+  {
+    // always set noneblocking
+    if (cape_sock__noneblocking (handle, err))
+    {
+      cape_sock__close (handle);
+      handle = NULL;
+    }
+  }
+    
+  if (cape_err_code (err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "QBUS", "connect", cape_err_text (err));    
+  }
+  
+  cape_err_del (&err);
+  
+  return handle;
+}
+
+//-----------------------------------------------------------------------------
+
+void pvd2_entity__connect (QBusPvdEntity* p_self, const CapeString host, number_t port)
+{
+  QBusPvdEntity self = *p_self;
+
+  self->host = cape_str_cp (host);
+  self->port = port;
+
+  // try to connect to host
+  {
+    void* handle = pvd2_entity__reconnect (self);
+    
+    if (handle == NULL)
+    {
+      pvd2_ctx__register_connect (self->ctx, self);
+      *p_self = NULL;
+    }
+    else
+    {
+      pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_CLIENT);
+      *p_self = NULL;
+    }  
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL pvd2_ctx_reg (QBusPvdCtx self, CapeUdc config, QBusPvdFcts* fcts, void* user_ptr)
+{
+  {
+    CapeString h = cape_json_to_s (config);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "new TCP context", "params: %s", h);
+    
+    cape_str_del (&h);
+  }
+
+  switch (cape_udc_get_n (config, "mode", 0))
+  {
+    case QBUS_PVD_MODE_CLIENT:
+    {
+      QBusPvdEntity entity = pvd2_entity_new (self, TRUE, fcts, user_ptr);
+      
+      pvd2_entity__connect (&entity, cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350));
+      break;
+    }
+    case QBUS_PVD_MODE_LISTEN:
+    {
+      QBusPvdEntity entity = pvd2_entity_new (self, FALSE, fcts, user_ptr);
+      
+      pvd2_entity__listen (&entity, cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350));      
+      break;
+    }
+    default:
+    {
+      cape_log_msg (CAPE_LL_ERROR, "QBUS", "register", "register mode invalid");
+      break;
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -606,30 +692,6 @@ QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx ctx, const CapeString host)
   entity->reconnect = FALSE;
   
   return entity;
-}
-
-//-----------------------------------------------------------------------------
-
-void* pvd2_entity__connect (QBusPvdEntity self)
-{
-  CapeErr err = cape_err_new ();
-  
-  void* handle = cape_sock__tcp__clt_new (self->host, self->port, err);
-  
-  // always set noneblocking
-  if (cape_sock__noneblocking (handle, err))
-  {
-    cape_sock__close (handle);
-    handle = NULL;
-  }
-    
-  if (cape_err_code (err))
-  {
-    cape_log_msg (CAPE_LL_ERROR, "QBUS", "connect", cape_err_text (err));    
-  }
-
-  cape_err_del (&err);  
-  return handle;
 }
 
 //-----------------------------------------------------------------------------

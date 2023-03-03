@@ -16,17 +16,20 @@ typedef struct QBusPvdEntity_s* QBusPvdEntity;
 
 //-----------------------------------------------------------------------------
 
+typedef struct 
+{
+  
+  
+  
+} QBusPvdFcts;
+
+//-----------------------------------------------------------------------------
+
 typedef QBusPvdCtx     (__STDCALL *fct_qbus_pvd_ctx_new)          (CapeAioContext aio_context, CapeErr);
 
 typedef void           (__STDCALL *fct_qbus_pvd_ctx_del)          (QBusPvdCtx*);
 
-//-----------------------------------------------------------------------------
-
-typedef QBusPvdEntity  (__STDCALL *fct_qbus_pvd_entity_new)       (QBusPvdCtx, CapeUdc config, CapeErr);
-
-typedef void           (__STDCALL *fct_qbus_pvd_entity_del)       (QBusPvdEntity*);
-
-typedef void           (__STDCALL *fct_qbus_pvd_entity_cb)        (QBusPvdEntity);
+typedef void           (__STDCALL *fct_qbus_pvd_ctx_reg)          (QBusPvdCtx, CapeUdc config, QBusPvdFcts* fcts, void* user_ptr);
 
 //-----------------------------------------------------------------------------
 
@@ -36,11 +39,7 @@ typedef struct
 
   fct_qbus_pvd_ctx_del      ctx_del;
   
-  fct_qbus_pvd_entity_new   entity_new;
-  
-  fct_qbus_pvd_entity_del   entity_del;
-  
-  fct_qbus_pvd_entity_cb    entity_cb;
+  fct_qbus_pvd_ctx_reg      ctx_reg;
   
 } QBusPvd2;
 

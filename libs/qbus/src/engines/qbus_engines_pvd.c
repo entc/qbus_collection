@@ -102,22 +102,8 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
     goto exit_and_cleanup;
   }
   
-  self->pvd2.entity_new = cape_dl_funct (self->hlib, "pvd2_entity_new", err);
-  if (self->pvd2.entity_new == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.entity_del = cape_dl_funct (self->hlib, "pvd2_entity_del", err);
-  if (self->pvd2.entity_del == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.entity_cb = cape_dl_funct (self->hlib, "pvd2_entity_cb", err);
-  if (self->pvd2.entity_cb == NULL)
+  self->pvd2.ctx_reg = cape_dl_funct (self->hlib, "pvd2_ctx_reg", err);
+  if (self->pvd2.ctx_reg == NULL)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
@@ -141,21 +127,9 @@ exit_and_cleanup:
 int qbus_engines_pvd__entity_new (QBusEnginesPvd self, const CapeUdc config, CapeErr err)
 {
   int res;
+  QBusPvdFcts fcts;
   
-  QBusPvdEntity entity = self->pvd2.entity_new (self->ctx, config, err);
-  if (entity == NULL)
-  {
-    res = cape_err_code (err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "no pvd context returned");
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.entity_cb (entity);
+  self->pvd2.ctx_reg (self->ctx, config, &fcts, NULL);
   
   res = CAPE_ERR_NONE;
   
