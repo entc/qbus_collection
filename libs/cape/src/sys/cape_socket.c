@@ -366,6 +366,29 @@ void cape_sock__close (void* sock)
 
 //-----------------------------------------------------------------------------
 
+int cape_sock__noneblocking (void* sock, CapeErr err)
+{
+  // save the current flags
+  int flags = fcntl ((long)sock, F_GETFL, 0);
+  if (flags == -1)
+  {
+    return cape_err_lastOSError (err);    
+  }
+
+  // add noneblocking
+  flags |= O_NONBLOCK;
+
+  // apply the flags
+  if (fcntl ((long)sock, F_SETFL, flags) != 0)
+  {
+    return cape_err_lastOSError (err);    
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 #elif defined _WIN64 || defined _WIN32
 
 //-----------------------------------------------------------------------------
@@ -587,6 +610,20 @@ exit_and_cleanup:
 void* cape_sock__icmp__new (CapeErr err)
 {
   return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__close (void* sock)
+{
+  closesocket ((SOCKET)sock);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_sock__noneblocking (void* sock, CapeErr err)
+{
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

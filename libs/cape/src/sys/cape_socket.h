@@ -23,8 +23,13 @@ __CAPE_LIBEX   void*         cape_sock__icmp__new         (CapeErr err);
 
 //-----------------------------------------------------------------------------
 
+                             /* close the handle / socket */
 __CAPE_LIBEX   void          cape_sock__close             (void*);
 
+                             /* set the handle / socket to none blocking */
+__CAPE_LIBEX   int           cape_sock__noneblocking      (void*, CapeErr);
+
+                             /* resolve IP-Address from a named host */
 __CAPE_LIBEX   CapeString    cape_sock__resolve           (const CapeString host, CapeErr err);
 
 //-----------------------------------------------------------------------------

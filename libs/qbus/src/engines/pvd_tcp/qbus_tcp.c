@@ -64,8 +64,6 @@ char pvd2_ctx__retrieve_last_ctrl (QBusPvdCtx self)
   // reads a maximum of 100 control bytes at once
   int bytes_read = read (self->pipe_fd[0], &buffer, 100);
     
-  printf ("ctrl bytes read: %i\n", bytes_read);
-    
   if (bytes_read > 0)
   {
     ret = buffer[bytes_read - 1];
@@ -78,8 +76,6 @@ char pvd2_ctx__retrieve_last_ctrl (QBusPvdCtx self)
 
 void pvd2_ctx__set_fds (QBusPvdCtx self, fd_set* pset)
 {
-  number_t cnt = 0;
-  
   cape_mutex_lock (self->mutex);
   
   {
@@ -90,16 +86,12 @@ void pvd2_ctx__set_fds (QBusPvdCtx self, fd_set* pset)
       QBusPvdFD pfd = cape_list_node_data (cursor->node);
 
       FD_SET((long)pfd->handle, pset);
-      
-      cnt++;
     }
     
     cape_list_cursor_destroy (&cursor);
   }
   
   cape_mutex_unlock (self->mutex);
-  
-  printf ("added fds = %lu\n", cnt);
 }
 
 //-----------------------------------------------------------------------------
@@ -123,7 +115,7 @@ void pvd2_pfd_del (QBusPvdFD* p_self)
   {
     QBusPvdFD self = *p_self;
     
-    pvd2_entity__on_done (&(self->entity), self->handle_type > 0);
+    pvd2_entity__on_done (&(self->entity), self->handle_type > QBUS_PVD_MODE_DISABLED);
     
     if (self->handle)
     {
@@ -132,6 +124,55 @@ void pvd2_pfd_del (QBusPvdFD* p_self)
     
     CAPE_DEL(p_self, struct QBusPvdFD_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int pvd2_pfd__accept (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
+{
+  int ret = TRUE;  
+  long sock;
+  
+  struct sockaddr addr;
+  socklen_t addrlen = 0;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  memset (&addr, 0x00, sizeof(addr));
+   
+  sock = accept ((long)(self->handle), &addr, &addrlen);
+  if (sock < 0)
+  {
+    if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+    {
+      goto exit_and_cleanup;
+    }
+    else
+    {
+      cape_err_lastOSError (err);
+      
+      ret = FALSE;
+      goto exit_and_cleanup;
+    }
+  }
+ 
+  if (cape_sock__noneblocking ((void*)sock, err))
+  {
+    goto exit_and_cleanup;
+  }
+ 
+  *p_new_pfd = pvd2_pfd_new ((void*)sock, QBUS_PVD_MODE_REMOTE, pvd2_entity__on_connect (ctx, inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr)));
+  
+exit_and_cleanup:
+
+  if (cape_err_code (err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "QBUS", "accept", cape_err_text (err));    
+  }
+
+  cape_err_del (&err);
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -145,27 +186,6 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
     {
       int so_err; socklen_t size = sizeof(int);
       
-      /*
-       *      // check for errors on the socket, eg connection was refused
-       *      getsockopt((long)self->socket_fd, SOL_SOCKET, SO_ERROR, &so_err, &size);
-       *      
-       *      if (so_err)
-       *      {
-       *        CapeErr err = cape_err_new ();
-       *        
-       *        cape_err_formatErrorOS (err, so_err);
-       *        
-       *        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket on_event", "error on socket: %s", cape_err_text(err));
-       *        
-       *        cape_err_del (&err);
-    }
-    else
-    {
-    
-    
-    
-    }
-    */
       
       char buffer[1024];
       
@@ -190,8 +210,7 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
       }
       else
       {
-        
-        
+
         
       }
       
@@ -199,45 +218,7 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
     }
     case QBUS_PVD_MODE_LISTEN: // accept
     {
-      struct sockaddr addr;
-      socklen_t addrlen = 0;
-      
-      memset (&addr, 0x00, sizeof(addr));
-      
-      number_t sock = accept ((long)(self->handle), &addr, &addrlen);
-      if (sock < 0)
-      {
-        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
-        {
-          return TRUE;
-        }
-        else
-        {
-          return FALSE;
-        }
-      }
-      
-      *p_new_pfd = pvd2_pfd_new ((void*)sock, QBUS_PVD_MODE_REMOTE, pvd2_entity__on_connect (ctx, inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr)));
-      
-      // set the socket to none blocking
-      /*
-       *      {
-       *        int flags = fcntl(sock, F_GETFL, 0);
-       *        if (flags == -1)
-       *        {
-       *          
-    }
-    
-    flags |= O_NONBLOCK;
-    
-    if (fcntl(sock, F_SETFL, flags) != 0)
-    {
-    
-    }
-    }
-    */
-      
-      break;
+      return pvd2_pfd__accept (self, ctx, p_new_pfd);
     }
   }  
   
@@ -281,6 +262,28 @@ void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
     cape_list_cursor_destroy (&cursor);
   }
   
+  cape_mutex_unlock (self->mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+void pvd2_ctx__disable_fds (QBusPvdCtx self)
+{
+  cape_mutex_lock (self->mutex);
+  
+  {
+    CapeListCursor* cursor = cape_list_cursor_create (self->fds, CAPE_DIRECTION_FORW);
+    
+    while (cape_list_cursor_next (cursor))
+    {
+      QBusPvdFD pfd = cape_list_node_data (cursor->node);
+      
+      pfd->handle_type = QBUS_PVD_MODE_DISABLED;
+    }
+
+    cape_list_cursor_destroy (&cursor);
+  }
+
   cape_mutex_unlock (self->mutex);
 }
 
@@ -433,6 +436,10 @@ void __STDCALL pvd2_ctx_del (QBusPvdCtx* p_self)
   {
     QBusPvdCtx self = *p_self;
 
+    // disable the fds before deletion
+    // -> avoid reconnection mechanics
+    pvd2_ctx__disable_fds (self);
+    
     // tell the thread to terminate
     pvd2_ctx__signal_thread (self, THREAD_SIGNAL_MSG__TERMINATE);
     
@@ -609,8 +616,19 @@ void* pvd2_entity__connect (QBusPvdEntity self)
   
   void* handle = cape_sock__tcp__clt_new (self->host, self->port, err);
   
-  cape_err_del (&err);
-  
+  // always set noneblocking
+  if (cape_sock__noneblocking (handle, err))
+  {
+    cape_sock__close (handle);
+    handle = NULL;
+  }
+    
+  if (cape_err_code (err))
+  {
+    cape_log_msg (CAPE_LL_ERROR, "QBUS", "connect", cape_err_text (err));    
+  }
+
+  cape_err_del (&err);  
   return handle;
 }
 
