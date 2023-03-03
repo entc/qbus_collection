@@ -13,7 +13,6 @@
 struct QBusEnginesPvd_s
 {
   CapeDl hlib;         // handle for the shared library
-  CapeList entities;   // list of all entities
   QBusPvd2 pvd2;       // function pointers
   QBusPvdCtx ctx;      // library context
 };
@@ -24,7 +23,6 @@ QBusEnginesPvd qbus_engines_pvd_new ()
 {
   QBusEnginesPvd self = CAPE_NEW (struct QBusEnginesPvd_s);
 
-  self->entities = cape_list_new (NULL);
   self->hlib = cape_dl_new ();
   self->ctx = NULL;
   
@@ -42,24 +40,7 @@ void qbus_engines_pvd_del (QBusEnginesPvd* p_self)
     QBusEnginesPvd self = *p_self;
     
     cape_log_msg (CAPE_LL_TRACE, "QBUS", "engines", "release engine");
-    
-    /*
-    {
-      CapeListCursor* cursor = cape_list_cursor_create (self->entities, CAPE_DIRECTION_FORW);
-      
-      while (cape_list_cursor_next (cursor))
-      {
-        QBusPvdEntity entity = cape_list_cursor_extract (self->entities, cursor);
         
-        self->pvd2.entity_del (&entity);
-      }
-      
-      cape_list_cursor_destroy (&cursor);
-    }
-    */
-    
-    cape_list_del (&(self->entities));
-    
     if (self->pvd2.ctx_del)
     {
       self->pvd2.ctx_del (&(self->ctx));
@@ -173,8 +154,6 @@ int qbus_engines_pvd__entity_new (QBusEnginesPvd self, const CapeUdc config, Cap
     res = cape_err_set (err, CAPE_ERR_RUNTIME, "no pvd context returned");
     goto exit_and_cleanup;
   }
-  
-  cape_list_push_back (self->entities, (void*)entity);
   
   self->pvd2.entity_cb (entity);
   

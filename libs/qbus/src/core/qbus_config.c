@@ -328,7 +328,7 @@ CapeUdc qbus_config_get_pvds (QBusConfig self)
     CapeUdc arg_r = cape_udc_get (self->config, "d");
     if (arg_r)
     {
-      qbus_config__check_param (self->pvds, arg_r, QBUS_PVD_MODE_CONNECT);
+      qbus_config__check_param (self->pvds, arg_r, QBUS_PVD_MODE_CLIENT);
     }
   }
   

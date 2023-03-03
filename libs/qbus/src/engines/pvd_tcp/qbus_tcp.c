@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 //-----------------------------------------------------------------------------
 
@@ -31,6 +32,8 @@ struct QBusPvdCtx_s
   CapeMutex mutex;
   
   CapeList fds;
+  
+  CapeList connect_queue;
 };
 
 //-----------------------------------------------------------------------------
@@ -40,15 +43,16 @@ struct QBusPvdFD_s
   QBusPvdEntity entity;
   void* handle;
   
+  int handle_type;
+  
 }; typedef struct QBusPvdFD_s* QBusPvdFD;
 
 //-----------------------------------------------------------------------------
 
 // forwarded functions
-int pvd2_entity__event (QBusPvdEntity, QBusPvdFD* p_new_pfd);
-QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx, void* handle, const CapeString host);
-void pvd2_entity__on_done (QBusPvdEntity*);
-void pvd2_entity__connect (QBusPvdEntity);
+QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx, const CapeString host);
+void pvd2_entity__on_done (QBusPvdEntity*, int allow_reconnect);
+void* pvd2_entity__connect (QBusPvdEntity);
 
 //-----------------------------------------------------------------------------
 
@@ -100,6 +104,148 @@ void pvd2_ctx__set_fds (QBusPvdCtx self, fd_set* pset)
 
 //-----------------------------------------------------------------------------
 
+QBusPvdFD pvd2_pfd_new (void* handle, int handle_type, QBusPvdEntity entity)
+{
+  QBusPvdFD self = CAPE_NEW (struct QBusPvdFD_s);
+  
+  self->handle = handle;
+  self->handle_type = handle_type;
+  self->entity = entity;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void pvd2_pfd_del (QBusPvdFD* p_self)
+{
+  if (*p_self)
+  {
+    QBusPvdFD self = *p_self;
+    
+    pvd2_entity__on_done (&(self->entity), self->handle_type > 0);
+    
+    if (self->handle)
+    {
+      cape_sock__close (self->handle);
+    }
+    
+    CAPE_DEL(p_self, struct QBusPvdFD_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
+{
+  switch (self->handle_type)
+  {
+    case QBUS_PVD_MODE_REMOTE:
+    case QBUS_PVD_MODE_CLIENT: // read
+    {
+      int so_err; socklen_t size = sizeof(int);
+      
+      /*
+       *      // check for errors on the socket, eg connection was refused
+       *      getsockopt((long)self->socket_fd, SOL_SOCKET, SO_ERROR, &so_err, &size);
+       *      
+       *      if (so_err)
+       *      {
+       *        CapeErr err = cape_err_new ();
+       *        
+       *        cape_err_formatErrorOS (err, so_err);
+       *        
+       *        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket on_event", "error on socket: %s", cape_err_text(err));
+       *        
+       *        cape_err_del (&err);
+    }
+    else
+    {
+    
+    
+    
+    }
+    */
+      
+      char buffer[1024];
+      
+      ssize_t readBytes = recv ((long)self->handle, buffer, 1024, 0);
+      
+      printf ("read bytes: %lu\n", readBytes);
+      
+      if (readBytes < 0)
+      {
+        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+        {
+          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket read", "error while writing data to the socket [%i]", errno);
+          
+        }
+        
+        return TRUE;
+      }
+      else if (readBytes == 0)
+      {
+        // disconnect
+        return FALSE;
+      }
+      else
+      {
+        
+        
+        
+      }
+      
+      break; 
+    }
+    case QBUS_PVD_MODE_LISTEN: // accept
+    {
+      struct sockaddr addr;
+      socklen_t addrlen = 0;
+      
+      memset (&addr, 0x00, sizeof(addr));
+      
+      number_t sock = accept ((long)(self->handle), &addr, &addrlen);
+      if (sock < 0)
+      {
+        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+        {
+          return TRUE;
+        }
+        else
+        {
+          return FALSE;
+        }
+      }
+      
+      *p_new_pfd = pvd2_pfd_new ((void*)sock, QBUS_PVD_MODE_REMOTE, pvd2_entity__on_connect (ctx, inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr)));
+      
+      // set the socket to none blocking
+      /*
+       *      {
+       *        int flags = fcntl(sock, F_GETFL, 0);
+       *        if (flags == -1)
+       *        {
+       *          
+    }
+    
+    flags |= O_NONBLOCK;
+    
+    if (fcntl(sock, F_SETFL, flags) != 0)
+    {
+    
+    }
+    }
+    */
+      
+      break;
+    }
+  }  
+  
+  return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
 void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
 {
   int selected_fds_left = changed_fds;
@@ -118,7 +264,7 @@ void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
         
         selected_fds_left--;
 
-        if (pvd2_entity__event (pfd->entity, &new_pfd))
+        if (pvd2_pfd_event (pfd, self, &new_pfd))
         {
           if (new_pfd)
           {
@@ -127,8 +273,6 @@ void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
         }
         else
         {
-          printf ("connection was dropped\n");
-          
           cape_list_cursor_erase (self->fds, cursor);
         }
       }
@@ -142,6 +286,35 @@ void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
 
 //-----------------------------------------------------------------------------
 
+void pvd2_ctx__register_handle (QBusPvdCtx self, QBusPvdEntity entity, void* handle, int handle_type);
+
+//-----------------------------------------------------------------------------
+
+void pvd2_ctx__check_connects (QBusPvdCtx self)
+{
+  CapeListCursor* cursor = cape_list_cursor_create (self->connect_queue, CAPE_DIRECTION_FORW);
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    QBusPvdFD pfd = cape_list_node_data (cursor->node);
+    
+    void* handle = pvd2_entity__connect (pfd->entity);
+
+    if (handle)
+    {
+      pvd2_ctx__register_handle (self, pfd->entity, handle, QBUS_PVD_MODE_CLIENT);
+      
+      pfd->entity = NULL;
+      
+      cape_list_cursor_erase (self->connect_queue, cursor);
+    }
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL pvd2_ctx__main_worker (void* ptr)
 {
   QBusPvdCtx self = ptr;
@@ -149,14 +322,18 @@ int __STDCALL pvd2_ctx__main_worker (void* ptr)
   cape_thread_nosignals ();
   
   fd_set rfds;
+  struct timeval timeout;
 
   FD_ZERO(&rfds);
   FD_SET(self->pipe_fd[0], &rfds);
   
   pvd2_ctx__set_fds (self, &rfds);
-    
+  
+  timeout.tv_usec = 0;
+  timeout.tv_sec = 30;
+  
   int ret = TRUE;
-  int changed_fds = select (FD_SETSIZE, &rfds, NULL, NULL, NULL);
+  int changed_fds = select (FD_SETSIZE, &rfds, NULL, NULL, &timeout);
   
   switch (changed_fds)
   {
@@ -168,7 +345,8 @@ int __STDCALL pvd2_ctx__main_worker (void* ptr)
     }
     case 0:   // timeout (no fd was selected)
     {
-      
+      pvd2_ctx__check_connects (self);
+
       break;
     }
     default:
@@ -196,11 +374,7 @@ int __STDCALL pvd2_ctx__main_worker (void* ptr)
 
 void __STDCALL pvd2_ctx__fds__on_del (void* ptr)
 {
-  QBusPvdFD pfd = ptr;
-  
-  pvd2_entity__on_done (&(pfd->entity));
-  
-  CAPE_DEL(&pfd, struct QBusPvdFD_s);
+  QBusPvdFD pfd = ptr; pvd2_pfd_del (&pfd);
 }
 
 //-----------------------------------------------------------------------------
@@ -224,6 +398,8 @@ QBusPvdCtx __STDCALL pvd2_ctx_new (CapeAioContext aio_context, CapeErr err)
   
   self->fds = cape_list_new (pvd2_ctx__fds__on_del);
 
+  self->connect_queue = cape_list_new (pvd2_ctx__fds__on_del);
+  
   self->worker = cape_thread_new ();
   
   // start the main background worker thread
@@ -268,6 +444,9 @@ void __STDCALL pvd2_ctx_del (QBusPvdCtx* p_self)
     // close all entities
     cape_list_del (&(self->fds));
     
+    // close all entities
+    cape_list_del (&(self->connect_queue));
+
     // cleanup mutex
     cape_mutex_del (&(self->mutex));
     
@@ -281,13 +460,10 @@ void __STDCALL pvd2_ctx_del (QBusPvdCtx* p_self)
 
 //-----------------------------------------------------------------------------
 
-void pvd2_ctx__register_entity (QBusPvdCtx self, QBusPvdEntity entity, void* handle)
+void pvd2_ctx__register_handle (QBusPvdCtx self, QBusPvdEntity entity, void* handle, int handle_type)
 {
-  QBusPvdFD pfd = CAPE_NEW (struct QBusPvdFD_s);
+  QBusPvdFD pfd = pvd2_pfd_new (handle, handle_type, entity);
   
-  pfd->entity = entity;
-  pfd->handle = handle;
-
   cape_mutex_lock (self->mutex);
   
   cape_list_push_back (self->fds, (void*)pfd);
@@ -299,9 +475,11 @@ void pvd2_ctx__register_entity (QBusPvdCtx self, QBusPvdEntity entity, void* han
 
 //-----------------------------------------------------------------------------
 
-void pvd2_ctx__unregister_entity (QBusPvdCtx self, QBusPvdEntity entity)
+void pvd2_ctx__register_connect (QBusPvdCtx self, QBusPvdEntity entity)
 {
+  QBusPvdFD pfd = pvd2_pfd_new (NULL, 0, entity);
   
+  cape_list_push_front (self->connect_queue, (void*)pfd);
 }
 
 //-----------------------------------------------------------------------------
@@ -310,12 +488,10 @@ struct QBusPvdEntity_s
 {
   QBusPvdCtx ctx;
   
-  void* socket_fd;     // accept socket
-  
   CapeString host;
   number_t port;
   
-  number_t mode;
+  int reconnect;
 };
 
 //-----------------------------------------------------------------------------
@@ -334,7 +510,7 @@ QBusPvdEntity __STDCALL pvd2_entity_new (QBusPvdCtx ctx, CapeUdc config, CapeErr
 
   switch (cape_udc_get_n (config, "mode", 0))
   {
-    case QBUS_PVD_MODE_CONNECT:
+    case QBUS_PVD_MODE_CLIENT:
     {
       self = CAPE_NEW (struct QBusPvdEntity_s);
       
@@ -343,11 +519,18 @@ QBusPvdEntity __STDCALL pvd2_entity_new (QBusPvdCtx ctx, CapeUdc config, CapeErr
       self->host = cape_str_cp (cape_udc_get_s (config, "host", ""));
       self->port = cape_udc_get_n (config, "port", 33350);
       
-      self->socket_fd = NULL;
+      self->reconnect = TRUE;
       
-      self->mode = QBUS_PVD_MODE_CONNECT;
+      void* handle = pvd2_entity__connect (self);
       
-      pvd2_entity__connect (self);
+      if (handle == NULL)
+      {
+        pvd2_ctx__register_connect (self->ctx, self);
+      }
+      else
+      {
+        pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_CLIENT);
+      }
       
       break;
     }
@@ -356,17 +539,18 @@ QBusPvdEntity __STDCALL pvd2_entity_new (QBusPvdCtx ctx, CapeUdc config, CapeErr
       self = CAPE_NEW (struct QBusPvdEntity_s);
 
       self->ctx = ctx;
+      self->reconnect = FALSE;
       
-      self->socket_fd = cape_sock__tcp__srv_new (cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350), err);
-      if (self->socket_fd == 0)
       {
-        pvd2_entity_del (&self);
-        break;
+        void* handle = cape_sock__tcp__srv_new (cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350), err);
+        if (handle == 0)
+        {
+          pvd2_entity_del (&self);
+          break;
+        }
+
+        pvd2_ctx__register_handle (self->ctx, self, handle, QBUS_PVD_MODE_LISTEN);
       }
-      
-      self->mode = QBUS_PVD_MODE_LISTEN;
-      
-      pvd2_ctx__register_entity (self->ctx, self, self->socket_fd);
       
       break;
     }
@@ -388,10 +572,6 @@ void __STDCALL pvd2_entity_del (QBusPvdEntity* p_self)
   {
     QBusPvdEntity self = *p_self;
     
-    pvd2_ctx__unregister_entity (self->ctx, self);
-    
-    cape_sock__close ((void*)self->socket_fd);
-
     cape_str_del (&(self->host));
     
     CAPE_DEL (p_self, struct QBusPvdEntity_s);
@@ -407,121 +587,7 @@ void __STDCALL pvd2_entity_cb (QBusPvdEntity self)
 
 //-----------------------------------------------------------------------------
 
-int pvd2_entity__event (QBusPvdEntity self, QBusPvdFD* p_new_pfd)
-{
-  switch (self->mode)
-  {
-    case QBUS_PVD_MODE_CONNECT: // read
-    {
-      int so_err; socklen_t size = sizeof(int);
-      
-      // check for errors on the socket, eg connection was refused
-      getsockopt((long)self->socket_fd, SOL_SOCKET, SO_ERROR, &so_err, &size);
-      
-      if (so_err)
-      {
-        CapeErr err = cape_err_new ();
-        
-        cape_err_formatErrorOS (err, so_err);
-        
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket on_event", "error on socket: %s", cape_err_text(err));
-        
-        cape_err_del (&err);
-      }
-      else
-      {
-        
-        
-        
-      }
-      
-      char buffer[1024];
-      
-      ssize_t readBytes = recv ((long)self->socket_fd, buffer, 1024, 0);
-      
-      printf ("read bytes: %lu\n", readBytes);
-      
-      if (readBytes < 0)
-      {
-        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket read", "error while writing data to the socket [%i]", errno);
-          
-        }
-        
-        return TRUE;
-      }
-      else if (readBytes == 0)
-      {
-        // disconnect
-        return FALSE;
-      }
-      else
-      {
-        
-
-        
-      }
-      
-      break; 
-    }
-    case QBUS_PVD_MODE_LISTEN: // accept
-    {
-      struct sockaddr addr;
-      socklen_t addrlen = 0;
-      
-      memset (&addr, 0x00, sizeof(addr));
-      
-      number_t sock = accept ((long)(self->socket_fd), &addr, &addrlen);
-      if (sock < 0)
-      {
-        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
-        {
-          return TRUE;
-        }
-        else
-        {
-          return FALSE;
-        }
-      }
-      
-      {
-        QBusPvdFD pfd = CAPE_NEW (struct QBusPvdFD_s);
-        
-        pfd->entity = pvd2_entity__on_connect (self->ctx, (void*)sock, inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr));
-        pfd->handle = (void*)sock;
-        
-        *p_new_pfd = pfd;
-      }
-      
-      // set the socket to none blocking
-      /*
-      {
-        int flags = fcntl(sock, F_GETFL, 0);
-        if (flags == -1)
-        {
-          
-        }
-        
-        flags |= O_NONBLOCK;
-        
-        if (fcntl(sock, F_SETFL, flags) != 0)
-        {
-          
-        }
-      }
-      */
-      
-      break;
-    }
-  }  
-  
-  return TRUE;
-}
-
-//-----------------------------------------------------------------------------
-
-QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx ctx, void* handle, const CapeString host)
+QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx ctx, const CapeString host)
 {
   QBusPvdEntity entity = CAPE_NEW (struct QBusPvdEntity_s);
   
@@ -530,39 +596,45 @@ QBusPvdEntity pvd2_entity__on_connect (QBusPvdCtx ctx, void* handle, const CapeS
   entity->host = cape_str_cp (host);
   entity->port = 0;
   
-  entity->socket_fd = handle;
-  
-  entity->mode = QBUS_PVD_MODE_CONNECT;
+  entity->reconnect = FALSE;
   
   return entity;
 }
 
 //-----------------------------------------------------------------------------
 
-void pvd2_entity__connect (QBusPvdEntity self)
+void* pvd2_entity__connect (QBusPvdEntity self)
 {
   CapeErr err = cape_err_new ();
   
-  self->socket_fd = cape_sock__tcp__clt_new (self->host, self->port, err);
-  if (self->socket_fd == NULL)
-  {
-    
-  }
-  else
-  {
-    pvd2_ctx__register_entity (self->ctx, self, self->socket_fd);
-  }
+  void* handle = cape_sock__tcp__clt_new (self->host, self->port, err);
   
   cape_err_del (&err);
+  
+  return handle;
 }
 
 //-----------------------------------------------------------------------------
 
-void pvd2_entity__on_done (QBusPvdEntity* p_self)
+void pvd2_entity__on_done (QBusPvdEntity* p_self, int allow_reconnect)
 {
-  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "disconnect", "connection lost");
-  
-  pvd2_entity_del (p_self);
+  if (*p_self)
+  {
+    QBusPvdEntity self = *p_self;
+    
+    cape_log_msg (CAPE_LL_DEBUG, "QBUS", "disconnect", "connection lost");
+    
+    if (allow_reconnect && self->reconnect)
+    {
+      pvd2_ctx__register_connect (self->ctx, self);
+    }
+    else
+    {
+      cape_log_msg (CAPE_LL_TRACE, "QBUS", "disconnect", "remove entity");
+      
+      pvd2_entity_del (p_self);
+    }  
+  }
 }
 
 //-----------------------------------------------------------------------------

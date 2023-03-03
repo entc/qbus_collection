@@ -6,8 +6,9 @@
 
 //-----------------------------------------------------------------------------
 
-#define QBUS_PVD_MODE_CONNECT  1
+#define QBUS_PVD_MODE_CLIENT   1
 #define QBUS_PVD_MODE_LISTEN   2
+#define QBUS_PVD_MODE_REMOTE   3
 
 typedef struct QBusPvdCtx_s* QBusPvdCtx;
 typedef struct QBusPvdEntity_s* QBusPvdEntity;
