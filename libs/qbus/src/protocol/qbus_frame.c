@@ -1,8 +1,8 @@
 #include "qbus_frame.h"
 
 // cape includes
-#include "fmt/cape_json.h"
-#include "sys/cape_log.h"
+#include <sys/cape_log.h>
+#include <fmt/cape_json.h>
 
 #include <stdio.h>
 #include <qcrypt.h>
@@ -30,32 +30,6 @@
 
 //-----------------------------------------------------------------------------
 
-struct QBusFrame_s
-{
-  // basic values
-  
-  number_t     ftype;
-  
-  CapeString   chain_key;
-  
-  CapeString   module;
-  
-  CapeString   method;
-  
-  CapeString   sender;
-  
-  number_t     msg_type;
-  
-  number_t     msg_size;
-  
-  CapeString   msg_data;
-  
-  // for decoding
-  
-  number_t     state;
-  
-  CapeStream   stream;
-};
 
 //-----------------------------------------------------------------------------
 
@@ -167,58 +141,6 @@ CapeUdc qbus_frame_set_udc (QBusFrame self, number_t msgType, CapeUdc* p_payload
 
 //-----------------------------------------------------------------------------
 
-CapeUdc qbus_frame_set_qmsg (QBusFrame self, QBusM qmsg, CapeErr err)
-{
-  CapeUdc payload = cape_udc_new (CAPE_UDC_NODE, NULL);
-  
-  if (qmsg->clist)
-  {
-    cape_udc_add_name (payload, &(qmsg->clist), "L");
-  }
-  
-  if (qmsg->cdata)
-  {
-    cape_udc_add_name (payload, &(qmsg->cdata), "D");
-  }
-  
-  if (qmsg->pdata)
-  {
-    cape_udc_add_name (payload, &(qmsg->pdata), "P");
-  }
-  
-  if (qmsg->rinfo)
-  {
-    cape_udc_add_name (payload, &(qmsg->rinfo), "I");
-  }
-  
-  if (qmsg->files)
-  {
-    cape_udc_add_name (payload, &(qmsg->files), "F");
-  }
-  
-  if (err)
-  {
-    number_t err_code = cape_err_code (err);
-    if (err_code)
-    {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (err), cape_err_text (err));
-      
-      cape_udc_add_s_cp (payload, "err_text", cape_err_text (err));
-      cape_udc_add_n (payload, "err_code", cape_err_code (err));
-    }
-  }
-  
-  // correct mtype
-  if (qmsg->mtype == QBUS_MTYPE_NONE)
-  {
-    qmsg->mtype = QBUS_MTYPE_JSON;
-  }
-  
-  return qbus_frame_set_udc (self, qmsg->mtype, &payload);
-}
-
-//-----------------------------------------------------------------------------
-
 void qbus_frame_set_err (QBusFrame self, CapeErr err)
 {
   CapeUdc payload = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -284,62 +206,6 @@ CapeUdc qbus_frame_get_udc (QBusFrame self)
   }
   
   return NULL;
-}
-
-//-----------------------------------------------------------------------------
-
-QBusM qbus_frame_qin (QBusFrame self)
-{
-  QBusM qin = qbus_message_new (self->chain_key, self->sender);
-  
-  qin->mtype = self->msg_type;
-  
-  switch (self->msg_type)
-  {
-    case QBUS_MTYPE_JSON:
-    case QBUS_MTYPE_FILE:
-    {
-      if (self->msg_size)
-      {
-        // convert from raw data into json data structure
-        CapeUdc payload = cape_json_from_buf (self->msg_data, self->msg_size, qcrypt__stream_base64_decode);
-        if (payload)
-        {
-          // extract all substructures from the payload
-          qin->clist = cape_udc_ext_list (payload, "L");
-          qin->cdata = cape_udc_ext (payload, "D");
-          qin->pdata = cape_udc_ext (payload, "P");
-          qin->rinfo = cape_udc_ext (payload, "I");
-          qin->files = cape_udc_ext (payload, "F");
-
-          // check for errors
-          {
-            number_t err_code = cape_udc_get_n (payload, "err_code", 0);
-            if (err_code)
-            {
-              // create a new error object
-              qin->err = cape_err_new ();
-              
-              // set the error
-              cape_err_set (qin->err, err_code, cape_udc_get_s (payload, "err_text", "no error text"));
-            }
-          }
-        }
-        else
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "frame qin", "can't parse JSON [%lu]", self->msg_size);
-
-          printf ("CAN'T PARSE JSON '%s'\n", self->msg_data);
-        }
-        
-        cape_udc_del (&payload);          
-      }
-      
-      break;        
-    }
-  }
-  
-  return qin;
 }
 
 //-----------------------------------------------------------------------------

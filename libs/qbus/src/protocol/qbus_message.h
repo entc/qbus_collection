@@ -1,15 +1,14 @@
 #ifndef __QBUS__MESSAGE__H
 #define __QBUS__MESSAGE__H 1
 
+#include "qbus_frame.h"
+
 #include <sys/cape_export.h>
 #include <sys/cape_err.h>
 #include <stc/cape_udc.h>
 
 //-----------------------------------------------------------------------------
 
-#define QBUS_MTYPE_NONE         0
-#define QBUS_MTYPE_JSON         1
-#define QBUS_MTYPE_FILE         2
 
 //-----------------------------------------------------------------------------
 
@@ -46,6 +45,10 @@ __CAPE_LIBEX   void               qbus_message_del       (QBusM*);
 __CAPE_LIBEX   void               qbus_message_clr       (QBusM, u_t cdata_udc_type);
 
 __CAPE_LIBEX   QBusM              qbus_message_data_mv   (QBusM);
+
+__CAPE_LIBEX   QBusM              qbus_message_frame     (QBusFrame);
+
+__CAPE_LIBEX   CapeUdc            qbus_frame_set_qmsg    (QBusFrame, QBusM qmsg, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

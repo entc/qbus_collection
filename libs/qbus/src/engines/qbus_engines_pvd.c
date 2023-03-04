@@ -73,20 +73,20 @@ void qbus_engines_pvd_del (QBusEnginesPvd* p_self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_engines_pvd__on_request (QBusEnginesPvd self, void* user_ptr, QBusFrame* p_frame)
+void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, void* user_ptr, QBusFrame* p_frame)
 {
   CapeUdc route_nodes;
   
   QBusFrame frame = *p_frame;
   
-  if (self->pvd2.frame_get_module && self->pvd2.frame_get_sender)
   {
-    const CapeString module = self->pvd2.frame_get_module (frame);
-    const CapeString sender = self->pvd2.frame_get_sender (frame);
+    const CapeString module = frame->module;
+    const CapeString sender = frame->sender;
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
 
-    if (cape_str_empty (module))
+    /*
+    if (cape_str_empty (frame->module))
     {
       // old version
       qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->name);
@@ -100,7 +100,7 @@ void qbus_engines_pvd__on_request (QBusEnginesPvd self, void* user_ptr, QBusFram
       // -> module is used as name for the module
       qbus_frame_set_module__cp (frame, self->name);
     }
-    
+   
     route_nodes = qbus_route_items_nodes (self->route_items);
     
     if (route_nodes)
@@ -108,10 +108,27 @@ void qbus_engines_pvd__on_request (QBusEnginesPvd self, void* user_ptr, QBusFram
       // set the payload frame
       qbus_frame_set_udc (frame, QBUS_MTYPE_JSON, &route_nodes);
     }
+     */
     
     // finally send the frame
-    qbus_connection_send (conn, p_frame);
+  //  qbus_connection_send (conn, p_frame);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, void* user_ptr, QBusFrame frame)
+{
+
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, void* user_ptr, QBusFrame frame)
+{
+  
+  
 }
 
 //-----------------------------------------------------------------------------
@@ -138,52 +155,49 @@ void __STDCALL qbus_engines_pvd__on_frame (void* user_ptr, void* factory_ptr, QB
 {
   QBusEnginesPvd self = factory_ptr;
   
-  if (self->pvd2.frame_get_type)
+  QBusFrame frame = *p_frame;
+  
+  switch (frame->ftype)
   {
-    QBusFrame frame = *p_frame;
-    
-    switch (self->pvd2.frame_get_type (frame))
+    case QBUS_FRAME_TYPE_ROUTE_REQ:
     {
-      case QBUS_FRAME_TYPE_ROUTE_REQ:
-      {
-        qbus_engines_pvd__on_request (self, user_ptr, p_frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_ROUTE_RES:
-      {
- //       qbus_route_on_route_response (self, connection, frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_ROUTE_UPD:
-      {
- //       qbus_route_on_route_update (self, connection, frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_MSG_REQ:
-      {
- //       qbus_route_on_msg_request (self, connection, p_frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_MSG_RES:
-      {
- //       qbus_route_on_msg_response (self, p_frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_METHODS:
-      {
- //       qbus_route_on_route_methods_request (self, connection, p_frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_OBSVBL_REQ:
-      {
- //       qbus_route__on_observable_request (self, connection, p_frame);
-        break;
-      }
-      case QBUS_FRAME_TYPE_OBSVBL_RES:
-      {
- //       qbus_route__on_observable_response (self, connection, p_frame);
-        break;
-      }
+      qbus_engines_pvd__on_route_request (self, user_ptr, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_ROUTE_RES:
+    {
+      qbus_engines_pvd__on_route_response (self, user_ptr, frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_ROUTE_UPD:
+    {
+      qbus_engines_pvd__on_route_update (self, user_ptr, frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_MSG_REQ:
+    {
+      //       qbus_route_on_msg_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_MSG_RES:
+    {
+      //       qbus_route_on_msg_response (self, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_METHODS:
+    {
+      //       qbus_route_on_route_methods_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_REQ:
+    {
+      //       qbus_route__on_observable_request (self, connection, p_frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_RES:
+    {
+      //       qbus_route__on_observable_response (self, connection, p_frame);
+      break;
     }
   }
 }

@@ -1,12 +1,11 @@
 #ifndef __QBUS__PROTOCOL__H
 #define __QBUS__PROTOCOL__H 1
 
-#include "sys/cape_export.h"
-#include "sys/cape_err.h"
-#include "stc/cape_stream.h"
-
-#include "qbus_message.h"
-#include "qbus_pvd.h"
+// cape includes
+#include <sys/cape_export.h>
+#include <sys/cape_err.h>
+#include <stc/cape_stream.h>
+#include <stc/cape_udc.h>
 
 //-----------------------------------------------------------------------------
 
@@ -19,6 +18,42 @@
 #define QBUS_FRAME_TYPE_METHODS      6
 #define QBUS_FRAME_TYPE_OBSVBL_REQ   7
 #define QBUS_FRAME_TYPE_OBSVBL_RES   8
+
+#define QBUS_MTYPE_NONE         0
+#define QBUS_MTYPE_JSON         1
+#define QBUS_MTYPE_FILE         2
+
+//-----------------------------------------------------------------------------
+
+#pragma pack(push, 16)
+struct QBusFrame_s
+{
+  // basic values
+  
+  number_t     ftype;
+  
+  CapeString   chain_key;
+  
+  CapeString   module;
+  
+  CapeString   method;
+  
+  CapeString   sender;
+  
+  number_t     msg_type;
+  
+  number_t     msg_size;
+  
+  CapeString   msg_data;
+  
+  // for decoding
+  
+  number_t     state;
+  
+  CapeStream   stream;
+
+}; typedef struct QBusFrame_s* QBusFrame;
+#pragma pack(pop)
 
 //-----------------------------------------------------------------------------
 
@@ -43,16 +78,11 @@ __CAPE_LIBEX   void              qbus_frame_set_err       (QBusFrame, CapeErr);
 // returns the rinfo if available
 __CAPE_LIBEX   CapeUdc           qbus_frame_set_udc       (QBusFrame, number_t msgType, CapeUdc* p_payload);
 
-// returns the rinfo if available
-__CAPE_LIBEX   CapeUdc           qbus_frame_set_qmsg      (QBusFrame, QBusM, CapeErr);
-
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   const CapeString  qbus_frame_get_chainkey  (QBusFrame);
 
 __CAPE_LIBEX   CapeUdc           qbus_frame_get_udc       (QBusFrame);
-
-__CAPE_LIBEX   QBusM             qbus_frame_qin           (QBusFrame);
 
 //-----------------------------------------------------------------------------
 

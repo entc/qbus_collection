@@ -51,7 +51,7 @@ SET(QBUS_HEADERS
 #----------------------------------------------------------------------------------
 
 add_library             (qbus SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
-target_link_libraries   (qbus cape qcrypt)
+target_link_libraries   (qbus cape qcrypt qbus_frame)
 set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 #----------------------------------------------------------------------------------
@@ -69,8 +69,8 @@ message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
-ADD_LIBRARY (qbus_frame STATIC "protocol/qbus_frame.c")
-TARGET_LINK_LIBRARIES (qbus_frame cape)
+ADD_LIBRARY (qbus_frame STATIC "protocol/qbus_frame.c" "protocol/qbus_frame.h")
+TARGET_LINK_LIBRARIES (qbus_frame cape qcrypt)
 
 #----------------------------------------------------------------------------------
 

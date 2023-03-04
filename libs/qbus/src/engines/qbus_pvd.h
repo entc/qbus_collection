@@ -2,6 +2,7 @@
 #define __QBUS_PVD__H 1
 
 #include "qbus_message.h"
+#include "qbus_frame.h"
 
 // cape includes
 #include <aio/cape_aio_ctx.h>
@@ -15,7 +16,6 @@
 
 //-----------------------------------------------------------------------------
 
-typedef struct QBusFrame_s* QBusFrame;
 typedef struct QBusPvdCtx_s* QBusPvdCtx;
 typedef struct QBusPvdEntity_s* QBusPvdEntity;
 
