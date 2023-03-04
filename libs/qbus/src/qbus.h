@@ -1,6 +1,8 @@
 #ifndef __QBUS__H
 #define __QBUS__H 1
 
+#include "protocol/qbus_message.h"
+
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
@@ -18,36 +20,6 @@ __CAPE_LIBEX   QBus               qbus_new               (const char* module);
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
 __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc pvds, number_t workers, CapeErr);
-
-//-----------------------------------------------------------------------------
-
-#define QBUS_MTYPE_NONE         0
-#define QBUS_MTYPE_JSON         1
-#define QBUS_MTYPE_FILE         2
-
-struct QBusMessage_s
-{
-  number_t mtype;
-
-  CapeUdc clist;    // list of all parameters
-  
-  CapeUdc cdata;    // public object as parameters
-  
-  CapeUdc pdata;    // private object as parameters
-  
-  CapeUdc rinfo;
-  
-  CapeUdc files;    // if the content is too big, payload is stored in temporary files
-  
-  CapeStream blob;  // binary blob within the CapeStream
-  
-  CapeErr err;
-  
-  CapeString chain_key;  // don't change this key
-  
-  CapeString sender;     // don't change this
-  
-}; typedef struct QBusMessage_s* QBusM;
 
 //-----------------------------------------------------------------------------
 
@@ -90,22 +62,6 @@ __CAPE_LIBEX   CapeUdc            qbus_config_node       (QBus, const char* name
 __CAPE_LIBEX  void                qbus_log_msg           (QBus, const CapeString remote, const CapeString message);
 
 __CAPE_LIBEX  void                qbus_log_fmt           (QBus, const CapeString remote, const char* format, ...);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   QBusM              qbus_message_new       (const CapeString key, const CapeString sender);
-
-__CAPE_LIBEX   void               qbus_message_del       (QBusM*);
-
-__CAPE_LIBEX   void               qbus_message_clr       (QBusM, u_t cdata_udc_type);
-
-__CAPE_LIBEX   QBusM              qbus_message_data_mv   (QBusM);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeString role_name);
-
-__CAPE_LIBEX   int                qbus_message_role_or2  (QBusM, const CapeString role01, const CapeString role02);
 
 //-----------------------------------------------------------------------------
 

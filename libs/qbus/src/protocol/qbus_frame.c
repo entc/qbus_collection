@@ -231,30 +231,30 @@ void qbus_frame_set_err (QBusFrame self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-number_t qbus_frame_get_type (QBusFrame self)
+number_t pvd2_frame_get_type (QBusFrame self)
 {
   return self->ftype;
 }
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_frame_get_module (QBusFrame self)
+const CapeString pvd2_frame_get_module (QBusFrame self)
 {
   return self->module;
 }
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_frame_get_method (QBusFrame self)
+const CapeString pvd2_frame_get_method (QBusFrame self)
 {
   return self->method;
 }
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_frame_get_sender (QBusFrame self)
+const CapeString pvd2_frame_get_sender (QBusFrame self)
 {
-  return self->sender;  
+  return self->sender;
 }
 
 //-----------------------------------------------------------------------------

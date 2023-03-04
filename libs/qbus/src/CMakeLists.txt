@@ -1,5 +1,5 @@
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" "route" "logger" "engines" ".")
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" "route" "logger" "engines" "protocol" ".")
 
 SET(QBUS_SOURCES
   qbus.c
@@ -9,6 +9,9 @@ SET(QBUS_SOURCES
 
 # include route classes
   route/qbus_route.c
+
+# include protocol classes
+  protocol/qbus_message.c
 
 # include logger classes
   logger/qbus_logger.c
@@ -30,6 +33,9 @@ SET(QBUS_HEADERS
 
 # include route classes
   route/qbus_route.h
+
+# include protocol classes
+  protocol/qbus_message.h
 
 # include logger classes
   logger/qbus_logger.h
@@ -60,6 +66,11 @@ message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 SET (ADM_QBUS2_DIR ${CMAKE_CURRENT_BINARY_DIR}/adm_qbus CACHE PATH "library path to qbus adapters")
 message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
+
+#----------------------------------------------------------------------------------
+
+ADD_LIBRARY (qbus_frame STATIC "protocol/qbus_frame.c")
+TARGET_LINK_LIBRARIES (qbus_frame cape)
 
 #----------------------------------------------------------------------------------
 

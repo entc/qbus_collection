@@ -5,7 +5,8 @@
 #include "sys/cape_err.h"
 #include "stc/cape_stream.h"
 
-#include "qbus_route.h"
+#include "qbus_message.h"
+#include "qbus_pvd.h"
 
 //-----------------------------------------------------------------------------
 
@@ -19,7 +20,7 @@
 #define QBUS_FRAME_TYPE_OBSVBL_REQ   7
 #define QBUS_FRAME_TYPE_OBSVBL_RES   8
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   QBusFrame         qbus_frame_new           ();
 
@@ -47,14 +48,6 @@ __CAPE_LIBEX   CapeUdc           qbus_frame_set_qmsg      (QBusFrame, QBusM, Cap
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   number_t          qbus_frame_get_type      (QBusFrame);
-
-__CAPE_LIBEX   const CapeString  qbus_frame_get_module    (QBusFrame);
-
-__CAPE_LIBEX   const CapeString  qbus_frame_get_method    (QBusFrame);
-
-__CAPE_LIBEX   const CapeString  qbus_frame_get_sender    (QBusFrame);
-
 __CAPE_LIBEX   const CapeString  qbus_frame_get_chainkey  (QBusFrame);
 
 __CAPE_LIBEX   CapeUdc           qbus_frame_get_udc       (QBusFrame);
@@ -67,6 +60,16 @@ __CAPE_LIBEX   int               qbus_frame_decode        (QBusFrame, const char
 
 __CAPE_LIBEX   void              qbus_frame_encode        (QBusFrame, CapeStream cs);
 
-//=============================================================================
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   number_t            __STDCALL pvd2_frame_get_type         (QBusFrame);
+
+__CAPE_LIBEX   const CapeString    __STDCALL pvd2_frame_get_module       (QBusFrame);
+
+__CAPE_LIBEX   const CapeString    __STDCALL pvd2_frame_get_method       (QBusFrame);
+
+__CAPE_LIBEX   const CapeString    __STDCALL pvd2_frame_get_sender       (QBusFrame);
+
+//-----------------------------------------------------------------------------
 
 #endif

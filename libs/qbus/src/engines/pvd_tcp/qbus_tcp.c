@@ -1,4 +1,5 @@
 #include "qbus_tcp.h"
+#include "protocol/qbus_frame.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -50,6 +51,9 @@ struct QBusPvdFD_s
   
   int handle_type;
   
+  // keep the last frame for decoding
+  QBusFrame last_frame;
+  
 }; typedef struct QBusPvdFD_s* QBusPvdFD;
 
 //-----------------------------------------------------------------------------
@@ -60,6 +64,8 @@ void* pvd2_entity__reconnect (QBusPvdEntity);
 
 void pvd2_entity__cb_on_connect (QBusPvdEntity);
 void pvd2_entity__cb_on_disconnect (QBusPvdEntity);
+
+void pvd2_entity__cb_on_frame (QBusPvdEntity, QBusFrame* p_frame);
 
 //-----------------------------------------------------------------------------
 
@@ -111,6 +117,8 @@ QBusPvdFD pvd2_pfd_new (void* handle, int handle_type, QBusPvdEntity entity)
   self->handle_type = handle_type;
   self->entity = entity;
   
+  self->last_frame = qbus_frame_new ();
+  
   return self;
 }
 
@@ -121,6 +129,8 @@ void pvd2_pfd_del (QBusPvdFD* p_self)
   if (*p_self)
   {
     QBusPvdFD self = *p_self;
+    
+    qbus_frame_del (&(self->last_frame));
     
     pvd2_entity__on_done (&(self->entity), self->handle_type > QBUS_PVD_MODE_DISABLED);
     
@@ -172,7 +182,7 @@ int pvd2_pfd__accept (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
   if (ctx->fcts_new)
   {
     // allocate a new functions set
-    QBusPvdFcts* fcts = ctx->fcts_new (ctx->factory_ptr);
+    QBusPvdFcts fcts = ctx->fcts_new (ctx->factory_ptr);
     
     // allocate a new entity
     QBusPvdEntity entity = pvd2_entity_new (ctx, FALSE, inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr), 0, &fcts);
@@ -224,8 +234,17 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
       }
       else
       {
-
+        number_t written;
         
+        if (qbus_frame_decode (self->last_frame, buffer, readBytes, &written))
+        {
+          pvd2_entity__cb_on_frame (self->entity, &(self->last_frame));
+          
+          // to be on the safe side
+          qbus_frame_del (&(self->last_frame));
+          
+          self->last_frame = qbus_frame_new ();
+        }
       }
       
       break; 
@@ -524,12 +543,12 @@ struct QBusPvdEntity_s
   
   int reconnect;
   
-  QBusPvdFcts* fcts;
+  QBusPvdFcts fcts;
 };
 
 //-----------------------------------------------------------------------------
 
-QBusPvdEntity pvd2_entity_new (QBusPvdCtx ctx, int reconnect, const CapeString host, number_t port, QBusPvdFcts** fcts)
+QBusPvdEntity pvd2_entity_new (QBusPvdCtx ctx, int reconnect, const CapeString host, number_t port, QBusPvdFcts* p_fcts)
 {
   QBusPvdEntity self = CAPE_NEW (struct QBusPvdEntity_s);
   
@@ -538,9 +557,9 @@ QBusPvdEntity pvd2_entity_new (QBusPvdCtx ctx, int reconnect, const CapeString h
   
   self->host = cape_str_cp (host);
   self->port = port;
-
-  self->fcts = *fcts;
-  *fcts = NULL;
+  
+  self->fcts = *p_fcts;
+  *p_fcts = NULL;
   
   return self;
 }
@@ -694,6 +713,16 @@ void pvd2_entity__cb_on_disconnect (QBusPvdEntity self)
 
 //-----------------------------------------------------------------------------
 
+void pvd2_entity__cb_on_frame (QBusPvdEntity self, QBusFrame* p_frame)
+{
+  if (self->fcts->on_frame)
+  {
+    self->fcts->on_frame (self->fcts->user_ptr, self->ctx->factory_ptr, p_frame);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL pvd2_ctx_reg (QBusPvdCtx self, CapeUdc config)
 {
   {
@@ -710,7 +739,7 @@ void __STDCALL pvd2_ctx_reg (QBusPvdCtx self, CapeUdc config)
     {
       if (self->fcts_new)
       {
-        QBusPvdFcts* fcts = self->fcts_new (self->factory_ptr);
+        QBusPvdFcts fcts = self->fcts_new (self->factory_ptr);
         
         QBusPvdEntity entity = pvd2_entity_new (self, TRUE, cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350), &fcts);
         
@@ -723,7 +752,7 @@ void __STDCALL pvd2_ctx_reg (QBusPvdCtx self, CapeUdc config)
     {
       if (self->fcts_new)
       {
-        QBusPvdFcts* fcts = self->fcts_new (self->factory_ptr);
+        QBusPvdFcts fcts = self->fcts_new (self->factory_ptr);
         
         QBusPvdEntity entity = pvd2_entity_new (self, FALSE, cape_udc_get_s (config, "host", ""), cape_udc_get_n (config, "port", 33350), &fcts);
         
