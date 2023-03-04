@@ -54,6 +54,49 @@ void qbus_engines_pvd_del (QBusEnginesPvd* p_self)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus_engines_pvd__on_connect (void* user_ptr)
+{
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engines_pvd__on_disconnect (void* user_ptr)
+{
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "lost connection");
+  
+}
+
+//-----------------------------------------------------------------------------
+
+QBusPvdFcts* __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr)
+{
+  QBusPvdFcts* fcts = CAPE_NEW (QBusPvdFcts);
+  
+  fcts->on_connect = qbus_engines_pvd__on_connect;
+  fcts->on_disconnect = qbus_engines_pvd__on_disconnect;
+  fcts->user_ptr = NULL;
+  
+  return fcts;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_engines_pvd__fcts_del (QBusPvdFcts** p_self)
+{
+  if (*p_self)
+  {
+    
+   
+    CAPE_DEL (p_self, QBusPvdFcts);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const CapeString name, CapeAioContext aio_context, CapeErr err)
 {
   int res;
@@ -109,7 +152,7 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
     goto exit_and_cleanup;
   }
   
-  self->ctx = self->pvd2.ctx_new (aio_context, err);
+  self->ctx = self->pvd2.ctx_new (aio_context, qbus_engines_pvd__fcts_new, qbus_engines_pvd__fcts_del, self, err);
   
   res = CAPE_ERR_NONE;
 
@@ -126,16 +169,9 @@ exit_and_cleanup:
 
 int qbus_engines_pvd__entity_new (QBusEnginesPvd self, const CapeUdc config, CapeErr err)
 {
-  int res;
-  QBusPvdFcts fcts;
+  self->pvd2.ctx_reg (self->ctx, config);
   
-  self->pvd2.ctx_reg (self->ctx, config, &fcts, NULL);
-  
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
-  
-  return res;
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

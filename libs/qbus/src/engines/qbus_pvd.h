@@ -16,20 +16,32 @@ typedef struct QBusPvdEntity_s* QBusPvdEntity;
 
 //-----------------------------------------------------------------------------
 
-typedef struct 
-{
-  
-  
-  
-} QBusPvdFcts;
+typedef void           (__STDCALL *fct_qbus_pvd__on_connect)      (void* user_ptr);
+
+typedef void           (__STDCALL *fct_qbus_pvd__on_disconnect)   (void* user_ptr);
 
 //-----------------------------------------------------------------------------
 
-typedef QBusPvdCtx     (__STDCALL *fct_qbus_pvd_ctx_new)          (CapeAioContext aio_context, CapeErr);
+typedef struct 
+{
+  fct_qbus_pvd__on_connect         on_connect;
+  fct_qbus_pvd__on_disconnect      on_disconnect;
+  
+  void* user_ptr;
+  
+} QBusPvdFcts;
+
+typedef QBusPvdFcts*   (__STDCALL *fct_qbus_pvd__fcts_new)        (void* factory_ptr);
+
+typedef void           (__STDCALL *fct_qbus_pvd__fcts_del)        (QBusPvdFcts**);
+
+//-----------------------------------------------------------------------------
+
+typedef QBusPvdCtx     (__STDCALL *fct_qbus_pvd_ctx_new)          (CapeAioContext aio_context, fct_qbus_pvd__fcts_new, fct_qbus_pvd__fcts_del, void* factory_ptr, CapeErr);
 
 typedef void           (__STDCALL *fct_qbus_pvd_ctx_del)          (QBusPvdCtx*);
 
-typedef void           (__STDCALL *fct_qbus_pvd_ctx_reg)          (QBusPvdCtx, CapeUdc config, QBusPvdFcts* fcts, void* user_ptr);
+typedef void           (__STDCALL *fct_qbus_pvd_ctx_reg)          (QBusPvdCtx, CapeUdc config);
 
 //-----------------------------------------------------------------------------
 
