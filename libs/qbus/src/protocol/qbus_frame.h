@@ -63,7 +63,7 @@ __CAPE_LIBEX   void              qbus_frame_del           (QBusFrame*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void              qbus_frame_set           (QBusFrame, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender);
+__CAPE_LIBEX   void              qbus_frame_set           (QBusFrame, number_t ftype, const CapeString chain_key, const CapeString module, const CapeString method, const CapeString sender);
 
 __CAPE_LIBEX   void              qbus_frame_set_type      (QBusFrame, number_t ftype, const char* sender);
 

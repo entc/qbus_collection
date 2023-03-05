@@ -98,7 +98,7 @@ void qbus_frame_set_module__cp (QBusFrame self, const CapeString module)
 
 //-----------------------------------------------------------------------------
 
-void qbus_frame_set (QBusFrame self, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender)
+void qbus_frame_set (QBusFrame self, number_t ftype, const CapeString chain_key, const CapeString module, const CapeString method, const CapeString sender)
 {
   self->ftype = ftype;
   

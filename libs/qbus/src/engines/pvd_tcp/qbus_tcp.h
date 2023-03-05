@@ -15,9 +15,19 @@ __CAPE_LIBEX   void            __STDCALL pvd2_ctx_del                (QBusPvdCtx
 
 __CAPE_LIBEX   void            __STDCALL pvd2_ctx_reg                (QBusPvdCtx, CapeUdc config);
 
+__CAPE_LIBEX   void            __STDCALL pvd2_ctx_send               (QBusPvdCtx, void* pfd_ptr, QBusFrame frame);
+
+__CAPE_LOCAL   void                      pvd2_ctx__signal_thread     (QBusPvdCtx, char signal_msg);
+
+__CAPE_LOCAL   void                      pvd2_ctx__register_handle   (QBusPvdCtx, QBusPvdEntity entity, void* handle, int handle_type);
+
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusPvdEntity             pvd2_entity_new             (QBusPvdCtx, int reconnect, const CapeString host, number_t port, QBusPvdFcts* p_fcts);
+__CAPE_LOCAL   QBusPvdEntity             pvd2_entity_new             (QBusPvdCtx, int reconnect, const CapeString host, number_t port);
+
+__CAPE_LOCAL   void                      pvd2_entity_del             (QBusPvdEntity*);
+
+__CAPE_LOCAL   void                      pvd2_entity_fcts_set        (QBusPvdEntity, QBusPvdFcts* p_fcts);
 
 //-----------------------------------------------------------------------------
 

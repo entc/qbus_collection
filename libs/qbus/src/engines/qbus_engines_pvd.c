@@ -17,6 +17,8 @@ typedef struct
   
   fct_qbus_pvd_ctx_reg         ctx_reg;
   
+  fct_qbus_pvd_ctx_send        ctx_send;
+  
 } QBusPvd2;
 
 //-----------------------------------------------------------------------------
@@ -76,10 +78,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, void* user_ptr, QB
   QBusFrame frame = *p_frame;
   
   {
-    const CapeString module = frame->module;
-    const CapeString sender = frame->sender;
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] << module = %s, sender = %s", frame->module, frame->sender);
 
     if (cape_str_empty (frame->module))
     {
@@ -105,8 +104,10 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, void* user_ptr, QB
       qbus_frame_set_udc (frame, QBUS_MTYPE_JSON, &route_nodes);
     }
     
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
+    
     // finally send the frame
-  //  qbus_connection_send (conn, p_frame);
+    self->pvd2.ctx_send (self->ctx, user_ptr, frame);
   }
 }
 
@@ -114,34 +115,57 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, void* user_ptr, QB
 
 void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, void* user_ptr, QBusFrame frame)
 {
-
+  CapeUdc route_nodes = qbus_frame_get_udc (frame);
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] << module = %s, sender = %s", frame->module, frame->sender);
+  
+  if (cape_str_equal (qbus_route_name_get (self->route), frame->module))
+  {
+    // support old version
+    // -> old version has a simple relay mechanism
+//    qbus_route_items_add (self->route_items, sender, NULL, conn, &route_nodes);
+  }
+  else
+  {
+//    qbus_route_items_add (self->route_items, module, sender, conn, &route_nodes);
+  }
+  
+  // tell the others the new nodes
+//  qbus_route_send_updates (self, conn);
+  
+  {
+    CapeUdc modules = qbus_route_node_get (self->route);
+    
+//    qbus_route_run_on_change (self, &modules);
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, void* user_ptr, QBusFrame frame)
 {
+  /*
+  const CapeString module_name = qbus_connection__name (conn);
+  const CapeString module_uuid = qbus_connection__uuid (conn);
   
-  
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engines_pvd__on_connect (void* user_ptr)
-{
-  
-  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
-  
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engines_pvd__on_disconnect (void* user_ptr)
-{
-  
-  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "lost connection");
-  
+  if (module_name)
+  {
+    CapeUdc route_nodes = qbus_frame_get_udc (frame);
+    
+    if (route_nodes)
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "update route items %s = %s", module_name, module_uuid);
+      
+      qbus_route_items_update (self->route_items, conn, &route_nodes);
+    }
+    
+    {
+      CapeUdc modules = qbus_route_items_nodes (self->route_items);
+      
+      qbus_route_run_on_change (self, &modules);
+    }
+  }
+  */
 }
 
 //-----------------------------------------------------------------------------
@@ -199,18 +223,33 @@ void __STDCALL qbus_engines_pvd__on_frame (void* user_ptr, void* factory_ptr, QB
 
 //-----------------------------------------------------------------------------
 
-QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr)
+QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conecction_ptr)
 {
+  QBusEnginesPvd self = factory_ptr;
+  
   QBusPvdFcts fcts = CAPE_NEW (struct QBusPvdFcts_s);
   
   // assign callbacks
-  fcts->on_connect =     qbus_engines_pvd__on_connect;
-  fcts->on_disconnect =  qbus_engines_pvd__on_disconnect;
-  fcts->on_frame =       qbus_engines_pvd__on_frame;
+  fcts->on_frame = qbus_engines_pvd__on_frame;
+
+  // TODO: use the connection ptr directly as user pointer
+  fcts->user_ptr = conecction_ptr;
   
-  // assign connection pointer
-  fcts->user_ptr = NULL;
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
   
+  // we create a route request to update our own routing
+  {
+    QBusFrame frame = qbus_frame_new ();
+    
+    // CH01: replace self->name with self->uuid and add name as module
+    qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_REQ, NULL, qbus_route_name_get (self->route), NULL, qbus_route_uuid_get (self->route));
+    
+    // send the frame
+    self->pvd2.ctx_send (self->ctx, conecction_ptr, frame);
+    
+    qbus_frame_del (&frame);
+  }
+    
   return fcts;
 }
 
@@ -220,6 +259,7 @@ void __STDCALL qbus_engines_pvd__fcts_del (QBusPvdFcts* p_self)
 {
   if (*p_self)
   {
+    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "lost connection");
     
    
     CAPE_DEL (p_self, struct QBusPvdFcts_s);
@@ -278,6 +318,13 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
   
   self->pvd2.ctx_reg = cape_dl_funct (self->hlib, "pvd2_ctx_reg", err);
   if (self->pvd2.ctx_reg == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  self->pvd2.ctx_send = cape_dl_funct (self->hlib, "pvd2_ctx_send", err);
+  if (self->pvd2.ctx_send == NULL)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;

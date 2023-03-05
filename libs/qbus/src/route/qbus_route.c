@@ -12,7 +12,8 @@
 
 struct QBusRoute_s
 {
-  
+  CapeString uuid;            // the unique id of this module
+  CapeString name;            // the name of the module (multiple modules might have the same name)
 };
 
 //-----------------------------------------------------------------------------
@@ -21,6 +22,8 @@ QBusRoute qbus_route_new (const CapeString name)
 {
   QBusRoute self = CAPE_NEW (struct QBusRoute_s);
 
+  self->uuid = cape_str_uuid ();
+  self->name = cape_str_cp (name);
   
   return self;
 }
@@ -33,6 +36,8 @@ void qbus_route_del (QBusRoute* p_self)
   {
     QBusRoute self = *p_self;
     
+    cape_str_del (&(self->name));
+    cape_str_del (&(self->uuid));
     
     CAPE_DEL (p_self, struct QBusRoute_s);
   }
@@ -42,21 +47,21 @@ void qbus_route_del (QBusRoute* p_self)
 
 const CapeString qbus_route_uuid_get (QBusRoute self)
 {
-  
+  return self->uuid;
 }
 
 //-----------------------------------------------------------------------------
 
 const CapeString qbus_route_name_get (QBusRoute self)
 {
-  
+  return self->name;
 }
 
 //-----------------------------------------------------------------------------
 
 CapeUdc qbus_route_node_get (QBusRoute self)
 {
-  
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------
