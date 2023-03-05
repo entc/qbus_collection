@@ -123,16 +123,13 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, void* user_ptr, Q
   {
     // support old version
     // -> old version has a simple relay mechanism
-//    qbus_route_items_add (self->route_items, sender, NULL, conn, &route_nodes);
+    qbus_route_add (self->route, frame->sender, NULL, user_ptr, &route_nodes);
   }
   else
   {
-//    qbus_route_items_add (self->route_items, module, sender, conn, &route_nodes);
+    qbus_route_add (self->route, frame->module, frame->sender, user_ptr, &route_nodes);
   }
-  
-  // tell the others the new nodes
-//  qbus_route_send_updates (self, conn);
-  
+    
   {
     CapeUdc modules = qbus_route_node_get (self->route);
     
