@@ -57,14 +57,4 @@ typedef void              (__STDCALL *fct_qbus_pvd_ctx_reg)          (QBusPvdCtx
 
 //-----------------------------------------------------------------------------
 
-typedef number_t          (__STDCALL *fct_qbus_frame_get_type)       (QBusFrame);
-
-typedef const CapeString  (__STDCALL *fct_qbus_frame_get_module)     (QBusFrame);
-
-typedef const CapeString  (__STDCALL *fct_qbus_frame_get_method)     (QBusFrame);
-
-typedef const CapeString  (__STDCALL *fct_qbus_frame_get_sender)     (QBusFrame);
-
-//-----------------------------------------------------------------------------
-
 #endif

@@ -91,7 +91,7 @@ void qbus_frame_set_sender (QBusFrame self, CapeString* p_sender)
 
 //-----------------------------------------------------------------------------
 
-void qbus_frame_set_module__cp (QBusFrame self, CapeString module)
+void qbus_frame_set_module__cp (QBusFrame self, const CapeString module)
 {
   cape_str_replace_cp (&(self->module), module);
 }

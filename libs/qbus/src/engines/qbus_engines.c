@@ -57,7 +57,7 @@ void qbus_engines_del (QBusEngines* p_self)
 
 //-----------------------------------------------------------------------------
 
-QBusEnginesPvd qbus_engines__init_ctx (QBusEngines self, const CapeString name, CapeAioContext aio_context, CapeErr err)
+QBusEnginesPvd qbus_engines__init_ctx (QBusEngines self, const CapeString name, CapeAioContext aio_context, QBusRoute route, CapeErr err)
 {
   QBusEnginesPvd ret = NULL;
   
@@ -69,7 +69,7 @@ QBusEnginesPvd qbus_engines__init_ctx (QBusEngines self, const CapeString name, 
   }
   else
   {
-    ret = qbus_engines_pvd_new ();
+    ret = qbus_engines_pvd_new (route);
     
     // try to load the engine
     // -> returns a cape error code
@@ -90,7 +90,7 @@ QBusEnginesPvd qbus_engines__init_ctx (QBusEngines self, const CapeString name, 
 
 //-----------------------------------------------------------------------------
 
-int qbus_engines__init_pvds__entity (QBusEngines self, const CapeUdc context, CapeAioContext aio_context, CapeErr err)
+int qbus_engines__init_pvds__entity (QBusEngines self, const CapeUdc context, CapeAioContext aio_context, QBusRoute route, CapeErr err)
 {
   int res;
   
@@ -105,7 +105,7 @@ int qbus_engines__init_pvds__entity (QBusEngines self, const CapeUdc context, Ca
     goto exit_and_cleanup;
   }
   
-  engine = qbus_engines__init_ctx (self, type_name, aio_context, err);
+  engine = qbus_engines__init_ctx (self, type_name, aio_context, route, err);
   if (engine == NULL)
   {
     res = cape_err_code (err);
@@ -122,7 +122,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qbus_engines__init_pvds (QBusEngines self, const CapeUdc pvds, CapeAioContext aio_context, CapeErr err)
+int qbus_engines__init_pvds (QBusEngines self, const CapeUdc pvds, CapeAioContext aio_context, QBusRoute route, CapeErr err)
 {
   int res;
   
@@ -131,7 +131,7 @@ int qbus_engines__init_pvds (QBusEngines self, const CapeUdc pvds, CapeAioContex
   
   while (cape_udc_cursor_next (cursor))
   {
-    res = qbus_engines__init_pvds__entity (self, cursor->item, aio_context, err);
+    res = qbus_engines__init_pvds__entity (self, cursor->item, aio_context, route, err);
     if (res)
     {
       cape_log_msg (CAPE_LL_ERROR, "QBUS", "init pvds", cape_err_text (err));

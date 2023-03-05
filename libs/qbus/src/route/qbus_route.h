@@ -11,9 +11,17 @@ struct QBusRoute_s; typedef struct QBusRoute_s* QBusRoute;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusRoute          qbus_route_new               ();
+__CAPE_LOCAL   QBusRoute          qbus_route_new               (const CapeString name);
 
 __CAPE_LOCAL   void               qbus_route_del               (QBusRoute*);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   const CapeString   qbus_route_uuid_get          (QBusRoute);
+
+__CAPE_LOCAL   const CapeString   qbus_route_name_get          (QBusRoute);
+
+__CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute);
 
 //-----------------------------------------------------------------------------
 

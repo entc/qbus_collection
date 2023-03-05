@@ -59,7 +59,7 @@ QBus qbus_new (const char* module_origin)
 
   self->logger = qbus_logger_new ();
 
-  self->route = qbus_route_new (self, qbus_config_get_name (self->config));
+  self->route = qbus_route_new (qbus_config_get_name (self->config));
   
   self->aio = cape_aio_context_new ();
   
@@ -100,7 +100,7 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   }
 
   // load all engines and initialize the connection contexts
-  res = qbus_engines__init_pvds (self->engines, pvds, self->aio, err);
+  res = qbus_engines__init_pvds (self->engines, pvds, self->aio, self->route, err);
   if (res)
   {
     return res;

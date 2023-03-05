@@ -71,7 +71,7 @@ __CAPE_LIBEX   void              qbus_frame_set_chainkey  (QBusFrame, CapeString
 
 __CAPE_LIBEX   void              qbus_frame_set_sender    (QBusFrame, CapeString* p_sender);
 
-__CAPE_LIBEX   void              qbus_frame_set_module__cp  (QBusFrame, CapeString module);
+__CAPE_LIBEX   void              qbus_frame_set_module__cp  (QBusFrame, const CapeString module);
 
 __CAPE_LIBEX   void              qbus_frame_set_err       (QBusFrame, CapeErr);
 

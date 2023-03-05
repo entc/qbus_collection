@@ -17,14 +17,6 @@ typedef struct
   
   fct_qbus_pvd_ctx_reg         ctx_reg;
   
-  fct_qbus_frame_get_type      frame_get_type;
-  
-  fct_qbus_frame_get_module    frame_get_module;
-  
-  fct_qbus_frame_get_method    frame_get_method;
-  
-  fct_qbus_frame_get_sender    frame_get_sender;
-  
 } QBusPvd2;
 
 //-----------------------------------------------------------------------------
@@ -34,14 +26,18 @@ struct QBusEnginesPvd_s
   CapeDl hlib;         // handle for the shared library
   QBusPvd2 pvd2;       // function pointers
   QBusPvdCtx ctx;      // library context
+  
+  QBusRoute route;     // reference
 };
 
 //-----------------------------------------------------------------------------
 
-QBusEnginesPvd qbus_engines_pvd_new ()
+QBusEnginesPvd qbus_engines_pvd_new (QBusRoute route)
 {
   QBusEnginesPvd self = CAPE_NEW (struct QBusEnginesPvd_s);
 
+  self->route = route;
+  
   self->hlib = cape_dl_new ();
   self->ctx = NULL;
   
@@ -85,30 +81,29 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, void* user_ptr, QB
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
 
-    /*
     if (cape_str_empty (frame->module))
     {
       // old version
-      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->name);
+      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_name_get (self->route));
     }
     else
     {
       // reset the type and the sender
-      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, self->uuid);
+      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_uuid_get (self->route));
       
       // reset the module
       // -> module is used as name for the module
-      qbus_frame_set_module__cp (frame, self->name);
+      cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
     }
-   
-    route_nodes = qbus_route_items_nodes (self->route_items);
+    
+    // create an UDC structure of all nodes
+    route_nodes = qbus_route_node_get (self->route);
     
     if (route_nodes)
     {
       // set the payload frame
       qbus_frame_set_udc (frame, QBUS_MTYPE_JSON, &route_nodes);
     }
-     */
     
     // finally send the frame
   //  qbus_connection_send (conn, p_frame);
@@ -283,34 +278,6 @@ int qbus_engines_pvd_load (QBusEnginesPvd self, const CapeString path, const Cap
   
   self->pvd2.ctx_reg = cape_dl_funct (self->hlib, "pvd2_ctx_reg", err);
   if (self->pvd2.ctx_reg == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.frame_get_type = cape_dl_funct (self->hlib, "pvd2_frame_get_type", err);
-  if (self->pvd2.frame_get_type == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.frame_get_module = cape_dl_funct (self->hlib, "pvd2_frame_get_module", err);
-  if (self->pvd2.frame_get_module == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.frame_get_method = cape_dl_funct (self->hlib, "pvd2_frame_get_method", err);
-  if (self->pvd2.frame_get_method == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->pvd2.frame_get_sender = cape_dl_funct (self->hlib, "pvd2_frame_get_sender", err);
-  if (self->pvd2.frame_get_sender == NULL)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
