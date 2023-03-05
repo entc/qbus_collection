@@ -18,6 +18,17 @@
 #include <arpa/inet.h>
 #include <time.h>
 
+// includes specific event subsystem
+#if defined __BSD_OS
+
+#define CAPE_NO_SIGNALS 0
+
+#elif defined __LINUX_OS
+
+#define CAPE_NO_SIGNALS MSG_NOSIGNAL
+
+#endif
+
 //-----------------------------------------------------------------------------
 
 #define THREAD_SIGNAL_MSG__TERMINATE    'T'
@@ -166,7 +177,7 @@ void pvd2_pfd__send (QBusPvdFD self, CapeStream s)
   
   while (bytes_sent < cape_stream_size (s))
   {
-    ssize_t res_sent = send ((long)self->handle, cape_stream_data (s) + bytes_sent, cape_stream_size (s) - bytes_sent, MSG_NOSIGNAL);
+    ssize_t res_sent = send ((long)self->handle, cape_stream_data (s) + bytes_sent, cape_stream_size (s) - bytes_sent, CAPE_NO_SIGNALS);
     
     if (res_sent < 0)
     {
