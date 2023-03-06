@@ -3,6 +3,7 @@
 
 #include "qbus_message.h"
 #include "qbus_frame.h"
+#include "qbus_route.h"
 
 // cape includes
 #include <aio/cape_aio_ctx.h>
@@ -22,7 +23,7 @@ typedef struct QBusPvdEntity_s* QBusPvdEntity;
 
 //-----------------------------------------------------------------------------
 
-typedef void           (__STDCALL *fct_qbus_pvd__on_frame)        (void* user_ptr, void* factory_ptr, QBusFrame* p_frame);
+typedef void           (__STDCALL *fct_qbus_pvd__on_frame)        (void* factory_ptr, QBusPvdConnection conn, QBusFrame* p_frame);
 
 //-----------------------------------------------------------------------------
 
@@ -30,7 +31,7 @@ struct QBusPvdFcts_s
 {
   fct_qbus_pvd__on_frame           on_frame;
   
-  void* user_ptr;
+  QBusPvdConnection conn;
   
 }; typedef struct QBusPvdFcts_s* QBusPvdFcts;
 
@@ -40,7 +41,7 @@ struct QBusPvdFcts_s
 typedef QBusPvdFcts       (__STDCALL *fct_qbus_pvd__fcts_new)        (void* factory_ptr, void* connection_ptr);
 
                           /* factory method to release the function structure */
-typedef void              (__STDCALL *fct_qbus_pvd__fcts_del)        (QBusPvdFcts*);
+typedef void              (__STDCALL *fct_qbus_pvd__fcts_del)        (void* factory_ptr, int reconnect, QBusPvdFcts*);
 
 //-----------------------------------------------------------------------------
 

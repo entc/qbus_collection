@@ -72,11 +72,11 @@ struct QBusPvdFD_s
 //-----------------------------------------------------------------------------
 
 // forwarded functions
-void pvd2_entity__on_done (QBusPvdEntity*, int allow_reconnect);
+void pvd2_entity__on_done (QBusPvdEntity*, QBusPvdFD, int allow_reconnect);
 void* pvd2_entity__reconnect (QBusPvdEntity);
 
 void pvd2_entity__cb_on_connect (QBusPvdEntity, QBusPvdFD);
-void pvd2_entity__cb_on_disconnect (QBusPvdEntity);
+void pvd2_entity__cb_on_disconnect (QBusPvdEntity, int allow_reconnect);
 
 void pvd2_entity__cb_on_frame (QBusPvdEntity, QBusFrame* p_frame);
 
@@ -158,7 +158,7 @@ void pvd2_pfd_del (QBusPvdFD* p_self)
     
     qbus_frame_del (&(self->last_frame));
     
-    pvd2_entity__on_done (&(self->entity), self->handle_type > QBUS_PVD_MODE_DISABLED);
+    pvd2_entity__on_done (&(self->entity), self, self->handle_type > QBUS_PVD_MODE_DISABLED);
     
     if (self->handle)
     {
@@ -816,7 +816,7 @@ void pvd2_entity__cb_on_connect (QBusPvdEntity self, QBusPvdFD pfd)
 
 //-----------------------------------------------------------------------------
 
-void pvd2_entity__cb_on_disconnect (QBusPvdEntity self)
+void pvd2_entity__cb_on_disconnect (QBusPvdEntity self, int allow_reconnect)
 {  
   if (self->fcts)
   {
@@ -824,7 +824,7 @@ void pvd2_entity__cb_on_disconnect (QBusPvdEntity self)
 
     if (self->ctx->fcts_del)
     {
-      self->ctx->fcts_del (&(self->fcts));
+      self->ctx->fcts_del (self->ctx->factory_ptr, allow_reconnect, &(self->fcts));
     }
   }
   else
@@ -839,7 +839,7 @@ void pvd2_entity__cb_on_frame (QBusPvdEntity self, QBusFrame* p_frame)
 {
   if (self->fcts->on_frame)
   {
-    self->fcts->on_frame (self->fcts->user_ptr, self->ctx->factory_ptr, p_frame);
+    self->fcts->on_frame (self->ctx->factory_ptr, self->fcts->conn, p_frame);
   }
 }
 
@@ -889,13 +889,13 @@ void __STDCALL pvd2_ctx_reg (QBusPvdCtx self, CapeUdc config)
 
 //-----------------------------------------------------------------------------
 
-void pvd2_entity__on_done (QBusPvdEntity* p_self, int allow_reconnect)
+void pvd2_entity__on_done (QBusPvdEntity* p_self, QBusPvdFD pfd, int allow_reconnect)
 {
   if (*p_self)
   {
     QBusPvdEntity self = *p_self;
     
-    pvd2_entity__cb_on_disconnect (self);
+    pvd2_entity__cb_on_disconnect (self, allow_reconnect);
         
     if (allow_reconnect && self->reconnect)
     {

@@ -59,7 +59,7 @@ QBus qbus_new (const char* module_origin)
 
   self->logger = qbus_logger_new ();
 
-  self->route = qbus_route_new (qbus_config_get_name (self->config));
+  self->route = qbus_route_new (qbus_config_get_name (self->config), self->engines);
   
   self->aio = cape_aio_context_new ();
   
@@ -72,10 +72,10 @@ void qbus_del (QBus* p_self)
 {
   QBus self = *p_self;
 
+  qbus_engines_del (&(self->engines));
+
   qbus_route_del (&(self->route));
   qbus_logger_del (&(self->logger));
-
-  qbus_engines_del (&(self->engines));
   
   qbus_config_del (&(self->config));
   

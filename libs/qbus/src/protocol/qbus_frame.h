@@ -52,8 +52,10 @@ struct QBusFrame_s
   
   CapeStream   stream;
 
-}; typedef struct QBusFrame_s* QBusFrame;
+};
 #pragma pack(pop)
+
+typedef struct QBusFrame_s* QBusFrame;
 
 //-----------------------------------------------------------------------------
 
