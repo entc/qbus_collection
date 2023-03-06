@@ -25,7 +25,9 @@ __CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_route_add               (QBusRoute, const CapeString module_name, const CapeString module_uuid, void* user_ptr, CapeUdc*);
+__CAPE_LOCAL   void               qbus_route_add_nodes         (QBusRoute, const CapeString module_name, const CapeString module_uuid, void* user_ptr, CapeUdc*);
+
+__CAPE_LOCAL   void               qbus_route_dump              (QBusRoute);
 
 //-----------------------------------------------------------------------------
 

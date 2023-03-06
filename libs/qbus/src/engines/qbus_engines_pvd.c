@@ -119,19 +119,21 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, void* user_ptr, Q
   
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] << module = %s, sender = %s", frame->module, frame->sender);
   
+  
+  
   if (cape_str_equal (qbus_route_name_get (self->route), frame->module))
   {
     // support old version
     // -> old version has a simple relay mechanism
-    qbus_route_add (self->route, frame->sender, NULL, user_ptr, &route_nodes);
+    qbus_route_add_nodes (self->route, frame->sender, NULL, user_ptr, &route_nodes);
   }
   else
   {
-    qbus_route_add (self->route, frame->module, frame->sender, user_ptr, &route_nodes);
+    qbus_route_add_nodes (self->route, frame->module, frame->sender, user_ptr, &route_nodes);
   }
     
   {
-    CapeUdc modules = qbus_route_node_get (self->route);
+ //   CapeUdc modules = qbus_route_node_get (self->route);
     
 //    qbus_route_run_on_change (self, &modules);
   }
@@ -234,7 +236,7 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
   
   cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
   
-  // we create a route request to update our own routing
+  // start handshaking
   {
     QBusFrame frame = qbus_frame_new ();
     
@@ -246,7 +248,7 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
     
     qbus_frame_del (&frame);
   }
-    
+  
   return fcts;
 }
 
