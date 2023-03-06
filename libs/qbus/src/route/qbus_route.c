@@ -120,6 +120,10 @@ int qbus_route_node__rm (QBusRouteNode self, QBusPvdConnection conn)
     
     remove_node = (cape_map_size (self->local_conns) == 0);    
   }
+  else
+  {
+    remove_node = TRUE;
+  }
   
   if (self->proxy_conns)
   {
@@ -137,7 +141,45 @@ int qbus_route_node__rm (QBusRouteNode self, QBusPvdConnection conn)
 
     remove_node = remove_node && (cape_map_size (self->proxy_conns) == 0);    
   }
+  else
+  {
+    remove_node = remove_node && TRUE;
+  }
   
+  return remove_node;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_route_node__clr_proxy (QBusRouteNode self, const CapeString module_uuid)
+{
+  int remove_node = FALSE;
+  
+  if (self->local_conns)
+  {
+    remove_node = (cape_map_size (self->local_conns) == 0);
+  }
+  else
+  {
+    remove_node = TRUE;
+  }
+  
+  if (self->proxy_conns)
+  {
+    CapeMapNode n = cape_map_find (self->proxy_conns, (void*)module_uuid);
+    
+    if (n)
+    {
+      cape_map_erase (self->proxy_conns, n);
+    }
+    
+    remove_node = remove_node && (cape_map_size (self->proxy_conns) == 0); 
+  }
+  else
+  {
+    remove_node = remove_node && TRUE;
+  }
+
   return remove_node;
 }
 
@@ -368,8 +410,25 @@ void qbus_route__add_proxy_node (QBusRoute self, const CapeString module_name, c
 void qbus_route_add_nodes (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, CapeUdc* p_nodes)
 {
   CapeUdc nodes = *p_nodes;
-  
+
   qbus_route__add_local_node (self, module_name, module_uuid, conn);
+  
+  // clear all nodes which belong to the uuid
+  {
+    CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      QBusRouteNode rn = cape_map_node_value (cursor->node);
+      
+      if (qbus_route_node__clr_proxy (rn, module_uuid))
+      {
+        cape_map_cursor_erase (self->nodes, cursor);      
+      }
+    }
+    
+    cape_map_cursor_destroy (&cursor);
+  }
   
   if (nodes)
   {
