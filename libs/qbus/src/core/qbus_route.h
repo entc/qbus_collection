@@ -3,9 +3,9 @@
 
 #include "qbus_frame.h"
 
-#include "sys/cape_export.h"
-#include "sys/cape_err.h"
-#include "stc/cape_udc.h"
+#include <sys/cape_export.h>
+#include <sys/cape_err.h>
+#include <stc/cape_udc.h>
 
 //-----------------------------------------------------------------------------
 

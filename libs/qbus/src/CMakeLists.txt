@@ -7,6 +7,7 @@ SET(QBUS_SOURCES
 # include core classes
   core/qbus_config.c
   core/qbus_route.c
+  core/qbus_obsvbl.c
 
 # include protocol classes
   protocol/qbus_message.c
@@ -29,6 +30,7 @@ SET(QBUS_HEADERS
 # include core classes
   core/qbus_config.h
   core/qbus_route.h
+  core/qbus_obsvbl.h
 
 # include protocol classes
   protocol/qbus_message.h

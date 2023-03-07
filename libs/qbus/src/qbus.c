@@ -1,6 +1,7 @@
 #include "qbus.h" 
 #include "qbus_config.h"
 #include "qbus_route.h"
+#include "qbus_obsvbl.h"
 #include "qbus_logger.h"
 #include "qbus_engines.h"
 
@@ -38,6 +39,8 @@ struct QBus_s
   CapeAioContext aio;
   
   QBusRoute route;
+
+  QBusObsvbl obsvbl;
   
   QBusEngines engines;
   
@@ -60,6 +63,8 @@ QBus qbus_new (const char* module_origin)
   self->logger = qbus_logger_new ();
 
   self->route = qbus_route_new (qbus_config_get_name (self->config), self->engines);
+
+  self->obsvbl = 
   
   self->aio = cape_aio_context_new ();
   
