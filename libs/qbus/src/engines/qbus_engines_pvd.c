@@ -1,6 +1,7 @@
 #include "qbus_engines_pvd.h"
 #include "qbus_pvd.h"
 #include "qbus_frame.h"
+#include "qbus_obsvbl.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -30,15 +31,17 @@ struct QBusEnginesPvd_s
   QBusPvdCtx ctx;      // library context
   
   QBusRoute route;     // reference
+  QBusObsvbl obsvbl;   // reference
 };
 
 //-----------------------------------------------------------------------------
 
-QBusEnginesPvd qbus_engines_pvd_new (QBusRoute route)
+QBusEnginesPvd qbus_engines_pvd_new (QBusRoute route, QBusObsvbl obsvbl)
 {
   QBusEnginesPvd self = CAPE_NEW (struct QBusEnginesPvd_s);
 
   self->route = route;
+  self->obsvbl = obsvbl;
   
   self->hlib = cape_dl_new ();
   self->ctx = NULL;
@@ -145,6 +148,17 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
 
 //-----------------------------------------------------------------------------
 
+void qbus_engines_pvd__on_obsvbl_update (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
+{
+  CapeUdc route_nodes = qbus_frame_get_udc (frame);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [UPD] << module = %s, sender = %s", frame->module, frame->sender);
+  
+  qbus_obsvbl_add_nodes (self->obsvbl, frame->module, frame->sender, conn, &route_nodes);
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection conn, QBusFrame* p_frame)
 {
   QBusEnginesPvd self = factory_ptr;
@@ -168,6 +182,11 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
       qbus_engines_pvd__on_route_update (self, conn, frame);
       break;
     }
+    case QBUS_FRAME_TYPE_OBSVBL_UPD:
+    {
+      qbus_engines_pvd__on_obsvbl_update (self, conn, frame);
+      break;
+    }
     case QBUS_FRAME_TYPE_MSG_REQ:
     {
       //       qbus_route_on_msg_request (self, connection, p_frame);
@@ -181,16 +200,6 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
     case QBUS_FRAME_TYPE_METHODS:
     {
       //       qbus_route_on_route_methods_request (self, connection, p_frame);
-      break;
-    }
-    case QBUS_FRAME_TYPE_OBSVBL_REQ:
-    {
-      //       qbus_route__on_observable_request (self, connection, p_frame);
-      break;
-    }
-    case QBUS_FRAME_TYPE_OBSVBL_RES:
-    {
-      //       qbus_route__on_observable_response (self, connection, p_frame);
       break;
     }
   }
@@ -215,7 +224,7 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
   
   cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
   
-  // start handshaking
+  // start handshaking - routing
   {
     QBusFrame frame = qbus_frame_new ();
     
@@ -223,13 +232,16 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
     qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_REQ, NULL, qbus_route_name_get (self->route), NULL, qbus_route_uuid_get (self->route));
 
     // for debug
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] >> module = %s, sender = %s", frame->module, frame->sender);
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engines", "route [REQ] >> module = %s, sender = %s", frame->module, frame->sender);
     
     // send the frame
     self->pvd2.ctx_send (self->ctx, conecction_ptr, frame);
     
     qbus_frame_del (&frame);
   }
+
+  // send the update only to the connection ptr destination
+  qbus_obsvbl_send_update (self->obsvbl, NULL, fcts->conn);
   
   return fcts;
 }

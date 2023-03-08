@@ -3,6 +3,7 @@
 
 #include "qbus_route.h"
 #include "qbus_frame.h"
+#include "qbus_obsvbl.h"
 
 // cape includes
 #include <sys/cape_export.h>
@@ -15,7 +16,7 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusEnginesPvd     qbus_engines_pvd_new          (QBusRoute);
+__CAPE_LOCAL   QBusEnginesPvd     qbus_engines_pvd_new          (QBusRoute, QBusObsvbl);
 
 __CAPE_LOCAL   void               qbus_engines_pvd_del          (QBusEnginesPvd*);
 

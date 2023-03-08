@@ -19,8 +19,9 @@ __CAPE_LOCAL   void               qbus_obsvbl_del              (QBusObsvbl*);
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LOCAL   void               qbus_obsvbl_add_nodes        (QBusObsvbl, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection, CapeUdc*);
 
-
+__CAPE_LOCAL   void               qbus_obsvbl_send_update      (QBusObsvbl, QBusPvdConnection not_in_list, QBusPvdConnection single_trans);
 
 //-----------------------------------------------------------------------------
 

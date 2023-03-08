@@ -108,7 +108,7 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   }
 
   // load all engines and initialize the connection contexts
-  res = qbus_engines__init_pvds (self->engines, pvds, self->aio, self->route, err);
+  res = qbus_engines__init_pvds (self->engines, pvds, self->aio, self->route, self->obsvbl, err);
   if (res)
   {
     return res;
