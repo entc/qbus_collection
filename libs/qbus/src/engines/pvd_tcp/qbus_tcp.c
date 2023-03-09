@@ -1,5 +1,5 @@
 #include "qbus_tcp.h"
-#include "protocol/qbus_frame.h"
+#include "qbus_frame.h"
 
 // cape includes
 #include <sys/cape_log.h>

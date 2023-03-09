@@ -8,9 +8,7 @@ SET(QBUS_SOURCES
   core/qbus_config.c
   core/qbus_route.c
   core/qbus_obsvbl.c
-
-# include protocol classes
-  protocol/qbus_message.c
+  core/qbus_message.c
 
 # include logger classes
   logger/qbus_logger.c
@@ -31,9 +29,7 @@ SET(QBUS_HEADERS
   core/qbus_config.h
   core/qbus_route.h
   core/qbus_obsvbl.h
-
-# include protocol classes
-  protocol/qbus_message.h
+  core/qbus_message.h
 
 # include logger classes
   logger/qbus_logger.h
@@ -67,7 +63,7 @@ message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
-ADD_LIBRARY (qbus_frame STATIC "protocol/qbus_frame.c" "protocol/qbus_frame.h")
+ADD_LIBRARY (qbus_frame STATIC "core/qbus_frame.c" "core/qbus_frame.h")
 TARGET_LINK_LIBRARIES (qbus_frame cape qcrypt)
 
 #----------------------------------------------------------------------------------

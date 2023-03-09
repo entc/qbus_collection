@@ -64,7 +64,7 @@ QBus qbus_new (const char* module_origin)
 
   self->route = qbus_route_new (qbus_config_get_name (self->config), self->engines);
 
-  self->obsvbl = qbus_obsvbl_new (self->engines);
+  self->obsvbl = qbus_obsvbl_new (self->engines, self->route);
   
   self->aio = cape_aio_context_new ();
   
@@ -215,32 +215,17 @@ CapeUdc qbus_modules (QBus self)
 
 //-----------------------------------------------------------------------------
 
-QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, CapeErr err)
+QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit user_fct)
 {
-  
+  return qbus_obsvbl_subscribe (self->obsvbl, module, name, user_ptr, user_fct);
 }
 
 //-----------------------------------------------------------------------------
 
-QBusEmitter qbus_emitter_add (QBus self, const CapeString name, CapeErr err)
+void qbus_emit (QBus self, const CapeString value_name, CapeUdc* p_value)
 {
-  
+  qbus_obsvbl_emit (self->obsvbl, value_name, p_value);
 }
-
-//-----------------------------------------------------------------------------
-
-int qbus_emitter_rm (QBus self, QBusEmitter emitter, CapeErr err)
-{
-  
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_emitter_next (QBus self, QBusEmitter emitter, CapeUdc data)
-{
-  
-}
-
 
 //-----------------------------------------------------------------------------
 

@@ -1,7 +1,8 @@
 #ifndef __QBUS__H
 #define __QBUS__H 1
 
-#include "protocol/qbus_message.h"
+#include "core/qbus_message.h"
+#include "core/qbus_obsvbl.h"
 
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
@@ -74,20 +75,9 @@ __CAPE_LIBEX   void               qbus_instance          (const char* name, void
 
 //-----------------------------------------------------------------------------
 
-struct QBusSubscriber_s; typedef struct QBusSubscriber_s* QBusSubscriber;
-struct QBusEmitter_s; typedef struct QBusEmitter_s* QBusEmitter;
+__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, int type, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit);
 
-typedef int      (__STDCALL     *fct_qbus_on_emit) (QBusSubscriber, void* user_ptr, int type, CapeUdc data, CapeErr);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, int type, const CapeString module, const CapeString name, CapeErr);
-
-__CAPE_LIBEX   QBusEmitter        qbus_emitter_add       (QBus, const CapeString name, CapeErr);
-
-__CAPE_LIBEX   int                qbus_emitter_rm        (QBus, QBusEmitter, CapeErr);
-
-__CAPE_LIBEX   void               qbus_emitter_next      (QBus, QBusEmitter, CapeUdc data);
+__CAPE_LIBEX   void               qbus_emit              (QBus, const CapeString value_name, CapeUdc* p_value);
 
 //-----------------------------------------------------------------------------
 
