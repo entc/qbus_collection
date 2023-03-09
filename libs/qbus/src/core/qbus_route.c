@@ -505,10 +505,10 @@ void qbus_route_frame_nodes_add (QBusRoute self, QBusFrame frame)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn)
+CapeList qbus_route_get__conn (QBusRoute self, QBusPvdConnection conn)
 {
   CapeList user_ptrs = cape_list_new (NULL);
-  
+
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
     
@@ -522,6 +522,15 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn)
     cape_map_cursor_destroy (&cursor);
   }
 
+  return user_ptrs;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn)
+{
+  CapeList user_ptrs = qbus_route_get__conn (self, conn);
+  
   if (cape_list_size (user_ptrs) > 0)
   {
     QBusFrame frame = qbus_frame_new ();
@@ -561,6 +570,17 @@ void qbus_route_dump (QBusRoute self)
   cape_map_cursor_destroy (&cursor);
 
   printf ("-----------------------------------------------------------------------------\n");
+}
+
+//-----------------------------------------------------------------------------
+
+CapeList qbus_route_get__routings (QBusRoute self, CapeMap routings)
+{
+  CapeList user_ptrs = cape_list_new (NULL);
+
+  
+  
+  return user_ptrs;
 }
 
 //-----------------------------------------------------------------------------

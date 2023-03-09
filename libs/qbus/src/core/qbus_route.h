@@ -6,6 +6,7 @@
 #include <sys/cape_export.h>
 #include <sys/cape_err.h>
 #include <stc/cape_udc.h>
+#include <stc/cape_map.h>
 
 //-----------------------------------------------------------------------------
 
@@ -49,6 +50,12 @@ __CAPE_LOCAL   void               qbus_route_rm                (QBusRoute, QBusP
 __CAPE_LOCAL   void               qbus_route_send_update       (QBusRoute, QBusPvdConnection);
 
 __CAPE_LOCAL   void               qbus_route_dump              (QBusRoute);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   CapeList           qbus_route_get__conn         (QBusRoute, QBusPvdConnection conn);
+
+__CAPE_LOCAL   CapeList           qbus_route_get__routings     (QBusRoute, CapeMap);
 
 //-----------------------------------------------------------------------------
 
