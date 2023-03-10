@@ -159,6 +159,25 @@ void qbus_engines_pvd__on_obsvbl_update (QBusEnginesPvd self, QBusPvdConnection 
 
 //-----------------------------------------------------------------------------
 
+void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
+{
+  if (cape_str_equal (frame->module, qbus_route_uuid_get (self->route)))
+  {
+    CapeUdc value = qbus_frame_get__payload (frame);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
+    
+    qbus_obsvbl_value (self->obsvbl, frame->method, &value);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] >>> forward");
+    
+  }  
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection conn, QBusFrame* p_frame)
 {
   QBusEnginesPvd self = factory_ptr;
@@ -185,6 +204,11 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
     case QBUS_FRAME_TYPE_OBSVBL_UPD:
     {
       qbus_engines_pvd__on_obsvbl_update (self, conn, frame);
+      break;
+    }
+    case QBUS_FRAME_TYPE_OBSVBL_VALUE:
+    {
+      qbus_engines_pvd__on_obsvbl_value (self, conn, frame);
       break;
     }
     case QBUS_FRAME_TYPE_MSG_REQ:

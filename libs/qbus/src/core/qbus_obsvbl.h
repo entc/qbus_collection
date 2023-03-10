@@ -31,6 +31,8 @@ __CAPE_LOCAL   QBusSubscriber     qbus_obsvbl_subscribe        (QBusObsvbl, cons
 
 __CAPE_LOCAL   void               qbus_obsvbl_emit             (QBusObsvbl, const CapeString value_name, CapeUdc* p_value);
 
+__CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, const CapeString value_name, CapeUdc* p_value);
+
 //-----------------------------------------------------------------------------
 
 #endif

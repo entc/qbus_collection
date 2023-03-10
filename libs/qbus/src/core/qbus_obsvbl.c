@@ -224,13 +224,6 @@ void qbus_obsvbl_add_nodes (QBusObsvbl self, const CapeString module_name, const
 
     cape_udc_cursor_del (&cursor);
   }
-
-  {
-    CapeString h = cape_json_to_s (nodes);
-    
-    printf ("N: %s -> %s\n", module_name, h);
-    
-  }
   
   cape_udc_del (p_nodes);
 }
@@ -304,6 +297,49 @@ QBusSubscriber qbus_obsvbl_subscribe (QBusObsvbl self, const CapeString module_n
 
 //-----------------------------------------------------------------------------
 
+void qbus_obsvbl_emit__broadcast (QBusObsvbl self, const CapeString value_name, CapeMap routings, CapeUdc* p_value)
+{
+  // fetch the route list
+  CapeMap user_ptrs = qbus_route_get__routings (self->route, routings);
+  
+  if (cape_map_size (user_ptrs) > 0)
+  {
+    QBusFrame frame = qbus_frame_new ();
+        
+    // debug
+    if (*p_value)
+    {
+      CapeString h = cape_json_to_s (*p_value);
+      
+      printf ("EMIT %s\n", h);
+
+      cape_str_del (&h);
+
+    }
+
+    qbus_frame_set__payload (frame, p_value);
+    
+    {
+      CapeMapCursor* cursor = cape_map_cursor_create (user_ptrs, CAPE_DIRECTION_FORW);
+      
+      while (cape_map_cursor_next (cursor))
+      {
+        qbus_frame_set (frame, QBUS_FRAME_TYPE_OBSVBL_VALUE, NULL, cape_map_node_key (cursor->node), value_name, qbus_route_uuid_get (self->route));
+        
+        qbus_engines__send (self->engines, frame, cape_map_node_value (cursor->node));
+      }
+      
+      cape_map_cursor_destroy (&cursor);
+    }
+    
+    qbus_frame_del (&frame);
+  }
+  
+  cape_map_del (&user_ptrs);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_obsvbl_emit (QBusObsvbl self, const CapeString value_name, CapeUdc* p_value)
 {
   CapeString subscriber_name = cape_str_catenate_c (qbus_route_name_get (self->route), '.', value_name);
@@ -316,22 +352,27 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString value_name, CapeUdc* p_
   {
     QBusNode node = cape_map_node_value (n);
 
-    // fetch the route list
-    qbus_route_get__routings (self->route, node->routings);
-    
-    // debug
-    if (*p_value)
-    {
-      CapeString h = cape_json_to_s (*p_value);
-      
-//      printf ("EMIT [%s] -> %s >>> %s\n", subscriber_name, h, node->module);
-      
-      cape_str_del (&h);
-    }
+    qbus_obsvbl_emit__broadcast (self, value_name, node->routings, p_value);
   }
   
   cape_udc_del (p_value);
   cape_str_del (&subscriber_name);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_obsvbl_value (QBusObsvbl self, const CapeString value_name, CapeUdc* p_value)
+{
+  if (*p_value)
+  {
+    CapeString h = cape_json_to_s (*p_value);
+    
+    printf ("ON VAL: %s <- %s\n", value_name, h);
+    
+    cape_str_del (&h);
+  }
+  
+  cape_udc_del (p_value);
 }
 
 //-----------------------------------------------------------------------------

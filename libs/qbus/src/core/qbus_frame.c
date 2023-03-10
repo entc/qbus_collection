@@ -124,11 +124,11 @@ CapeUdc qbus_frame_set_udc (QBusFrame self, number_t msgType, CapeUdc* p_payload
 {
   CapeUdc payload = *p_payload;
   
+  // stringify
   CapeString h = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
   
   CapeUdc rinfo = cape_udc_ext (payload, "I");
   
-  // stringify
   cape_str_replace_mv (&(self->msg_data), &h);
  
   self->msg_size = cape_str_size (self->msg_data);
@@ -137,6 +137,46 @@ CapeUdc qbus_frame_set_udc (QBusFrame self, number_t msgType, CapeUdc* p_payload
   cape_udc_del (p_payload);
   
   return rinfo;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_frame_set__string (QBusFrame self, CapeString* p_payload)
+{
+  cape_str_replace_mv (&(self->msg_data), p_payload);
+  
+  self->msg_size = cape_str_size (self->msg_data);
+  self->msg_type = QBUS_MTYPE_STRING;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_frame_set__payload  (QBusFrame self, CapeUdc* p_payload)
+{
+  CapeUdc payload = *p_payload;
+  
+  if (payload)
+  {
+    switch (cape_udc_type (payload))
+    {
+      case CAPE_UDC_STRING:
+      {
+        CapeString h = cape_udc_s_mv (payload, NULL);
+        
+        qbus_frame_set__string (self, &h);
+        
+        break;
+      }
+      case CAPE_UDC_NODE:
+      case CAPE_UDC_LIST:
+      {
+        qbus_frame_set_udc (self, QBUS_MTYPE_JSON, p_payload);
+        break;
+      }
+    }
+  }
+  
+  cape_udc_del (p_payload);
 }
 
 //-----------------------------------------------------------------------------
@@ -206,6 +246,34 @@ CapeUdc qbus_frame_get_udc (QBusFrame self)
   }
   
   return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_frame_get__payload (QBusFrame self)
+{
+  switch (self->msg_type)
+  {
+    case QBUS_MTYPE_JSON:
+    {
+      return qbus_frame_get_udc (self);
+    }
+    case QBUS_MTYPE_STRING:
+    {
+      CapeUdc h = cape_udc_new (CAPE_UDC_STRING, NULL);
+      
+      CapeString s = cape_str_sub (self->msg_data, self->msg_size);
+
+      cape_udc_set_s_mv (h, &s);
+      
+      return h;
+    }    
+    default:
+    {
+      cape_log_msg (CAPE_LL_WARN, "QBUS", "frame payload", "MTYPE not supported");      
+      return NULL;
+    }
+  }  
 }
 
 //-----------------------------------------------------------------------------

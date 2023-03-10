@@ -55,7 +55,7 @@ __CAPE_LOCAL   void               qbus_route_dump              (QBusRoute);
 
 __CAPE_LOCAL   CapeList           qbus_route_get__conn         (QBusRoute, QBusPvdConnection conn);
 
-__CAPE_LOCAL   CapeList           qbus_route_get__routings     (QBusRoute, CapeMap);
+__CAPE_LOCAL   CapeMap            qbus_route_get__routings     (QBusRoute, CapeMap);
 
 //-----------------------------------------------------------------------------
 

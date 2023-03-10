@@ -22,6 +22,8 @@ __CAPE_LOCAL   void         qbus_engines_del                 (QBusEngines*);
 
 __CAPE_LOCAL   int          qbus_engines__init_pvds          (QBusEngines, const CapeUdc pvds, CapeAioContext aio_context, QBusRoute, QBusObsvbl, CapeErr err);
 
+__CAPE_LOCAL   void         qbus_engines__send               (QBusEngines, QBusFrame frame, QBusPvdConnection conn);
+
 __CAPE_LOCAL   void         qbus_engines__broadcast          (QBusEngines, QBusFrame frame, CapeList user_ptrs);
 
 //-----------------------------------------------------------------------------

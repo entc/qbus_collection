@@ -149,6 +149,13 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+void qbus_engines__send (QBusEngines self, QBusFrame frame, QBusPvdConnection conn)
+{
+  qbus_engines_pvd_send (conn->engine, frame, conn->connection_ptr);    
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_engines__broadcast (QBusEngines self, QBusFrame frame, CapeList user_ptrs)
 {
   CapeListCursor* cursor = cape_list_cursor_create (user_ptrs, CAPE_DIRECTION_FORW);
@@ -157,7 +164,7 @@ void qbus_engines__broadcast (QBusEngines self, QBusFrame frame, CapeList user_p
   {
     QBusPvdConnection conn = cape_list_node_data (cursor->node);
     
-    qbus_engines_pvd_send (conn->engine, frame, conn->connection_ptr);    
+    qbus_engines__send (self, frame, conn);    
   }
   
   cape_list_cursor_destroy (&cursor);

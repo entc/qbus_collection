@@ -9,18 +9,20 @@
 
 //-----------------------------------------------------------------------------
 
-#define QBUS_FRAME_TYPE_NONE         0
-#define QBUS_FRAME_TYPE_ROUTE_REQ    1
-#define QBUS_FRAME_TYPE_ROUTE_RES    2
-#define QBUS_FRAME_TYPE_MSG_REQ      3
-#define QBUS_FRAME_TYPE_MSG_RES      4
-#define QBUS_FRAME_TYPE_ROUTE_UPD    5
-#define QBUS_FRAME_TYPE_METHODS      6
-#define QBUS_FRAME_TYPE_OBSVBL_UPD   7
+#define QBUS_FRAME_TYPE_NONE           0
+#define QBUS_FRAME_TYPE_ROUTE_REQ      1
+#define QBUS_FRAME_TYPE_ROUTE_RES      2
+#define QBUS_FRAME_TYPE_MSG_REQ        3
+#define QBUS_FRAME_TYPE_MSG_RES        4
+#define QBUS_FRAME_TYPE_ROUTE_UPD      5
+#define QBUS_FRAME_TYPE_METHODS        6
+#define QBUS_FRAME_TYPE_OBSVBL_UPD     7
+#define QBUS_FRAME_TYPE_OBSVBL_VALUE   8
 
 #define QBUS_MTYPE_NONE         0
 #define QBUS_MTYPE_JSON         1
 #define QBUS_MTYPE_FILE         2
+#define QBUS_MTYPE_STRING       3
 
 //-----------------------------------------------------------------------------
 
@@ -79,11 +81,17 @@ __CAPE_LIBEX   void              qbus_frame_set_err       (QBusFrame, CapeErr);
 // returns the rinfo if available
 __CAPE_LIBEX   CapeUdc           qbus_frame_set_udc       (QBusFrame, number_t msgType, CapeUdc* p_payload);
 
+__CAPE_LIBEX   void              qbus_frame_set__string   (QBusFrame, CapeString* p_payload);
+
+__CAPE_LIBEX   void              qbus_frame_set__payload  (QBusFrame, CapeUdc* p_payload);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   const CapeString  qbus_frame_get_chainkey  (QBusFrame);
 
 __CAPE_LIBEX   CapeUdc           qbus_frame_get_udc       (QBusFrame);
+
+__CAPE_LIBEX   CapeUdc           qbus_frame_get__payload  (QBusFrame);
 
 //-----------------------------------------------------------------------------
 
