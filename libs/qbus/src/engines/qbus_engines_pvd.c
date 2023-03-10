@@ -123,7 +123,9 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, QBusPvdConnection
   else
   {
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
-  }    
+  }
+
+  qbus_obsvbl_subloads (self->obsvbl);
 }
 
 //-----------------------------------------------------------------------------
@@ -143,7 +145,9 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
   else
   {
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
-  }    
+  }
+  
+  qbus_obsvbl_subloads (self->obsvbl);
 }
 
 //-----------------------------------------------------------------------------

@@ -35,4 +35,8 @@ __CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, cons
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LOCAL   void               qbus_obsvbl_subloads         (QBusObsvbl);
+
+//-----------------------------------------------------------------------------
+
 #endif

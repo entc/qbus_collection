@@ -376,3 +376,10 @@ void qbus_obsvbl_value (QBusObsvbl self, const CapeString value_name, CapeUdc* p
 }
 
 //-----------------------------------------------------------------------------
+
+void qbus_obsvbl_subloads (QBusObsvbl self)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
