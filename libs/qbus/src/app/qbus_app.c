@@ -34,15 +34,16 @@ int __STDCALL on_timer (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL on_value (QBusSubscriber subscriber, void* user_ptr, CapeUdc data, CapeErr err)
+void __STDCALL on_value (void* user_ptr, const CapeString subscriber_name, CapeUdc* p_data)
 {
-  CapeString h = cape_json_to_s (data);
-  
-  printf ("SUBSCRIBER: %s\n", h);
-  
-  cape_str_del (&h);
-  
-  return CAPE_ERR_NONE;
+  if (*p_data)
+  {
+    CapeString h = cape_json_to_s (*p_data);
+    
+    printf ("ON VAL: %s <- %s\n", subscriber_name, h);
+    
+    cape_str_del (&h);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -54,9 +55,8 @@ static int __STDCALL app_on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr er
   // register methods
   qbus_register (qbus, "test_method", NULL, test_method, NULL, err);
 
-  qbus_subscribe (qbus, 0, "test1", "val01", on_value, NULL);
-    
-  qbus_subscribe (qbus, 0, "test1", "val02", on_value, NULL);
+  qbus_subscribe (qbus, 0, "test1", "val01", NULL, on_value);
+  qbus_subscribe (qbus, 0, "test1", "val02", NULL, on_value);
 
   {
     CapeAioTimer timer = cape_aio_timer_new ();

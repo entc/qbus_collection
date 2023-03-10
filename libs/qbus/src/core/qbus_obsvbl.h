@@ -13,7 +13,7 @@ struct QBusSubscriber_s; typedef struct QBusSubscriber_s* QBusSubscriber;
 struct QBusObsvbl_s; typedef struct QBusObsvbl_s* QBusObsvbl;
 struct QBusEmitter_s; typedef struct QBusEmitter_s* QBusEmitter;
 
-typedef int      (__STDCALL     *fct_qbus_on_emit) (QBusSubscriber, void* user_ptr, CapeUdc data, CapeErr);
+typedef void     (__STDCALL     *fct_qbus_on_emit) (void* user_ptr, const CapeString subscriber_name, CapeUdc* p_data);
 
 //-----------------------------------------------------------------------------
 
@@ -31,11 +31,13 @@ __CAPE_LOCAL   QBusSubscriber     qbus_obsvbl_subscribe        (QBusObsvbl, cons
 
 __CAPE_LOCAL   void               qbus_obsvbl_emit             (QBusObsvbl, const CapeString value_name, CapeUdc* p_value);
 
-__CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, const CapeString value_name, CapeUdc* p_value);
+__CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, const CapeString module_name, const CapeString value_name, CapeUdc* p_value);
+
+__CAPE_LOCAL   void               qbus_obsvbl_dump             (QBusObsvbl);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_obsvbl_subloads         (QBusObsvbl);
+__CAPE_LOCAL   void               qbus_obsvbl_subloads         (QBusObsvbl, QBusPvdConnection);
 
 //-----------------------------------------------------------------------------
 

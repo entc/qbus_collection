@@ -96,13 +96,27 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
       cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
     }
     
-    // create an UDC structure of all nodes
-    qbus_route_frame_nodes_add (self->route, frame);
+    // send old verison
+    {
+      // create an UDC structure of all nodes
+      qbus_route_frame_nodes_add (self->route, frame, FALSE);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
+      
+      // finally send the frame
+      self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
+    }
     
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
-    
-    // finally send the frame
-    self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
+    // send new verison
+    {
+      // create an UDC structure of all nodes
+      qbus_route_frame_nodes_add (self->route, frame, TRUE);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
+      
+      // finally send the frame
+      self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
+    }
   }
 }
 
@@ -125,7 +139,7 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, QBusPvdConnection
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
   }
 
-  qbus_obsvbl_subloads (self->obsvbl);
+  qbus_obsvbl_subloads (self->obsvbl, NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -147,7 +161,7 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
   }
   
-  qbus_obsvbl_subloads (self->obsvbl);
+  qbus_obsvbl_subloads (self->obsvbl, NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -159,6 +173,9 @@ void qbus_engines_pvd__on_obsvbl_update (QBusEnginesPvd self, QBusPvdConnection 
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [UPD] << module = %s, sender = %s", frame->module, frame->sender);
   
   qbus_obsvbl_add_nodes (self->obsvbl, frame->module, frame->sender, conn, &route_nodes);
+
+  // update all others in our routes
+  qbus_obsvbl_send_update (self->obsvbl, conn, NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -171,7 +188,7 @@ void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection c
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
     
-    qbus_obsvbl_value (self->obsvbl, frame->method, &value);
+    qbus_obsvbl_value (self->obsvbl, frame->chain_key, frame->method, &value);
   }
   else
   {

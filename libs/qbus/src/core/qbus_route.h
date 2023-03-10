@@ -39,7 +39,7 @@ __CAPE_LOCAL   const CapeString   qbus_route_uuid_get          (QBusRoute);
 
 __CAPE_LOCAL   const CapeString   qbus_route_name_get          (QBusRoute);
 
-__CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute);
+__CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute, int as_node);
 
 //-----------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ __CAPE_LOCAL   CapeMap            qbus_route_get__routings     (QBusRoute, CapeM
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_route_frame_nodes_add   (QBusRoute, QBusFrame frame);
+__CAPE_LOCAL   void               qbus_route_frame_nodes_add   (QBusRoute, QBusFrame frame, int as_node);
 
 //-----------------------------------------------------------------------------
 

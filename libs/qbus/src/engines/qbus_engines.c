@@ -35,7 +35,7 @@ QBusEngines qbus_engines_new ()
   QBusEngines self = CAPE_NEW (struct QBusEngines_s);
 
   self->engines = cape_map_new (NULL, qbus_engines__on_del, NULL);
-  self->path = cape_str_cp ("qbus2");
+  self->path = cape_str_cp ("qbus");
   
   return self;
 }
