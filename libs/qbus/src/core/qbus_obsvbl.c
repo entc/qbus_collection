@@ -317,8 +317,8 @@ QBusSubscriber qbus_obsvbl_subscribe (QBusObsvbl self, const CapeString module_n
 {
   QBusSubscriber ret = NULL;
   
-  CapeString subscriber_name = cape_str_catenate_c (module_name, '.', value_name);
-    
+  CapeString subscriber_name = cape_str_fmt ("#%s.%s", module_name, value_name);
+  
   cape_str_to_lower (subscriber_name);
   
   {
@@ -341,13 +341,34 @@ QBusSubscriber qbus_obsvbl_subscribe (QBusObsvbl self, const CapeString module_n
 
 QBusSubscriber qbus_obsvbl_subscribe_uuid (QBusObsvbl self, const CapeString uuid, const CapeString value_name, void* user_ptr, fct_qbus_on_emit user_fct)
 {
+  QBusSubscriber ret = NULL;
   
+  CapeString subscriber_name = cape_str_fmt ("%s.%s", uuid, value_name);
+  
+  cape_str_to_lower (subscriber_name);
+  
+  {
+    CapeMapNode n = cape_map_find (self->observables, (void*)subscriber_name);
+    
+    if (n == NULL)
+    {
+      ret = qbus_subscriber_new (user_ptr, user_fct);
+      
+      cape_map_insert (self->observables, (void*)cape_str_mv (&subscriber_name), (void*)ret);
+    }
+  }
+  
+  cape_str_del (&subscriber_name);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_obsvbl_emit__ptrs (QBusObsvbl self, const CapeString value_name, CapeMap routings, CapeUdc* p_value)
 {
+  printf ("EMIT\n");
+  
   // fetch a map <uuid:conn> from the routing
   // -> we need the uuid to add to the frame as identifier
   CapeMap user_ptrs = qbus_route_get__routings (self->route, routings);
@@ -387,11 +408,13 @@ void qbus_obsvbl_emit__ptrs (QBusObsvbl self, const CapeString value_name, CapeM
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_emit (QBusObsvbl self, const CapeString value_name, CapeUdc* p_value)
+void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeString value_name, CapeUdc* p_value)
 {
-  CapeString subscriber_name = cape_str_catenate_c (qbus_route_name_get (self->route), '.', value_name);
+  CapeString subscriber_name = cape_str_catenate_c (prefix, '.', value_name);
   
   cape_str_to_lower (subscriber_name);
+
+  printf ("EMIT %s\n", subscriber_name);
 
   // find the nodes assigned to the subscriber name
   CapeMapNode n = cape_map_find (self->nodes, (void*)subscriber_name);

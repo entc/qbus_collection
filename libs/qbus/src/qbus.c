@@ -31,6 +31,7 @@
 #include "fmt/cape_tokenizer.h"
 #include "sys/cape_btrace.h"
 #include "sys/cape_thread.h"
+#include <aio/cape_aio_timer.h>
 
 //-----------------------------------------------------------------------------
 
@@ -48,6 +49,21 @@ struct QBus_s
   
   QBusConfig config;
 };
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL on_timer (void* ptr)
+{
+  QBus self = ptr;
+  
+  CapeUdc value = cape_udc_new (CAPE_UDC_STRING, NULL);
+  
+  cape_udc_set_s_cp (value, "load: 12%");
+  
+  qbus_obsvbl_emit (self->obsvbl, qbus_route_uuid_get (self->route), "load", &value);
+  
+  return TRUE;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -116,7 +132,27 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
     return res;
   }
   
-  return CAPE_ERR_NONE;
+  {
+    CapeAioTimer timer = cape_aio_timer_new ();
+    
+    res = cape_aio_timer_set (timer, 5000, self, on_timer, err);
+    if (res)
+    {
+      goto cleanup_and_exit;
+    }
+    
+    res = cape_aio_timer_add (&timer, self->aio);
+    if (res)
+    {
+      goto cleanup_and_exit;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+cleanup_and_exit:
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -226,7 +262,11 @@ QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, con
 
 void qbus_emit (QBus self, const CapeString value_name, CapeUdc* p_value)
 {
-  qbus_obsvbl_emit (self->obsvbl, value_name, p_value);
+  CapeString prefix = cape_str_catenate_2 ("#", qbus_route_name_get (self->route));
+  
+  qbus_obsvbl_emit (self->obsvbl, prefix, value_name, p_value);
+  
+  cape_str_del (&prefix);
 }
 
 //-----------------------------------------------------------------------------
