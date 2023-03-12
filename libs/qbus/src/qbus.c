@@ -66,6 +66,8 @@ QBus qbus_new (const char* module_origin)
 
   self->obsvbl = qbus_obsvbl_new (self->engines, self->route);
   
+  qbus_route_set (self->route, self->obsvbl);
+  
   self->aio = cape_aio_context_new ();
   
   return self;

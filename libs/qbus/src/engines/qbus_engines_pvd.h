@@ -13,9 +13,6 @@
 
 //-----------------------------------------------------------------------------
 
-
-//-----------------------------------------------------------------------------
-
 __CAPE_LOCAL   QBusEnginesPvd     qbus_engines_pvd_new          (QBusRoute, QBusObsvbl);
 
 __CAPE_LOCAL   void               qbus_engines_pvd_del          (QBusEnginesPvd*);

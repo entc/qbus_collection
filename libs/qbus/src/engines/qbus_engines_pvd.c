@@ -96,7 +96,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
       cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
     }
     
-    // send old verison
+    // send old version
     {
       // create an UDC structure of all nodes
       qbus_route_frame_nodes_add (self->route, frame, FALSE);
@@ -107,7 +107,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
       self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
     }
     
-    // send new verison
+    // send new version
     {
       // create an UDC structure of all nodes
       qbus_route_frame_nodes_add (self->route, frame, TRUE);
@@ -166,20 +166,6 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
 
 //-----------------------------------------------------------------------------
 
-void qbus_engines_pvd__on_obsvbl_update (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
-{
-  CapeUdc route_nodes = qbus_frame_get_udc (frame);
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [UPD] << module = %s, sender = %s", frame->module, frame->sender);
-  
-  qbus_obsvbl_add_nodes (self->obsvbl, frame->module, frame->sender, conn, &route_nodes);
-
-  // update all others in our routes
-  qbus_obsvbl_send_update (self->obsvbl, conn, NULL);
-}
-
-//-----------------------------------------------------------------------------
-
 void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
 {
   if (cape_str_equal (frame->module, qbus_route_uuid_get (self->route)))
@@ -220,11 +206,6 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
     case QBUS_FRAME_TYPE_ROUTE_UPD:
     {
       qbus_engines_pvd__on_route_update (self, conn, frame);
-      break;
-    }
-    case QBUS_FRAME_TYPE_OBSVBL_UPD:
-    {
-      qbus_engines_pvd__on_obsvbl_update (self, conn, frame);
       break;
     }
     case QBUS_FRAME_TYPE_OBSVBL_VALUE:
@@ -284,9 +265,6 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
     
     qbus_frame_del (&frame);
   }
-
-  // send the update only to the connection ptr destination
-  qbus_obsvbl_send_update (self->obsvbl, NULL, fcts->conn);
   
   return fcts;
 }
