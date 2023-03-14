@@ -98,8 +98,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
     
     // send old version
     {
-      // create an UDC structure of all nodes
-      qbus_route_frame_nodes_add (self->route, frame, FALSE);
+      qbus_route_frame_nodes_add (self->route, frame, FALSE, conn);
       
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
       
@@ -109,8 +108,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
     
     // send new version
     {
-      // create an UDC structure of all nodes
-      qbus_route_frame_nodes_add (self->route, frame, TRUE);
+      qbus_route_frame_nodes_add (self->route, frame, TRUE, conn);
       
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
       
@@ -138,8 +136,6 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, QBusPvdConnection
   {
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
   }
-
-  qbus_obsvbl_subloads (self->obsvbl, NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -159,9 +155,7 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
   else
   {
     qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
-  }
-  
-  qbus_obsvbl_subloads (self->obsvbl, NULL);
+  }  
 }
 
 //-----------------------------------------------------------------------------

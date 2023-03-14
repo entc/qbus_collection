@@ -52,7 +52,7 @@ struct QBus_s
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL on_timer (void* ptr)
+int __STDCALL qbus__load__on_timer (void* ptr)
 {
   QBus self = ptr;
   
@@ -135,7 +135,7 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   {
     CapeAioTimer timer = cape_aio_timer_new ();
     
-    res = cape_aio_timer_set (timer, 5000, self, on_timer, err);
+    res = cape_aio_timer_set (timer, 5000, self, qbus__load__on_timer, err);
     if (res)
     {
       goto cleanup_and_exit;

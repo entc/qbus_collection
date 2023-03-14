@@ -4,6 +4,7 @@
 // cape includes
 #include <stc/cape_map.h>
 #include <fmt/cape_json.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -138,6 +139,8 @@ void qbus_node__verify_nodes (QBusObsvblNode self, CapeUdc nodes)
         cape_map_cursor_erase (self->routings, cursor);
       }
     }
+    
+    cape_map_cursor_destroy (&cursor);
   }
 }
 
@@ -158,7 +161,7 @@ void qbus_node_dump (QBusObsvblNode self)
         printf ("%20s    +-- ", "");
       }
       
-      printf ("ooo %s -> %s\n", (CapeString)cape_map_node_key (cursor->node), cape_map_node_value (cursor->node));
+      printf ("ooo %s -> %s\n", (CapeString)cape_map_node_key (cursor->node), (CapeString)cape_map_node_value (cursor->node));
       
       cnt++;
     }
@@ -307,8 +310,6 @@ void qbus_obsvbl_set (QBusObsvbl self, const CapeString module_name, const CapeS
     
     cape_udc_cursor_del (&cursor);
   }
-
-  qbus_obsvbl_dump (self);
 }
 
 //-----------------------------------------------------------------------------
@@ -367,8 +368,6 @@ QBusSubscriber qbus_obsvbl_subscribe_uuid (QBusObsvbl self, const CapeString uui
 
 void qbus_obsvbl_emit__ptrs (QBusObsvbl self, const CapeString value_name, CapeMap routings, CapeUdc* p_value)
 {
-  printf ("EMIT\n");
-  
   // fetch a map <uuid:conn> from the routing
   // -> we need the uuid to add to the frame as identifier
   CapeMap user_ptrs = qbus_route_get__routings (self->route, routings);
@@ -414,8 +413,6 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
   
   cape_str_to_lower (subscriber_name);
 
-  printf ("EMIT %s\n", subscriber_name);
-
   // find the nodes assigned to the subscriber name
   CapeMapNode n = cape_map_find (self->nodes, (void*)subscriber_name);
   if (n)
@@ -424,6 +421,10 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
 
     // send to all ptrs
     qbus_obsvbl_emit__ptrs (self, value_name, node->routings, p_value);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl emit", "can't find observable with subscriber name = '%s'", subscriber_name);
   }
   
   cape_udc_del (p_value);
@@ -437,6 +438,8 @@ void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const Cap
   CapeString subscriber_name = cape_str_catenate_c (module_name, '.', value_name);
   
   cape_str_to_lower (subscriber_name);
+  
+  printf ("seek subscriber: %s\n", subscriber_name);
   
   // find the nodes assigned to the subscriber name
   CapeMapNode n = cape_map_find (self->observables, (void*)subscriber_name);
@@ -459,7 +462,7 @@ void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const Cap
 
 void qbus_obsvbl_subloads (QBusObsvbl self, QBusPvdConnection conn)
 {
-  CapeUdc nodes = qbus_route_node_get (self->route, TRUE);
+  CapeUdc nodes = qbus_route_node_get (self->route, TRUE, conn);
 
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
@@ -472,7 +475,7 @@ void qbus_obsvbl_subloads (QBusObsvbl self, QBusPvdConnection conn)
     cape_map_cursor_destroy (&cursor);
   }
   
-  qbus_obsvbl_dump (self);
+  cape_udc_del (&nodes);
 }
 
 //-----------------------------------------------------------------------------
@@ -481,6 +484,8 @@ void qbus_obsvbl_dump (QBusObsvbl self)
 {
   CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
   
+  printf ("-----------------------------------------------------------------------------\n");
+  printf (" OBSERVABLES\n");
   printf ("-----------------------------------------------------------------------------\n");
   
   while (cape_map_cursor_next (cursor))
