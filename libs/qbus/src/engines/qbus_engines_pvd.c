@@ -241,6 +241,7 @@ QBusPvdFcts __STDCALL qbus_engines_pvd__fcts_new (void* factory_ptr, void* conec
 
   fcts->conn->connection_ptr = conecction_ptr;
   fcts->conn->engine = self;
+  fcts->conn->version = 0;
   
   cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "entity", "new entity connection");
   

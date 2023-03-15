@@ -24,6 +24,7 @@ struct QBusPvdConnection_s
 {
   void* connection_ptr;
   QBusEnginesPvd engine;
+  number_t version;
   
 }; typedef struct QBusPvdConnection_s* QBusPvdConnection;
 
@@ -59,7 +60,7 @@ __CAPE_LOCAL   void               qbus_route_dump              (QBusRoute);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   CapeList           qbus_route_get__conn         (QBusRoute, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_route_get__conn         (QBusRoute, QBusPvdConnection conn, CapeList user_ptrs__version1, CapeList user_ptrs__version3);
 
 __CAPE_LOCAL   CapeMap            qbus_route_get__routings     (QBusRoute, CapeMap);
 

@@ -86,6 +86,11 @@ static void cape_free (void* ptr)
 
 //-----------------------------------------------------------------------------
 
+#define CAPE_MAX(val1, val2) (val1 > val2 ? val1 : val2)
+#define CAPE_MIN(val1, val2) (val1 < val2 ? val1 : val2)
+
+//-----------------------------------------------------------------------------
+
 #if defined __WINDOWS_OS
 
 typedef unsigned __int64    cape_uint64;

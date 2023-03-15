@@ -85,6 +85,32 @@ void qbus_route_conn_del (QBusRouteConn* p_self)
   }
 }
 
+//-----------------------------------------------------------------------------
+
+void qbus_route__append_to_ptrs (QBusPvdConnection conn, CapeList user_ptrs__version1, CapeList user_ptrs__version3)
+{
+  switch (conn->version)
+  {
+    case 0:
+    {
+      cape_list_push_back (user_ptrs__version1, conn);
+      cape_list_push_back (user_ptrs__version3, conn);        
+      break;
+    }
+    case 1:
+    {
+      cape_list_push_back (user_ptrs__version1, conn);
+      break;
+    }
+    case 3:
+    {
+      cape_list_push_back (user_ptrs__version3, conn);
+      break;
+    }
+  }
+}
+
+
 /*
 //-----------------------------------------------------------------------------
 
@@ -545,7 +571,7 @@ void qbus_route_uuid_del (QBusRouteUuidItem* p_self)
 
 void qbus_route_uuid__dump (QBusRouteUuidItem self, const CapeString module_uuid)
 {
-  printf ("%10s |   | %36s | %p\n", "", module_uuid, self->conn);  
+  printf ("%10s |   | %36s | %p #%lu\n", "", module_uuid, self->conn, self->conn->version);  
 }
 
 //-----------------------------------------------------------------------------
@@ -623,11 +649,11 @@ int qbus_route_name__is_local_connection (QBusRouteNameItem self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_name__append_to_ptrs (QBusRouteNameItem self, QBusPvdConnection conn_exclude, CapeList user_ptrs)
+void qbus_route_name__append_to_ptrs (QBusRouteNameItem self, QBusPvdConnection conn_exclude, CapeList user_ptrs__version1, CapeList user_ptrs__version3)
 {
   if (self->item->conn != conn_exclude)
   {
-    cape_list_push_back (user_ptrs, self->item->conn);
+    qbus_route__append_to_ptrs (self->item->conn, user_ptrs__version1, user_ptrs__version3);
   }
 }
 
@@ -649,7 +675,7 @@ QBusPvdConnection qbus_route_name__get_conn (QBusRouteNameItem self)
 
 void qbus_route_name__dump (QBusRouteNameItem self, const CapeString module_name)
 {
-  printf ("%10s | %i | %36s | %p\n", module_name, self->local, self->uuid, self->item->conn);  
+  printf ("%10s | %i | %36s | %p #%lu\n", module_name, self->local, self->uuid, self->item->conn, self->item->conn->version);  
 }
 
 //-----------------------------------------------------------------------------
@@ -785,13 +811,13 @@ int qbus_route_modules__has_local_connections (QBusRouteModules self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_modules__append_to_ptrs (QBusRouteModules self, QBusPvdConnection conn_exclude, CapeList user_ptrs)
+void qbus_route_modules__append_to_ptrs (QBusRouteModules self, QBusPvdConnection conn_exclude, CapeList user_ptrs__version1, CapeList user_ptrs__version3)
 {
   CapeListCursor* cursor = cape_list_cursor_create (self->modules, CAPE_DIRECTION_FORW);
   
   while (cape_list_cursor_next (cursor))
   {
-    qbus_route_name__append_to_ptrs (cape_list_node_data (cursor->node), conn_exclude, user_ptrs);
+    qbus_route_name__append_to_ptrs (cape_list_node_data (cursor->node), conn_exclude, user_ptrs__version1, user_ptrs__version3);
   }
   
   cape_list_cursor_destroy (&cursor);
@@ -1201,11 +1227,17 @@ void qbus_route_add_nodes (QBusRoute self, const CapeString module_name, const C
     {
       case CAPE_UDC_LIST:
       {
+        // set the version
+        conn->version = CAPE_MAX(conn->version, 1);
+        
         qbus_route_add_nodes__list (self, nodes, conn, &rux);
         break;
       }
       case CAPE_UDC_NODE:
       {
+        // set the version
+        conn->version = CAPE_MAX(conn->version, 3);
+
         qbus_route_add_nodes__node (self, nodes, conn, &rux);
         break;
       }
@@ -1269,20 +1301,19 @@ void qbus_route_frame_nodes_add (QBusRoute self, QBusFrame frame, int as_node, Q
 
 void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list, QBusPvdConnection conn_single)
 {
-  CapeList user_ptrs = NULL;
+  CapeList user_ptrs__version1 = cape_list_new (NULL);
+  CapeList user_ptrs__version3 = cape_list_new (NULL);
   
   if (conn_single)
   {
-    user_ptrs = cape_list_new (NULL);
-    
-    cape_list_push_back (user_ptrs, conn_single);
+    qbus_route__append_to_ptrs (conn_single, user_ptrs__version1, user_ptrs__version3);
   }
   else
   {
-    user_ptrs = qbus_route_get__conn (self, conn_not_in_list);
+    qbus_route_get__conn (self, conn_not_in_list, user_ptrs__version1, user_ptrs__version3);
   }
     
-  if (cape_list_size (user_ptrs) > 0)
+  if (cape_list_size (user_ptrs__version1) > 0)
   {
     // send old version as list
     {
@@ -1295,11 +1326,14 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
       qbus_route_frame_nodes_add (self, frame, FALSE, conn_not_in_list);
       
       // send the frame
-      qbus_engines__broadcast (self->engines, frame, user_ptrs);
+      qbus_engines__broadcast (self->engines, frame, user_ptrs__version1);
       
       qbus_frame_del (&frame);
     }
-    
+  }
+  
+  if (cape_list_size (user_ptrs__version3) > 0)
+  {
     // send new version as node
     {
       QBusFrame frame = qbus_frame_new ();
@@ -1311,13 +1345,14 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
       qbus_route_frame_nodes_add (self, frame, TRUE, conn_not_in_list);
       
       // send the frame
-      qbus_engines__broadcast (self->engines, frame, user_ptrs);
+      qbus_engines__broadcast (self->engines, frame, user_ptrs__version3);
       
       qbus_frame_del (&frame);
     }
   }
   
-  cape_list_del (&user_ptrs);
+  cape_list_del (&user_ptrs__version1);
+  cape_list_del (&user_ptrs__version3);
 }
 
 //-----------------------------------------------------------------------------
@@ -1362,22 +1397,16 @@ void qbus_route_dump (QBusRoute self)
 
 //-----------------------------------------------------------------------------
 
-CapeList qbus_route_get__conn (QBusRoute self, QBusPvdConnection conn)
+void qbus_route_get__conn (QBusRoute self, QBusPvdConnection conn, CapeList user_ptrs__version1, CapeList user_ptrs__version3)
 {
-  CapeList user_ptrs = cape_list_new (NULL);
+  CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
   
+  while (cape_map_cursor_next (cursor))
   {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
-    
-    while (cape_map_cursor_next (cursor))
-    {
-      qbus_route_modules__append_to_ptrs (cape_map_node_value (cursor->node), conn, user_ptrs);      
-    }
-    
-    cape_map_cursor_destroy (&cursor);
+    qbus_route_modules__append_to_ptrs (cape_map_node_value (cursor->node), conn, user_ptrs__version1, user_ptrs__version3);      
   }
   
-  return user_ptrs;
+  cape_map_cursor_destroy (&cursor);
 }
 
 //-----------------------------------------------------------------------------
