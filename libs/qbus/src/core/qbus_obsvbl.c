@@ -12,13 +12,19 @@ struct QBusSubscriber_s
 {
   void* user_ptr;  
   fct_qbus_on_emit user_fct;
+  
+  QBusObsvbl obsvbl;    // reference
+  CapeString name;
 };
 
 //-----------------------------------------------------------------------------
 
-QBusSubscriber qbus_subscriber_new (void* user_ptr, fct_qbus_on_emit user_fct)
+QBusSubscriber qbus_subscriber_new (QBusObsvbl obsvbl, const CapeString name, void* user_ptr, fct_qbus_on_emit user_fct)
 {
   QBusSubscriber self = CAPE_NEW(struct QBusSubscriber_s);
+  
+  self->obsvbl = obsvbl;
+  self->name = cape_str_cp (name);
   
   self->user_ptr = user_ptr;
   self->user_fct = user_fct;
@@ -32,6 +38,10 @@ void qbus_subscriber_del (QBusSubscriber* p_self)
 {
   if (*p_self)
   {
+    QBusSubscriber self = *p_self;
+    
+    cape_str_del (&(self->name));
+    
     CAPE_DEL (p_self, struct QBusSubscriber_s);
   }
 }
@@ -283,7 +293,6 @@ void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, c
     
     cape_map_insert (self->nodes, cape_str_cp (subscriber_name), (void*)node);
   }
-
 }
 
 //-----------------------------------------------------------------------------
@@ -318,7 +327,9 @@ QBusSubscriber qbus_obsvbl_subscribe (QBusObsvbl self, const CapeString module_n
     
     if (n == NULL)
     {
-      ret = qbus_subscriber_new (user_ptr, user_fct);
+      ret = qbus_subscriber_new (self, subscriber_name, user_ptr, user_fct);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "subscribe to value = %s", subscriber_name);
       
       cape_map_insert (self->observables, (void*)cape_str_mv (&subscriber_name), (void*)ret);
     }
@@ -344,7 +355,9 @@ QBusSubscriber qbus_obsvbl_subscribe_uuid (QBusObsvbl self, const CapeString uui
     
     if (n == NULL)
     {
-      ret = qbus_subscriber_new (user_ptr, user_fct);
+      ret = qbus_subscriber_new (self, subscriber_name, user_ptr, user_fct);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "subscribe to value = %s", subscriber_name);
       
       cape_map_insert (self->observables, (void*)cape_str_mv (&subscriber_name), (void*)ret);
     }
@@ -353,6 +366,25 @@ QBusSubscriber qbus_obsvbl_subscribe_uuid (QBusObsvbl self, const CapeString uui
   cape_str_del (&subscriber_name);
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_obsvbl_unsubscribe (QBusSubscriber* p_subscriber)
+{
+  QBusSubscriber subscriber = *p_subscriber;
+  
+  if (subscriber)
+  {
+    QBusObsvbl self = subscriber->obsvbl;
+    
+    CapeMapNode n = cape_map_find (self->observables, (void*)subscriber->name);
+    
+    if (n)
+    {
+      cape_map_erase (self->observables, n);      
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -415,7 +447,7 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
   }
   else
   {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl emit", "can't find observable with subscriber name = '%s'", subscriber_name);
+    //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl emit", "can't find observable with subscriber name = '%s'", subscriber_name);
   }
   
   cape_udc_del (p_value);

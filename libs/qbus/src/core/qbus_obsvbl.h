@@ -31,6 +31,8 @@ __CAPE_LOCAL   QBusSubscriber     qbus_obsvbl_subscribe        (QBusObsvbl, cons
 
 __CAPE_LOCAL   QBusSubscriber     qbus_obsvbl_subscribe_uuid   (QBusObsvbl, const CapeString uuid, const CapeString value_name, void* user_ptr, fct_qbus_on_emit);
 
+__CAPE_LOCAL   void               qbus_obsvbl_unsubscribe      (QBusSubscriber*);
+
 __CAPE_LOCAL   void               qbus_obsvbl_emit             (QBusObsvbl, const CapeString prefix, const CapeString value_name, CapeUdc* p_value);
 
 __CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, const CapeString module_name, const CapeString value_name, CapeUdc* p_value);
