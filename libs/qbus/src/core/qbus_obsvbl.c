@@ -146,24 +146,15 @@ void qbus_node__verify_nodes (QBusObsvblNode self, CapeUdc nodes)
 
 //-----------------------------------------------------------------------------
 
-void qbus_node_dump (QBusObsvblNode self)
+void qbus_node_dump (QBusObsvblNode self, const CapeString subscriber_name)
 {
-  number_t cnt = 0;
-
   if (self->routings)
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->routings, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      if (cnt)
-      {
-        printf ("%20s    +-- ", "");
-      }
-      
-      printf ("ooo %s -> %s\n", (CapeString)cape_map_node_key (cursor->node), (CapeString)cape_map_node_value (cursor->node));
-      
-      cnt++;
+      printf ("%10s |   | %36s | %s\n", (CapeString)cape_map_node_value (cursor->node), (CapeString)cape_map_node_key (cursor->node), subscriber_name);
     }
     
     cape_map_cursor_destroy (&cursor);
@@ -484,22 +475,14 @@ void qbus_obsvbl_dump (QBusObsvbl self)
 {
   CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
   
-  printf ("-----------------------------------------------------------------------------\n");
-  printf (" OBSERVABLES\n");
-  printf ("-----------------------------------------------------------------------------\n");
-  
   while (cape_map_cursor_next (cursor))
   {
-    QBusObsvblNode node = cape_map_node_value (cursor->node);
-
-    printf ("%20s: --+-- ", (CapeString)cape_map_node_key (cursor->node));
-    
-    qbus_node_dump (node);
+    qbus_node_dump (cape_map_node_value (cursor->node), (CapeString)cape_map_node_key (cursor->node));
   }
   
   cape_map_cursor_destroy (&cursor);
   
-  printf ("-----------------------------------------------------------------------------\n");
+  printf ("-----------+---+--------------------------------------+--------------------------------------\n");
 }
 
 //-----------------------------------------------------------------------------
