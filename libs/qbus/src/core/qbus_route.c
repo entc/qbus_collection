@@ -5,6 +5,7 @@
 #include <sys/cape_file.h>
 #include <sys/cape_log.h>
 #include <sys/cape_thread.h>
+#include <sys/cape_mutex.h>
 #include <fmt/cape_args.h>
 #include <fmt/cape_json.h>
 #include <fmt/cape_tokenizer.h>
@@ -751,6 +752,13 @@ void qbus_route_modules__add (QBusRouteModules self, QBusObsvbl obsvbl, const Ca
       return;
     }    
   }
+  else
+  {
+    if (cape_list_size (self->modules) > 0)
+    {
+      return;
+    }    
+  }
   
   {
     QBusRouteNameItem name_item = qbus_route_name_new (obsvbl, module_uuid, conn, is_local);
@@ -906,6 +914,8 @@ struct QBusRoute_s
   
   CapeMap modules_uuids;      // list of all connected modules sorted by unique uuid
   CapeMap modules_names;      // list of all connected modules by name
+  
+  CapeMutex mutex;            // to ensure thread safety
 };
 
 //-----------------------------------------------------------------------------
@@ -958,12 +968,16 @@ QBusRoute qbus_route_new (const CapeString name, QBusEngines engines)
   self->uuid = cape_str_uuid ();
   self->name = cape_str_cp (name);
   
+  cape_str_to_upper (self->name);
+  
   //self->nodes = cape_map_new (NULL, qbus_route__nodes__on_del, NULL);
   
   cape_log_fmt (CAPE_LL_INFO, "QBUS", "route", "started new qbus node with = %s as %s", self->uuid, self->name);
   
   self->modules_uuids = cape_map_new (NULL, qbus_route__modules_uuids__on_del, NULL);
   self->modules_names = cape_map_new (NULL, qbus_route__modules_names__on_del, NULL);
+  
+  self->mutex = cape_mutex_new ();
   
   return self;
 }
@@ -977,6 +991,8 @@ void qbus_route_del (QBusRoute* p_self)
     QBusRoute self = *p_self;
     
     //cape_map_del (&(self->nodes));
+    
+    cape_mutex_del (&(self->mutex));
     
     cape_str_del (&(self->name));
     cape_str_del (&(self->uuid));
@@ -1112,6 +1128,28 @@ void qbus_route__add_proxy_node (QBusRoute self, const CapeString module_name, c
 
 //-----------------------------------------------------------------------------
 
+int qbus_route__is_module_name_valid (QBusRoute self, const CapeString remote_module)
+{
+  int ret = FALSE;
+  
+  if (cape_str_not_empty (remote_module))
+  {
+    CapeString h = cape_str_cp (remote_module);
+    
+    cape_str_to_upper (h);
+    
+    printf ("cmp: %s %s\n", h, self->name);
+    
+    ret = !cape_str_equal (self->name, h);
+    
+    cape_str_del (&h);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_add_nodes__list (QBusRoute self, CapeUdc nodes, QBusPvdConnection conn, QbusRoutUpdateCtx* rux)
 {
   CapeUdcCursor* cursor = cape_udc_cursor_new (nodes, CAPE_DIRECTION_FORW);
@@ -1122,14 +1160,20 @@ void qbus_route_add_nodes__list (QBusRoute self, CapeUdc nodes, QBusPvdConnectio
     {
       case CAPE_UDC_STRING:
       {
-        qbus_route__add_proxy_node (self, cape_udc_s (cursor->item, NULL), NULL, conn, rux);
+        const CapeString remote_module = cape_udc_s (cursor->item, NULL);
+        
+        if (qbus_route__is_module_name_valid (self, remote_module))
+        {
+          qbus_route__add_proxy_node (self, remote_module, NULL, conn, rux);
+        }
         
         break;
       }
       case CAPE_UDC_NODE:
       {
         const CapeString remote_module = cape_udc_get_s (cursor->item, "module", NULL);
-        if (remote_module)
+
+        if (qbus_route__is_module_name_valid (self, remote_module))
         {
           qbus_route__add_proxy_node (self, remote_module, NULL, conn, rux);
         }
@@ -1159,7 +1203,8 @@ void qbus_route_add_nodes__node (QBusRoute self, CapeUdc nodes, QBusPvdConnectio
           case QBUS_ROUTE_NODE_TYPE__SELF:
           {
             const CapeString remote_module = cape_udc_get_s (cursor->item, "module", NULL);
-            if (remote_module)
+            
+            if (qbus_route__is_module_name_valid (self, remote_module))
             {
               qbus_obsvbl_set (self->obsvbl, remote_module, cape_udc_name (cursor->item), cape_udc_get (cursor->item, "obsvbls"));
             }
@@ -1169,7 +1214,8 @@ void qbus_route_add_nodes__node (QBusRoute self, CapeUdc nodes, QBusPvdConnectio
           case QBUS_ROUTE_NODE_TYPE__LOCAL:
           {
             const CapeString remote_module = cape_udc_get_s (cursor->item, "module", NULL);
-            if (remote_module)
+
+            if (qbus_route__is_module_name_valid (self, remote_module))
             {
               qbus_route__add_proxy_node (self, remote_module, cape_udc_name (cursor->item), conn, rux);
 
@@ -1207,7 +1253,12 @@ void qbus_route_add_nodes (QBusRoute self, const CapeString module_name, const C
   rux.cnt_local = 0;
   rux.cnt_proxy = 0;
   
-  qbus_route__add_local_node (self, module_name, sender_uuid, conn, &rux);
+  cape_mutex_lock (self->mutex);
+  
+  if (qbus_route__is_module_name_valid (self, module_name))
+  {
+    qbus_route__add_local_node (self, module_name, sender_uuid, conn, &rux);
+  }
   
   // clear all nodes which belong to the uuid
   {
@@ -1243,6 +1294,8 @@ void qbus_route_add_nodes (QBusRoute self, const CapeString module_name, const C
       }
     }
   }
+
+  cape_mutex_unlock (self->mutex);
   
   // tell the others the new nodes
   //  qbus_route_send_updates (self, conn);
@@ -1255,6 +1308,7 @@ void qbus_route_add_nodes (QBusRoute self, const CapeString module_name, const C
   {
     qbus_route_send_update (self, NULL, conn);
   }
+
   
   // tell all others our updates
   qbus_route_send_update (self, conn, NULL);
