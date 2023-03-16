@@ -66,21 +66,11 @@ __CAPE_LOCAL   const CapeString   qbus_route_uuid_get          (QBusRoute);
 
 __CAPE_LOCAL   const CapeString   qbus_route_name_get          (QBusRoute);
 
-__CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute, int as_node, QBusPvdConnection conn_not_in_list);
-
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   void               qbus_route_send_update       (QBusRoute, QBusPvdConnection not_in_list, QBusPvdConnection single);
 
-//-----------------------------------------------------------------------------
-
-__CAPE_LOCAL   void               qbus_route_get__conn         (QBusRoute, QBusPvdConnection conn, CapeList user_ptrs__version1, CapeList user_ptrs__version3);
-
-__CAPE_LOCAL   CapeMap            qbus_route_get__routings     (QBusRoute, CapeMap);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LOCAL   void               qbus_route__frame_nodes_add   (QBusRoute, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list);
+__CAPE_LOCAL   void               qbus_route_send_response     (QBusRoute, QBusFrame frame, QBusPvdConnection conn);
 
 //-----------------------------------------------------------------------------
 

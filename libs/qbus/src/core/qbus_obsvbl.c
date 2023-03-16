@@ -448,10 +448,7 @@ void qbus_obsvbl_unsubscribe (QBusSubscriber* p_subscriber)
 
 void qbus_obsvbl_emit__ptrs (QBusObsvbl self, const CapeString value_name, CapeMap routings, CapeUdc* p_value)
 {
-  // fetch a map <uuid:conn> from the routing
-  // -> we need the uuid to add to the frame as identifier
-  CapeMap user_ptrs = qbus_route_get__routings (self->route, routings);
-
+/*
   // only continue with endpoints found
   if (cape_map_size (user_ptrs) > 0)
   {
@@ -483,6 +480,7 @@ void qbus_obsvbl_emit__ptrs (QBusObsvbl self, const CapeString value_name, CapeM
   
   cape_map_del (&user_ptrs);
   cape_udc_del (p_value);
+  */
 }
 
 //-----------------------------------------------------------------------------

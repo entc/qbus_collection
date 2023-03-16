@@ -78,44 +78,24 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
 {
   QBusFrame frame = *p_frame;
   
-  {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] << module = %s, sender = %s", frame->module, frame->sender);
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] << module = %s, sender = %s", frame->module, frame->sender);
 
-    if (cape_str_empty (frame->module))
-    {
-      // old version
-      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_name_get (self->route));
-    }
-    else
-    {
-      // reset the type and the sender
-      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_uuid_get (self->route));
-      
-      // reset the module
-      // -> module is used as name for the module
-      cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
-    }
-    
-    // send old version
-    {
-      qbus_route__frame_nodes_add (self->route, frame, FALSE, conn);
-      
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
-      
-      // finally send the frame
-      self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
-    }
-    
-    // send new version
-    {
-      qbus_route__frame_nodes_add (self->route, frame, TRUE, conn);
-      
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
-      
-      // finally send the frame
-      self->pvd2.ctx_send (self->ctx, conn->connection_ptr, frame);
-    }
+  if (cape_str_empty (frame->module))
+  {
+    // old version
+    qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_name_get (self->route));
   }
+  else
+  {
+    // reset the type and the sender
+    qbus_frame_set_type (frame, QBUS_FRAME_TYPE_ROUTE_RES, qbus_route_uuid_get (self->route));
+    
+    // reset the module
+    // -> module is used as name for the module
+    cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
+  }
+  
+  qbus_route_send_response (self->route, frame, conn);    
 }
 
 //-----------------------------------------------------------------------------
