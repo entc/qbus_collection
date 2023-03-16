@@ -95,7 +95,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
     cape_str_replace_cp (&(frame->module), qbus_route_name_get (self->route));
   }
   
-  qbus_route_send_response (self->route, frame, conn);    
+  qbus_route_send_response (self->route, frame, conn);
 }
 
 //-----------------------------------------------------------------------------

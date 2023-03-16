@@ -664,64 +664,6 @@ const CapeString qbus_route_name_get (QBusRoute self)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc qbus_route__node_get (QBusRoute self, int as_node, QBusPvdConnection conn_not_in_list)
-{
-  CapeUdc ret;
-  
-  if (as_node)
-  {
-    ret = cape_udc_new (CAPE_UDC_NODE, NULL);
-
-    // always send self node
-    {
-      CapeUdc node = cape_udc_new (CAPE_UDC_NODE, self->uuid);
-      
-      cape_udc_add_s_cp (node, "module", self->name);
-      cape_udc_add_n (node, "type", QBUS_ROUTE_NODE_TYPE__SELF);
-      
-      {
-        CapeUdc observables = qbus_obsvbl_get (self->obsvbl, self->name, self->uuid);
-        
-        cape_udc_add_name (node, &observables, "obsvbls");
-      }
-      
-      cape_udc_add (ret, &node);
-    }
-    
-    // send all other nodes
-    {
-      CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
-      
-      while (cape_map_cursor_next (cursor))
-      {
-        qbus_route_modules__append_to_nodes (cape_map_node_value (cursor->node), self->obsvbl, cape_map_node_key (cursor->node), conn_not_in_list, ret);
-      }
-      
-      cape_map_cursor_destroy (&cursor);
-    }
-  }
-  else
-  {
-    ret = cape_udc_new (CAPE_UDC_LIST, NULL);
-    
-    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
-    
-    while (cape_map_cursor_next (cursor))
-    {
-      if (qbus_route_modules__has_local_connections (cape_map_node_value (cursor->node)))
-      {
-        cape_udc_add_s_cp (ret, NULL, cape_map_node_key (cursor->node));
-      }
-    }
-    
-    cape_map_cursor_destroy (&cursor);
-  }
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
 QBusRouteNameItem qbus_route__seek_or_create_node (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, int is_local, QbusRoutUpdateCtx* rux)
 {
   QBusRouteNameItem ret = NULL;
@@ -1047,10 +989,77 @@ void qbus_route_rm (QBusRoute self, QBusPvdConnection conn)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route__frame_nodes_add (QBusRoute self, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list)
+CapeUdc qbus_route_add_to_frame__fetch (QBusRoute self, int as_node, QBusPvdConnection conn_not_in_list)
 {
-  CapeUdc route_nodes = qbus_route__node_get (self, as_node, conn_not_in_list);
+  CapeUdc ret;
   
+  if (as_node)
+  {
+    ret = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // always send self node
+    {
+      CapeUdc node = cape_udc_new (CAPE_UDC_NODE, self->uuid);
+      
+      cape_udc_add_s_cp (node, "module", self->name);
+      cape_udc_add_n (node, "type", QBUS_ROUTE_NODE_TYPE__SELF);
+      
+      {
+        CapeUdc observables = qbus_obsvbl_get (self->obsvbl, self->name, self->uuid);
+        
+        cape_udc_add_name (node, &observables, "obsvbls");
+      }
+      
+      cape_udc_add (ret, &node);
+    }
+    
+    cape_mutex_lock (self->mutex);
+    
+    {
+      CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
+      
+      while (cape_map_cursor_next (cursor))
+      {
+        qbus_route_modules__append_to_nodes (cape_map_node_value (cursor->node), self->obsvbl, cape_map_node_key (cursor->node), conn_not_in_list, ret);
+      }
+      
+      cape_map_cursor_destroy (&cursor);
+    }
+
+    cape_mutex_unlock (self->mutex);
+  }
+  else
+  {
+    ret = cape_udc_new (CAPE_UDC_LIST, NULL);
+    
+    cape_mutex_lock (self->mutex);
+    
+    {
+      CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
+      
+      while (cape_map_cursor_next (cursor))
+      {
+        if (qbus_route_modules__has_local_connections (cape_map_node_value (cursor->node)))
+        {
+          cape_udc_add_s_cp (ret, NULL, cape_map_node_key (cursor->node));
+        }
+      }
+      
+      cape_map_cursor_destroy (&cursor);
+    }
+
+    cape_mutex_unlock (self->mutex);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_add_to_frame (QBusRoute self, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list)
+{
+  CapeUdc route_nodes = qbus_route_add_to_frame__fetch (self, as_node, conn_not_in_list);
+
   {
     CapeString h = cape_json_to_s (route_nodes);
     
@@ -1087,18 +1096,20 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
   CapeList user_ptrs__version1 = cape_list_new (NULL);
   CapeList user_ptrs__version3 = cape_list_new (NULL);
   
-  cape_mutex_lock (self->mutex);
-  
-  if (conn_single)
   {
-    qbus__append_to_ptrs (conn_single, user_ptrs__version1, user_ptrs__version3);
+    cape_mutex_lock (self->mutex);
+    
+    if (conn_single)
+    {
+      qbus__append_to_ptrs (conn_single, user_ptrs__version1, user_ptrs__version3);
+    }
+    else
+    {
+      qbus_route__append_to_ptrs (self, conn_not_in_list, user_ptrs__version1, user_ptrs__version3);
+    }
+    
+    cape_mutex_unlock (self->mutex);
   }
-  else
-  {
-    qbus_route__append_to_ptrs (self, conn_not_in_list, user_ptrs__version1, user_ptrs__version3);
-  }
-  
-  cape_mutex_unlock (self->mutex);
   
   if (cape_list_size (user_ptrs__version1) > 0)
   {
@@ -1108,12 +1119,8 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
       
       qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_UPD, NULL, self->name, NULL, self->uuid);
       
-      cape_mutex_lock (self->mutex);
-      
       // create an UDC structure of all nodes
-      qbus_route__frame_nodes_add (self, frame, FALSE, conn_not_in_list);
-      
-      cape_mutex_unlock (self->mutex);
+      qbus_route_add_to_frame (self, frame, FALSE, conn_not_in_list);
       
       // send the frame
       qbus_engines__broadcast (self->engines, frame, user_ptrs__version1);
@@ -1128,14 +1135,10 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
     {
       QBusFrame frame = qbus_frame_new ();
       
-      cape_mutex_lock (self->mutex);
-      
       qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_UPD, NULL, self->name, NULL, self->uuid);
       
-      cape_mutex_unlock (self->mutex);
-      
       // create an UDC structure of all nodes
-      qbus_route__frame_nodes_add (self, frame, TRUE, conn_not_in_list);
+      qbus_route_add_to_frame (self, frame, TRUE, conn_not_in_list);
       
       // send the frame
       qbus_engines__broadcast (self->engines, frame, user_ptrs__version3);
@@ -1154,11 +1157,7 @@ void qbus_route_send_response (QBusRoute self, QBusFrame frame, QBusPvdConnectio
 {
   // send old version
   {
-    cape_mutex_lock (self->mutex);
-    
-    qbus_route__frame_nodes_add (self, frame, FALSE, conn);
-
-    cape_mutex_unlock (self->mutex);
+    qbus_route_add_to_frame (self, frame, FALSE, conn);
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
     
@@ -1168,12 +1167,8 @@ void qbus_route_send_response (QBusRoute self, QBusFrame frame, QBusPvdConnectio
   
   // send new version
   {
-    cape_mutex_lock (self->mutex);
+    qbus_route_add_to_frame (self, frame, TRUE, conn);
 
-    qbus_route__frame_nodes_add (self, frame, TRUE, conn);
-
-    cape_mutex_unlock (self->mutex);
-    
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] >> module = %s, sender = %s", frame->module, frame->sender);
     
     // finally send the frame
