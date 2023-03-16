@@ -58,6 +58,8 @@ __CAPE_LOCAL   void               qbus_route_rm                (QBusRoute, QBusP
 
 __CAPE_LOCAL   void               qbus_route_dump              (QBusRoute);
 
+__CAPE_LOCAL   QBusPvdConnection  qbus_route_get               (QBusRoute, const CapeString module_name);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   const CapeString   qbus_route_uuid_get          (QBusRoute);

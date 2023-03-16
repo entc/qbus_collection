@@ -165,6 +165,8 @@ struct QBusRouteNameItem_s
   
   int local;
   
+  number_t used;
+  
 };
 
 //-----------------------------------------------------------------------------
@@ -177,6 +179,7 @@ QBusRouteNameItem qbus_route_name_new (QBusObsvbl obsvbl, const CapeString modul
   self->item = qbus_route_uuid_new (obsvbl, module_uuid, conn);
   
   self->local = is_local;
+  self->used = 0;
   
   return self;
 };
@@ -433,6 +436,51 @@ void qbus_route_modules__append_to_ptrs (QBusRouteModules self, QBusPvdConnectio
   cape_list_cursor_destroy (&cursor);
 }
 
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus_route_modules__sort__on_cmp (void* ptr1, void* ptr2)
+{
+  QBusRouteNameItem item1 = ptr1;
+  QBusRouteNameItem item2 = ptr2;
+  
+  if (item1->used < item2->used)
+  {
+    return -1;
+  }
+
+  if (item1->used > item2->used)
+  {
+    return 1;
+  }
+  
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+QBusPvdConnection qbus_route_modules__get (QBusRouteModules self)
+{
+  QBusPvdConnection ret = NULL;
+  
+  number_t size = cape_list_size (self->modules);
+  
+  if (size > 0)
+  {
+    if (size > 1)
+    {
+      // try to find the module with the lowest load
+      cape_list_sort (self->modules, qbus_route_modules__sort__on_cmp);
+    }
+    
+    {
+      CapeListNode n = cape_list_node_front (self->modules);
+      
+      ret = qbus_route_name__get_conn (cape_list_node_data (n));
+    }
+  }
+  
+  return ret;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -1147,6 +1195,34 @@ void qbus_route_dump (QBusRoute self)
   qbus_obsvbl_dump (self->obsvbl);
   
   printf ("-----------+---+--------------------------------------+--------------------------------------\n");
+}
+
+//-----------------------------------------------------------------------------
+
+QBusPvdConnection qbus_route_get (QBusRoute self, const CapeString module_name)
+{
+  QBusPvdConnection ret = NULL;
+
+  // local objects
+  CapeString module = cape_str_cp (module_name);
+
+  cape_str_to_upper (module);
+
+  cape_mutex_lock (self->mutex);
+
+  {
+    CapeMapNode n = cape_map_find (self->modules_names, (void*)module_name);
+    if (n)
+    {
+      ret = qbus_route_modules__get (cape_map_node_value (n));
+    }
+  }
+  
+  cape_mutex_unlock (self->mutex);
+
+  cape_str_del (&module);
+
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
