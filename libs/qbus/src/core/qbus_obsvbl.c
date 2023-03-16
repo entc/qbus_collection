@@ -48,78 +48,85 @@ void qbus_subscriber_del (QBusSubscriber* p_self)
 
 //-----------------------------------------------------------------------------
 
-struct QBusObsvblNode_s
+void qbus_subscriber__dump (QBusSubscriber self)
 {
-  CapeMap routings;
-  
-}; typedef struct QBusObsvblNode_s* QBusObsvblNode;
+  printf ("%10s |   | %36s | %s\n", "SUBSCRIBE", "", self->name);
+}
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_obsvbl__routings__on_del (void* key, void* val)
+struct QBusObsvblEmitter_s
+{
+  CapeMap modules_uuids;
+  
+}; typedef struct QBusObsvblEmitter_s* QBusObsvblEmitter;
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_obsvbl__modules_uuids__on_del (void* key, void* val)
 {
   {
     CapeString h = key; cape_str_del (&h);
   }
   {
-    CapeString h = val; cape_str_del (&h);
+    // reference
   }
 }
 
 //-----------------------------------------------------------------------------
 
-QBusObsvblNode qbus_node_new ()
+QBusObsvblEmitter qbus_emitter_new ()
 {
-  QBusObsvblNode self = CAPE_NEW(struct QBusObsvblNode_s);
+  QBusObsvblEmitter self = CAPE_NEW (struct QBusObsvblEmitter_s);
 
-  self->routings = cape_map_new (NULL, qbus_obsvbl__routings__on_del, NULL);
+  self->modules_uuids = cape_map_new (NULL, qbus_obsvbl__modules_uuids__on_del, NULL);
   
   return self;
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_node_del (QBusObsvblNode* p_self)
+void qbus_emitter_del (QBusObsvblEmitter* p_self)
 {
   if (*p_self)
   {
-    QBusObsvblNode self = *p_self;
+    QBusObsvblEmitter self = *p_self;
     
-    cape_map_del (&(self->routings));
+    cape_map_del (&(self->modules_uuids));
     
-    CAPE_DEL (p_self, struct QBusObsvblNode_s);
+    CAPE_DEL (p_self, struct QBusObsvblEmitter_s);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_node_upd (QBusObsvblNode self, const CapeString module_name, const CapeString uuid)
+void qbus_emitter_add (QBusObsvblEmitter self, QBusRouteNameItem name_item)
 {
-  CapeMapNode n = cape_map_find (self->routings, (void*)uuid);
+  const CapeString uuid = qbus_route_name_uuid_get (name_item);
   
-  if (n)
+  if (uuid)
   {
-    
-  }
-  else
-  {
-    cape_map_insert (self->routings, (void*)cape_str_cp (uuid), (void*)cape_str_cp (module_name));
+    CapeMapNode n = cape_map_find (self->modules_uuids, (void*)uuid);
+    if (n == NULL)
+    {
+      cape_map_insert (self->modules_uuids, (void*)cape_str_cp(uuid), (void*)name_item);      
+    }
   }
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_node__append_to_nodes (QBusObsvblNode self, const CapeString subscriber_name, const CapeString module_uuid, CapeUdc nodes)
+void qbus_emitter_rm (QBusObsvblEmitter self, QBusRouteNameItem name_item)
 {
-  if (self->routings)
+  if (self->modules_uuids)
   {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->routings, CAPE_DIRECTION_FORW);
+    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_uuids, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      if (cape_str_equal (module_uuid, cape_map_node_key (cursor->node)))
+      if (cape_map_node_value (cursor->node) == name_item)
       {
-        cape_udc_add_s_cp (nodes, NULL, subscriber_name);
+        cape_map_cursor_erase (self->modules_uuids, cursor);        
       }
     }
     
@@ -129,42 +136,15 @@ void qbus_node__append_to_nodes (QBusObsvblNode self, const CapeString subscribe
 
 //-----------------------------------------------------------------------------
 
-void qbus_node__verify_nodes (QBusObsvblNode self, CapeUdc nodes)
+void qbus_emitter_dump (QBusObsvblEmitter self, const CapeString subscriber_name)
 {
-  if (self->routings)
+  if (self->modules_uuids)
   {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->routings, CAPE_DIRECTION_FORW);
+    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_uuids, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      const CapeString uuid = cape_map_node_key (cursor->node);
-      CapeUdc n = cape_udc_get (nodes, uuid);
-      
-      if (n)
-      {
-        
-      }
-      else
-      {
-        cape_map_cursor_erase (self->routings, cursor);
-      }
-    }
-    
-    cape_map_cursor_destroy (&cursor);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_node_dump (QBusObsvblNode self, const CapeString subscriber_name)
-{
-  if (self->routings)
-  {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->routings, CAPE_DIRECTION_FORW);
-    
-    while (cape_map_cursor_next (cursor))
-    {
-      printf ("%10s |   | %36s | %s\n", (CapeString)cape_map_node_value (cursor->node), (CapeString)cape_map_node_key (cursor->node), subscriber_name);
+      qbus_route_name_dump2 (cape_map_node_value (cursor->node), "EMITTER", subscriber_name);
     }
     
     cape_map_cursor_destroy (&cursor);
@@ -179,7 +159,7 @@ struct QBusObsvbl_s
   QBusRoute route;            // reference
   
   CapeMap observables;        // map to store local observables for receiving updates
-  CapeMap nodes;              // map of remote observables
+  CapeMap emitters;           // map of emitters
 };
 
 //-----------------------------------------------------------------------------
@@ -196,13 +176,13 @@ void __STDCALL qbus_obsvbl__observables__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_obsvbl__nodes__on_del (void* key, void* val)
+void __STDCALL qbus_obsvbl__emitters__on_del (void* key, void* val)
 {
   {
     CapeString h = key; cape_str_del (&h);
   }
   {
-    QBusObsvblNode h = val; qbus_node_del (&h);
+    QBusObsvblEmitter h = val; qbus_emitter_del (&h);
   }
 }
 
@@ -216,7 +196,7 @@ QBusObsvbl qbus_obsvbl_new (QBusEngines engines, QBusRoute route)
   self->route = route;
   
   self->observables = cape_map_new (NULL, qbus_obsvbl__observables__on_del, NULL);
-  self->nodes = cape_map_new (NULL, qbus_obsvbl__nodes__on_del, NULL);
+  self->emitters = cape_map_new (NULL, qbus_obsvbl__emitters__on_del, NULL);
   
   return self;
 }
@@ -229,7 +209,7 @@ void qbus_obsvbl_del (QBusObsvbl* p_self)
   {
     QBusObsvbl self = *p_self;
     
-    cape_map_del (&(self->nodes));
+    cape_map_del (&(self->emitters));
     cape_map_del (&(self->observables));
     
     CAPE_DEL(p_self, struct QBusObsvbl_s);    
@@ -259,9 +239,10 @@ CapeUdc qbus_obsvbl_get (QBusObsvbl self, const CapeString module_name, const Ca
     cape_map_cursor_destroy (&cursor);
   }
 
+  /*
   // remote observables
   {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
+    CapeMapCursor* cursor = cape_map_cursor_create (self->emitters, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
@@ -270,45 +251,95 @@ CapeUdc qbus_obsvbl_get (QBusObsvbl self, const CapeString module_name, const Ca
     
     cape_map_cursor_destroy (&cursor);
   }
-
+*/
   return nodes;
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, const CapeString module_name, const CapeString module_uuid)
+void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, QBusRouteNameItem name_item)
 {
-  CapeMapNode n = cape_map_find (self->nodes, (void*)subscriber_name);
-  if (n)
+  QBusObsvblEmitter emitter;
+  
+  // check for collisions
   {
-    QBusObsvblNode node = cape_map_node_value (n);
-    
-    qbus_node_upd (node, module_name, module_uuid);
+    CapeMapNode n = cape_map_find (self->observables, (void*)subscriber_name);
+    if (n)
+    {
+      // don't an emitter which we already have as subscriber
+      return;
+    }
   }
-  else
+
   {
-    QBusObsvblNode node = qbus_node_new ();
+    CapeMapNode n = cape_map_find (self->emitters, (void*)subscriber_name);
+    if (n)
+    {
+      emitter = cape_map_node_value (n);
+    }
+    else
+    {
+      emitter = qbus_emitter_new ();
+      
+      cape_map_insert (self->emitters, (void*)cape_str_cp (subscriber_name), (void*)emitter);
+    }
+  }
     
-    qbus_node_upd (node, module_name, module_uuid);
+  qbus_emitter_add (emitter, name_item);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_obsvbl_set (QBusObsvbl self, CapeUdc observables, QBusRouteNameItem name_item)
+{
+  if (observables && name_item)
+  {
+    CapeUdcCursor* cursor = cape_udc_cursor_new (observables, CAPE_DIRECTION_FORW);
     
-    cape_map_insert (self->nodes, cape_str_cp (subscriber_name), (void*)node);
+    {
+      CapeString h = cape_json_to_s (observables);
+      
+      printf ("OBSERVABLES IN: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+    
+    while (cape_udc_cursor_next (cursor))
+    {
+      switch (cape_udc_type (cursor->item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString subscriber_name = cape_udc_s (cursor->item, NULL);
+          
+          if (cape_str_not_empty (subscriber_name))
+          {
+            qbus_obsvbl_set__node (self, subscriber_name, name_item);
+          }
+          
+          break;
+        }
+      }
+    }
+    
+    cape_udc_cursor_del (&cursor);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_set (QBusObsvbl self, const CapeString module_name, const CapeString module_uuid, CapeUdc observables)
+void qbus_obsvbl_rm (QBusObsvbl self, QBusRouteNameItem name_item)
 {
-  if (observables)
+  if (name_item)
   {
-    CapeUdcCursor* cursor = cape_udc_cursor_new (observables, CAPE_DIRECTION_FORW);
+    CapeMapCursor* cursor = cape_map_cursor_create (self->emitters, CAPE_DIRECTION_FORW);
     
-    while (cape_udc_cursor_next (cursor))
+    while (cape_map_cursor_next (cursor))
     {
-      qbus_obsvbl_set__node (self, cape_udc_s (cursor->item, NULL), module_name, module_uuid);
+      qbus_emitter_rm (cape_map_node_value (cursor->node), name_item);
     }
     
-    cape_udc_cursor_del (&cursor);
+    cape_map_cursor_destroy (&cursor);
   }
 }
 
@@ -436,6 +467,7 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
   
   cape_str_to_lower (subscriber_name);
 
+  /*
   // find the nodes assigned to the subscriber name
   CapeMapNode n = cape_map_find (self->nodes, (void*)subscriber_name);
   if (n)
@@ -449,6 +481,8 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
   {
     //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl emit", "can't find observable with subscriber name = '%s'", subscriber_name);
   }
+  
+  */
   
   cape_udc_del (p_value);
   cape_str_del (&subscriber_name);
@@ -483,36 +517,28 @@ void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const Cap
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_subloads (QBusObsvbl self, QBusPvdConnection conn)
+void qbus_obsvbl_dump (QBusObsvbl self)
 {
-  CapeUdc nodes = qbus_route_node_get (self->route, TRUE, conn);
-
   {
-    CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
+    CapeMapCursor* cursor = cape_map_cursor_create (self->observables, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      qbus_node__verify_nodes (cape_map_node_value (cursor->node), nodes);
+      qbus_subscriber__dump (cape_map_node_value (cursor->node));
     }
     
     cape_map_cursor_destroy (&cursor);
   }
-  
-  cape_udc_del (&nodes);
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_obsvbl_dump (QBusObsvbl self)
-{
-  CapeMapCursor* cursor = cape_map_cursor_create (self->nodes, CAPE_DIRECTION_FORW);
-  
-  while (cape_map_cursor_next (cursor))
   {
-    qbus_node_dump (cape_map_node_value (cursor->node), (CapeString)cape_map_node_key (cursor->node));
+    CapeMapCursor* cursor = cape_map_cursor_create (self->emitters, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      qbus_emitter_dump (cape_map_node_value (cursor->node), cape_map_node_key (cursor->node));
+    }
+    
+    cape_map_cursor_destroy (&cursor);
   }
-  
-  cape_map_cursor_destroy (&cursor);
 }
 
 //-----------------------------------------------------------------------------

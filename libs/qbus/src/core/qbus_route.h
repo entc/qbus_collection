@@ -30,6 +30,16 @@ struct QBusPvdConnection_s
 
 //-----------------------------------------------------------------------------
 
+struct QBusRouteNameItem_s; typedef struct QBusRouteNameItem_s* QBusRouteNameItem;
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   const CapeString   qbus_route_name_uuid_get     (QBusRouteNameItem);
+
+__CAPE_LOCAL   void               qbus_route_name_dump2        (QBusRouteNameItem, const CapeString module_name, const CapeString data);
+
+//-----------------------------------------------------------------------------
+
 struct QBusRoute_s; typedef struct QBusRoute_s* QBusRoute;
 
 //-----------------------------------------------------------------------------

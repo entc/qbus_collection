@@ -23,7 +23,9 @@ __CAPE_LOCAL   void               qbus_obsvbl_del              (QBusObsvbl*);
 
 __CAPE_LOCAL   CapeUdc            qbus_obsvbl_get              (QBusObsvbl, const CapeString module_name, const CapeString module_uuid);
 
-__CAPE_LOCAL   void               qbus_obsvbl_set              (QBusObsvbl, const CapeString module_name, const CapeString module_uuid, CapeUdc observables);
+__CAPE_LOCAL   void               qbus_obsvbl_set              (QBusObsvbl, CapeUdc observables, QBusRouteNameItem);
+
+__CAPE_LOCAL   void               qbus_obsvbl_rm               (QBusObsvbl, QBusRouteNameItem);
 
 __CAPE_LOCAL   void               qbus_obsvbl_add_nodes        (QBusObsvbl, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection, CapeUdc*);
 
@@ -38,10 +40,6 @@ __CAPE_LOCAL   void               qbus_obsvbl_emit             (QBusObsvbl, cons
 __CAPE_LOCAL   void               qbus_obsvbl_value            (QBusObsvbl, const CapeString module_name, const CapeString value_name, CapeUdc* p_value);
 
 __CAPE_LOCAL   void               qbus_obsvbl_dump             (QBusObsvbl);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LOCAL   void               qbus_obsvbl_subloads         (QBusObsvbl, QBusPvdConnection);
 
 //-----------------------------------------------------------------------------
 
