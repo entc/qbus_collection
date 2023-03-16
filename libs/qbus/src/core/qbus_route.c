@@ -267,9 +267,9 @@ void qbus_route_name__dump (QBusRouteNameItem self, const CapeString module_name
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_name_dump2 (QBusRouteNameItem self, const CapeString module_name, const CapeString data)
+void qbus_route_name_dump2 (QBusRouteNameItem self, const CapeString module_name, int is_local, const CapeString data)
 {
-  printf ("%10s | %i | %36s | %s\n", module_name, self->local, self->uuid, data);  
+  printf ("%10s | %i | %36s | %s\n", module_name, is_local, self->uuid, data);  
 }
 
 //-----------------------------------------------------------------------------

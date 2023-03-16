@@ -36,7 +36,7 @@ struct QBusRouteNameItem_s; typedef struct QBusRouteNameItem_s* QBusRouteNameIte
 
 __CAPE_LOCAL   const CapeString   qbus_route_name_uuid_get     (QBusRouteNameItem);
 
-__CAPE_LOCAL   void               qbus_route_name_dump2        (QBusRouteNameItem, const CapeString module_name, const CapeString data);
+__CAPE_LOCAL   void               qbus_route_name_dump2        (QBusRouteNameItem, const CapeString module_name, int is_local, const CapeString data);
 
 //-----------------------------------------------------------------------------
 

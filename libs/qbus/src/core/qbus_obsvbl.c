@@ -58,6 +58,7 @@ void qbus_subscriber__dump (QBusSubscriber self)
 struct QBusObsvblEmitter_s
 {
   CapeMap modules_uuids;
+  int local;
   
 }; typedef struct QBusObsvblEmitter_s* QBusObsvblEmitter;
 
@@ -75,11 +76,12 @@ void __STDCALL qbus_obsvbl__modules_uuids__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-QBusObsvblEmitter qbus_emitter_new ()
+QBusObsvblEmitter qbus_emitter_new (int is_local)
 {
   QBusObsvblEmitter self = CAPE_NEW (struct QBusObsvblEmitter_s);
 
   self->modules_uuids = cape_map_new (NULL, qbus_obsvbl__modules_uuids__on_del, NULL);
+  self->local = is_local;
   
   return self;
 }
@@ -144,7 +146,7 @@ void qbus_emitter_dump (QBusObsvblEmitter self, const CapeString subscriber_name
     
     while (cape_map_cursor_next (cursor))
     {
-      qbus_route_name_dump2 (cape_map_node_value (cursor->node), "EMITTER", subscriber_name);
+      qbus_route_name_dump2 (cape_map_node_value (cursor->node), "EMITTER", self->local, subscriber_name);
     }
     
     cape_map_cursor_destroy (&cursor);
@@ -198,6 +200,8 @@ QBusObsvbl qbus_obsvbl_new (QBusEngines engines, QBusRoute route)
   self->observables = cape_map_new (NULL, qbus_obsvbl__observables__on_del, NULL);
   self->emitters = cape_map_new (NULL, qbus_obsvbl__emitters__on_del, NULL);
   
+  
+  
   return self;
 }
 
@@ -239,19 +243,28 @@ CapeUdc qbus_obsvbl_get (QBusObsvbl self, const CapeString module_name, const Ca
     cape_map_cursor_destroy (&cursor);
   }
 
-  /*
-  // remote observables
+  // emitters to other modules
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->emitters, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      qbus_node__append_to_nodes (cape_map_node_value (cursor->node), (CapeString)cape_map_node_key (cursor->node), module_uuid, nodes);
+      QBusObsvblEmitter emitter = cape_map_node_value (cursor->node);
+     
+      // only transmit remote emitters
+      if (emitter->local == FALSE)
+      {
+        CapeMapNode n = cape_map_find (emitter->modules_uuids, (void*)module_uuid);
+        if (n)
+        {
+          cape_udc_add_s_cp (nodes, NULL, (CapeString)cape_map_node_key (cursor->node));        
+        }        
+      }
     }
     
     cape_map_cursor_destroy (&cursor);
   }
-*/
+
   return nodes;
 }
 
@@ -261,13 +274,16 @@ void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, Q
 {
   QBusObsvblEmitter emitter;
   
+  int is_local = TRUE;
+  
   // check for collisions
   {
     CapeMapNode n = cape_map_find (self->observables, (void*)subscriber_name);
     if (n)
     {
-      // don't an emitter which we already have as subscriber
-      return;
+      is_local = FALSE;
+      
+      printf ("not local: %s -> %s\n", qbus_route_name_uuid_get (name_item), subscriber_name);
     }
   }
 
@@ -279,7 +295,7 @@ void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, Q
     }
     else
     {
-      emitter = qbus_emitter_new ();
+      emitter = qbus_emitter_new (is_local);
       
       cape_map_insert (self->emitters, (void*)cape_str_cp (subscriber_name), (void*)emitter);
     }
