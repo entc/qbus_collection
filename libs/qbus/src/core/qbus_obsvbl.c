@@ -349,7 +349,7 @@ void qbus_obsvbl_rm (QBusObsvbl self, QBusRouteNameItem name_item)
   if (name_item)
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->emitters, CAPE_DIRECTION_FORW);
-    
+        
     while (cape_map_cursor_next (cursor))
     {
       qbus_emitter_rm (cape_map_node_value (cursor->node), name_item);
@@ -425,11 +425,21 @@ void qbus_obsvbl_unsubscribe (QBusSubscriber* p_subscriber)
   {
     QBusObsvbl self = subscriber->obsvbl;
     
-    CapeMapNode n = cape_map_find (self->observables, (void*)subscriber->name);
-    
-    if (n)
     {
-      cape_map_erase (self->observables, n);      
+      CapeMapNode n = cape_map_find (self->emitters, (void*)subscriber->name);
+      
+      if (n)
+      {
+        cape_map_erase (self->emitters, n);      
+      }
+    }
+    {
+      CapeMapNode n = cape_map_find (self->observables, (void*)subscriber->name);
+      
+      if (n)
+      {
+        cape_map_erase (self->observables, n);      
+      }
     }
   }
 }
