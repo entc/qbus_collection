@@ -1029,7 +1029,7 @@ void qbus_route_rm (QBusRoute self, QBusPvdConnection conn)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_frame_nodes_add (QBusRoute self, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list)
+void qbus_route__frame_nodes_add (QBusRoute self, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list)
 {
   CapeUdc route_nodes = qbus_route_node_get (self, as_node, conn_not_in_list);
   
@@ -1074,7 +1074,7 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
       qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_UPD, NULL, self->name, NULL, self->uuid);
       
       // create an UDC structure of all nodes
-      qbus_route_frame_nodes_add (self, frame, FALSE, conn_not_in_list);
+      qbus_route__frame_nodes_add (self, frame, FALSE, conn_not_in_list);
       
       // send the frame
       qbus_engines__broadcast (self->engines, frame, user_ptrs__version1);
@@ -1093,7 +1093,7 @@ void qbus_route_send_update (QBusRoute self, QBusPvdConnection conn_not_in_list,
       qbus_frame_set (frame, QBUS_FRAME_TYPE_ROUTE_UPD, NULL, self->name, NULL, self->uuid);
       
       // create an UDC structure of all nodes
-      qbus_route_frame_nodes_add (self, frame, TRUE, conn_not_in_list);
+      qbus_route__frame_nodes_add (self, frame, TRUE, conn_not_in_list);
       
       // send the frame
       qbus_engines__broadcast (self->engines, frame, user_ptrs__version3);
