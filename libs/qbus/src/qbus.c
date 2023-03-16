@@ -248,7 +248,7 @@ CapeAioContext qbus_aio (QBus self)
 
 CapeUdc qbus_modules (QBus self)
 {
-  
+  return qbus_route_modules (self->route);
 }
 
 //-----------------------------------------------------------------------------

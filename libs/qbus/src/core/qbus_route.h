@@ -50,6 +50,12 @@ __CAPE_LOCAL   void               qbus_route_del               (QBusRoute*);
 
 __CAPE_LOCAL   void               qbus_route_set               (QBusRoute, QBusObsvbl);
 
+__CAPE_LOCAL   CapeUdc            qbus_route_modules           (QBusRoute);
+
+__CAPE_LOCAL   void               qbus_route_add               (QBusRoute, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection, CapeUdc*);
+
+__CAPE_LOCAL   void               qbus_route_rm                (QBusRoute, QBusPvdConnection);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   const CapeString   qbus_route_uuid_get          (QBusRoute);
@@ -59,10 +65,6 @@ __CAPE_LOCAL   const CapeString   qbus_route_name_get          (QBusRoute);
 __CAPE_LOCAL   CapeUdc            qbus_route_node_get          (QBusRoute, int as_node, QBusPvdConnection conn_not_in_list);
 
 //-----------------------------------------------------------------------------
-
-__CAPE_LOCAL   void               qbus_route_add_nodes         (QBusRoute, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection, CapeUdc*);
-
-__CAPE_LOCAL   void               qbus_route_rm                (QBusRoute, QBusPvdConnection);
 
 __CAPE_LOCAL   void               qbus_route_send_update       (QBusRoute, QBusPvdConnection not_in_list, QBusPvdConnection single);
 

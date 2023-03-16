@@ -130,11 +130,11 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, QBusPvdConnection
   {
     // support old version
     // -> old version has a simple relay mechanism
-    qbus_route_add_nodes (self->route, frame->sender, NULL, conn, &route_nodes);
+    qbus_route_add (self->route, frame->sender, NULL, conn, &route_nodes);
   }
   else
   {
-    qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
+    qbus_route_add (self->route, frame->module, frame->sender, conn, &route_nodes);
   }
 }
 
@@ -150,11 +150,11 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
   {
     // support old version
     // -> old version has a simple relay mechanism
-    qbus_route_add_nodes (self->route, frame->sender, NULL, conn, &route_nodes);
+    qbus_route_add (self->route, frame->sender, NULL, conn, &route_nodes);
   }
   else
   {
-    qbus_route_add_nodes (self->route, frame->module, frame->sender, conn, &route_nodes);
+    qbus_route_add (self->route, frame->module, frame->sender, conn, &route_nodes);
   }  
 }
 
