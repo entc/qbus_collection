@@ -127,7 +127,15 @@ QBusRouteUuidItem qbus_route_uuid_new (QBusObsvbl obsvbl, const CapeString modul
 {
   QBusRouteUuidItem self = CAPE_NEW (struct QBusRouteUuidItem_s);
 
-  self->load_subscriber = qbus_obsvbl_subscribe_uuid (obsvbl, module_uuid, "load", (void*)self, qbus_route_conn__on_emit);
+  if (cape_str_not_empty (module_uuid))
+  {
+    self->load_subscriber = qbus_obsvbl_subscribe_uuid (obsvbl, module_uuid, "load", (void*)self, qbus_route_conn__on_emit);
+  }
+  else
+  {
+    self->load_subscriber = NULL;
+  }
+  
   self->conn = conn;
   
   return self;
@@ -156,6 +164,12 @@ void qbus_route_uuid__dump (QBusRouteUuidItem self, const CapeString module_uuid
 
 //-----------------------------------------------------------------------------
 
+#define QBUS_ROUTE_ITEM_MODE__LOCAL     1
+#define QBUS_ROUTE_ITEM_MODE__PROXY     2
+#define QBUS_ROUTE_ITEM_MODE__DIRTY     3
+
+//-----------------------------------------------------------------------------
+
 struct QBusRouteNameItem_s
 {
   
@@ -163,7 +177,7 @@ struct QBusRouteNameItem_s
   
   QBusRouteUuidItem item;
   
-  int local;
+  int mode;
   
   number_t used;
   
@@ -171,14 +185,14 @@ struct QBusRouteNameItem_s
 
 //-----------------------------------------------------------------------------
 
-QBusRouteNameItem qbus_route_name_new (QBusObsvbl obsvbl, const CapeString module_uuid, QBusPvdConnection conn, int is_local)
+QBusRouteNameItem qbus_route_name_new (QBusObsvbl obsvbl, const CapeString module_uuid, QBusPvdConnection conn, int mode)
 {
   QBusRouteNameItem self = CAPE_NEW (struct QBusRouteNameItem_s);
   
   self->uuid = cape_str_cp (module_uuid);
   self->item = qbus_route_uuid_new (obsvbl, module_uuid, conn);
   
-  self->local = is_local;
+  self->mode = mode;
   self->used = 0;
   
   return self;
@@ -234,7 +248,35 @@ void qbus_route_name__append_to_nodes (QBusRouteNameItem self, QBusObsvbl obsvbl
 
 int qbus_route_name__is_local_connection (QBusRouteNameItem self)
 {
-  return self->local;
+  return self->mode == QBUS_ROUTE_ITEM_MODE__LOCAL;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_name__set_dirty (QBusRouteNameItem self)
+{
+  // dirty can only be applied to proxy
+  if (self->mode == QBUS_ROUTE_ITEM_MODE__PROXY)
+  {
+    self->mode = QBUS_ROUTE_ITEM_MODE__DIRTY;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_name__unset_dirty (QBusRouteNameItem self)
+{
+  if (self->mode == QBUS_ROUTE_ITEM_MODE__DIRTY)
+  {
+    self->mode = QBUS_ROUTE_ITEM_MODE__PROXY;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_route_name__is_dirty (QBusRouteNameItem self)
+{
+  return (self->mode == QBUS_ROUTE_ITEM_MODE__DIRTY);
 }
 
 //-----------------------------------------------------------------------------
@@ -265,14 +307,14 @@ QBusPvdConnection qbus_route_name__get_conn (QBusRouteNameItem self)
 
 void qbus_route_name__dump (QBusRouteNameItem self, const CapeString module_name)
 {
-  printf ("%10s | %i | %36s | %p #%lu\n", module_name, self->local, self->uuid, self->item->conn, self->item->conn->version);  
+  printf ("%10s | %i | %36s | %p #%lu\n", module_name, self->mode, self->uuid, self->item->conn, self->item->conn->version);  
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_name_dump2 (QBusRouteNameItem self, const CapeString module_name, int is_local, const CapeString data)
+void qbus_route_name_dump2 (QBusRouteNameItem self, const CapeString module_name, int mode, const CapeString data)
 {
-  printf ("%10s | %i | %36s | %s\n", module_name, is_local, self->uuid, data);  
+  printf ("%10s | %i | %36s | %s\n", module_name, mode, self->uuid, data);  
 }
 
 //-----------------------------------------------------------------------------
@@ -318,16 +360,34 @@ void qbus_route_modules_del (QBusRouteModules* p_self)
 
 //-----------------------------------------------------------------------------
 
-QBusRouteNameItem qbus_route_modules__has_uuid (QBusRouteModules self, const CapeString module_uuid)
+void qbus_route_modules__set_dirty (QBusRouteModules self)
+{
+  CapeListCursor* cursor = cape_list_cursor_create (self->modules, CAPE_DIRECTION_FORW);
+  
+  while (cape_list_cursor_next (cursor))
+  {
+    qbus_route_name__set_dirty (cape_list_node_data (cursor->node));
+  }
+  
+  cape_list_cursor_destroy (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+QBusRouteNameItem qbus_route_modules__has_uuid (QBusRouteModules self, const CapeString module_uuid, QBusPvdConnection conn)
 {
   QBusRouteNameItem ret = NULL;
   CapeListCursor* cursor = cape_list_cursor_create (self->modules, CAPE_DIRECTION_FORW);
   
   while (cape_list_cursor_next (cursor))
   {
-    if (cape_str_equal (qbus_route_name__get_uuid (cape_list_node_data (cursor->node)), module_uuid))
+    QBusRouteNameItem name_item = cape_list_node_data (cursor->node);
+    
+    const CapeString uuid = qbus_route_name__get_uuid (name_item);
+    
+    if (cape_str_equal (uuid, module_uuid))
     {
-      ret = cape_list_node_data (cursor->node);
+      ret = name_item;
       break;
     }
   }
@@ -338,18 +398,21 @@ QBusRouteNameItem qbus_route_modules__has_uuid (QBusRouteModules self, const Cap
 
 //-----------------------------------------------------------------------------
 
-QBusRouteNameItem qbus_route_modules__add (QBusRouteModules self, QBusObsvbl obsvbl, const CapeString module_uuid, QBusPvdConnection conn, int is_local, QbusRoutUpdateCtx* rux, CapeMap modules_uuids)
+QBusRouteNameItem qbus_route_modules__add (QBusRouteModules self, QBusObsvbl obsvbl, const CapeString module_uuid, QBusPvdConnection conn, int mode, QbusRoutUpdateCtx* rux, CapeMap modules_uuids)
 {
   QBusRouteNameItem ret = NULL;
   
   if (cape_str_not_empty (module_uuid))
   {
     // check for collisions
-    ret = qbus_route_modules__has_uuid (self, module_uuid); 
+    ret = qbus_route_modules__has_uuid (self, module_uuid, conn); 
     
     // already added
     if (ret)
     {
+      // unset dirty flag
+      qbus_route_name__unset_dirty (ret);
+      
       goto cleanup_and_exit;
     }
   }
@@ -362,11 +425,11 @@ QBusRouteNameItem qbus_route_modules__add (QBusRouteModules self, QBusObsvbl obs
   }
   
   {
-    ret = qbus_route_name_new (obsvbl, module_uuid, conn, is_local);
+    ret = qbus_route_name_new (obsvbl, module_uuid, conn, mode);
     
     cape_list_push_back (self->modules, (void*)ret);
     
-    if (is_local)
+    if (mode == QBUS_ROUTE_ITEM_MODE__LOCAL)
     {
       rux->cnt_local++;
     }
@@ -484,7 +547,7 @@ QBusPvdConnection qbus_route_modules__get (QBusRouteModules self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_modules__rm_conn (QBusRouteModules self, QBusObsvbl obsvbl, QBusPvdConnection conn_rm, int keep_local, CapeMap module_uuids)
+void qbus_route_modules__rm_conn (QBusRouteModules self, QBusObsvbl obsvbl, QBusPvdConnection conn_rm, int only_dirty, CapeMap module_uuids)
 {
   CapeListCursor* cursor = cape_list_cursor_create (self->modules, CAPE_DIRECTION_FORW);
   
@@ -492,7 +555,7 @@ void qbus_route_modules__rm_conn (QBusRouteModules self, QBusObsvbl obsvbl, QBus
   {
     QBusRouteNameItem name_item = cape_list_node_data (cursor->node);
     
-    if (qbus_route_name__get_conn (name_item) == conn_rm && (keep_local == FALSE || qbus_route_name__is_local_connection (name_item) == FALSE))
+    if (qbus_route_name__get_conn (name_item) == conn_rm && (only_dirty == FALSE || qbus_route_name__is_dirty (name_item) == TRUE))
     {
       if (name_item->uuid)
       {
@@ -664,7 +727,7 @@ const CapeString qbus_route_name_get (QBusRoute self)
 
 //-----------------------------------------------------------------------------
 
-QBusRouteNameItem qbus_route__seek_or_create_node (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, int is_local, QbusRoutUpdateCtx* rux)
+QBusRouteNameItem qbus_route__seek_or_create_node (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, int mode, QbusRoutUpdateCtx* rux)
 {
   QBusRouteNameItem ret = NULL;
   
@@ -687,7 +750,7 @@ QBusRouteNameItem qbus_route__seek_or_create_node (QBusRoute self, const CapeStr
       cape_map_insert (self->modules_names, (void*)cape_str_mv (&module), (void*)modules);
     }
 
-    ret = qbus_route_modules__add (modules, self->obsvbl, module_uuid, conn, is_local, rux, self->modules_uuids);
+    ret = qbus_route_modules__add (modules, self->obsvbl, module_uuid, conn, mode, rux, self->modules_uuids);
   }
     
   cape_str_del (&module);
@@ -699,14 +762,14 @@ QBusRouteNameItem qbus_route__seek_or_create_node (QBusRoute self, const CapeStr
 
 QBusRouteNameItem qbus_route__add_local_node (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, QbusRoutUpdateCtx* rux)
 {
-  return qbus_route__seek_or_create_node (self, module_name, module_uuid, conn, TRUE, rux);
+  return qbus_route__seek_or_create_node (self, module_name, module_uuid, conn, QBUS_ROUTE_ITEM_MODE__LOCAL, rux);
 }
 
 //-----------------------------------------------------------------------------
 
 QBusRouteNameItem qbus_route__add_proxy_node (QBusRoute self, const CapeString module_name, const CapeString module_uuid, QBusPvdConnection conn, QbusRoutUpdateCtx* rux)
 {
-  return qbus_route__seek_or_create_node (self, module_name, module_uuid, conn, FALSE, rux);
+  return qbus_route__seek_or_create_node (self, module_name, module_uuid, conn, QBUS_ROUTE_ITEM_MODE__PROXY, rux);
 }
 
 //-----------------------------------------------------------------------------
@@ -858,7 +921,7 @@ void qbus_route_add_nodes__node (QBusRoute self, CapeUdc nodes, QBusPvdConnectio
     {
       QBusRouteAddNodesItem* ani = cape_list_node_data (cursor->node);
       
-      qbus_obsvbl_set (self->obsvbl, ani->obsvbls, ani->name_item);
+      rux->cnt_local += qbus_obsvbl_set (self->obsvbl, ani->obsvbls, ani->name_item);
     }
     
     cape_list_cursor_destroy (&cursor);
@@ -879,15 +942,7 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
   
   rux.cnt_local = 0;
   rux.cnt_proxy = 0;
-  
-  {
-    CapeString h = cape_json_to_s (nodes);
     
-    printf ("NODES: %s\n", h);
-    
-    cape_str_del (&h);
-  }
-  
   cape_mutex_lock (self->mutex);
   
   if (qbus_route__is_module_name_valid (self, module_name))
@@ -895,13 +950,13 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
     name_local_item = qbus_route__add_local_node (self, module_name, sender_uuid, conn, &rux);
   }
   
-  // clear all nodes which belong to the uuid
+  // set for all the dirty flag (except local items)
   {
     CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-      qbus_route_modules__rm_conn (cape_map_node_value (cursor->node), self->obsvbl, conn, TRUE, self->modules_uuids);
+      qbus_route_modules__set_dirty (cape_map_node_value (cursor->node));
     }
     
     cape_map_cursor_destroy (&cursor);
@@ -938,25 +993,31 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
     }
   }
 
+  // clear all connections with dirty flag set
+  {
+    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_names, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      qbus_route_modules__rm_conn (cape_map_node_value (cursor->node), self->obsvbl, conn, TRUE, self->modules_uuids);
+    }
+    
+    cape_map_cursor_destroy (&cursor);
+  }
+  
   cape_mutex_unlock (self->mutex);
   
   // tell the others the new nodes
   //  qbus_route_send_updates (self, conn);
   cape_udc_del (p_nodes);
   
-  printf ("check observables\n");
-  
   qbus_route_dump (self);
   
   if (rux.cnt_local)
   {
-    printf ("send observables\n");
-
     qbus_route_send_update (self, NULL, conn);
   }
 
-  printf ("send update\n");
-  
   // tell all others our updates
   qbus_route_send_update (self, conn, NULL);
   
@@ -1059,14 +1120,6 @@ CapeUdc qbus_route_add_to_frame__fetch (QBusRoute self, int as_node, QBusPvdConn
 void qbus_route_add_to_frame (QBusRoute self, QBusFrame frame, int as_node, QBusPvdConnection conn_not_in_list)
 {
   CapeUdc route_nodes = qbus_route_add_to_frame__fetch (self, as_node, conn_not_in_list);
-
-  {
-    CapeString h = cape_json_to_s (route_nodes);
-    
-    printf ("ROUTE NODES [%i]: %s\n", as_node, h);
-    
-    cape_str_del (&h);
-  }
   
   if (route_nodes)
   {
@@ -1181,7 +1234,7 @@ void qbus_route_send_response (QBusRoute self, QBusFrame frame, QBusPvdConnectio
 void qbus_route_dump (QBusRoute self)
 {
   printf ("-----------+---+--------------------------------------+--------------------------------------\n");
-  printf ("      NAME | L |                                 UUID | DATA\n");
+  printf ("      NAME | M |                                 UUID | DATA\n");
   printf ("-----------+---+--------------------------------------+--------------------------------------\n");
 
   cape_mutex_lock (self->mutex);

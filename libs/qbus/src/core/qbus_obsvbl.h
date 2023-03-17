@@ -23,7 +23,7 @@ __CAPE_LOCAL   void               qbus_obsvbl_del              (QBusObsvbl*);
 
 __CAPE_LOCAL   CapeUdc            qbus_obsvbl_get              (QBusObsvbl, const CapeString module_name, const CapeString module_uuid);
 
-__CAPE_LOCAL   void               qbus_obsvbl_set              (QBusObsvbl, CapeUdc observables, QBusRouteNameItem);
+__CAPE_LOCAL   number_t           qbus_obsvbl_set              (QBusObsvbl, CapeUdc observables, QBusRouteNameItem);
 
 __CAPE_LOCAL   void               qbus_obsvbl_rm               (QBusObsvbl, QBusRouteNameItem);
 

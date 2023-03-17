@@ -102,8 +102,10 @@ void qbus_emitter_del (QBusObsvblEmitter* p_self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_emitter_add (QBusObsvblEmitter self, QBusRouteNameItem name_item)
+number_t qbus_emitter_add (QBusObsvblEmitter self, QBusRouteNameItem name_item)
 {
+  number_t ret = 0;
+  
   const CapeString uuid = qbus_route_name_uuid_get (name_item);
   
   if (uuid)
@@ -111,9 +113,12 @@ void qbus_emitter_add (QBusObsvblEmitter self, QBusRouteNameItem name_item)
     CapeMapNode n = cape_map_find (self->modules_uuids, (void*)uuid);
     if (n == NULL)
     {
-      cape_map_insert (self->modules_uuids, (void*)cape_str_cp(uuid), (void*)name_item);      
+      cape_map_insert (self->modules_uuids, (void*)cape_str_cp(uuid), (void*)name_item);  
+      ret++;
     }
   }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -270,7 +275,7 @@ CapeUdc qbus_obsvbl_get (QBusObsvbl self, const CapeString module_name, const Ca
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, QBusRouteNameItem name_item)
+number_t qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, QBusRouteNameItem name_item)
 {
   QBusObsvblEmitter emitter;
   
@@ -282,8 +287,6 @@ void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, Q
     if (n)
     {
       is_local = FALSE;
-      
-      printf ("not local: %s -> %s\n", qbus_route_name_uuid_get (name_item), subscriber_name);
     }
   }
 
@@ -301,25 +304,19 @@ void qbus_obsvbl_set__node (QBusObsvbl self, const CapeString subscriber_name, Q
     }
   }
     
-  qbus_emitter_add (emitter, name_item);
+  return qbus_emitter_add (emitter, name_item);
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_set (QBusObsvbl self, CapeUdc observables, QBusRouteNameItem name_item)
+number_t qbus_obsvbl_set (QBusObsvbl self, CapeUdc observables, QBusRouteNameItem name_item)
 {
+  number_t ret = 0;
+  
   if (observables && name_item)
   {
     CapeUdcCursor* cursor = cape_udc_cursor_new (observables, CAPE_DIRECTION_FORW);
-    
-    {
-      CapeString h = cape_json_to_s (observables);
-      
-      printf ("OBSERVABLES IN: %s\n", h);
-      
-      cape_str_del (&h);
-    }
-    
+        
     while (cape_udc_cursor_next (cursor))
     {
       switch (cape_udc_type (cursor->item))
@@ -330,7 +327,7 @@ void qbus_obsvbl_set (QBusObsvbl self, CapeUdc observables, QBusRouteNameItem na
           
           if (cape_str_not_empty (subscriber_name))
           {
-            qbus_obsvbl_set__node (self, subscriber_name, name_item);
+            ret = ret + qbus_obsvbl_set__node (self, subscriber_name, name_item);
           }
           
           break;
@@ -340,6 +337,8 @@ void qbus_obsvbl_set (QBusObsvbl self, CapeUdc observables, QBusRouteNameItem na
     
     cape_udc_cursor_del (&cursor);
   }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
