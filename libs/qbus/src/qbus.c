@@ -208,18 +208,26 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
 {
-  QBusPvdConnection conn = qbus_route_get (self->route, module);
-  
-  if (conn)
+  if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
+
     
-    
-    
-    return CAPE_ERR_NONE;
   }
   else
   {
-    return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "QBUS", "module [%s] not found", module);
+    QBusPvdConnection conn = qbus_route_get (self->route, module);
+    
+    if (conn)
+    {
+      
+      
+      
+      return CAPE_ERR_NONE;
+    }
+    else
+    {
+      return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "QBUS", "no route to module [%s]", module);
+    }
   }
 }
 
