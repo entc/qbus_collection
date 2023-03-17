@@ -142,12 +142,12 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
 
 void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
 {
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
+
   if (cape_str_equal (frame->module, qbus_route_uuid_get (self->route)))
   {
     CapeUdc value = qbus_frame_get__payload (frame);
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
-    
+        
     qbus_obsvbl_value (self->obsvbl, frame->chain_key, frame->method, &value);
   }
   else

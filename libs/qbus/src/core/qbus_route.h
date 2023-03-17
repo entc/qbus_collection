@@ -38,6 +38,8 @@ __CAPE_LOCAL   const CapeString   qbus_route_name_uuid_get     (QBusRouteNameIte
 
 __CAPE_LOCAL   void               qbus_route_name_dump2        (QBusRouteNameItem, const CapeString module_name, int is_local, const CapeString data);
 
+__CAPE_LOCAL   QBusPvdConnection  qbus_route_name__get_conn    (QBusRouteNameItem);
+
 //-----------------------------------------------------------------------------
 
 struct QBusRoute_s; typedef struct QBusRoute_s* QBusRoute;

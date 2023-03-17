@@ -160,6 +160,38 @@ void qbus_emitter_dump (QBusObsvblEmitter self, const CapeString subscriber_name
 
 //-----------------------------------------------------------------------------
 
+void qbus_emitter_emit (QBusObsvblEmitter self, QBusRoute route, QBusEngines engines, const CapeString subscriber_name, CapeUdc* p_value)
+{
+  QBusFrame frame = qbus_frame_new ();
+  
+  // assign payload to frame
+  qbus_frame_set__payload (frame, p_value);
+  
+  {
+    CapeMapCursor* cursor = cape_map_cursor_create (self->modules_uuids, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      QBusRouteNameItem name_item = cape_map_node_value (cursor->node);
+      
+      // override the frame credentials
+      // -> use the chainkey as name to identify the module of the value
+      // -> use the module as destination uuid
+      // -> use the method for the value name
+      qbus_frame_set (frame, QBUS_FRAME_TYPE_OBSVBL_VALUE, qbus_route_name_get (route), cape_map_node_key (cursor->node), subscriber_name, qbus_route_uuid_get (route));
+      
+      // send the frame to the conn
+      qbus_engines__send (engines, frame, qbus_route_name__get_conn (name_item));
+    }
+    
+    cape_map_cursor_destroy (&cursor);
+  }
+  
+  qbus_frame_del (&frame);
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusObsvbl_s
 {
   QBusEngines engines;        // reference
@@ -490,22 +522,11 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
   
   cape_str_to_lower (subscriber_name);
 
-  /*
-  // find the nodes assigned to the subscriber name
-  CapeMapNode n = cape_map_find (self->nodes, (void*)subscriber_name);
+  CapeMapNode n = cape_map_find (self->emitters, (void*)subscriber_name);
   if (n)
   {
-    QBusObsvblNode node = cape_map_node_value (n);
-
-    // send to all ptrs
-    qbus_obsvbl_emit__ptrs (self, value_name, node->routings, p_value);
+    qbus_emitter_emit (cape_map_node_value (n), self->route, self->engines, subscriber_name, p_value);    
   }
-  else
-  {
-    //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl emit", "can't find observable with subscriber name = '%s'", subscriber_name);
-  }
-  
-  */
   
   cape_udc_del (p_value);
   cape_str_del (&subscriber_name);
@@ -513,12 +534,8 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
 
 //-----------------------------------------------------------------------------
 
-void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const CapeString value_name, CapeUdc* p_value)
+void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const CapeString subscriber_name, CapeUdc* p_value)
 {
-  CapeString subscriber_name = cape_str_catenate_c (module_name, '.', value_name);
-  
-  cape_str_to_lower (subscriber_name);
-  
   printf ("seek subscriber: %s\n", subscriber_name);
   
   // find the nodes assigned to the subscriber name
@@ -534,7 +551,6 @@ void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const Cap
     }
   }
 
-  cape_str_del (&subscriber_name);
   cape_udc_del (p_value);
 }
 
