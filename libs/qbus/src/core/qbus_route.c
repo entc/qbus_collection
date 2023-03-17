@@ -46,7 +46,7 @@ void __STDCALL qbus_route_conn__on_emit (void* user_ptr, const CapeString subscr
     
     if (value)
     {
-      printf ("GOT LOAD DATA: %s\n", cape_udc_s (value, ""));
+      //printf ("GOT LOAD DATA: %s\n", cape_udc_s (value, ""));
     }
   }
 }
@@ -418,8 +418,13 @@ QBusRouteNameItem qbus_route_modules__add (QBusRouteModules self, QBusObsvbl obs
   }
   else
   {
-    if (cape_list_size (self->modules) > 0)
+    if (cape_list_size (self->modules) == 1)
     {
+      ret = cape_list_node_data (cape_list_node_front (self->modules));
+      
+      // unset dirty flag
+      qbus_route_name__unset_dirty (ret);
+
       goto cleanup_and_exit;
     }    
   }
@@ -942,7 +947,7 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
   
   rux.cnt_local = 0;
   rux.cnt_proxy = 0;
-    
+      
   cape_mutex_lock (self->mutex);
   
   if (qbus_route__is_module_name_valid (self, module_name))
@@ -964,6 +969,14 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
   
   if (nodes)
   {
+    {
+      CapeString h = cape_json_to_s (nodes);
+      
+      printf ("NODES INCOMING: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+    
     switch (cape_udc_type (nodes))
     {
       case CAPE_UDC_LIST:
@@ -1250,6 +1263,7 @@ void qbus_route_dump (QBusRoute self)
     cape_map_cursor_destroy (&cursor);
   }
 
+  /*
   printf ("-----------+---+--------------------------------------+--------------------------------------\n");
   
   {
@@ -1262,6 +1276,7 @@ void qbus_route_dump (QBusRoute self)
     
     cape_map_cursor_destroy (&cursor);
   }
+  */
   
   cape_mutex_unlock (self->mutex);
 

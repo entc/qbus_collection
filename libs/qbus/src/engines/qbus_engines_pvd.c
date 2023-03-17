@@ -142,7 +142,7 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
 
 void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] << module = %s, sender = %s", frame->module, frame->sender);
 
   if (cape_str_equal (frame->module, qbus_route_uuid_get (self->route)))
   {
@@ -152,7 +152,7 @@ void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection c
   }
   else
   {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] >>> forward");
+    //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "obsvbl", "obsvbl [VAL] >>> forward");
     
   }  
 }

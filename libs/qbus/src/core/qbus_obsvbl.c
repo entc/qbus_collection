@@ -536,7 +536,7 @@ void qbus_obsvbl_emit (QBusObsvbl self, const CapeString prefix, const CapeStrin
 
 void qbus_obsvbl_value (QBusObsvbl self, const CapeString module_name, const CapeString subscriber_name, CapeUdc* p_value)
 {
-  printf ("seek subscriber: %s\n", subscriber_name);
+  //printf ("seek subscriber: %s\n", subscriber_name);
   
   // find the nodes assigned to the subscriber name
   CapeMapNode n = cape_map_find (self->observables, (void*)subscriber_name);
