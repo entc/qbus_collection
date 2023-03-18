@@ -10,10 +10,6 @@
 #include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
 
-//=============================================================================
-
-struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
-
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   QBus               qbus_new               (const char* module);
@@ -23,12 +19,6 @@ __CAPE_LIBEX   void               qbus_del               (QBus*);
 __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc pvds, number_t workers, CapeErr);
 
 //-----------------------------------------------------------------------------
-
-typedef int    (__STDCALL         *fct_qbus_onMessage)   (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
-typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
-
-//-----------------------------------------------------------------------------
-
                                                          /* this will initialize qbus (for testing) -> same as wait without waiting */
 __CAPE_LIBEX   int                qbus_init              (QBus, CapeUdc pvds, number_t workers, CapeErr);
 

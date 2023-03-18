@@ -275,3 +275,36 @@ CapeUdc qbus_frame_set_qmsg (QBusFrame self, QBusM qmsg, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
+
+void qbus_message__no_route (QBusM self, QBus qbus, void* ptr, fct_qbus_onMessage on_msg)
+{
+  if (on_msg)
+  {
+    if (self->err)
+    {
+      cape_err_del (&(self->err));
+    }
+    
+    // create a new error object
+    self->err = cape_err_new ();
+    
+    // set the error
+    cape_err_set (self->err, CAPE_ERR_NOT_FOUND, "no route to module");
+    
+    {
+      // create a temporary error object
+      CapeErr err = cape_err_new ();
+      
+      int res = on_msg (qbus, ptr, self, NULL, err);
+      if (res)
+      {
+        // TODO: handle error
+        
+      }
+      
+      cape_err_del (&err);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------

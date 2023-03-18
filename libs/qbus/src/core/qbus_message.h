@@ -9,9 +9,6 @@
 
 //-----------------------------------------------------------------------------
 
-
-//-----------------------------------------------------------------------------
-
 struct QBusMessage_s
 {
   number_t mtype;
@@ -38,6 +35,13 @@ struct QBusMessage_s
 
 //-----------------------------------------------------------------------------
 
+struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
+
+typedef int    (__STDCALL         *fct_qbus_onMessage)   (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
+typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   QBusM              qbus_message_new       (const CapeString key, const CapeString sender);
 
 __CAPE_LIBEX   void               qbus_message_del       (QBusM*);
@@ -55,6 +59,10 @@ __CAPE_LIBEX   CapeUdc            qbus_frame_set_qmsg    (QBusFrame, QBusM qmsg,
 __CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeString role_name);
 
 __CAPE_LIBEX   int                qbus_message_role_or2  (QBusM, const CapeString role01, const CapeString role02);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   void               qbus_message__no_route (QBusM, QBus, void* ptr, fct_qbus_onMessage onMsg);
 
 //-----------------------------------------------------------------------------
 

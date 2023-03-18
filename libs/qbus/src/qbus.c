@@ -4,6 +4,7 @@
 #include "qbus_obsvbl.h"
 #include "qbus_logger.h"
 #include "qbus_engines.h"
+#include "qbus_queue.h"
 
 // c includes
 #include <stdlib.h>
@@ -48,6 +49,8 @@ struct QBus_s
   QBusLogger logger;
   
   QBusConfig config;
+  
+  QBusQueue queue;
 };
 
 //-----------------------------------------------------------------------------
@@ -86,6 +89,8 @@ QBus qbus_new (const char* module_origin)
   
   self->aio = cape_aio_context_new ();
   
+  self->queue = qbus_queue_new ();
+  
   return self;
 }
 
@@ -107,7 +112,7 @@ void qbus_del (QBus* p_self)
   
   cape_aio_context_del (&(self->aio));
   
-  //cape_str_del (&(self->name));
+  qbus_queue_del (&(self->queue));
   
   CAPE_DEL (p_self, struct QBus_s);
 }
@@ -120,6 +125,13 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
+  if (res)
+  {
+    return res;
+  }
+
+  // start all worker threads
+  res = qbus_queue_init (self->queue, qbus_config_get_threads (self->config), err);
   if (res)
   {
     return res;
@@ -206,12 +218,14 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 //-----------------------------------------------------------------------------
 
-int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
+int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage on_msg, CapeErr err)
 {
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
 
     
+    
+    return CAPE_ERR_CONTINUE;
   }
   else
   {
@@ -222,10 +236,12 @@ int qbus_send (QBus self, const char* module, const char* method, QBusM msg, voi
       
       
       
-      return CAPE_ERR_NONE;
+      return CAPE_ERR_CONTINUE;
     }
     else
     {
+      qbus_message__no_route (msg, self, ptr, on_msg);
+      
       return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "QBUS", "no route to module [%s]", module);
     }
   }
