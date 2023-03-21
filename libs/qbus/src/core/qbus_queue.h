@@ -10,7 +10,28 @@
 
 //-----------------------------------------------------------------------------
 
-typedef void           (__STDCALL *fct_qbus__on_queue)        (void* qbus_ptr, QBusPvdConnection conn, QBusM msg, const CapeString module, const CapeString method);
+struct QBusQueueItem_s
+{
+  
+  QBusM msg;
+  
+  CapeString module;
+  CapeString method;
+  
+  void* user_ptr;
+  fct_qbus_onMessage user_fct;
+  
+}; typedef struct QBusQueueItem_s* QBusQueueItem;
+
+//-----------------------------------------------------------------------------
+
+typedef void           (__STDCALL *fct_qbus__on_queue)        (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   QBusQueueItem      qbus_queue_item_new (QBusM msg, const CapeString module, const CapeString method, void* user_ptr, fct_qbus_onMessage user_fct);
+
+__CAPE_LOCAL   void               qbus_queue_item_del (QBusQueueItem*);
 
 //-----------------------------------------------------------------------------
 
@@ -26,7 +47,7 @@ __CAPE_LOCAL   int                qbus_queue_init              (QBusQueue, numbe
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_queue_add               (QBusQueue, QBusPvdConnection, QBusM msg, const CapeString module, const CapeString method, void* user_ptr, fct_qbus_onMessage user_fct, void* qbus_ptr, fct_qbus__on_queue qbus_fct);
+__CAPE_LOCAL   void               qbus_queue_add               (QBusQueue, QBusPvdConnection, QBusQueueItem* qitem, void* qbus_ptr, fct_qbus__on_queue qbus_fct);
 
 //-----------------------------------------------------------------------------
 

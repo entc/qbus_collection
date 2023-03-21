@@ -7,16 +7,44 @@
 
 //-----------------------------------------------------------------------------
 
+QBusQueueItem qbus_queue_item_new (QBusM msg, const CapeString module, const CapeString method, void* user_ptr, fct_qbus_onMessage user_fct)
+{
+  QBusQueueItem self = CAPE_NEW (struct QBusQueueItem_s);
+  
+  self->msg = qbus_message_data_mv (msg);
+
+  self->module = cape_str_cp (module);
+  self->method = cape_str_cp (method);
+  
+  self->user_ptr = user_ptr;
+  self->user_fct = user_fct;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_queue_item_del (QBusQueueItem* p_self)
+{
+  if (*p_self)
+  {
+    QBusQueueItem self = *p_self;
+    
+    cape_str_del (&(self->method));
+    cape_str_del (&(self->module));
+    
+    qbus_message_del (&(self->msg));
+    
+    CAPE_DEL (p_self, struct QBusQueueItem_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusQueueProcessItem_s
 {
   QBusPvdConnection conn;     // reference
-  
-  QBusM msg;                  // owned
-  CapeString module;          // owned
-  CapeString method;          // owned
-  
-  void* user_ptr;
-  fct_qbus_onMessage user_fct;
+  QBusQueueItem item;         // owned
   
   void* qbus_ptr;
   fct_qbus__on_queue qbus_fct;
@@ -68,27 +96,23 @@ void __STDCALL qbus_queue_add__on_process (void* ptr, number_t pos, number_t que
 {
   QBusQueueProcessItem item = ptr;
   
-  item->qbus_fct (item->qbus_ptr, item->conn, item->msg, item->module, item->method);
-    
-  qbus_message_del (&(item->msg));
-  cape_str_del (&(item->method));
+  item->qbus_fct (item->qbus_ptr, item->conn, item->item);
+
+  qbus_queue_item_del (&(item->item));
   
   CAPE_DEL (&item, struct QBusQueueProcessItem_s);
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_queue_add (QBusQueue self, QBusPvdConnection conn, QBusM msg, const CapeString module, const CapeString method, void* user_ptr, fct_qbus_onMessage user_fct, void* qbus_ptr, fct_qbus__on_queue qbus_fct)
+void qbus_queue_add (QBusQueue self, QBusPvdConnection conn, QBusQueueItem* p_qitem, void* qbus_ptr, fct_qbus__on_queue qbus_fct)
 {
   QBusQueueProcessItem item = CAPE_NEW (struct QBusQueueProcessItem_s);
   
   item->conn = conn;
   
-  item->msg = qbus_message_data_mv (msg);
-  item->method = cape_str_cp (method);
-  
-  item->user_ptr = user_ptr;
-  item->user_fct = user_fct;
+  item->item = *p_qitem;
+  *p_qitem = NULL;
   
   item->qbus_ptr = qbus_ptr;
   item->qbus_fct = qbus_fct;

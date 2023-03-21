@@ -232,7 +232,7 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn, QBusM msg, const CapeString module, const CapeString method)
+void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem qitem)
 {
   QBus self = qbus_ptr;
   
@@ -240,14 +240,14 @@ void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn,
   CapeErr err = cape_err_new ();
   QBusM qout = qbus_message_new (NULL, NULL);
 
-  CapeString last_chain_key = cape_str_mv (&(msg->chain_key));
-  CapeString last_sender = cape_str_mv (&(msg->sender));
+  CapeString last_chain_key = cape_str_mv (&(qitem->msg->chain_key));
+  CapeString last_sender = cape_str_mv (&(qitem->msg->sender));
   
   CapeString next_chain_key = cape_str_uuid ();
 
   // set next chain key
-  msg->chain_key = cape_str_cp (next_chain_key);
-  msg->sender = cape_str_cp (qbus_route_name_get (self->route));
+  qitem->msg->chain_key = cape_str_cp (next_chain_key);
+  qitem->msg->sender = cape_str_cp (qbus_route_name_get (self->route));
 
   // set default message type
   qout->mtype = QBUS_MTYPE_JSON;
@@ -266,7 +266,7 @@ void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn,
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection conn, QBusM msg, const CapeString module, const CapeString method)
+void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem qitem)
 {
   QBus self = qbus_ptr;
 
@@ -277,13 +277,13 @@ void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection con
   CapeString next_chainkey = cape_str_uuid();
   
   // add default content
-  qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_REQ, next_chainkey, module, method, qbus_route_name_get (self->route));
+  qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_REQ, next_chainkey, qitem->module, qitem->method, qbus_route_name_get (self->route));
   
   // add message content
-  msg->rinfo = qbus_frame_set_qmsg (frame, msg, NULL);
+  qitem->msg->rinfo = qbus_frame_set_qmsg (frame, qitem->msg, NULL);
   
   // register this request as response in the chain storage
-  qbus_chain_add (self->chain, ptr, onMsg, &(msg->chain_key), &next_chainkey, &(msg->sender), &(msg->rinfo));
+  qbus_chain_add (self->chain, qitem->user_ptr, qitem->user_fct, &(qitem->msg->chain_key), &next_chainkey, &(qitem->msg->sender), &(qitem->msg->rinfo));
   
   // finally send the frame
   qbus_engines__send (self->engines, frame, conn);
@@ -301,8 +301,10 @@ int qbus_send (QBus self, const char* module, const char* method, QBusM msg, voi
 
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
+    QBusQueueItem item = qbus_queue_item_new (msg, NULL, method, user_ptr, user_fct);
+    
     // add to queue as local processing
-    qbus_queue_add (self->queue, NULL, msg, NULL, method, user_ptr, user_fct, self, qbus_send__process_local);
+    qbus_queue_add (self->queue, NULL, &item, self, qbus_send__process_local);
     
     return CAPE_ERR_CONTINUE;
   }
@@ -312,8 +314,10 @@ int qbus_send (QBus self, const char* module, const char* method, QBusM msg, voi
     
     if (conn)
     {
+      QBusQueueItem item = qbus_queue_item_new (msg, module, method, user_ptr, user_fct);
+      
       // add to queue as request
-      qbus_queue_add (self->queue, conn, msg, module, method, user_ptr, user_fct, self, qbus_send__process_request);
+      qbus_queue_add (self->queue, conn, &item, self, qbus_send__process_request);
       
       return CAPE_ERR_CONTINUE;
     }
