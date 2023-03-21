@@ -65,7 +65,7 @@ __CAPE_LIBEX   void               qbus_instance          (const char* name, void
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, int type, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit);
+__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit);
 
 __CAPE_LIBEX   void               qbus_emit              (QBus, const CapeString value_name, CapeUdc* p_value);
 

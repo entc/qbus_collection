@@ -55,8 +55,8 @@ static int __STDCALL app_on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr er
   // register methods
   qbus_register (qbus, "test_method", NULL, test_method, NULL, err);
 
-  qbus_subscribe (qbus, 0, "test1", "val01", NULL, on_value);
-  qbus_subscribe (qbus, 0, "test1", "val02", NULL, on_value);
+  qbus_subscribe (qbus, "test1", "val01", NULL, on_value);
+  qbus_subscribe (qbus, "test1", "val02", NULL, on_value);
 
   /*
   {

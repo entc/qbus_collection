@@ -234,6 +234,10 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem qitem)
 {
+  int res;
+  
+  QBusMethodItem qmethod;
+  
   QBus self = qbus_ptr;
   
   // local objects
@@ -252,16 +256,88 @@ void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn,
   // set default message type
   qout->mtype = QBUS_MTYPE_JSON;
   
-  /*
   // try to find the method stored in route
-  qmeth = qbus_route__find_method (self, method_origin, err);
+  qmethod = qbus_methods_get (self->methods, qitem->method);
   
-  if (qmeth == NULL)
+  if (qmethod == NULL)
   {
     goto exit_and_cleanup;
   }
 
-   */
+  {
+    CapeString last_chain_key_copy = cape_str_cp (last_chain_key);
+    CapeString last_sender_copy = cape_str_cp (last_sender);
+    
+    CapeUdc rinfo_copy = cape_udc_cp (qitem->msg->rinfo);
+    
+    qbus_chain_add (self->chain, qitem->user_ptr, qitem->user_fct, &last_chain_key_copy, &next_chain_key, &last_sender_copy, &rinfo_copy);
+    
+    cape_udc_del (&rinfo_copy);
+    
+    cape_str_del (&last_sender_copy);
+    cape_str_del (&last_chain_key_copy);
+  }
+  
+  res = qbus_method_local (qmeth, self->qbus, self, msg, qout, method_origin, err);
+
+  switch (res)
+  {
+    case CAPE_ERR_CONTINUE:
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a continued state");
+      
+      // this request shall not continue and another request was created instead
+      // we need to add the callback and ptr to the chains list, for response
+      // -> don't consider qout
+      
+      break;
+    }
+    default:
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a terminated state");
+      
+      if (res)
+      {
+        // tranfer ownership
+        qout->err = err;
+        
+        // create an empty error object
+        err = cape_err_new ();
+      }
+      
+      // correct chain parameters
+      cape_str_replace_cp (&(qout->chain_key), last_chain_key);
+      cape_str_replace_cp (&(qout->sender), last_sender);
+      
+      // add rinfo
+      cape_udc_replace_cp (&(qout->rinfo), msg->rinfo);
+      
+      {
+        // create a method object to re-use existing functionality
+        QBusMethod qmeth_next = qbus_method_new (QBUS_METHOD_TYPE__RESPONSE, ptr, onMsg, NULL);
+        
+        // provide the last chain key to handle the return chain traversal path
+        qbus_method_continue (qmeth_next, &last_chain_key, &last_sender, &(msg->rinfo));
+        
+        // this requests ends here, now send the results back
+        qbus_method_call_response (qmeth_next, self->qbus, self, qout, NULL, err);
+        
+        qbus_method_del (&qmeth_next);
+      }
+      
+      break;
+    }
+  }
+  
+exit_and_cleanup:
+
+  cape_str_del (&next_chain_key);
+
+  cape_str_replace_mv (&(msg->chain_key), &last_chain_key);
+  cape_str_replace_mv (&(msg->sender), &last_sender);
+
+  qbus_message_del (&qout);
+  cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
@@ -293,12 +369,8 @@ void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection con
 
 //-----------------------------------------------------------------------------
 
-int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct, CapeErr err)
+int qbus_send__request (QBus self, const char* module, const char* method, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct, int cont, CapeErr err)
 {
-  // correct chain key
-  // -> the key for the start must be NULL
-  cape_str_del (&(msg->chain_key));
-
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
     QBusQueueItem item = qbus_queue_item_new (msg, NULL, method, user_ptr, user_fct);
@@ -332,10 +404,31 @@ int qbus_send (QBus self, const char* module, const char* method, QBusM msg, voi
 
 //-----------------------------------------------------------------------------
 
+int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct, CapeErr err)
+{
+  // correct chain key
+  // -> the key for the start must be NULL
+  cape_str_del (&(msg->chain_key));
+
+  return qbus_send__request (self, module, method, msg, user_ptr, user_fct, FALSE, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_continue (QBus self, const char* module, const char* method, QBusM qin, void** p_ptr, fct_qbus_onMessage on_msg, CapeErr err)
 {
   int res;
   
+  if (p_ptr)
+  {
+    res = qbus_send__request (self, module, method, qin, *p_ptr, on_msg, TRUE, err);
+    
+    *p_ptr = NULL;
+  }
+  else
+  {
+    res = qbus_send__request (self, module, method, qin, NULL, on_msg, TRUE, err);
+  }
   
   return res;
 }
@@ -371,7 +464,7 @@ CapeUdc qbus_modules (QBus self)
 
 //-----------------------------------------------------------------------------
 
-QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit user_fct)
+QBusSubscriber qbus_subscribe (QBus self, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit user_fct)
 {
   return qbus_obsvbl_subscribe (self->obsvbl, module, name, user_ptr, user_fct);
 }

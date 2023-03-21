@@ -10,6 +10,7 @@
 
 //-----------------------------------------------------------------------------
 
+struct QBusMethodItem_s; typedef struct QBusMethodItem_s* QBusMethodItem;
 struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 
 //-----------------------------------------------------------------------------
@@ -17,6 +18,8 @@ struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 __CAPE_LOCAL   QBusMethods        qbus_methods_new             ();
 
 __CAPE_LOCAL   void               qbus_methods_del             (QBusMethods*);
+
+__CAPE_LOCAL   QBusMethodItem     qbus_methods_get             (QBusMethods, const CapeString method);
 
 //-----------------------------------------------------------------------------
 
