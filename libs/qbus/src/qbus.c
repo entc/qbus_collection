@@ -5,6 +5,8 @@
 #include "qbus_logger.h"
 #include "qbus_engines.h"
 #include "qbus_queue.h"
+#include "qbus_chain.h"
+#include "qbus_methods.h"
 
 // c includes
 #include <stdlib.h>
@@ -51,6 +53,10 @@ struct QBus_s
   QBusConfig config;
   
   QBusQueue queue;
+  
+  QBusChain chain;
+  
+  QBusMethods methods;
 };
 
 //-----------------------------------------------------------------------------
@@ -91,6 +97,10 @@ QBus qbus_new (const char* module_origin)
   
   self->queue = qbus_queue_new ();
   
+  self->chain = qbus_chain_new ();
+  
+  self->methods = qbus_methods_new ();
+  
   return self;
 }
 
@@ -100,6 +110,10 @@ void qbus_del (QBus* p_self)
 {
   QBus self = *p_self;
 
+  qbus_chain_del (&(self->chain));
+  
+  qbus_methods_del (&(self->methods));
+  
   qbus_route_del (&(self->route));
   
   qbus_obsvbl_del (&(self->obsvbl));
@@ -269,7 +283,7 @@ void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection con
   msg->rinfo = qbus_frame_set_qmsg (frame, msg, NULL);
   
   // register this request as response in the chain storage
-  qbus_route__add_to_chain (self, ptr, onMsg, cont ? &(msg->chain_key): NULL, &next_chainkey, &(msg->sender), &(msg->rinfo));
+  qbus_chain_add (self->chain, ptr, onMsg, &(msg->chain_key), &next_chainkey, &(msg->sender), &(msg->rinfo));
   
   // finally send the frame
   qbus_engines__send (self->engines, frame, conn);

@@ -10,6 +10,8 @@ SET(QBUS_SOURCES
   core/qbus_obsvbl.c
   core/qbus_message.c
   core/qbus_queue.c
+  core/qbus_chain.c
+  core/qbus_methods.c
 
 # include logger classes
   logger/qbus_logger.c
@@ -32,6 +34,8 @@ SET(QBUS_HEADERS
   core/qbus_obsvbl.h
   core/qbus_message.h
   core/qbus_queue.h
+  core/qbus_chain.h
+  core/qbus_methods.h
 
 # include logger classes
   logger/qbus_logger.h
