@@ -2,6 +2,7 @@
 #include "qbus_pvd.h"
 #include "qbus_frame.h"
 #include "qbus_obsvbl.h"
+#include "qbus_methods.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -26,22 +27,24 @@ typedef struct
 
 struct QBusEnginesPvd_s
 {
-  CapeDl hlib;         // handle for the shared library
-  QBusPvd2 pvd2;       // function pointers
-  QBusPvdCtx ctx;      // library context
+  CapeDl hlib;           // handle for the shared library
+  QBusPvd2 pvd2;         // function pointers
+  QBusPvdCtx ctx;        // library context
   
-  QBusRoute route;     // reference
-  QBusObsvbl obsvbl;   // reference
+  QBusRoute route;       // reference
+  QBusObsvbl obsvbl;     // reference
+  QBusMethods methods;   // reference
 };
 
 //-----------------------------------------------------------------------------
 
-QBusEnginesPvd qbus_engines_pvd_new (QBusRoute route, QBusObsvbl obsvbl)
+QBusEnginesPvd qbus_engines_pvd_new (QBusRoute route, QBusObsvbl obsvbl, QBusMethods methods)
 {
   QBusEnginesPvd self = CAPE_NEW (struct QBusEnginesPvd_s);
 
   self->route = route;
   self->obsvbl = obsvbl;
+  self->methods = methods;
   
   self->hlib = cape_dl_new ();
   self->ctx = NULL;
@@ -159,6 +162,69 @@ void qbus_engines_pvd__on_obsvbl_value (QBusEnginesPvd self, QBusPvdConnection c
 
 //-----------------------------------------------------------------------------
 
+void qbus_engines_pvd__on_msg_request (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame* p_frame)
+{
+  QBusFrame frame = *p_frame;
+  
+  // check if the message was sent to us
+  if (cape_str_compare (frame->module, qbus_route_name_get (self->route)))
+  {
+    qbus_methods_call (self->methods, frame, conn);
+  }
+  else  // the message was not send to us -> forward it 
+  {
+    // try to find a connection which might reach the destination module
+    QBusPvdConnection conn_forward = qbus_route_get (self->route, frame->module);
+    if (conn_forward)
+    {
+      qbus_methods_forward (self->methods, frame, conn_forward);
+    }
+    else
+    {
+      qbus_route_send_error (self->route, frame, conn);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
+{
+  if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
+  {
+    qbus_methods_response (self->methods, frame, conn);    
+  }
+  else
+  {
+    
+  }  
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engines_pvd__on_methods (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
+{
+  if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
+  {
+    qbus_methods_send_methods (self->methods, conn);    
+  }
+  else
+  {
+    // try to find a connection which might reach the destination module
+    QBusPvdConnection conn_forward = qbus_route_get (self->route, frame->module);
+    if (conn_forward)
+    {
+      qbus_methods_forward (self->methods, frame, conn_forward);
+    }
+    else
+    {
+      qbus_route_send_error (self->route, frame, conn);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection conn, QBusFrame* p_frame)
 {
   QBusEnginesPvd self = factory_ptr;
@@ -189,17 +255,17 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
     }
     case QBUS_FRAME_TYPE_MSG_REQ:
     {
-      //       qbus_route_on_msg_request (self, connection, p_frame);
+      qbus_engines_pvd__on_msg_request (self, conn, p_frame);
       break;
     }
     case QBUS_FRAME_TYPE_MSG_RES:
     {
-      //       qbus_route_on_msg_response (self, p_frame);
+      qbus_engines_pvd__on_msg_response (self, conn, frame);
       break;
     }
     case QBUS_FRAME_TYPE_METHODS:
     {
-      //       qbus_route_on_route_methods_request (self, connection, p_frame);
+      qbus_engines_pvd__on_methods (self, conn, frame);
       break;
     }
   }

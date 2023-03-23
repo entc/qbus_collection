@@ -4,6 +4,7 @@
 #include "qbus_route.h"
 #include "qbus_frame.h"
 #include "qbus_obsvbl.h"
+#include "qbus_methods.h"
 
 #include <sys/cape_export.h>
 #include <sys/cape_err.h>
@@ -20,7 +21,7 @@ __CAPE_LOCAL   void         qbus_engines_del                 (QBusEngines*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   int          qbus_engines__init_pvds          (QBusEngines, const CapeUdc pvds, CapeAioContext aio_context, QBusRoute, QBusObsvbl, CapeErr err);
+__CAPE_LOCAL   int          qbus_engines__init_pvds          (QBusEngines, const CapeUdc pvds, CapeAioContext aio_context, QBusRoute, QBusObsvbl, QBusMethods, CapeErr err);
 
 __CAPE_LOCAL   void         qbus_engines__send               (QBusEngines, QBusFrame frame, QBusPvdConnection conn);
 

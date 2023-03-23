@@ -74,6 +74,10 @@ __CAPE_LOCAL   void               qbus_route_send_update       (QBusRoute, QBusP
 
 __CAPE_LOCAL   void               qbus_route_send_response     (QBusRoute, QBusFrame frame, QBusPvdConnection conn);
 
+__CAPE_LOCAL   void               qbus_route_send_error        (QBusRoute, QBusFrame frame, QBusPvdConnection conn);
+
+__CAPE_LOCAL   void               qbus_route_send_forward      (QBusRoute, QBusFrame frame, QBusPvdConnection conn);
+
 //-----------------------------------------------------------------------------
 
 #endif

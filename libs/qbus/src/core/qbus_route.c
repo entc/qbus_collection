@@ -1244,6 +1244,24 @@ void qbus_route_send_response (QBusRoute self, QBusFrame frame, QBusPvdConnectio
 
 //-----------------------------------------------------------------------------
 
+void qbus_route_send_error (QBusRoute self, QBusFrame frame, QBusPvdConnection conn)
+{
+  CapeErr err = cape_err_new ();
+  
+  cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "no route to %s", frame->module);
+  
+  qbus_frame_set_type (frame, QBUS_FRAME_TYPE_MSG_RES, self->name);
+  
+  qbus_frame_set_err (frame, err);
+  
+  cape_err_del (&err);
+  
+  // finally send the frame
+  qbus_engines__send (self->engines, frame, conn);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_route_dump (QBusRoute self)
 {
   printf ("-----------+---+--------------------------------------+--------------------------------------\n");
