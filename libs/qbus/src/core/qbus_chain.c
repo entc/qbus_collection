@@ -43,3 +43,14 @@ void qbus_chain_add (QBusChain self, void* ptr, fct_qbus_onMessage onMsg, CapeSt
 }
 
 //-----------------------------------------------------------------------------
+
+QBusMethodItem qbus_chain_ext (QBusChain self, const CapeString chainkey)
+{
+  QBusMethodItem ret = NULL;
+  
+  
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
