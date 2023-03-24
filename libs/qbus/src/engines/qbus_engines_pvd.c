@@ -177,7 +177,7 @@ void qbus_engines_pvd__on_msg_request (QBusEnginesPvd self, QBusPvdConnection co
     QBusPvdConnection conn_forward = qbus_route_get (self->route, frame->module);
     if (conn_forward)
     {
-      qbus_methods_forward (self->methods, frame, conn_forward);
+      qbus_methods_recv_forward (self->methods, frame, conn_forward, qbus_route_name_get (self->route));
     }
     else
     {
@@ -188,11 +188,13 @@ void qbus_engines_pvd__on_msg_request (QBusEnginesPvd self, QBusPvdConnection co
 
 //-----------------------------------------------------------------------------
 
-void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame frame)
+void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection conn, QBusFrame* p_frame)
 {
+  QBusFrame frame = *p_frame;
+  
   if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
   {
-    qbus_methods_response (self->methods, frame, conn);    
+    qbus_methods_recv_response (self->methods, p_frame, conn);    
   }
   else
   {
@@ -206,7 +208,7 @@ void qbus_engines_pvd__on_methods (QBusEnginesPvd self, QBusPvdConnection conn, 
 {
   if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
   {
-    qbus_methods_send_methods (self->methods, conn);    
+    qbus_methods_recv_methods (self->methods, conn);    
   }
   else
   {
@@ -214,7 +216,7 @@ void qbus_engines_pvd__on_methods (QBusEnginesPvd self, QBusPvdConnection conn, 
     QBusPvdConnection conn_forward = qbus_route_get (self->route, frame->module);
     if (conn_forward)
     {
-      qbus_methods_forward (self->methods, frame, conn_forward);
+      qbus_methods_recv_forward (self->methods, frame, conn_forward, qbus_route_name_get (self->route));
     }
     else
     {
@@ -260,7 +262,7 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
     }
     case QBUS_FRAME_TYPE_MSG_RES:
     {
-      qbus_engines_pvd__on_msg_response (self, conn, frame);
+      qbus_engines_pvd__on_msg_response (self, conn, p_frame);
       break;
     }
     case QBUS_FRAME_TYPE_METHODS:

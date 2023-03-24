@@ -22,7 +22,7 @@ struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines);
+__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines, QBusQueue);
 
 __CAPE_LOCAL   void               qbus_methods_del                    (QBusMethods*);
 
@@ -38,13 +38,17 @@ __CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMetho
 
 __CAPE_LOCAL   void               qbus_methods_call                   (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
 
-__CAPE_LOCAL   void               qbus_methods_forward                (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_response          (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn);
 
-__CAPE_LOCAL   void               qbus_methods_response               (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_methods           (QBusMethods, QBusPvdConnection conn);
 
-__CAPE_LOCAL   void               qbus_methods_send_methods           (QBusMethods, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_forward           (QBusMethods, QBusFrame frame, QBusPvdConnection conn, const CapeString sender);
 
-__CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, QBusQueueItem qitem, const CapeString sender);
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, QBusQueueItem qitem, const CapeString sender, int cont);
+
+__CAPE_LOCAL   void               qbus_methods_send_methods           (QBusMethods, QBusPvdConnection conn, const CapeString module, const CapeString sender, void* user_ptr, fct_qbus_on_methods user_fct);
 
 //-----------------------------------------------------------------------------
 

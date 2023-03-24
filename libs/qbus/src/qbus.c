@@ -94,7 +94,7 @@ QBus qbus_new (const char* module_origin)
   
   self->queue = qbus_queue_new ();
   
-  self->methods = qbus_methods_new (self->engines);
+  self->methods = qbus_methods_new (self->engines, self->queue);
   
   return self;
 }
@@ -237,7 +237,7 @@ void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection con
 {
   QBus self = qbus_ptr;
 
-  qbus_methods_send_request (self->methods, conn, qitem, qbus_route_name_get (self->route));
+  qbus_methods_send_request (self->methods, conn, qitem, qbus_route_name_get (self->route), TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -346,6 +346,33 @@ int qbus_response (QBus self, const char* module, QBusM msg, CapeErr err)
   }
   
   return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "QBUS", "no route for response [%s]", module);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods (QBus self, const char* module, void* ptr, fct_qbus_on_methods on_methods)
+{
+  QBusPvdConnection conn = qbus_route_get (self->route, module);
+  
+  if (conn)
+  {
+    qbus_methods_send_methods (self->methods, conn, module, qbus_route_name_get (self->route), ptr, on_methods);
+  }
+  else
+  {
+    if (on_methods)
+    {
+      CapeErr err = cape_err_new ();
+      
+      // set the error
+      cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "no route to module: %s", module);
+      
+      // callback
+      on_methods (self, ptr, NULL, err);
+      
+      cape_err_del (&err);
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -542,13 +569,6 @@ void* qbus_add_on_change (QBus self, void* ptr, fct_qbus_on_route_change on_chan
 //-----------------------------------------------------------------------------
 
 void qbus_rm_on_change (QBus self, void* obj)
-{
-  
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_methods (QBus self, const char* module, void* ptr, fct_qbus_on_methods on_methods)
 {
   
 }
