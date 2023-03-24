@@ -23,7 +23,7 @@ struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines, CapeQueue);
+__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines, QBus, CapeQueue);
 
 __CAPE_LOCAL   void               qbus_methods_del                    (QBusMethods*);
 
@@ -31,21 +31,21 @@ __CAPE_LOCAL   int                qbus_methods_add                    (QBusMetho
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_handle_response        (QBusMethods, QBus qbus, QBusM msg);
+__CAPE_LOCAL   void               qbus_methods_handle_response        (QBusMethods, QBusM msg);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_call                   (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_request           (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
 
 __CAPE_LOCAL   void               qbus_methods_recv_response          (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn);
 
-__CAPE_LOCAL   void               qbus_methods_recv_methods           (QBusMethods, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_methods           (QBusMethods, QBusFrame frame, QBusPvdConnection conn, const CapeString sender);
 
 __CAPE_LOCAL   void               qbus_methods_recv_forward           (QBusMethods, QBusFrame frame, QBusPvdConnection conn, const CapeString sender);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, QBus qbus, const CapeString module, const CapeString method, const CapeString sender, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct);
+__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, const CapeString method, const CapeString sender, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct);
 
 __CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, const CapeString module, const CapeString method, const CapeString sender, QBusM msg, int cont, void* user_ptr, fct_qbus_onMessage user_fct);
 

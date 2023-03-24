@@ -169,7 +169,7 @@ void qbus_engines_pvd__on_msg_request (QBusEnginesPvd self, QBusPvdConnection co
   // check if the message was sent to us
   if (cape_str_compare (frame->module, qbus_route_name_get (self->route)))
   {
-    qbus_methods_call (self->methods, frame, conn);
+    qbus_methods_recv_request (self->methods, frame, conn);
   }
   else  // the message was not send to us -> forward it 
   {
@@ -208,7 +208,7 @@ void qbus_engines_pvd__on_methods (QBusEnginesPvd self, QBusPvdConnection conn, 
 {
   if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
   {
-    qbus_methods_recv_methods (self->methods, conn);    
+    qbus_methods_recv_methods (self->methods, frame, conn, qbus_route_name_get (self->route));    
   }
   else
   {
@@ -271,6 +271,8 @@ void __STDCALL qbus_engines_pvd__on_frame (void* factory_ptr, QBusPvdConnection 
       break;
     }
   }
+  
+  qbus_frame_del (p_frame);
 }
 
 //-----------------------------------------------------------------------------

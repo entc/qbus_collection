@@ -3,6 +3,7 @@
 
 #include "core/qbus_message.h"
 #include "core/qbus_obsvbl.h"
+#include "core/qbus_frame.h"
 
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
@@ -29,6 +30,8 @@ __CAPE_LIBEX   int                qbus_send              (QBus, const char* modu
 __CAPE_LIBEX   int                qbus_continue          (QBus, const char* module, const char* method, QBusM qin, void** p_ptr, fct_qbus_onMessage, CapeErr);
 
 __CAPE_LIBEX   int                qbus_response          (QBus, const char* module, QBusM msg, CapeErr);
+
+__CAPE_LIBEX   void               qbus_forward           (QBus, QBusFrame frame, CapeString* p_sender, CapeString* p_chain_key);
 
 __CAPE_LIBEX   const CapeString   qbus_name              (QBus);
 

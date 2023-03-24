@@ -94,7 +94,7 @@ QBus qbus_new (const char* module_origin)
 
   self->queue = cape_queue_new (5000);
     
-  self->methods = qbus_methods_new (self->engines, self->queue);
+  self->methods = qbus_methods_new (self->engines, self, self->queue);
   
   return self;
 }
@@ -228,7 +228,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
 {
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
-    qbus_methods_proc_request (self->methods, self, module, method, qbus_route_name_get (self->route), msg, user_ptr, user_fct);
+    qbus_methods_proc_request (self->methods, method, qbus_route_name_get (self->route), msg, user_ptr, user_fct);
     
     return CAPE_ERR_CONTINUE;
   }
@@ -292,7 +292,7 @@ int qbus_response (QBus self, const char* module, QBusM msg, CapeErr err)
     {
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "response", "execute local response on '%s'", module);
       
-      qbus_methods_handle_response (self->methods, self, msg);
+      qbus_methods_handle_response (self->methods, msg);
       
       return CAPE_ERR_NONE;
     }
@@ -322,6 +322,27 @@ int qbus_response (QBus self, const char* module, QBusM msg, CapeErr err)
   }
   
   return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "QBUS", "no route for response [%s]", module);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_forward (QBus self, QBusFrame frame, CapeString* p_sender, CapeString* p_chain_key)
+{
+  // try to find a connection which might reach the destination module
+  QBusPvdConnection conn_forward = qbus_route_get (self->route, *p_sender);
+  if (conn_forward)
+  {
+    qbus_frame_set_chainkey (frame, p_chain_key);
+    qbus_frame_set_sender (frame, p_sender);
+    
+    // finally send the frame
+    qbus_engines__send (self->engines, frame, conn_forward);
+  }
+  else
+  {
+    // log
+    cape_log_msg (CAPE_LL_ERROR, "QBUS", "msg forward", "forward message can't be returned");
+  }            
 }
 
 //-----------------------------------------------------------------------------

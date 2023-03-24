@@ -68,20 +68,23 @@ void qbus_chain_add (QBusChain self, const CapeString chainkey, QBusMethodItem* 
 QBusMethodItem qbus_chain_ext (QBusChain self, const CapeString chainkey)
 {
   QBusMethodItem ret = NULL;
-  
-  cape_mutex_lock (self->mutex);
 
+  if (chainkey)
   {
-    CapeMapNode n = cape_map_find (self->chain_items, (void*)chainkey);
+    cape_mutex_lock (self->mutex);
     
-    if (n)
     {
-      ret = cape_map_node_value (n);
+      CapeMapNode n = cape_map_find (self->chain_items, (void*)chainkey);
+      
+      if (n)
+      {
+        ret = cape_map_node_value (n);
+      }
     }
+    
+    cape_mutex_unlock (self->mutex);
   }
   
-  cape_mutex_unlock (self->mutex);
-
   return ret;
 }
 
