@@ -4,7 +4,6 @@
 #include "qbus_obsvbl.h"
 #include "qbus_logger.h"
 #include "qbus_engines.h"
-#include "qbus_queue.h"
 #include "qbus_methods.h"
 
 // c includes
@@ -26,6 +25,7 @@
 #include "sys/cape_log.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
+#include <sys/cape_queue.h>
 #include "stc/cape_str.h"
 #include "aio/cape_aio_sock.h"
 #include "fmt/cape_args.h"
@@ -40,6 +40,8 @@
 struct QBus_s
 {
   CapeAioContext aio;
+
+  CapeQueue queue;
   
   QBusRoute route;
 
@@ -50,8 +52,6 @@ struct QBus_s
   QBusLogger logger;
   
   QBusConfig config;
-  
-  QBusQueue queue;
   
   QBusMethods methods;
 };
@@ -91,9 +91,9 @@ QBus qbus_new (const char* module_origin)
   qbus_route_set (self->route, self->obsvbl);
   
   self->aio = cape_aio_context_new ();
-  
-  self->queue = qbus_queue_new ();
-  
+
+  self->queue = cape_queue_new (5000);
+    
   self->methods = qbus_methods_new (self->engines, self->queue);
   
   return self;
@@ -119,7 +119,7 @@ void qbus_del (QBus* p_self)
   
   cape_aio_context_del (&(self->aio));
   
-  qbus_queue_del (&(self->queue));
+  cape_queue_del (&(self->queue));
   
   CAPE_DEL (p_self, struct QBus_s);
 }
@@ -138,7 +138,7 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   }
 
   // start all worker threads
-  res = qbus_queue_init (self->queue, qbus_config_get_threads (self->config), err);
+  res = cape_queue_start (self->queue, qbus_config_get_threads (self->config), err);
   if (res)
   {
     return res;
@@ -224,32 +224,11 @@ int qbus_register (QBus self, const char* method, void* user_ptr, fct_qbus_onMes
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_send__process_local (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem qitem)
-{
-  QBus self = qbus_ptr;
-
-  qbus_methods_proc_request (self->methods, self, qitem, qbus_route_name_get (self->route));
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_send__process_request (void* qbus_ptr, QBusPvdConnection conn, QBusQueueItem qitem)
-{
-  QBus self = qbus_ptr;
-
-  qbus_methods_send_request (self->methods, conn, qitem, qbus_route_name_get (self->route), TRUE);
-}
-
-//-----------------------------------------------------------------------------
-
 int qbus_send__request (QBus self, const char* module, const char* method, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct, int cont, CapeErr err)
 {
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
-    QBusQueueItem item = qbus_queue_item_new (msg, NULL, method, user_ptr, user_fct);
-    
-    // add to queue as local processing
-    qbus_queue_add (self->queue, NULL, &item, self, qbus_send__process_local);
+    qbus_methods_proc_request (self->methods, self, module, method, qbus_route_name_get (self->route), msg, user_ptr, user_fct);
     
     return CAPE_ERR_CONTINUE;
   }
@@ -259,10 +238,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
     
     if (conn)
     {
-      QBusQueueItem item = qbus_queue_item_new (msg, module, method, user_ptr, user_fct);
-      
-      // add to queue as request
-      qbus_queue_add (self->queue, conn, &item, self, qbus_send__process_request);
+      qbus_methods_send_request (self->methods, conn, module, method, qbus_route_name_get (self->route), msg, cont, user_ptr, user_fct);
       
       return CAPE_ERR_CONTINUE;
     }

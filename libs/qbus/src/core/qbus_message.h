@@ -39,6 +39,7 @@ struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
 
 typedef int    (__STDCALL         *fct_qbus_onMessage)   (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
 typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
+typedef void     (__STDCALL     *fct_qbus_on_methods)    (QBus, void* ptr, const CapeUdc modules, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

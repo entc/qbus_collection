@@ -81,8 +81,6 @@ __CAPE_LIBEX   void               qbus_rm_on_change      (QBus, void* obj);
 
 //-----------------------------------------------------------------------------
 
-typedef void     (__STDCALL     *fct_qbus_on_methods)    (QBus, void* ptr, const CapeUdc modules, CapeErr err);
-
 __CAPE_LIBEX   void               qbus_methods           (QBus, const char* module, void* ptr, fct_qbus_on_methods);
 
 //=============================================================================

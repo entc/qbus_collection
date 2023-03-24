@@ -8,6 +8,7 @@
 #include <sys/cape_export.h>
 #include <sys/cape_err.h>
 #include <stc/cape_udc.h>
+#include <sys/cape_queue.h>
 
 //-----------------------------------------------------------------------------
 
@@ -22,7 +23,7 @@ struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines, QBusQueue);
+__CAPE_LOCAL   QBusMethods        qbus_methods_new                    (QBusEngines, CapeQueue);
 
 __CAPE_LOCAL   void               qbus_methods_del                    (QBusMethods*);
 
@@ -31,8 +32,6 @@ __CAPE_LOCAL   int                qbus_methods_add                    (QBusMetho
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   void               qbus_methods_handle_response        (QBusMethods, QBus qbus, QBusM msg);
-
-__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, QBus qbus, QBusQueueItem qitem, const CapeString sender);
 
 //-----------------------------------------------------------------------------
 
@@ -46,7 +45,9 @@ __CAPE_LOCAL   void               qbus_methods_recv_forward           (QBusMetho
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, QBusQueueItem qitem, const CapeString sender, int cont);
+__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, QBus qbus, const CapeString module, const CapeString method, const CapeString sender, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct);
+
+__CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, const CapeString module, const CapeString method, const CapeString sender, QBusM msg, int cont, void* user_ptr, fct_qbus_onMessage user_fct);
 
 __CAPE_LOCAL   void               qbus_methods_send_methods           (QBusMethods, QBusPvdConnection conn, const CapeString module, const CapeString sender, void* user_ptr, fct_qbus_on_methods user_fct);
 
