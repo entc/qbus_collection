@@ -498,6 +498,8 @@ void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, numb
   
   res = qbus_methods_item__call_request (ritem->mitem, ritem->qbus, qin, qout, err);
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method returned %i", res);
+  
   switch (res)
   {
     case CAPE_ERR_CONTINUE:
@@ -518,6 +520,8 @@ void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, numb
       
       // finally send the frame
       qbus_engines__send (ritem->engines, ritem->frame, ritem->conn);
+
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method's results are sent back -> %p", ritem->conn->connection_ptr);
     }
   }
   
@@ -567,6 +571,8 @@ void qbus_methods_recv_request (QBusMethods self, QBusFrame* p_frame, QBusPvdCon
 void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender)
 {
   QBusFrame frame = *p_frame;
+  
+  printf ("recv response, chainkey = %s\n", frame->chain_key);
   
   if (frame->chain_key)
   {

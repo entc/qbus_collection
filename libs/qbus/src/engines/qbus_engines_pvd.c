@@ -192,14 +192,17 @@ void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection c
 {
   QBusFrame frame = *p_frame;
   
-  if (cape_str_compare (frame->module, qbus_route_uuid_get (self->route)))
+  printf ("received response to = %s -> on module = %s <--- from %s\n", frame->module, qbus_route_name_get (self->route), frame->sender);
+  
+  // check if the message was sent to us
+  if (cape_str_compare (frame->module, qbus_route_name_get (self->route)))
   {
-    qbus_methods_recv_response (self->methods, p_frame, conn, qbus_route_name_get (self->route));    
+    qbus_methods_recv_response (self->methods, p_frame, conn, qbus_route_name_get (self->route));
   }
   else
   {
     
-  }  
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -419,6 +422,8 @@ exit_and_cleanup:
 
 void qbus_engines_pvd_send (QBusEnginesPvd self, QBusFrame frame, void* connection_ptr)
 {
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engines send", "send frame to -> %p", connection_ptr);
+
   // send the frame
   self->pvd2.ctx_send (self->ctx, connection_ptr, frame);
 }

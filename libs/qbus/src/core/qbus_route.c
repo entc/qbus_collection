@@ -969,6 +969,7 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
   
   if (nodes)
   {
+    /*
     {
       CapeString h = cape_json_to_s (nodes);
       
@@ -976,6 +977,7 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
       
       cape_str_del (&h);
     }
+     */
     
     switch (cape_udc_type (nodes))
     {
@@ -1024,7 +1026,7 @@ void qbus_route_add (QBusRoute self, const CapeString module_name, const CapeStr
   //  qbus_route_send_updates (self, conn);
   cape_udc_del (p_nodes);
   
-  qbus_route_dump (self);
+  //qbus_route_dump (self);
   
   if (rux.cnt_local)
   {
@@ -1055,7 +1057,7 @@ void qbus_route_rm (QBusRoute self, QBusPvdConnection conn)
 
   cape_mutex_unlock (self->mutex);
 
-  qbus_route_dump (self);
+  //qbus_route_dump (self);
 
   // tell all others our updates
   qbus_route_send_update (self, conn, NULL);  

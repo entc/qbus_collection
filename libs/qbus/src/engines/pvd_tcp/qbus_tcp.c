@@ -174,6 +174,8 @@ void pvd2_pfd_del (QBusPvdFD* p_self)
 void pvd2_pfd__send (QBusPvdFD self, CapeStream s)
 {
   number_t bytes_sent = 0;
+
+  printf ("try to send = %lu\n", cape_stream_size (s));
   
   while (bytes_sent < cape_stream_size (s))
   {
@@ -288,7 +290,7 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
       
       ssize_t readBytes = recv ((long)self->handle, buffer, 1024, 0);
       
-   //   printf ("read bytes: %zd\n", readBytes);
+      //printf ("read bytes: %zd\n", readBytes);
       
       if (readBytes < 0)
       {
