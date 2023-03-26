@@ -33,6 +33,8 @@ __CAPE_LIBEX   int                qbus_response          (QBus, const char* modu
 
 __CAPE_LIBEX   void               qbus_forward           (QBus, QBusFrame frame, CapeString* p_sender, CapeString* p_chain_key);
 
+__CAPE_LIBEX   void               qbus_request           (QBus, QBusFrame frame);
+
 __CAPE_LIBEX   const CapeString   qbus_name              (QBus);
 
 __CAPE_LIBEX   CapeUdc            qbus_modules           (QBus);

@@ -203,7 +203,11 @@ int qbus_methods_item__call_request (QBusMethodItem self, QBus qbus, QBusM qin, 
 
 void qbus_methods_item_continue (QBusMethodItem self, CapeString* p_chain_key, CapeString* p_chain_sender, CapeUdc* p_rinfo)
 {
-  cape_str_replace_mv (&(self->chain_key), p_chain_key);
+  if (p_chain_key)
+  {
+    cape_str_replace_mv (&(self->chain_key), p_chain_key);
+  }
+
   cape_str_replace_mv (&(self->chain_sender), p_chain_sender);
   
   self->rinfo = cape_udc_mv (p_rinfo);
@@ -388,21 +392,24 @@ void qbus_methods_handle_response (QBusMethods self, QBusM msg)
 
 struct QBusMethodProcessRecvItem
 {
-  QBusPvdConnection conn;     // reference
   QBus qbus;                  // reference
+  QBusEngines engines;        // reference
+  QBusPvdConnection conn;     // reference
   
   QBusMethodItem mitem;       // owned
   QBusFrame frame;            // owned
+  CapeString sender;
 };
 
 //-----------------------------------------------------------------------------
 
-struct QBusMethodProcessRecvItem* qbus_methods_recv_item_new (QBus qbus, QBusPvdConnection conn, QBusMethodItem* p_mitem, QBusFrame* p_frame)
+struct QBusMethodProcessRecvItem* qbus_methods_recv_item_new (QBus qbus, QBusEngines engines, QBusPvdConnection conn, QBusMethodItem* p_mitem, QBusFrame* p_frame, const CapeString sender)
 {
   struct QBusMethodProcessRecvItem* self = CAPE_NEW (struct QBusMethodProcessRecvItem);
   
-  self->conn = conn;
   self->qbus = qbus;
+  self->engines = engines;
+  self->conn = conn;
   
   // transfer ownership
   self->mitem = *p_mitem;
@@ -411,6 +418,8 @@ struct QBusMethodProcessRecvItem* qbus_methods_recv_item_new (QBus qbus, QBusPvd
   // transfer ownership
   self->frame = *p_frame;
   *p_frame = NULL;
+  
+  self->sender = cape_str_cp (sender);
   
   return self;
 }
@@ -423,6 +432,7 @@ void qbus_methods_recv_item_del (struct QBusMethodProcessRecvItem** p_self)
   {
     struct QBusMethodProcessRecvItem* self = *p_self;
     
+    cape_str_del (&(self->sender));
     qbus_methods_item_del (&(self->mitem));
     qbus_frame_del (&(self->frame));
     
@@ -473,14 +483,85 @@ void __STDCALL qbus_methods_recv__process_methods (void* ptr, number_t pos, numb
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods_recv_request (QBusMethods self, QBusFrame frame, QBusPvdConnection conn)
+void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, number_t queue_size)
 {
+  int res;
   
+  struct QBusMethodProcessRecvItem* ritem = ptr;
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  // convert the frame content into the input message (expensive)
+  QBusM qin = qbus_message_frame (ritem->frame);
+  QBusM qout = qbus_message_new (NULL, NULL);
+  
+  res = qbus_methods_item__call_request (ritem->mitem, ritem->qbus, qin, qout, err);
+  
+  switch (res)
+  {
+    case CAPE_ERR_CONTINUE:
+    {
+      
+      break;
+    }
+    default:
+    {
+      // override the frame content with the output message (expensive)
+      {
+        // TODO: check why we return the rinfo!!
+        CapeUdc rinfo = qbus_frame_set_qmsg (ritem->frame, qout, err);
+        cape_udc_del (&rinfo);
+      }
+      
+      qbus_frame_set_type (ritem->frame, QBUS_FRAME_TYPE_MSG_RES, ritem->sender);
+      
+      // finally send the frame
+      qbus_engines__send (ritem->engines, ritem->frame, ritem->conn);
+    }
+  }
+  
+  qbus_message_del (&qin);
+  qbus_message_del (&qout);
+  cape_err_del (&err);
+  
+  qbus_methods_recv_item_del (&ritem);
 }
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdConnection conn)
+void qbus_methods_recv_request (QBusMethods self, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender)
+{
+  QBusFrame frame = *p_frame;
+
+  {
+    QBusMethodItem mitem = qbus_methods_get (self, frame->method);
+    
+    if (mitem)
+    {
+      // add to background processes
+      cape_queue_add (self->queue, NULL, qbus_methods_recv__process_request, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, conn, &mitem, p_frame, sender), 0);
+    }
+    else
+    {
+      CapeErr err = cape_err_new ();
+      
+      cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "method [%s] not found", frame->method);
+      
+      qbus_frame_set_type (frame, QBUS_FRAME_TYPE_MSG_RES, sender);
+      qbus_frame_set_err (frame, err);
+      
+      // finally send the frame
+      qbus_engines__send (self->engines, frame, conn);
+      
+      cape_err_del (&err);
+    }  
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender)
 {
   QBusFrame frame = *p_frame;
   
@@ -509,14 +590,14 @@ void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdCo
         case QBUS_METHOD_TYPE__RESPONSE:
         {
           // add to background processes
-          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_response, NULL, qbus_methods_recv_item_new (self->qbus, conn, &mitem, p_frame), 0);
+          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_response, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, conn, &mitem, p_frame, sender), 0);
           
           break;
         }
         case QBUS_METHOD_TYPE__METHODS:
         {
           // add to background processes
-          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_methods, NULL, qbus_methods_recv_item_new (self->qbus, conn, &mitem, p_frame), 0);
+          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_methods, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, conn, &mitem, p_frame, sender), 0);
                     
           break;
         }
@@ -647,6 +728,9 @@ void __STDCALL qbus_methods_proc_request__process (void* ptr, number_t pos, numb
   qbus_message_del (&qout);
   cape_err_del (&err);
   
+  qbus_message_del (&(pitem->msg));
+  cape_str_del (&(pitem->chain_key));
+  
   CAPE_DEL(&pitem, struct QBusMethodProcessProcItem); 
 }
 
@@ -663,6 +747,7 @@ void qbus_methods_proc_request (QBusMethods self, const CapeString method, const
     CapeString next_chain_key = cape_str_uuid ();
 
     // create a chain entry for response path
+    /*
     {
       QBusMethodItem mitem_response = qbus_methods_item_new (QBUS_METHOD_TYPE__RESPONSE, method, user_ptr, user_fct, NULL);
       
@@ -670,6 +755,7 @@ void qbus_methods_proc_request (QBusMethods self, const CapeString method, const
       
       qbus_chain_add (self->chain, next_chain_key, &mitem_response);
     }
+    */
     
     // store variables and references to a temporary struct
     {

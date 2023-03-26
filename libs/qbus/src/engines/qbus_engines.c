@@ -127,15 +127,21 @@ int qbus_engines__init_pvds (QBusEngines self, const CapeUdc pvds, CapeAioContex
   int res;
   
   // local objects
-  CapeUdcCursor* cursor = cape_udc_cursor_new (pvds, CAPE_DIRECTION_FORW);
+  CapeUdcCursor* cursor = NULL;
   
-  while (cape_udc_cursor_next (cursor))
+  if (pvds)
   {
-    res = qbus_engines__init_pvds__entity (self, cursor->item, aio_context, route, obsvbl, methods, err);
-    if (res)
+    // local objects
+    cursor = cape_udc_cursor_new (pvds, CAPE_DIRECTION_FORW);
+    
+    while (cape_udc_cursor_next (cursor))
     {
-      cape_log_msg (CAPE_LL_ERROR, "QBUS", "init pvds", cape_err_text (err));
-      goto exit_and_cleanup;
+      res = qbus_engines__init_pvds__entity (self, cursor->item, aio_context, route, obsvbl, methods, err);
+      if (res)
+      {
+        cape_log_msg (CAPE_LL_ERROR, "QBUS", "init pvds", cape_err_text (err));
+        goto exit_and_cleanup;
+      }
     }
   }
 

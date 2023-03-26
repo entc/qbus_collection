@@ -9,7 +9,6 @@ SET(QBUS_SOURCES
   core/qbus_route.c
   core/qbus_obsvbl.c
   core/qbus_message.c
-  core/qbus_queue.c
   core/qbus_chain.c
   core/qbus_methods.c
 
@@ -33,7 +32,6 @@ SET(QBUS_HEADERS
   core/qbus_route.h
   core/qbus_obsvbl.h
   core/qbus_message.h
-  core/qbus_queue.h
   core/qbus_chain.h
   core/qbus_methods.h
 
@@ -97,6 +95,8 @@ if (PVD_QBUS_DIR)
   add_custom_command (TARGET qbus_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${PVD_QBUS2_DIR}/${CMAKE_CFG_INTDIR} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/qbus)
 endif()
 
-SUBDIRS(engines/pvd_tcp)
+#----------------------------------------------------------------------------------------
 
+SUBDIRS(engines/pvd_tcp)
+SUBDIRS(tests)
 

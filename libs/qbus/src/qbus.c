@@ -138,10 +138,16 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
   }
 
   // start all worker threads
-  res = cape_queue_start (self->queue, qbus_config_get_threads (self->config), err);
-  if (res)
   {
-    return res;
+    number_t worker_threads = qbus_config_get_threads (self->config);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "init", "use %lu worker threads", worker_threads);
+    
+    res = cape_queue_start (self->queue, worker_threads, err);
+    if (res)
+    {
+      return res;
+    }
   }
 
   // load all engines and initialize the connection contexts
@@ -343,6 +349,12 @@ void qbus_forward (QBus self, QBusFrame frame, CapeString* p_sender, CapeString*
     // log
     cape_log_msg (CAPE_LL_ERROR, "QBUS", "msg forward", "forward message can't be returned");
   }            
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_request (QBus self, QBusFrame frame)
+{
 }
 
 //-----------------------------------------------------------------------------

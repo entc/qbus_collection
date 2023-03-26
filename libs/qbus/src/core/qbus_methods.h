@@ -3,7 +3,6 @@
 
 #include "qbus_route.h"
 #include "qbus_message.h"
-#include "qbus_queue.h"
 
 #include <sys/cape_export.h>
 #include <sys/cape_err.h>
@@ -35,9 +34,9 @@ __CAPE_LOCAL   void               qbus_methods_handle_response        (QBusMetho
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_recv_request           (QBusMethods, QBusFrame frame, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_request           (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender);
 
-__CAPE_LOCAL   void               qbus_methods_recv_response          (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn);
+__CAPE_LOCAL   void               qbus_methods_recv_response          (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender);
 
 __CAPE_LOCAL   void               qbus_methods_recv_methods           (QBusMethods, QBusFrame frame, QBusPvdConnection conn, const CapeString sender);
 
