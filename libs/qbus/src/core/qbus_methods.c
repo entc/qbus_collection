@@ -641,7 +641,7 @@ void qbus_methods_recv_forward (QBusMethods self, QBusFrame frame, QBusPvdConnec
     // extract chain key and sender
     qbus_methods_item_continue (mitem, &(frame->chain_key), &(frame->sender), NULL);
     
-    qbus_chain_add (self->chain, forward_chain_key, &mitem);
+    qbus_chain_add__cp (self->chain, forward_chain_key, &mitem);
   }
   
   qbus_frame_set_chainkey (frame, &forward_chain_key);
@@ -803,7 +803,7 @@ void qbus_methods_send_request (QBusMethods self, QBusPvdConnection conn, const 
 
     qbus_methods_item_continue (mitem, cont ? &(msg->chain_key): NULL, &(msg->sender), &(msg->rinfo));
     
-    qbus_chain_add (self->chain, next_chainkey, &mitem);
+    qbus_chain_add__mv (self->chain, &next_chainkey, &mitem);
   }
     
   // finally send the frame
@@ -822,14 +822,14 @@ void qbus_methods_send_methods (QBusMethods self, QBusPvdConnection conn, const 
   // create a new chain key
   CapeString next_chainkey = cape_str_uuid();
   
+  qbus_frame_set (frame, QBUS_FRAME_TYPE_METHODS, next_chainkey, module, NULL, sender);
+
   {
     QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__METHODS, NULL, user_ptr, NULL, user_fct);
     
-    qbus_chain_add (self->chain, next_chainkey, &mitem);
+    qbus_chain_add__mv (self->chain, &next_chainkey, &mitem);
   }
-  
-  qbus_frame_set (frame, QBUS_FRAME_TYPE_METHODS, next_chainkey, module, NULL, sender);
-  
+    
   // finally send the frame
   qbus_engines__send (self->engines, frame, conn);
 

@@ -22,7 +22,9 @@ __CAPE_LOCAL   QBusChain          qbus_chain_new               ();
 
 __CAPE_LOCAL   void               qbus_chain_del               (QBusChain*);
 
-__CAPE_LOCAL   void               qbus_chain_add               (QBusChain, const CapeString chainkey, QBusMethodItem* p_mitem);
+__CAPE_LOCAL   void               qbus_chain_add__cp           (QBusChain, const CapeString chainkey, QBusMethodItem* p_mitem);
+
+__CAPE_LOCAL   void               qbus_chain_add__mv           (QBusChain, CapeString* p_chainkey, QBusMethodItem* p_mitem);
 
 __CAPE_LOCAL   QBusMethodItem     qbus_chain_ext               (QBusChain, const CapeString chainkey);
 

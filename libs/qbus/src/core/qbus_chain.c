@@ -53,11 +53,23 @@ void qbus_chain_del (QBusChain* p_self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_chain_add (QBusChain self, const CapeString chainkey, QBusMethodItem* p_mitem)
+void qbus_chain_add__cp (QBusChain self, const CapeString chainkey, QBusMethodItem* p_mitem)
 {
   cape_mutex_lock (self->mutex);
 
   cape_map_insert (self->chain_items, (void*)cape_str_cp (chainkey), (void*)*p_mitem);
+  *p_mitem = NULL;
+  
+  cape_mutex_unlock (self->mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_chain_add__mv (QBusChain self, CapeString* p_chainkey, QBusMethodItem* p_mitem)
+{
+  cape_mutex_lock (self->mutex);
+  
+  cape_map_insert (self->chain_items, (void*)cape_str_mv (p_chainkey), (void*)*p_mitem);
   *p_mitem = NULL;
   
   cape_mutex_unlock (self->mutex);

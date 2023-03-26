@@ -7,7 +7,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 10000
+#define REQUESTS 100000
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
@@ -66,10 +66,12 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
   
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "client01 test01", "on 01 -> %liloops", loop_cnt);
 
+  /*
   for (i = 0; i < loop_cnt; i++)
   {
     
   }
+  */
   
   return CAPE_ERR_NONE;
 }
@@ -78,8 +80,6 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
 
 static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
-  
   if (qin->rinfo == NULL)
   {
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
@@ -95,14 +95,10 @@ static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qou
       qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
       
       return qbus_continue (qbus, "NODE1", "test02", qin, (void**)NULL, client01_test01__on01, err);
-      
-      break;
     }
     case 2:
     {
       return cape_err_set (err, CAPE_ERR_RUNTIME, "some error");
-      
-      break;
     }
     default:
     {
@@ -110,8 +106,6 @@ static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qou
       qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
       
       return qbus_continue (qbus, "NODE0", "test01", qin, (void**)NULL, client01_test01__on01, err);
-      
-      break;
     }
   }
 }
@@ -182,7 +176,7 @@ static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout,
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "got call, wait -> %lims", wait_in_ms);
 
-  cape_thread_sleep (wait_in_ms);
+  //cape_thread_sleep (wait_in_ms);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "continue-> %lims", wait_in_ms);
 
@@ -214,8 +208,6 @@ static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, Q
   
   cape_mutex_unlock (mutex);
   
-exit_and_cleanup:
-  
   return res;
 }
 
@@ -230,6 +222,8 @@ int __STDCALL qbus_trigger_thread (void* ptr)
   QBusM qin = qbus_message_new (NULL, NULL);
   CapeErr err = cape_err_new ();
 
+  cape_thread_nosignals ();
+  
   if (diff == 0)
   {
     cape_thread_sleep (400);
@@ -284,13 +278,15 @@ int __STDCALL server_create_thread (void* ptr)
   
   qbus_register (qbus, "test01", NULL, server_test01, NULL, err);
   
-  cape_thread_start (trigger_thread, qbus_trigger_thread, qbus);
-
   res = qbus_init (qbus, pvds, 5, err);
   if (res)
   {
     
   }
+
+  cape_thread_sleep (500);
+  
+  cape_thread_start (trigger_thread, qbus_trigger_thread, qbus);
   
   while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
