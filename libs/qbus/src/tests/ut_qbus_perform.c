@@ -7,7 +7,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 100000
+#define REQUESTS 10000
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
@@ -38,6 +38,7 @@ int __STDCALL client02_create_thread (void* ptr)
   res = qbus_init (qbus, pvds, 5, err);
   if (res)
   {
+   
     
   }
   

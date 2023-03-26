@@ -191,7 +191,7 @@ int qbus_methods_item__call_request (QBusMethodItem self, QBus qbus, QBusM qin, 
     }
     default:
     {
-      res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "method [%s] not found", self->name);
+      res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "unsupported type [%lu]", self->type);
       break;
     }
   }
@@ -524,6 +524,9 @@ void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, numb
   qbus_message_del (&qin);
   qbus_message_del (&qout);
   cape_err_del (&err);
+  
+  // this was only a reference
+  ritem->mitem = NULL;
   
   qbus_methods_recv_item_del (&ritem);
 }

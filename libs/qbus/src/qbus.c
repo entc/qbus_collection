@@ -143,7 +143,7 @@ int qbus_init (QBus self, CapeUdc pvds, number_t workers, CapeErr err)
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "init", "use %lu worker threads", worker_threads);
     
-    res = cape_queue_start (self->queue, worker_threads, err);
+    res = cape_queue_start (self->queue, workers > 0 ? workers : worker_threads, err);
     if (res)
     {
       return res;
