@@ -496,6 +496,8 @@ int main (int argc, char *argv[])
   
   qbus_wait (qbus, NULL, 30, err);
   
+  cape_log_msg (CAPE_LL_INFO, "TEST", "main", "wait done");
+  
   g_running = FALSE;
   
   cape_thread_join (trigger_thread);

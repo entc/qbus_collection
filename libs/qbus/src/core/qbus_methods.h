@@ -44,7 +44,7 @@ __CAPE_LOCAL   void               qbus_methods_recv_forward           (QBusMetho
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, const CapeString method, const CapeString sender, QBusM msg, void* user_ptr, fct_qbus_onMessage user_fct);
+__CAPE_LOCAL   void               qbus_methods_proc_request           (QBusMethods, const CapeString method, const CapeString sender, QBusM msg, int cont, void* user_ptr, fct_qbus_onMessage user_fct);
 
 __CAPE_LOCAL   void               qbus_methods_send_request           (QBusMethods, QBusPvdConnection conn, const CapeString module, const CapeString method, const CapeString sender, QBusM msg, int cont, void* user_ptr, fct_qbus_onMessage user_fct);
 

@@ -59,6 +59,11 @@ static int __STDCALL client01_method01 (QBus qbus, void* ptr, QBusM qin, QBusM q
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
   }
 
+  if (qin->cdata == NULL)
+  {
+    return cape_err_set (err, CAPE_ERR_RUNTIME, "cdata is NULL");
+  }
+  
   return CAPE_ERR_NONE;
 }
 
@@ -158,8 +163,18 @@ int __STDCALL server_create_thread (void* ptr)
   {
     // local objects
     QBusM qin = qbus_message_new (NULL, NULL);
+    
+    qin->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (qin->rinfo, "wpid", 42);
 
+    qin->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_s_cp (qin->cdata, "hello", "world");
+    
     qbus_send (qbus, "NODE1", "method01", qin, ptr, qbus_trigger_thread__on_method01, err);
+    
+    qbus_message_del (&qin);
   }
   
   while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && running);

@@ -234,7 +234,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
 {
   if (cape_str_compare (module, qbus_route_name_get (self->route)))
   {
-    qbus_methods_proc_request (self->methods, method, qbus_route_name_get (self->route), msg, user_ptr, user_fct);
+    qbus_methods_proc_request (self->methods, method, qbus_route_name_get (self->route), msg, cont, user_ptr, user_fct);
     
     return CAPE_ERR_CONTINUE;
   }

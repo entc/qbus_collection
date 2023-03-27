@@ -175,7 +175,7 @@ void pvd2_pfd__send (QBusPvdFD self, CapeStream s)
 {
   number_t bytes_sent = 0;
 
-  printf ("try to send = %lu\n", cape_stream_size (s));
+  //printf ("try to send = %lu\n", cape_stream_size (s));
   
   while (bytes_sent < cape_stream_size (s))
   {

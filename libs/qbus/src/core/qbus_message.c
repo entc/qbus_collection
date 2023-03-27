@@ -276,6 +276,43 @@ CapeUdc qbus_frame_set_qmsg (QBusFrame self, QBusM qmsg, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+void qbus_message_dump (QBusM self, const CapeString description)
+{
+  printf ("-----------+---------------------------------------------------------------------------------\n");
+  printf ("      NAME | *** %s ***\n", description);
+  printf ("-----------+---------------------------------------------------------------------------------\n");
+  
+  if (self->rinfo)
+  {
+    CapeString s = cape_json_to_s (self->rinfo);
+    
+    printf ("RINFO   | %s\n", s);
+      
+    cape_str_del (&s);
+  }
+  else
+  {
+    printf ("RINFO   | EMPTY\n");
+  }
+
+  if (self->cdata)
+  {
+    CapeString s = cape_json_to_s (self->cdata);
+    
+    printf ("CDATA   | %s\n", s);
+    
+    cape_str_del (&s);
+  }
+  else
+  {
+    printf ("CDATA   | EMPTY\n");
+  }
+
+  printf ("-----------+---------------------------------------------------------------------------------\n");
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_message__no_route (QBusM self, QBus qbus, void* ptr, fct_qbus_onMessage on_msg)
 {
   if (on_msg)

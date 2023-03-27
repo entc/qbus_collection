@@ -194,15 +194,8 @@ void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection c
   
   printf ("received response to = %s -> on module = %s <--- from %s\n", frame->module, qbus_route_name_get (self->route), frame->sender);
   
-  // check if the message was sent to us
-  if (cape_str_compare (frame->module, qbus_route_name_get (self->route)))
-  {
-    qbus_methods_recv_response (self->methods, p_frame, conn, qbus_route_name_get (self->route));
-  }
-  else
-  {
-    
-  }
+  // the response is assigned by chain key
+  qbus_methods_recv_response (self->methods, p_frame, conn, qbus_route_name_get (self->route));
 }
 
 //-----------------------------------------------------------------------------

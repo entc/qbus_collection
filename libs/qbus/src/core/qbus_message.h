@@ -55,6 +55,8 @@ __CAPE_LIBEX   QBusM              qbus_message_frame     (QBusFrame);
 
 __CAPE_LIBEX   CapeUdc            qbus_frame_set_qmsg    (QBusFrame, QBusM qmsg, CapeErr err);
 
+__CAPE_LIBEX   void               qbus_message_dump      (QBusM, const CapeString description);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeString role_name);
