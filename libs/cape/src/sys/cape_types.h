@@ -57,15 +57,17 @@ static void* cape_alloc (number_t size)
 
 //-----------------------------------------------------------------------------
 
+/*
 static void cape_free (void* ptr)
 {
   free (ptr);
 }
+*/
 
 //-----------------------------------------------------------------------------
 
 #define CAPE_ALLOC(size) cape_alloc(size)
-#define CAPE_FREE(ptr) cape_free(ptr)
+#define CAPE_FREE(ptr) (void)free(ptr)
 
 //-----------------------------------------------------------------------------
 
