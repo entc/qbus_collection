@@ -259,7 +259,7 @@ static int qwebs_request__internal__on_header_value (http_parser* parser, const 
     if (self->last_header_field)
     {
       CapeString h = cape_str_sub (at, length);
-      //printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
+      printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
       
       // transfer ownership to the map
       cape_map_insert (self->header_values, self->last_header_field, h);
@@ -276,9 +276,8 @@ static int qwebs_request__internal__on_body (http_parser* parser, const char* at
 {
   QWebsRequest self = parser->data;
   
-  //printf ("---------------------------------------------------------------------------\n");
-  //printf ("%.*s\n", (int)length, at);
-  //printf ("---------------------------------------------------------------------------\n");
+  printf ("------ BODY ---------------------------------------------------------------------\n");
+  printf ("%.*s\n", (int)length, at);
 
   if (self->api)
   {
@@ -294,6 +293,8 @@ static int qwebs_request__internal__on_message_begin (http_parser* parser)
 {
   QWebsRequest self = parser->data;
 
+  printf ("------ START --------------------------------------------------------------------\n");
+
   self->is_complete = FALSE;
 
   return 0;
@@ -304,6 +305,8 @@ static int qwebs_request__internal__on_message_begin (http_parser* parser)
 static int qwebs_request__internal__on_message_complete (http_parser* parser)
 {
   QWebsRequest self = parser->data;
+
+  printf ("------ END ----------------------------------------------------------------------\n");
 
   self->is_complete = TRUE;
   
