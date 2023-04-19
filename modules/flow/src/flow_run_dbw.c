@@ -1957,6 +1957,12 @@ exit_and_cleanup:
     res = CAPE_ERR_NONE;
     cape_err_clr (err);
   }
+  
+  if (res == CAPE_ERR_CONTINUE)
+  {
+    res = CAPE_ERR_NONE;
+    cape_err_clr (err);
+  }
 
   // cleanup
   flow_run_dbw_del (p_self);

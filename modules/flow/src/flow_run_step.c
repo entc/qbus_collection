@@ -330,7 +330,7 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
       uuid = cape_udc_get_s (params, "uuid", NULL);
       if (NULL == uuid)
       {
-        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'params' is missing");
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'uuid' is missing");
         goto exit_and_cleanup;
       }
 
