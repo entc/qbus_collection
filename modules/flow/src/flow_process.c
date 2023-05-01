@@ -1056,12 +1056,12 @@ int flow_process_wait_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr e
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n      (params, "psid"          , self->psid);
-    cape_udc_add_n      (params, "code"          , code);
     cape_udc_add_s_mv   (params, "uuid"          , &uuid);
 
     cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "status"        , 0);
-    
+    cape_udc_add_n      (values, "code"          , 0);
+
     // execute the query
     query_results = adbl_session_query (self->adbl_session, "flow_wait_items", &params, &values, err);
     if (query_results == NULL)
@@ -1077,6 +1077,19 @@ int flow_process_wait_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr e
   {
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
     goto exit_and_cleanup;
+  }
+  
+  // check code
+  {
+    CapeUdc code_node = cape_udc_get (first_row, "code");
+    if (code_node)
+    {
+      if (code != cape_udc_n (code_node, 0))
+      {
+        res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.CODE_MISSMATCH");
+        goto exit_and_cleanup;
+      }
+    }
   }
 
   cape_udc_replace_mv (&(qout->pdata), &first_row);
