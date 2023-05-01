@@ -346,6 +346,19 @@ static int __STDCALL qbus_flow__process__instance_rm (QBus qbus, void* ptr, QBus
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_flow__process__wait_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  FlowContext ctx = ptr;
+  
+  // create a temporary object
+  FlowProcess flow_process = flow_process_new (qbus, ctx->adbl_session, ctx->queue);
+  
+  // run the command
+  return flow_process_wait_get (&flow_process, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_flow__process__all (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   FlowContext ctx = ptr;
@@ -544,6 +557,10 @@ static int __STDCALL qbus_flow_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // remove all entries for a process
   //   args: wpid, refid
   qbus_register (qbus, "process_instance_rm" , ctx, qbus_flow__process__instance_rm, NULL, err);
+  
+  // get the status of a waiting process
+  //   args: psid, uuid, code
+  qbus_register (qbus, "process_wait_get"    , ctx, qbus_flow__process__wait_get, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

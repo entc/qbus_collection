@@ -1,5 +1,7 @@
-import { Component, Input, Output, EventEmitter, Injector, OnInit } from '@angular/core';
+import { Component, Pipe, Input, Output, EventEmitter, Injector, OnInit, PipeTransform } from '@angular/core';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { Observable, of } from "rxjs";
+import { startWith, catchError, map } from 'rxjs/operators'
 
 //-----------------------------------------------------------------------------
 
@@ -267,5 +269,29 @@ export class QbngDownloadFile
   public apply ()
   {
     this.modal.close (this.timeperiod_in_seconds);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+export interface QbngLoadingStatus<T>
+{
+  loading?: boolean;
+  value?: T;
+  error?: string;
+}
+
+@Pipe({
+  name: 'qbngLoading',
+})
+export class QbngLoadingPipe implements PipeTransform {
+  transform<T = any>(val: Observable<T>): Observable<QbngLoadingStatus<T>> {
+    return val.pipe(
+      map((value: any) => {
+        return {loading: value.type === 'start', value: value.type ? value.value : value};
+      }),
+      startWith({loading: true}),
+      catchError(error => of ({loading: false, error}))
+    );
   }
 }

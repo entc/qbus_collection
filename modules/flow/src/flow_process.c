@@ -1004,6 +1004,96 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int flow_process_wait_get (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+
+  // local objects
+  CapeString uuid = NULL;
+  number_t code = 0;
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  // do some security checks
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->pdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_PDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->psid = cape_udc_get_n (qin->pdata, "psid", 0);
+  if (0 == self->psid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PSID");
+    goto exit_and_cleanup;
+  }
+
+  code = cape_udc_get_n (qin->pdata, "code", 0);
+  if (0 == code)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CODE");
+    goto exit_and_cleanup;
+  }
+
+  uuid = cape_udc_ext_s (qin->pdata, "uuid");
+  if (NULL == uuid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_UUID");
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "wait get", "check for wait process = %i and uuid = %s", self->psid, uuid);
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "psid"          , self->psid);
+    cape_udc_add_n      (params, "code"          , code);
+    cape_udc_add_s_mv   (params, "uuid"          , &uuid);
+
+    cape_udc_add_n      (values, "id"            , 0);
+    cape_udc_add_n      (values, "status"        , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "flow_wait_items", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_ext_first (query_results);
+  
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+
+  cape_udc_replace_mv (&(qout->pdata), &first_row);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  cape_str_del (&uuid);
+  
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_process_all (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
