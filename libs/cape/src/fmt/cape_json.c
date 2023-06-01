@@ -579,11 +579,18 @@ void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, 
 
 //-----------------------------------------------------------------------------
 
+CapeString __STDCALL cape_json_to_s__encode_stream (const CapeStream s)
+{
+  return cape_str_fmt ("BUF: %lu", cape_stream_size (s));
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_json_to_s (const CapeUdc source)
 {
   CapeStream stream = cape_stream_new ();
   
-  cape_json_fill (stream, source, 0, NULL);
+  cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream);
   
   return cape_stream_to_str (&stream);
 }

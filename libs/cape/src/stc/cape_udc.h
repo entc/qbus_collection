@@ -64,6 +64,8 @@ __CAPE_LIBEX   CapeUdc              cape_udc_get              (CapeUdc, const Ca
 
 __CAPE_LIBEX   CapeUdc              cape_udc_ext              (CapeUdc, const CapeString name);
 
+__CAPE_LIBEX   void                 cape_udc_rm               (CapeUdc, const CapeString name);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void                 cape_udc_set_s_cp         (CapeUdc, const CapeString val);

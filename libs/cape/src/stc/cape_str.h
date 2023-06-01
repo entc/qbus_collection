@@ -73,6 +73,8 @@ __CAPE_LIBEX   int                cape_str_next          (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_catenate_c    (const CapeString, char c, const CapeString);
 
+__CAPE_LIBEX   CapeString         cape_str_catenate_d    (const CapeString, char c, const CapeString);
+
 __CAPE_LIBEX   CapeString         cape_str_catenate_2    (const CapeString, const CapeString);
 
 __CAPE_LIBEX   CapeString         cape_str_catenate_3    (const CapeString, const CapeString, const CapeString);
