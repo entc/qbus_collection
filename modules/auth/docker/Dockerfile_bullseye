@@ -1,0 +1,19 @@
+FROM qore/qbus:bullseye
+
+COPY docker /qore
+RUN mkdir /build && cd /build && cmake ../qore/auth && make install
+
+FROM bitnami/minideb:bullseye
+
+RUN apt-get update && apt-get install -y \
+  mariadb-client-10.5 \
+  libcrypt1 \
+  valgrind \
+  && rm -rf /var/lib/apt/lists/*
+  
+COPY --from=0 /opt .
+
+WORKDIR /mods
+
+ENTRYPOINT ["valgrind"]
+CMD ["-d", "socket:127.0.0.1:33340"]
