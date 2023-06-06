@@ -32,6 +32,8 @@ __CAPE_LOCAL   int                qbus_methods_add                    (QBusMetho
 
 __CAPE_LOCAL   void               qbus_methods_handle_response        (QBusMethods, QBusM msg);
 
+__CAPE_LOCAL   void               qbus_methods_drop_conn              (QBusMethods, QBusPvdConnection conn);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   void               qbus_methods_recv_request           (QBusMethods, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender);

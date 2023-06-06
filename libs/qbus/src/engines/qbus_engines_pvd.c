@@ -192,7 +192,7 @@ void qbus_engines_pvd__on_msg_response (QBusEnginesPvd self, QBusPvdConnection c
 {
   QBusFrame frame = *p_frame;
   
-  printf ("received response to = %s -> on module = %s <--- from %s\n", frame->module, qbus_route_name_get (self->route), frame->sender);
+  //printf ("received response to = %s -> on module = %s <--- from %s\n", frame->module, qbus_route_name_get (self->route), frame->sender);
   
   // the response is assigned by chain key
   qbus_methods_recv_response (self->methods, p_frame, conn, qbus_route_name_get (self->route));
@@ -327,6 +327,10 @@ void __STDCALL qbus_engines_pvd__fcts_del (void* factory_ptr, int reconnect, QBu
       // remove all nodes which have this connection ptr
       qbus_route_rm (engine->route, self->conn);
     }
+    
+    // tell methods to drop all ongoing requests to this connection
+    qbus_methods_drop_conn (engine->methods, self->conn);
+    
     
     CAPE_DEL (&(self->conn), struct QBusPvdConnection_s);
     

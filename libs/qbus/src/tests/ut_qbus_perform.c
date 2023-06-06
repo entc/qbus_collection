@@ -7,6 +7,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
+#define QBUS_PORT 33381
 #define REQUESTS 100000
 
 static number_t total_runs = REQUESTS;
@@ -29,7 +30,7 @@ int __STDCALL client02_create_thread (void* ptr)
 
     cape_udc_add_s_cp (pvd_entity, "type", "tcp");
     cape_udc_add_s_cp (pvd_entity, "host", "127.0.0.1");
-    cape_udc_add_n (pvd_entity, "port", 33380);
+    cape_udc_add_n (pvd_entity, "port", QBUS_PORT);
     cape_udc_add_n (pvd_entity, "mode", QBUS_PVD_MODE_CLIENT);
     
     cape_udc_add (pvds, &pvd_entity);
@@ -144,7 +145,7 @@ int __STDCALL client01_create_thread (void* ptr)
     
     cape_udc_add_s_cp (pvd_entity, "type", "tcp");
     cape_udc_add_s_cp (pvd_entity, "host", "127.0.0.1");
-    cape_udc_add_n (pvd_entity, "port", 33380);
+    cape_udc_add_n (pvd_entity, "port", QBUS_PORT);
     cape_udc_add_n (pvd_entity, "mode", QBUS_PVD_MODE_CLIENT);
     
     cape_udc_add (pvds, &pvd_entity);
@@ -270,7 +271,7 @@ int __STDCALL server_create_thread (void* ptr)
     
     cape_udc_add_s_cp (pvd_entity, "type", "tcp");
     cape_udc_add_s_cp (pvd_entity, "host", "127.0.0.1");
-    cape_udc_add_n (pvd_entity, "port", 33380);
+    cape_udc_add_n (pvd_entity, "port", QBUS_PORT);
     cape_udc_add_n (pvd_entity, "mode", QBUS_PVD_MODE_LISTEN);
     
     cape_udc_add (pvds, &pvd_entity);

@@ -128,6 +128,8 @@ __CAPE_LOCAL   int          flow_run_dbw_wait__check_item    (FlowRunDbw, const 
 
 __CAPE_LOCAL   int          flow_run_dbw_condition           (FlowRunDbw);
 
+__CAPE_LOCAL   int          flow_run_dbw_subscribe           (FlowRunDbw);
+
 //-----------------------------------------------------------------------------
 // sync tools
 

@@ -30,4 +30,10 @@ __CAPE_LOCAL   QBusMethodItem     qbus_chain_ext               (QBusChain, const
 
 //-----------------------------------------------------------------------------
 
+typedef void (__STDCALL *fct_qbus_chain__on_item) (void* user_ptr, QBusMethodItem* p_mitem);
+
+__CAPE_LIBEX   void               qbus_chain_all               (QBusChain, void* user_ptr, fct_qbus_chain__on_item);
+
+//-----------------------------------------------------------------------------
+
 #endif

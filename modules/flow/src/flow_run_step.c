@@ -717,6 +717,24 @@ int flow_run_step__if (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int flow_run_step__subscribe (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
+{
+  FlowRunStep self = *p_self;
+  
+  // get the current state of the step
+  switch (flow_run_dbw_state_get (*p_dbw))
+  {
+    case FLOW_STATE__NONE:
+    {
+      return flow_run_dbw_subscribe (*p_dbw);
+    }
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_step__place_message (FlowRunStep* p_self, CapeErr err)
 {
 
@@ -795,6 +813,11 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     case 13:   // if
     {
       res = flow_run_step__if (p_self, p_dbw, err);
+      break;
+    }
+    case 14:   // wait for observable
+    {
+      res = flow_run_step__subscribe (p_self, p_dbw, err);
       break;
     }
     case 21:   // place a message on the desktop

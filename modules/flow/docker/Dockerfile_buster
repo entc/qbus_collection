@@ -1,4 +1,4 @@
-FROM qore/qbus:buster
+FROM qore/qbus2:buster
 
 COPY docker /qore
 RUN mkdir /build && cd /build && cmake ../qore/flow && make install

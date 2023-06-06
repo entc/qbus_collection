@@ -71,7 +71,7 @@ void qbus_chain_add__mv (QBusChain self, CapeString* p_chainkey, QBusMethodItem*
   
   cape_map_insert (self->chain_items, (void*)cape_str_mv (p_chainkey), (void*)*p_mitem);
   *p_mitem = NULL;
-  
+
   cape_mutex_unlock (self->mutex);
 }
 
@@ -90,7 +90,11 @@ QBusMethodItem qbus_chain_ext (QBusChain self, const CapeString chainkey)
       
       if (n)
       {
+        n = cape_map_extract (self->chain_items, n);
+        
         ret = cape_map_node_value (n);
+        
+        cape_map_del_node (self->chain_items, &n);
       }
     }
     
@@ -98,6 +102,37 @@ QBusMethodItem qbus_chain_ext (QBusChain self, const CapeString chainkey)
   }
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_chain_all (QBusChain self, void* user_ptr, fct_qbus_chain__on_item on_item)
+{
+  cape_mutex_lock (self->mutex);
+  
+  {
+    CapeMapCursor* cursor = cape_map_cursor_new (self->chain_items, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      QBusMethodItem item = cape_map_node_value (cursor->node);
+      
+      // call the callback
+      // if item is NULL we can remove this entry
+      on_item (user_ptr, &item);
+      
+      if (item == NULL)
+      {
+        CapeMapNode n = cape_map_cursor_extract (self->chain_items, cursor);
+       
+        cape_map_del_node (self->chain_items, &n);
+      }
+    }
+    
+    cape_map_cursor_del (&cursor);
+  }
+  
+  cape_mutex_unlock (self->mutex);
 }
 
 //-----------------------------------------------------------------------------

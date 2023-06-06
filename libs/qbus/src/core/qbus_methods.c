@@ -28,11 +28,12 @@ struct QBusMethodItem_s
   
   CapeUdc rinfo;
   
+  QBusPvdConnection conn;
 };
 
 //-----------------------------------------------------------------------------
 
-QBusMethodItem qbus_methods_item_new (number_t type, const CapeString method, void* user_ptr, fct_qbus_onMessage on_message, fct_qbus_on_methods on_methods)
+QBusMethodItem qbus_methods_item_new (number_t type, const CapeString method, QBusPvdConnection conn, void* user_ptr, fct_qbus_onMessage on_message, fct_qbus_on_methods on_methods)
 {
   QBusMethodItem self = CAPE_NEW (struct QBusMethodItem_s);
   
@@ -46,6 +47,8 @@ QBusMethodItem qbus_methods_item_new (number_t type, const CapeString method, vo
   self->chain_key = NULL;
   self->chain_sender = NULL;
   self->rinfo = NULL;
+  
+  self->conn = conn;
   
   return self;
 }
@@ -175,7 +178,7 @@ int qbus_methods_item__call_request (QBusMethodItem self, QBus qbus, QBusM qin, 
   {
     case QBUS_METHOD_TYPE__REQUEST:
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call method '%s'", self->name);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call method '%s'", self->name);
       
       if (self->on_message)
       {
@@ -210,7 +213,10 @@ void qbus_methods_item_continue (QBusMethodItem self, CapeString* p_chain_key, C
 
   cape_str_replace_mv (&(self->chain_sender), p_chain_sender);
   
-  cape_udc_replace_mv (&(self->rinfo), p_rinfo);
+  if (p_rinfo)
+  {
+    cape_udc_replace_mv (&(self->rinfo), p_rinfo);
+  }  
 }
 
 //-----------------------------------------------------------------------------
@@ -292,7 +298,7 @@ int qbus_methods_add (QBusMethods self, const CapeString method, void* user_ptr,
     }
     else
     {
-      cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_methods_item_new (QBUS_METHOD_TYPE__REQUEST, method, user_ptr, on_event, NULL));
+      cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_methods_item_new (QBUS_METHOD_TYPE__REQUEST, method, NULL, user_ptr, on_event, NULL));
       
       res = CAPE_ERR_NONE;
     }
@@ -386,6 +392,54 @@ void qbus_methods_handle_response (QBusMethods self, QBusM msg)
       cape_log_msg (CAPE_LL_WARN, "QBUS", "response", "chain key was not found in local response");
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+struct QbusMethodsDropContext_s
+{
+  QBusMethods self;
+  QBusPvdConnection conn;  
+};
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods_handle_item (QBusMethods, QBusFrame* p_frame, QBusMethodItem mitem, QBusPvdConnection conn, const CapeString sender);
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_methods_drop_conn__on_item (void* user_ptr, QBusMethodItem* p_mitem)
+{
+  struct QbusMethodsDropContext_s* ctx = user_ptr;
+  
+  QBusMethodItem mitem = *p_mitem;
+  
+  if (ctx->conn == mitem->conn)
+  {
+    CapeErr err = cape_err_new ();
+    
+    QBusFrame frame = qbus_frame_new ();
+
+    cape_err_set (err, CAPE_ERR_PROCESS_FAILED, "model disconnected in process");
+    
+    qbus_frame_set_err (frame, err);
+    
+    qbus_methods_handle_item (ctx->self, &frame, mitem, NULL, mitem->chain_sender);
+    
+    cape_err_del (&err);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods_drop_conn (QBusMethods self, QBusPvdConnection conn)
+{
+  struct QbusMethodsDropContext_s ctx;
+  
+  ctx.self = self;
+  ctx.conn = conn;
+  
+  qbus_chain_all (self->chain, &ctx, qbus_methods_drop_conn__on_item);
 }
 
 //-----------------------------------------------------------------------------
@@ -498,7 +552,7 @@ void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, numb
   
   res = qbus_methods_item__call_request (ritem->mitem, ritem->qbus, qin, qout, err);
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method returned %i", res);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method returned %i", res);
   
   switch (res)
   {
@@ -523,7 +577,7 @@ void __STDCALL qbus_methods_recv__process_request (void* ptr, number_t pos, numb
       // finally send the frame
       qbus_engines__send (ritem->engines, ritem->frame, ritem->conn);
 
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method's results are sent back -> %p", ritem->conn->connection_ptr);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "process request", "user method's results are sent back -> %p", ritem->conn->connection_ptr);
     }
   }
   
@@ -570,11 +624,48 @@ void qbus_methods_recv_request (QBusMethods self, QBusFrame* p_frame, QBusPvdCon
 
 //-----------------------------------------------------------------------------
 
+void qbus_methods_handle_item (QBusMethods self, QBusFrame* p_frame, QBusMethodItem mitem, QBusPvdConnection conn, const CapeString sender)
+{
+  switch (qbus_methods_item_type (mitem))
+  {
+    case QBUS_METHOD_TYPE__FORWARD:
+    {
+      // handle special case for forward
+      // transfer logic to qbus main class
+      qbus_forward (self->qbus, *p_frame, &(mitem->chain_sender), &(mitem->chain_key));
+      
+      break;
+    }
+    case QBUS_METHOD_TYPE__REQUEST:
+    {
+      // this should not happen
+      
+      break;
+    }
+    case QBUS_METHOD_TYPE__RESPONSE:
+    {
+      // add to background processes
+      cape_queue_add (self->queue, NULL, qbus_methods_recv__process_response, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, NULL /*conn*/, &mitem, p_frame, sender), 0);
+      
+      break;
+    }
+    case QBUS_METHOD_TYPE__METHODS:
+    {
+      // add to background processes
+      cape_queue_add (self->queue, NULL, qbus_methods_recv__process_methods, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, NULL /*conn*/, &mitem, p_frame, sender), 0);
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdConnection conn, const CapeString sender)
 {
   QBusFrame frame = *p_frame;
   
-  printf ("recv response, chainkey = %s\n", frame->chain_key);
+  //printf ("recv response, chainkey = %s\n", frame->chain_key);
   
   if (frame->chain_key)
   {
@@ -582,37 +673,7 @@ void qbus_methods_recv_response (QBusMethods self, QBusFrame* p_frame, QBusPvdCo
       
     if (mitem)
     {
-      switch (qbus_methods_item_type (mitem))
-      {
-        case QBUS_METHOD_TYPE__FORWARD:
-        {
-          // handle special case for forward
-          // transfer logic to qbus main class
-          qbus_forward (self->qbus, *p_frame, &(mitem->chain_sender), &(mitem->chain_key));
-          
-          break;
-        }
-        case QBUS_METHOD_TYPE__REQUEST:
-        {
-          // this should not happen
-          
-          break;
-        }
-        case QBUS_METHOD_TYPE__RESPONSE:
-        {
-          // add to background processes
-          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_response, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, conn, &mitem, p_frame, sender), 0);
-          
-          break;
-        }
-        case QBUS_METHOD_TYPE__METHODS:
-        {
-          // add to background processes
-          cape_queue_add (self->queue, NULL, qbus_methods_recv__process_methods, NULL, qbus_methods_recv_item_new (self->qbus, self->engines, conn, &mitem, p_frame, sender), 0);
-                    
-          break;
-        }
-      }
+      qbus_methods_handle_item (self, p_frame, mitem, conn, sender);
         
       qbus_methods_item_del (&mitem);
     }
@@ -644,7 +705,7 @@ void qbus_methods_recv_forward (QBusMethods self, QBusFrame frame, QBusPvdConnec
   CapeString forward_sender = cape_str_cp (sender);
   
   {
-    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__FORWARD, NULL, NULL, NULL, NULL);
+    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__FORWARD, NULL, conn, NULL, NULL, NULL);
     
     // extract chain key and sender
     qbus_methods_item_continue (mitem, &(frame->chain_key), &(frame->sender), NULL);
@@ -730,7 +791,7 @@ void __STDCALL qbus_methods_proc_request__process (void* ptr, number_t pos, numb
   {
     case CAPE_ERR_CONTINUE:
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a continued state");
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a continued state");
       
       // this request shall not continue and another request was created instead
       // we need to add the callback and ptr to the chains list, for response
@@ -740,7 +801,7 @@ void __STDCALL qbus_methods_proc_request__process (void* ptr, number_t pos, numb
     }
     default:
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a terminated state");
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "call returned a terminated state");
       
       if (res)
       {
@@ -821,7 +882,7 @@ void qbus_methods_proc_request (QBusMethods self, const CapeString method, const
 
     // create a chain entry for response path
     {
-      QBusMethodItem mitem_response = qbus_methods_item_new (QBUS_METHOD_TYPE__RESPONSE, method, user_ptr, user_fct, NULL);
+      QBusMethodItem mitem_response = qbus_methods_item_new (QBUS_METHOD_TYPE__RESPONSE, method, NULL, user_ptr, user_fct, NULL);
       
       {
         CapeUdc copy_rinfo = cape_udc_cp (msg->rinfo);
@@ -875,7 +936,7 @@ void qbus_methods_send_request (QBusMethods self, QBusPvdConnection conn, const 
   msg->rinfo = qbus_frame_set_qmsg (frame, msg, NULL);
   
   {
-    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__RESPONSE, method, user_ptr, user_fct, NULL);
+    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__RESPONSE, method, conn, user_ptr, user_fct, NULL);
 
     qbus_methods_item_continue (mitem, cont ? &(msg->chain_key): NULL, &(msg->sender), &(msg->rinfo));
     
@@ -901,7 +962,7 @@ void qbus_methods_send_methods (QBusMethods self, QBusPvdConnection conn, const 
   qbus_frame_set (frame, QBUS_FRAME_TYPE_METHODS, next_chainkey, module, NULL, sender);
 
   {
-    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__METHODS, NULL, user_ptr, NULL, user_fct);
+    QBusMethodItem mitem = qbus_methods_item_new (QBUS_METHOD_TYPE__METHODS, NULL, conn, user_ptr, NULL, user_fct);
     
     qbus_chain_add__mv (self->chain, &next_chainkey, &mitem);
   }

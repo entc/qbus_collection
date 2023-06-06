@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.4)
 
-PROJECT(globeon)
+PROJECT(qmod_flow)
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)                         # activates -fPic on linux
 SET(CMAKE_MACOSX_RPATH 0)                                       # strip away rpath

@@ -3105,6 +3105,16 @@ int flow_run_dbw_condition (FlowRunDbw self)
 
 //-----------------------------------------------------------------------------
 
+int flow_run_dbw_subscribe (FlowRunDbw self)
+{
+  //QBusSubscriber subscriber = qbus_subscribe (self->qbus, const CapeString module, const CapeString name, void* user_ptr, fct_qbus_on_emit);
+  
+  
+  
+}
+
+//-----------------------------------------------------------------------------
+
 number_t flow_run_dbw_sync__add (FlowRunDbw self, number_t cnt, CapeErr err)
 {
   // local objects
