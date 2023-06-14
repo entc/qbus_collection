@@ -114,6 +114,29 @@ export class FlowWidgetWaitforlistComponent extends IFlowEditorWidget {
 //=============================================================================
 
 @Component({
+  selector: 'flow-widget-sleep',
+  templateUrl: './widget_sleep.html'
+})
+export class FlowWidgetSleepComponent extends IFlowEditorWidget {
+
+  //---------------------------------------------------------------------------
+
+  constructor ()
+  {
+    super ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  on_pdata_change (data, name)
+  {
+    this.submit_pdata_append (name, data);
+  }
+}
+
+//=============================================================================
+
+@Component({
   selector: 'flow-widget-split',
   templateUrl: './widget_split.html'
 })
