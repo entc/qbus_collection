@@ -7,7 +7,17 @@
       {{ 'AUTH.ROLE_INFO' | transloco }}
     </th>
     <th>
-      <button (click)="open_role_add()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus fa-fw"></i></button>
+      <div class="btn-group mr-3">
+        <div class="btn-group" ngbDropdown role="group" aria-label="Add Roles">
+          <button (click)="open_role_add()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus fa-fw"></i></button>
+          <button class="btn btn-sm btn-success" ngbDropdownToggle><i class="fa fa-bars"></i></button>
+          <div class="dropdown-menu" ngbDropdownMenu>
+            <button (click)="open_role_add ()" type="button" class="dropdown-item text-success">
+              <i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;|&nbsp;&nbsp;{{ 'AUTH.ADD_ROLE' | transloco }}
+            </button>
+          </div>
+        </div>
+      </div>
     </th>
   </tr>
   <ng-container *ngFor="let item of roles_items_ui">

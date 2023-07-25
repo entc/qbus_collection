@@ -18,37 +18,30 @@ import { AuthMsgsComponent } from './auth_msgs/component';
 //-----------------------------------------------------------------------------
 
 @NgModule({
-  declarations: [
-    AuthRolesComponent,
-    AuthUsersComponent,
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent,
-    AuthUsersSessionsModalComponent,
-    AuthUsersAddModalComponent,
-    AuthSessionInfoComponent,
-    AuthSessionInfoModalComponent,
-    AuthMsgsComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    NgxPaginationModule,
-    TrloModule,
-    QbngModule,
-    PageToolbarModule,
-    AuthSessionModule
-  ],
-  exports: [
-    AuthUsersComponent,
-    AuthRolesComponent
-  ],
-  entryComponents: [
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent,
-    AuthUsersSessionsModalComponent,
-    AuthUsersAddModalComponent,
-    AuthSessionInfoModalComponent
-  ]
+    declarations: [
+        AuthRolesComponent,
+        AuthUsersComponent,
+        AuthUsersSettingsModalComponent,
+        AuthUsersRolesModalComponent,
+        AuthUsersSessionsModalComponent,
+        AuthUsersAddModalComponent,
+        AuthSessionInfoComponent,
+        AuthSessionInfoModalComponent,
+        AuthMsgsComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        NgxPaginationModule,
+        TrloModule,
+        QbngModule,
+        PageToolbarModule,
+        AuthSessionModule
+    ],
+    exports: [
+        AuthUsersComponent,
+        AuthRolesComponent
+    ]
 })
 export class AuthCommonModule
 {

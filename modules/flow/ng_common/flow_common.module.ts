@@ -12,28 +12,23 @@ import { FlowWorkflowSelectorComponent, FlowWorkflowSelectorModalComponent } fro
 
 
 @NgModule({
-  declarations:
-  [
-    FlowWorkflowSelectorComponent,
-    FlowWorkflowSelectorModalComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    PageToolbarModule,
-    NgbModule,
-    TrloModule,
-    QbngModule,
-    AuthSessionModule
-  ],
-  providers: [
-  ],
-  exports: [
-    FlowWorkflowSelectorComponent
-  ],
-  entryComponents: [
-    FlowWorkflowSelectorModalComponent
-  ]
+    declarations: [
+        FlowWorkflowSelectorComponent,
+        FlowWorkflowSelectorModalComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        PageToolbarModule,
+        NgbModule,
+        TrloModule,
+        QbngModule,
+        AuthSessionModule
+    ],
+    providers: [],
+    exports: [
+        FlowWorkflowSelectorComponent
+    ]
 })
 export class FlowCommonModule
 {

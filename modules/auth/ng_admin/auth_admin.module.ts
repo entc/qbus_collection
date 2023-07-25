@@ -16,23 +16,20 @@ import { AuthLoginsComponent } from '@qbus/auth_logins/component';
 //-----------------------------------------------------------------------------
 
 @NgModule({
-  declarations: [
-    AuthLoginsComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    NgxPaginationModule,
-    TrloModule,
-    QbngModule,
-    PageToolbarModule,
-    AuthSessionModule,
-    AuthCommonModule
-  ],
-  exports: [
-  ],
-  entryComponents: [
-  ]
+    declarations: [
+        AuthLoginsComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        NgxPaginationModule,
+        TrloModule,
+        QbngModule,
+        PageToolbarModule,
+        AuthSessionModule,
+        AuthCommonModule
+    ],
+    exports: []
 })
 export class AuthAdminModule
 {

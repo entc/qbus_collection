@@ -16,45 +16,39 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
 //=============================================================================
 
 @NgModule({
-  declarations: [
-    AuthWorkspacesModalComponent,
-    Auth2FactorModalComponent,
-    AuthFirstuseModalComponent,
-    AuthSessionComponentDirective,
-    AuthSessionRoleDirective,
-    AuthSessionContentComponent,
-    AuthSessionPassResetComponent,
-    AuthSessionLangComponent,
-    AuthLoginComponent,
-    AuthLoginModalComponent,
-    AuthPasscheckComponent
-  ],
-  providers: [
-    AuthSession,
-    AuthSessionGuard
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    TrloModule,
-    QbngModule,
-    NgbModule,
-    HttpClientModule
-  ],
-  entryComponents: [
-    AuthWorkspacesModalComponent,
-    Auth2FactorModalComponent,
-    AuthFirstuseModalComponent,
-    AuthLoginModalComponent
-  ],
-  exports: [
-    AuthSessionRoleDirective,
-    AuthSessionContentComponent,
-    AuthSessionPassResetComponent,
-    AuthSessionLangComponent,
-    AuthLoginComponent,
-    AuthPasscheckComponent
-  ]
+    declarations: [
+        AuthWorkspacesModalComponent,
+        Auth2FactorModalComponent,
+        AuthFirstuseModalComponent,
+        AuthSessionComponentDirective,
+        AuthSessionRoleDirective,
+        AuthSessionContentComponent,
+        AuthSessionPassResetComponent,
+        AuthSessionLangComponent,
+        AuthLoginComponent,
+        AuthLoginModalComponent,
+        AuthPasscheckComponent
+    ],
+    providers: [
+        AuthSession,
+        AuthSessionGuard
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        TrloModule,
+        QbngModule,
+        NgbModule,
+        HttpClientModule
+    ],
+    exports: [
+        AuthSessionRoleDirective,
+        AuthSessionContentComponent,
+        AuthSessionPassResetComponent,
+        AuthSessionLangComponent,
+        AuthLoginComponent,
+        AuthPasscheckComponent
+    ]
 })
 export class AuthSessionModule
 {

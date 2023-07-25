@@ -18,57 +18,42 @@ import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWait
 //-----------------------------------------------------------------------------
 
 @NgModule({
-  declarations:
-  [
-    FlowEditorComponent,
-    FlowEditorAddModalComponent,
-    FlowEditorPermModalComponent,
-    FlowWorkstepsComponent,
-    FlowWorkstepsAddModalComponent,
-    FlowWidgetFunctionComponent,
-    FlowWidgetUsrFormComponent,
-    FlowWidgetSyncronComponent,
-    FlowWidgetAsyncronComponent,
-    FlowWidgetWaitforlistComponent,
-    FlowWidgetSplitComponent,
-    FlowWidgetSwitchComponent,
-    FlowWidgetIfComponent,
-    FlowWidgetCopyComponent,
-    FlowWidgetCreateNodeComponent,
-    FlowWidgetMoveComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    PageToolbarModule,
-    NgbModule,
-    TrloModule,
-    QbngModule,
-    AuthSessionModule
-  ],
-  providers: [
-    FlowFunctionService,
-    FlowUserFormService
-  ],
-  exports: [
-    FlowWorkstepsComponent,
-    FlowWidgetFunctionComponent,
-    FlowWidgetUsrFormComponent
-  ],
-  entryComponents: [
-    FlowEditorAddModalComponent,
-    FlowEditorPermModalComponent,
-    FlowWorkstepsAddModalComponent,
-    FlowWidgetSyncronComponent,
-    FlowWidgetAsyncronComponent,
-    FlowWidgetWaitforlistComponent,
-    FlowWidgetSplitComponent,
-    FlowWidgetSwitchComponent,
-    FlowWidgetIfComponent,
-    FlowWidgetCopyComponent,
-    FlowWidgetCreateNodeComponent,
-    FlowWidgetMoveComponent
-  ]
+    declarations: [
+        FlowEditorComponent,
+        FlowEditorAddModalComponent,
+        FlowEditorPermModalComponent,
+        FlowWorkstepsComponent,
+        FlowWorkstepsAddModalComponent,
+        FlowWidgetFunctionComponent,
+        FlowWidgetUsrFormComponent,
+        FlowWidgetSyncronComponent,
+        FlowWidgetAsyncronComponent,
+        FlowWidgetWaitforlistComponent,
+        FlowWidgetSplitComponent,
+        FlowWidgetSwitchComponent,
+        FlowWidgetIfComponent,
+        FlowWidgetCopyComponent,
+        FlowWidgetCreateNodeComponent,
+        FlowWidgetMoveComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        PageToolbarModule,
+        NgbModule,
+        TrloModule,
+        QbngModule,
+        AuthSessionModule
+    ],
+    providers: [
+        FlowFunctionService,
+        FlowUserFormService
+    ],
+    exports: [
+        FlowWorkstepsComponent,
+        FlowWidgetFunctionComponent,
+        FlowWidgetUsrFormComponent
+    ]
 })
 export class FlowEditorModule
 {

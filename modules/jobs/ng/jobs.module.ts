@@ -13,10 +13,9 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  declarations: [JobsListComponent, JobsAddModalComponent],
-  imports: [CommonModule, FormsModule, NgbModule, QbngModule, AuthSessionModule, RouterModule.forChild(routes)],
-  exports: [RouterModule],
-  entryComponents: [JobsAddModalComponent]
+    declarations: [JobsListComponent, JobsAddModalComponent],
+    imports: [CommonModule, FormsModule, NgbModule, QbngModule, AuthSessionModule, RouterModule.forChild(routes)],
+    exports: [RouterModule]
 })
 export class JobsModule
 {

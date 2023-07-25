@@ -10,10 +10,9 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent } from './flow_logs/component';
 
 @NgModule({
-  declarations: [ FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent ],
-  imports: [CommonModule, FormsModule, TranslocoModule, TrloModule, AuthSessionModule],
-  exports: [RouterModule, FlowLogsComponent],
-  entryComponents: [FlowLogDetailsModalComponent]
+    declarations: [FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent],
+    imports: [CommonModule, FormsModule, TranslocoModule, TrloModule, AuthSessionModule],
+    exports: [RouterModule, FlowLogsComponent]
 })
 export class FlowLogsModule
 {

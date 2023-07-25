@@ -9,6 +9,7 @@ import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';
 import localeDe from '@angular/common/locales/de';
 import localePa from '@angular/common/locales/pa';
+import localeRo from '@angular/common/locales/ro';
 
 //-----------------------------------------------------------------------------
 
@@ -16,6 +17,7 @@ registerLocaleData(localeFr, 'fr-FR');
 registerLocaleData(localeDe, 'de-DE');
 registerLocaleData(localePa, 'hi-IN');
 registerLocaleData(localePa, 'ta-IN');
+registerLocaleData(localePa, 'ro-RO');
 
 //-----------------------------------------------------------------------------
 
@@ -58,7 +60,7 @@ export class TranslocoHttpLoader implements TranslocoLoader {
     {
       provide: TRANSLOCO_CONFIG,
       useValue: translocoConfig({
-        availableLangs: ['de', 'en', 'fr', 'hi', 'ta'],
+        availableLangs: ['de', 'en', 'fr', 'hi', 'ta', 'ro'],
         defaultLang: 'de',
         // Remove this option if your application doesn't support changing language in runtime.
         reRenderOnLangChange: true
