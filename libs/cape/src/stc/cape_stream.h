@@ -66,7 +66,7 @@ __CAPE_LIBEX CapeStream        cape_stream_deserialize (CapeString, fct_cape_str
 
                                /* sets the available capacity of free bytes */
 __CAPE_LIBEX void              cape_stream_cap (CapeStream, number_t bytes_reserve);
-  
+
                                /* increases the used bytes */
 __CAPE_LIBEX void              cape_stream_set (CapeStream, number_t bytes_appended);
 
@@ -99,7 +99,7 @@ __CAPE_LIBEX CapeString        cape_stream_to_s (CapeStream);
 
 __CAPE_LIBEX void              cape_stream_append_str (CapeStream, const char*);
 
-__CAPE_LIBEX void              cape_stream_append_buf (CapeStream, const char*, unsigned long size);
+__CAPE_LIBEX number_t          cape_stream_append_buf (CapeStream, const char*, number_t size);
 
 __CAPE_LIBEX void              cape_stream_append_fmt (CapeStream, const char*, ...);
 

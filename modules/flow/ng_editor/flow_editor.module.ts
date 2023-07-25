@@ -13,7 +13,7 @@ import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsAddModalComponent } from './flow_editor_worksteps/component';
 import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
 import { FlowUserFormService, FlowFunctionService } from './flow_editor_worksteps/services';
-import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/widgets';
+import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent, FlowWidgetSleepComponent } from './flow_editor_worksteps/widgets';
 
 //-----------------------------------------------------------------------------
 
@@ -34,7 +34,8 @@ import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWait
         FlowWidgetIfComponent,
         FlowWidgetCopyComponent,
         FlowWidgetCreateNodeComponent,
-        FlowWidgetMoveComponent
+        FlowWidgetMoveComponent,
+        FlowWidgetSleepComponent
     ],
     imports: [
         CommonModule,

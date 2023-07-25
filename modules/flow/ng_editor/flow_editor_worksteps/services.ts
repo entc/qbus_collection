@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './widgets';
+import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSleepComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './widgets';
 
 //-----------------------------------------------------------------------------
 
@@ -97,6 +97,7 @@ export class FlowFunctionService
       {id: 3, name: "call module's method (syncron)", desc: 'FLOW.METHOD_INFO_CALLSYNC', type: FlowWidgetSyncronComponent},
       {id: 4, name: "call module's method (asyncron)", desc: '', type: FlowWidgetAsyncronComponent},
       {id: 5, name: "wait for list", desc: 'this step waits until a set was sent to each variable within the wait list node. a code can be specified for security reasons.', type: FlowWidgetWaitforlistComponent},
+      {id: 6, name: "sleep", desc: 'this step sleeps for the given seconds.', type: FlowWidgetSleepComponent},
       {id: 10, name: "split flow", desc: '', type: FlowWidgetSplitComponent},
       {id: 11, name: "start flow", desc: '', type: undefined},
       {id: 12, name: "switch", desc: '', type: FlowWidgetSwitchComponent},

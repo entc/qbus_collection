@@ -18,7 +18,7 @@
 struct CapeCursor_s
 {
   number_t size;
-  
+
   const char* buffer;
   const char* pos;
 };
@@ -28,11 +28,11 @@ struct CapeCursor_s
 CapeCursor cape_cursor_new ()
 {
   CapeCursor self = CAPE_NEW(struct CapeCursor_s);
-  
+
   self->size = 0;
   self->buffer = NULL;
   self->pos = self->buffer;
-  
+
   return self;
 }
 
@@ -43,7 +43,7 @@ void cape_cursor_del (CapeCursor* p_self)
   if (*p_self)
   {
     CapeCursor self = *p_self;
-    
+
     CAPE_DEL (p_self, struct CapeCursor_s);
   }
 }
@@ -81,7 +81,7 @@ number_t cape_cursor_apos (CapeCursor self)
 const char* cape_cursor_tpos (CapeCursor self, number_t len)
 {
   const char* ret = self->pos;
-  
+
   self->pos += len;
 
   return ret;
@@ -112,14 +112,35 @@ const char* cape_cursor_data (CapeCursor self)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_cursor_copy (CapeCursor self, char* bufdat, number_t buflen)
+{
+  number_t bytes_left = self->buffer - self->pos + self->size;
+  if (buflen < bytes_left)
+  {
+    memcpy (bufdat, cape_cursor_tpos (self, buflen), buflen);
+    return buflen;
+  }
+  else if (bytes_left > 0)
+  {
+    memcpy (bufdat, cape_cursor_tpos (self, bytes_left), bytes_left);
+    return bytes_left;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 char* cape_cursor_scan_s (CapeCursor self, number_t len)
 {
   if (cape_cursor__has_data (self, 2))
   {
     char* h = cape_str_sub (self->pos, len);
-    
+
     self->pos += len;
-    
+
     return h;
   }
   else
@@ -133,13 +154,13 @@ char* cape_cursor_scan_s (CapeCursor self, number_t len)
 cape_uint8 cape_cursor_scan_08 (CapeCursor self)
 {
   cape_uint8 ret = 0;
-  
+
   if (cape_cursor__has_data (self, 1))
   {
     ret = *(self->pos);
     self->pos += 1;
   }
-  
+
   return ret;
 }
 
@@ -148,7 +169,7 @@ cape_uint8 cape_cursor_scan_08 (CapeCursor self)
 cape_uint16 cape_cursor_scan_16 (CapeCursor self, int network_byte_order)
 {
   cape_uint16 ret = 0;
-  
+
   if (cape_cursor__has_data (self, 2))
   {
     if (network_byte_order)
@@ -159,10 +180,10 @@ cape_uint16 cape_cursor_scan_16 (CapeCursor self, int network_byte_order)
     {
       ret = *((cape_uint16*)(self->pos));
     }
-    
+
     self->pos += 2;
   }
-  
+
   return ret;
 }
 
@@ -171,7 +192,7 @@ cape_uint16 cape_cursor_scan_16 (CapeCursor self, int network_byte_order)
 cape_uint32 cape_cursor_scan_32 (CapeCursor self, int network_byte_order)
 {
   cape_uint32 ret = 0;
-  
+
   if (cape_cursor__has_data (self, 4))
   {
     if (network_byte_order)
@@ -182,10 +203,10 @@ cape_uint32 cape_cursor_scan_32 (CapeCursor self, int network_byte_order)
     {
       ret = *((cape_uint32*)(self->pos));
     }
-    
+
     self->pos += 4;
   }
-  
+
   return ret;
 }
 
@@ -194,21 +215,21 @@ cape_uint32 cape_cursor_scan_32 (CapeCursor self, int network_byte_order)
 cape_uint64 cape_cursor_scan_64 (CapeCursor self, int network_byte_order)
 {
   cape_uint64 ret = 0;
-  
+
   if (cape_cursor__has_data (self, 8))
   {
     if (network_byte_order)
-    {  
+    {
       ret = ntohll (*((cape_uint64*)(self->pos)));
     }
     else
     {
       ret = *((cape_uint64*)(self->pos));
     }
-    
+
     self->pos += 8;
   }
-  
+
   return ret;
 }
 
@@ -217,11 +238,11 @@ cape_uint64 cape_cursor_scan_64 (CapeCursor self, int network_byte_order)
 double cape_cursor_scan_bd (CapeCursor self, int network_byte_order)
 {
   double ret = 0;
-  
+
   if (cape_cursor__has_data (self, 8))
   {
     cape_uint64 h;
-    
+
     if (network_byte_order)
     {
       h = ntohll (*((cape_uint64*)(self->pos)));
@@ -230,12 +251,12 @@ double cape_cursor_scan_bd (CapeCursor self, int network_byte_order)
     {
       h = *((cape_uint64*)(self->pos));
     }
-    
+
     memcpy (&ret, &h, 8);
-    
+
     self->pos += 8;
   }
-  
+
   return ret;
 }
 
