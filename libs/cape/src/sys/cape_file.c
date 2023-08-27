@@ -592,19 +592,14 @@ int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
           case CAPE_DC_TYPE__FILE:
           case CAPE_DC_TYPE__LINK:
           {
-            CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+            const CapeString path_child = cape_dc_path (c);
+
+            //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "path rm", "remove file: '%s'", path_child);
 
             res = cape_fs_file_rm (path_child, err);
-
             if (res)
             {
               cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't remove file '%s': %s", path_child, cape_err_text (err));
-            }
-
-            cape_str_del (&path_child);
-
-            if (res)
-            {
               goto exit_and_cleanup;
             }
 
@@ -612,19 +607,14 @@ int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
           }
           case CAPE_DC_TYPE__DIR:
           {
-            CapeString path_child = cape_fs_path_merge (path, cape_dc_name (c));
+            const CapeString path_child = cape_dc_path (c);
 
-            res = cape_fs_path_rm (path_child, TRUE, err);
+            //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "path rm", "remove dir: '%s'", path_child);
 
+            res = cape_fs_path_rm__os (path_child, err);
             if (res)
             {
               cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path rm", "can't remove dir '%s': %s", path_child, cape_err_text (err));
-            }
-
-            cape_str_del (&path_child);
-
-            if (res)
-            {
               goto exit_and_cleanup;
             }
 
@@ -1128,6 +1118,19 @@ const CapeString cape_dc_name (CapeDirCursor self)
 
   return NULL;
 }
+
+//-----------------------------------------------------------------------------
+
+const CapeString cape_dc_path (CapeDirCursor self)
+{
+  if (self->node)
+  {
+    return self->node->fts_path;
+  }
+  
+  return NULL;
+}
+
 
 //-----------------------------------------------------------------------------
 

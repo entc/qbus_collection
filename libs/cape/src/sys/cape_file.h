@@ -120,6 +120,8 @@ __CAPE_LIBEX   void               cape_dc_del            (CapeDirCursor*);
 
 __CAPE_LIBEX   int                cape_dc_next           (CapeDirCursor);
 
+__CAPE_LIBEX   const CapeString   cape_dc_path           (CapeDirCursor);
+
 __CAPE_LIBEX   const CapeString   cape_dc_name           (CapeDirCursor);
 
 __CAPE_LIBEX   off_t              cape_dc_size           (CapeDirCursor);
