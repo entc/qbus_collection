@@ -254,6 +254,7 @@ FlowRunDbw flow_run_dbw_clone (FlowRunDbw rhs, number_t psid, number_t sqid, num
   self->qbus = rhs->qbus;
   self->adbl_session = rhs->adbl_session;
   self->queue = rhs->queue;
+  self->jobs = rhs->jobs;
 
   self->remote = cape_str_cp (rhs->remote);
   self->rinfo = cape_udc_cp (rhs->rinfo);

@@ -12,21 +12,21 @@
 
 #pragma pack(push, 16)
 typedef struct
-{  
+{
   unsigned int day;
   unsigned int month;
   unsigned int year;
-  
+
   unsigned int hour;
   unsigned int minute;
-  
+
   unsigned int usec;
   unsigned int msec;
   unsigned int sec;
-  
+
   int is_dst;
   int is_utc;
-  
+
 } CapeDatetime;
 #pragma pack(pop)
 
@@ -156,6 +156,9 @@ __CAPE_LIBEX   CapeString      cape_datetime_s__ISO8601   (const CapeDatetime*);
 __CAPE_LIBEX   time_t          cape_datetime_n__unix      (const CapeDatetime*);
 
 //-----------------------------------------------------------------------------
+
+                               /* 1970-01-01T13:28:06.419Z */
+__CAPE_LIBEX   int             cape_datetime__std         (CapeDatetime*, const CapeString datetime_in_text);
 
                                /* 1970-01-01T13:28:06.419Z */
 __CAPE_LIBEX   int             cape_datetime__std_msec    (CapeDatetime*, const CapeString datetime_in_text);

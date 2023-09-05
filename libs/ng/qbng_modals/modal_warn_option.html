@@ -16,10 +16,10 @@
 </div>
 <div class="modal-footer border-warning">
   <div class="row w-100">
-    <div class="col-6 p-0 pr-1">
-      <button type="button" class="btn btn-warning btn-block" (click)="modal.close()">{{ option.button_text | transloco }}</button>
+    <div class="col-6 pr-1 pl-0 d-grid">
+      <button type="button" class="btn btn-outline-warning btn-block" (click)="modal.close()">{{ option.button_text | transloco }}</button>
     </div>
-    <div class="col-6 p-0 pl-1">
+    <div class="col-6 pl-1 pr-0 d-grid">
       <button type="button" class="btn btn-outline-dark btn-block" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
     </div>
   </div>
