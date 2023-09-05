@@ -12,7 +12,7 @@
 // ADBL includes
 #include <adbl.h>
 
-// qjobs includes
+// QJobs includes
 #include <qjobs.h>
 
 //-----------------------------------------------------------------------------
