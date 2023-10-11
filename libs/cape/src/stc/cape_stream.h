@@ -99,7 +99,7 @@ __CAPE_LIBEX CapeString        cape_stream_to_s (CapeStream);
 
 __CAPE_LIBEX void              cape_stream_append_str (CapeStream, const char*);
 
-__CAPE_LIBEX void              cape_stream_append_buf (CapeStream, const char*, unsigned long size);
+__CAPE_LIBEX number_t          cape_stream_append_buf (CapeStream, const char*, unsigned long size);
 
 __CAPE_LIBEX void              cape_stream_append_fmt (CapeStream, const char*, ...);
 

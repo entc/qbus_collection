@@ -27,7 +27,7 @@ struct CapeStream_s
   number_t size;
   char* buffer;
   char* pos;
-  
+
   CapeString mime_type;
 };
 
@@ -44,11 +44,11 @@ void cape_stream_allocate (CapeStream self, unsigned long amount)
 {
   // safe how much we have used from the buffer
   unsigned long usedBytes = cape_stream_size (self);
-  
+
   // use realloc to minimalize coping the buffer
   self->size += amount;
   self->buffer = realloc(self->buffer, self->size + 1);
-  
+
   // reset the position
   self->pos = self->buffer + usedBytes;
 }
@@ -58,7 +58,7 @@ void cape_stream_allocate (CapeStream self, unsigned long amount)
 void cape_stream_reserve (CapeStream self, number_t amount)
 {
   number_t diffBytes = cape_stream_size (self) + amount + 1;
-  
+
   if (diffBytes > self->size)
   {
     if (amount > self->size)
@@ -77,19 +77,19 @@ void cape_stream_reserve (CapeStream self, number_t amount)
 CapeStream cape_stream_new ()
 {
   CapeStream self = CAPE_NEW(struct CapeStream_s);
-  
+
   self->size = 0;
   self->buffer = 0;
   self->pos = self->buffer;
-  
+
   self->mime_type = NULL;
-  
+
   // initial alloc
   cape_stream_allocate (self, 100);
-  
+
   // clean
   cape_stream_clr (self);
-  
+
   return self;
 }
 
@@ -98,28 +98,28 @@ CapeStream cape_stream_new ()
 void cape_stream_del (CapeStream* pself)
 {
   CapeStream self = *pself;
-  
+
   if (self)
   {
     cape_str_del (&(self->mime_type));
     free (self->buffer);
-    
+
     CAPE_DEL (pself, struct CapeStream_s);
-  }  
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_stream_to_str (CapeStream* pself)
 {
-  CapeStream self = *pself;  
+  CapeStream self = *pself;
   CapeString ret = self->buffer;
-  
+
   // set terminator
   *(self->pos) = 0;
-  
+
   CAPE_DEL(pself, struct CapeStream_s);
-  
+
   return ret;
 }
 
@@ -131,11 +131,11 @@ number_t cape_stream_to_n (CapeStream self)
 
   // prepare and add termination
   *(self->pos) = '\0';
-  
+
   ret = strtol (self->buffer, NULL, 10);
-    
+
   cape_stream_clr (self);
-  
+
   return ret;
 }
 
@@ -144,9 +144,9 @@ number_t cape_stream_to_n (CapeStream self)
 CapeString cape_stream_to_s (CapeStream self)
 {
   CapeString ret = cape_str_sub (self->buffer, self->pos - self->buffer);
-  
+
   cape_stream_clr (self);
-  
+
   return ret;
 }
 
@@ -163,7 +163,7 @@ const char* cape_stream_get (CapeStream self)
 {
   // set terminator
   *(self->pos) = 0;
-  
+
   return self->buffer;
 }
 
@@ -183,7 +183,7 @@ CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
   // allocate memory and set the size
   self->buffer = CAPE_ALLOC (buflen + 1);
   self->size = buflen;
-  
+
   // copy the data
   memcpy (self->buffer, bufdat, buflen);
 
@@ -192,7 +192,7 @@ CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
 
   // no mime type
   self->mime_type = NULL;
-  
+
   return self;
 }
 
@@ -201,13 +201,13 @@ CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
 CapeStream cape_stream_sub (CapeStream self, number_t start, number_t length, int overflow)
 {
   CapeStream ret = NULL;
-  
+
   // do some checks
   if (start < (self->pos - self->buffer))
   {
     char* pos_start = self->buffer + start;
     number_t maxlen = self->pos - pos_start;
-    
+
     if (length > maxlen)
     {
       if (overflow)
@@ -222,7 +222,7 @@ CapeStream cape_stream_sub (CapeStream self, number_t start, number_t length, in
       ret = cape_stream_from_buf (pos_start, length);
     }
   }
-  
+
   return ret;
 }
 
@@ -250,16 +250,16 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
     if (h)
     {
       CapeStream s = cape_stream_new ();
-      
+
       cape_stream_append_str (s, "data:");
       cape_stream_append_str (s, self->mime_type ? self->mime_type : "application/octet-stream");
       cape_stream_append_str (s, ";base64,");
-      
+
       cape_stream_append_str (s, h);
       return cape_stream_to_str (&s);
     }
   }
-  
+
   return NULL;
 }
 
@@ -268,17 +268,17 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
 CapeStream cape_stream_deserialize (CapeString source, fct_cape_stream_base64_decode cb_decode)
 {
   number_t pos;
-  
+
   if (cb_decode && cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
   {
     CapeStream s = cb_decode (source + pos + 8);
     if (s)
-    {      
+    {
       s->mime_type = cape_str_sub (source + 5, pos);
       return s;
     }
   }
-  
+
   return NULL;
 }
 
@@ -288,7 +288,7 @@ void cape_stream_cap (CapeStream self, number_t bytes_reserve)
 {
   cape_stream_reserve (self, bytes_reserve);
 }
-  
+
 //-----------------------------------------------------------------------------
 
 void cape_stream_set (CapeStream self, number_t bytes_appended)
@@ -330,15 +330,17 @@ void cape_stream_append_str (CapeStream self, const char* s)
 
 //-----------------------------------------------------------------------------
 
-void cape_stream_append_buf (CapeStream self, const char* buffer, unsigned long size)
+number_t cape_stream_append_buf (CapeStream self, const char* buffer, unsigned long size)
 {
   if (size > 0)
   {
     cape_stream_reserve (self, size);
-    
+
     memcpy (self->pos, buffer, size);
     self->pos += size;
   }
+
+  return size;
 }
 
 //-----------------------------------------------------------------------------
@@ -348,24 +350,24 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
   // variables
   va_list valist;
   va_start (valist, format);
-  
+
   #ifdef _MSC_VER
-  
+
   {
     int len = _vscprintf (format, valist) + 1;
-    
+
     cape_stream_reserve (self, len);
-    
+
     len = vsprintf_s (self->pos, len, format, valist);
-    
+
     self->pos += len;
   }
-  
+
   #elif _GCC
-  
+
   {
     char* strp;
-    
+
     int bytesWritten = vasprintf (&strp, format, valist);
     if ((bytesWritten > 0) && strp)
     {
@@ -373,21 +375,21 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
       free(strp);
     }
   }
-  
+
   #elif __BORLANDC__
-  
+
   {
     int len = 1024;
-    
+
     cape_stream_reserve (self, len);
-    
+
     len = vsnprintf (self->pos, len, format, valist);
-    
+
     self->pos += len;
   }
-  
+
   #endif
-  
+
   va_end(valist);
 }
 
@@ -396,7 +398,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
 void cape_stream_append_c (CapeStream self, char c)
 {
   cape_stream_reserve (self, 1);
-  
+
   *(self->pos) = c;
   self->pos++;
 }
@@ -406,15 +408,15 @@ void cape_stream_append_c (CapeStream self, char c)
 void cape_stream_append_n (CapeStream self, number_t val)
 {
   cape_stream_reserve (self, 26);  // for very long intergers
-  
+
 #ifdef _MSC_VER
-  
+
   self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%li", val);
-  
+
 #else
-  
+
   self->pos += snprintf(self->pos, 24, "%li", val);
-  
+
 #endif
 }
 
@@ -424,17 +426,17 @@ void cape_stream_append_f (CapeStream self, double val)
 {
   int res;
   CapeErr err = cape_err_new ();
-  
+
   CapeDragon4 dragon4 = cape_dragon4_new ();
-  
+
   cape_dragon4_positional (dragon4, CAPE_DRAGON4__DMODE_UNIQUE, CAPE_DRAGON4__CMODE_TOTAL, -1, FALSE, CAPE_DRAGON4__TMODE_ONE_ZERO, 0, 0);
-  
+
   cape_stream_reserve (self, 1024);  // for very long intergers
 
   res = cape_dragon4_run (dragon4, self->pos, 1024, val, err);
   if (res)
   {
-    
+
   }
   else
   {
@@ -443,7 +445,7 @@ void cape_stream_append_f (CapeStream self, double val)
   self->pos += cape_dragon4_len (dragon4);
 
   cape_dragon4_del (&dragon4);
-  
+
   cape_err_del (&err);
 }
 
@@ -454,9 +456,9 @@ void cape_stream_append_d (CapeStream self, const CapeDatetime* val)
   if (val)
   {
     CapeString h = cape_datetime_s__std_msec (val);
-    
+
     cape_stream_append_buf (self, h, cape_str_size (h));
-    
+
     cape_str_del (&h);
   }
 }
@@ -466,9 +468,9 @@ void cape_stream_append_d (CapeStream self, const CapeDatetime* val)
 void cape_stream_append_stream (CapeStream self, CapeStream stream)
 {
   unsigned long usedBytes = stream->pos - stream->buffer;
-  
+
   cape_stream_reserve (self, usedBytes);
-  
+
   memcpy (self->pos, stream->buffer, usedBytes);
   self->pos += usedBytes;
 }
@@ -478,7 +480,7 @@ void cape_stream_append_stream (CapeStream self, CapeStream stream)
 void cape_stream_append_08 (CapeStream self, cape_uint8 val)
 {
   cape_stream_reserve (self, 1);
-  
+
   *(self->pos) = val;
   self->pos++;
 }
@@ -497,7 +499,7 @@ void cape_stream_append_16 (CapeStream self, cape_uint16 val, int network_byte_o
   {
     *((cape_uint16*)(self->pos)) = val;
   }
-  
+
   self->pos += 2;
 }
 
@@ -506,7 +508,7 @@ void cape_stream_append_16 (CapeStream self, cape_uint16 val, int network_byte_o
 void cape_stream_append_32 (CapeStream self, cape_uint32 val, int network_byte_order)
 {
   cape_stream_reserve (self, 4);
-  
+
   if (network_byte_order)
   {
     *((cape_uint32*)(self->pos)) = htonl (val);
@@ -515,7 +517,7 @@ void cape_stream_append_32 (CapeStream self, cape_uint32 val, int network_byte_o
   {
     *((cape_uint32*)(self->pos)) = val;
   }
-  
+
   self->pos += 4;
 }
 
@@ -524,7 +526,7 @@ void cape_stream_append_32 (CapeStream self, cape_uint32 val, int network_byte_o
 void cape_stream_append_64 (CapeStream self, cape_uint64 val, int network_byte_order)
 {
   cape_stream_reserve (self, 8);
-  
+
   if (network_byte_order)
   {
     *((cape_uint64*)(self->pos)) = htonll (val);
@@ -533,7 +535,7 @@ void cape_stream_append_64 (CapeStream self, cape_uint64 val, int network_byte_o
   {
     *((cape_uint64*)(self->pos)) = val;
   }
-  
+
   self->pos += 8;
 }
 
@@ -544,18 +546,18 @@ void cape_stream_append_bd (CapeStream self, double val, int network_byte_order)
   cape_uint64 h;
 
   cape_stream_reserve (self, 8);
-    
+
   memcpy (&h, &val, 8);
-  
+
   if (network_byte_order)
-  {    
+  {
     *((cape_uint64*)(self->pos)) = htonll (h);
   }
   else
   {
     *((cape_uint64*)(self->pos)) = h;
   }
-  
+
   self->pos += 8;
 }
 
