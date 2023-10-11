@@ -607,7 +607,7 @@ void cape_list_node_replace (CapeList self, CapeListNode node, void* data)
 
 //-----------------------------------------------------------------------------
 
-CapeListCursor* cape_list_cursor_create (CapeList self, int direction)
+CapeListCursor* cape_list_cursor_new (CapeList self, int direction)
 {
   CapeListCursor* cursor = CAPE_NEW(CapeListCursor);
   
@@ -618,7 +618,7 @@ CapeListCursor* cape_list_cursor_create (CapeList self, int direction)
 
 //-----------------------------------------------------------------------------
 
-void cape_list_cursor_destroy (CapeListCursor** p_cursor)
+void cape_list_cursor_del (CapeListCursor** p_cursor)
 {
   if (*p_cursor)
   {

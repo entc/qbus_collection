@@ -90,9 +90,12 @@ typedef struct
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   CapeMapCursor*    cape_map_cursor_create     (CapeMap, int direction);
+#define cape_map_cursor_create cape_map_cursor_new
+#define cape_map_cursor_destroy cape_map_cursor_del
 
-__CAPE_LIBEX   void              cape_map_cursor_destroy    (CapeMapCursor**);
+__CAPE_LIBEX   CapeMapCursor*    cape_map_cursor_new        (CapeMap, int direction);
+
+__CAPE_LIBEX   void              cape_map_cursor_del        (CapeMapCursor**);
 
 __CAPE_LIBEX   void              cape_map_cursor_init       (CapeMap, CapeMapCursor*, int direction);
 
