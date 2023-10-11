@@ -1019,6 +1019,25 @@ CapeString cape_datetime_s__ISO8601 (const CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_datetime_s__DOY (const CapeDatetime* dt)
+{
+  // Define doy for each month for normal and leap year
+  const int days[2][13] = {
+      {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+      {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
+  };
+  
+  // Calculate if year is leap one
+  int leap = ((dt->year % 4 == 0 && dt->year %100 != 0) || (dt->year % 400 == 0));
+  
+  // Get doy
+  int doy = days[leap][dt->month] + dt->day;
+    
+  return cape_str_fmt ("%04i%03i%02i%02i%02i", dt->year, doy, dt->hour, dt->minute, dt->sec);
+}
+
+//-----------------------------------------------------------------------------
+
 time_t cape_datetime_n__unix (const CapeDatetime* dt)
 {
   struct tm timeinfo;
