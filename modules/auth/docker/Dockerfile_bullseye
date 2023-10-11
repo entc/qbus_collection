@@ -8,12 +8,13 @@ FROM bitnami/minideb:bullseye
 RUN apt-get update && apt-get install -y \
   mariadb-client-10.5 \
   libcrypt1 \
-  valgrind \
+#  valgrind \
   && rm -rf /var/lib/apt/lists/*
   
 COPY --from=0 /opt .
 
 WORKDIR /mods
 
-ENTRYPOINT ["valgrind"]
+#ENTRYPOINT ["valgrind"]
+ENTRYPOINT ["/mods/qbus_mod_auth"]
 CMD ["-d", "socket:127.0.0.1:33340"]

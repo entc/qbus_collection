@@ -613,6 +613,44 @@ CapeUdc cape_udc_ext (CapeUdc self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_rm (CapeUdc self, const CapeString name)
+{
+  // better to check here
+  if (self == NULL)
+  {
+    return;
+  }
+  
+  // if we don't have a name we cannot find something
+  if (name == NULL)
+  {
+    return;
+  }
+
+  switch (self->type)
+  {
+    case CAPE_UDC_NODE:
+    {
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      
+      if (n)
+      {
+        CapeUdc h;
+
+        n = cape_map_extract (self->data, n);
+        h = cape_map_node_value (n);
+
+        cape_map_node_del (&n);
+        cape_udc_del (&h);
+      }
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_set_s_cp (CapeUdc self, const CapeString val)
 {
   switch (self->type)

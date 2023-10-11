@@ -13,12 +13,12 @@ struct CapeCursor_s; typedef struct CapeCursor_s* CapeCursor;
 //-----------------------------------------------------------------------------
 
                              /*
-                              
+
                               */
 __CAPE_LIBEX CapeCursor      cape_cursor_new        (void);
 
                              /*
-                               
+
                               */
 __CAPE_LIBEX void            cape_cursor_del        (CapeCursor*);
 
@@ -39,6 +39,9 @@ __CAPE_LIBEX number_t        cape_cursor_apos       (CapeCursor);
 
                              /* get the current position and travers the len further */
 __CAPE_LIBEX const char*     cape_cursor_tpos       (CapeCursor, number_t len);
+
+                             /* tries to copy from cursor into bufdat, returns the amount of data copied */
+__CAPE_LIBEX number_t        cape_cursor_copy       (CapeCursor, char* bufdat, number_t buflen);
 
 //-----------------------------------------------------------------------------
 // scan functions

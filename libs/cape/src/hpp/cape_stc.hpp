@@ -17,7 +17,7 @@
 
 namespace cape
 {
-  
+
   //-----------------------------------------------------------------------------------------------------
   
   struct ListHolder
@@ -1247,13 +1247,21 @@ namespace cape
     UdcCursorHolder (CapeUdcCursor* obj) : m_obj (obj) {}
 
     UdcCursorHolder (cape::Udc& udc, int dir = CAPE_DIRECTION_FORW) : m_obj (cape_udc_cursor_new (udc.obj(), dir)) {}
-    
+
+    UdcCursorHolder (const cape::Udc& udc, int dir = CAPE_DIRECTION_FORW) : m_obj (cape_udc_cursor_new (udc.obj(), dir)) {}
+
     ~UdcCursorHolder () { cape_udc_cursor_del (&m_obj); }
 
     bool next () { return TRUE == cape_udc_cursor_next (m_obj); }
     
     CapeUdc item () { return m_obj->item; }
-    
+
+    void rm_item (cape::Udc& udc)
+    {
+      CapeUdc h = cape_udc_cursor_ext (udc.obj(), m_obj);
+      cape_udc_del (&h);
+    }
+
     CapeUdcCursor* m_obj;
   };
   

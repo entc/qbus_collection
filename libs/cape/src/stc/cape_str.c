@@ -909,6 +909,34 @@ CapeString cape_str_catenate_c (const CapeString s1, char c, const CapeString s2
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_catenate_d (const CapeString s1, char c, const CapeString s2)
+{
+  if (s1)
+  {
+    if (s2)
+    {
+      return cape_str_catenate_c (s1, c, s2);
+    }
+    else
+    {
+      return cape_str_cp (s1);
+    }
+  }
+  else
+  {
+    if (s2)
+    {
+      return cape_str_cp (s2);
+    }
+    else
+    {
+      return NULL;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_lpad (const CapeString source, char padding_char, number_t max_length)
 {
   CapeString ret = CAPE_ALLOC (max_length + 1);
