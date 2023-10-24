@@ -48,15 +48,6 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     QbngCastPipe,
     QbngUsingDirective
     */
-  ],
-  entryComponents: [
-    QbngUploadModalComponent,
-    QbngTimePeriodModalComponent,
-    QbngSpinnerModalComponent,
-    QbngSpinnerOkModalComponent,
-    QbngSuccessModalComponent,
-    QbngErrorModalComponent,
-    QbngWarnOptionModalComponent
   ]
 })
 export class QbngModule

@@ -41,13 +41,6 @@ import { AuthMsgsComponent } from './auth_msgs/component';
   exports: [
     AuthUsersComponent,
     AuthRolesComponent
-  ],
-  entryComponents: [
-    AuthUsersSettingsModalComponent,
-    AuthUsersRolesModalComponent,
-    AuthUsersSessionsModalComponent,
-    AuthUsersAddModalComponent,
-    AuthSessionInfoModalComponent
   ]
 })
 export class AuthCommonModule

@@ -12,8 +12,7 @@ import { FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent } f
 @NgModule({
   declarations: [ FlowLogsComponent, FlowChainComponent, FlowLogDetailsModalComponent ],
   imports: [CommonModule, FormsModule, TranslocoModule, TrloModule, AuthSessionModule],
-  exports: [RouterModule, FlowLogsComponent],
-  entryComponents: [FlowLogDetailsModalComponent]
+  exports: [RouterModule, FlowLogsComponent]
 })
 export class FlowLogsModule
 {

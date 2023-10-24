@@ -21,6 +21,8 @@
 #define ADBL_SPECIAL__LESS             "__less"
 #define ADBL_SPECIAL__GROUP_BY         "__groupby"
 #define ADBL_SPECIAL__ORDER_BY         "__orderby"
+#define ADBL_SPECIAL__LIMIT            "__limit"
+#define ADBL_SPECIAL__OFFSET           "__offset"
 
 //-----------------------------------------------------------------------------
 
@@ -31,7 +33,7 @@ typedef int       (__STDCALL *fct_adbl_pvd_begin)         (void*, CapeErr);
 typedef int       (__STDCALL *fct_adbl_pvd_commit)        (void*, CapeErr);
 typedef int       (__STDCALL *fct_adbl_pvd_rollback)      (void*, CapeErr);
 
-typedef CapeUdc   (__STDCALL *fct_adbl_pvd_get)           (void*, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr);
+typedef CapeUdc   (__STDCALL *fct_adbl_pvd_get)           (void*, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr);
 typedef number_t  (__STDCALL *fct_adbl_pvd_ins)           (void*, const char* table, CapeUdc* p_values, CapeErr);
 typedef int       (__STDCALL *fct_adbl_pvd_set)           (void*, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr);
 typedef int       (__STDCALL *fct_adbl_pvd_del)           (void*, const char* table, CapeUdc* p_params, CapeErr);

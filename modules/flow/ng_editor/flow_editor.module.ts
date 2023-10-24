@@ -54,21 +54,8 @@ import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWait
     FlowWorkstepsComponent,
     FlowWidgetFunctionComponent,
     FlowWidgetUsrFormComponent
-  ],
-  entryComponents: [
-    FlowEditorAddModalComponent,
-    FlowEditorPermModalComponent,
-    FlowWorkstepsAddModalComponent,
-    FlowWidgetSyncronComponent,
-    FlowWidgetAsyncronComponent,
-    FlowWidgetWaitforlistComponent,
-    FlowWidgetSplitComponent,
-    FlowWidgetSwitchComponent,
-    FlowWidgetIfComponent,
-    FlowWidgetCopyComponent,
-    FlowWidgetCreateNodeComponent,
-    FlowWidgetMoveComponent
   ]
+
 })
 export class FlowEditorModule
 {

@@ -41,12 +41,6 @@ import { AuthSessionGuard } from '@qbus/auth_session/route';
     NgbModule,
     HttpClientModule
   ],
-  entryComponents: [
-    AuthWorkspacesModalComponent,
-    Auth2FactorModalComponent,
-    AuthFirstuseModalComponent,
-    AuthLoginModalComponent
-  ],
   exports: [
     AuthSessionRoleDirective,
     AuthSessionContentComponent,
