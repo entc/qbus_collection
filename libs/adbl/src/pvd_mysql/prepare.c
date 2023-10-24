@@ -826,6 +826,28 @@ void adbl_prepare_append_group_by (CapeStream stream, int ansi, const CapeString
 
 //-----------------------------------------------------------------------------
 
+void adbl_prepare_append_limit (CapeStream stream, int ansi, number_t limit)
+{
+  if (limit > 0)
+  {
+    cape_stream_append_str (stream, " LIMIT ");
+    cape_stream_append_n (stream, limit);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void adbl_prepare_append_offset (CapeStream stream, int ansi, number_t offset)
+{
+  if (offset > 0)
+  {
+    cape_stream_append_str (stream, " OFFSET ");
+    cape_stream_append_n (stream, offset);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void adbl_pvd_append_table (CapeStream stream, int ansi, const char* schema, const char* table)
 {
   // schema and table name
@@ -865,6 +887,10 @@ int adbl_prepare_statement_select (AdblPrepare self, AdblPvdSession session, con
   self->params_used = adbl_prepare_append_where_clause (stream, ansi, self->params, table);
 
   adbl_prepare_append_group_by (stream, ansi, self->group_by);
+
+  adbl_prepare_append_limit (stream, ansi, self->limit);
+
+  adbl_prepare_append_offset (stream, ansi, self->offset);
 
   res = adbl_prepare_prepare (self, session, stream, err);
 
