@@ -26,6 +26,8 @@ __CAPE_LIBEX   void            cape_thread_cancel      (CapeThread);
 
 __CAPE_LIBEX   void            cape_thread_cb          (CapeThread, cape_thread_on_done);
 
+__CAPE_LIBEX   void            cape_thread_signal      (CapeThread);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void            cape_thread_nosignals   ();

@@ -501,7 +501,7 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-console.log("mouse y = " + event.clientY + " top = " + elem_rect.top + " height = " + elem_rect.height + " window h = " + window.innerHeight);
+//console.log("mouse y = " + event.clientY + " top = " + elem_rect.top + " height = " + elem_rect.height + " window h = " + window.innerHeight);
 
     // check if it is outside of the boundaries
     if ((elem_rect.top + elem_rect.height) < event.clientY)
@@ -596,7 +596,7 @@ console.log("mouse y = " + event.clientY + " top = " + elem_rect.top + " height 
     {
       const dom_el = this.el_dom.nativeElement;
 
-      console.log('touch up');
+//      console.log('touch up');
 
       box.ev_to();
 

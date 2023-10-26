@@ -6,7 +6,7 @@ export class Chart {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private el_dom: ElementRef, private rd: Renderer2, private data: number[], miny: number = 0, maxy: number = 40)
+  constructor (private el_dom: ElementRef, private rd: Renderer2, private data: number[], miny: number = 0)
   {
     const dom_el = this.el_dom.nativeElement;
 
@@ -15,31 +15,40 @@ export class Chart {
 
     this.rd.addClass (svgElement, 'chart-display');
 
+    let datastats = this.datastats (data);
+
+    var len = data.length;
+
     //const textElement = document.createElementNS (xmlns, "text");
-    var range: number = maxy - miny;
+    var range: number = datastats.max - miny;
 
     svgElement.setAttributeNS(null, "viewBox", `${0} ${0} ${31} ${range}`);
     svgElement.setAttributeNS(null, "preserveAspectRatio", "none");
 
-    const pathElement = document.createElementNS (xmlns, "path");
-
-    var path = 'M';
-    var len = data.length;
-
     for (let i = 0; i < len; i++)
     {
       const p: number = data[i];
-//      path = path + `${len - i} ${10 - p}${i == (len - 1) ? "Z" : "L"}`;
-      path = path + `${i} ${range - (p - miny)}${"L"}`;
+      const pathElement = document.createElementNS (xmlns, "path");
+
+      var path = `${"M"}${i} ${range}${"L"}${i} ${range - (p - miny)}${"L"}${i + 0.8} ${range - (p - miny)}${"L"}${i + 0.8} ${range}`;
+
+      pathElement.setAttributeNS(null, "d", path);
+      pathElement.setAttributeNS(null, "stroke", "blue");
+
+      if (p > datastats.avg)
+      {
+        pathElement.setAttributeNS(null, "fill", "green");
+      }
+      else
+      {
+        pathElement.setAttributeNS(null, "fill", "blue");
+      }
+
+      pathElement.setAttributeNS(null, "stroke-width", "1px");
+      pathElement.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
+
+      svgElement.appendChild (pathElement);
     }
-
-    pathElement.setAttributeNS(null, "d", path);
-    pathElement.setAttributeNS(null, "stroke", "blue");
-    pathElement.setAttributeNS(null, "fill", "none");
-    pathElement.setAttributeNS(null, "stroke-width", "3px");
-    pathElement.setAttributeNS(null, "vector-effect", "non-scaling-stroke");
-
-    svgElement.appendChild (pathElement);
 
     /*
     const textElement = document.createElementNS (xmlns, "text");
@@ -53,6 +62,37 @@ export class Chart {
     */
 
     this.rd.appendChild (dom_el, svgElement);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private datastats (data: number[]): {max: number, avg: number}
+  {
+    var len = data.length;
+
+    let max: number = 0;
+    let sum: number = 0;
+    let cnt: number = 0;
+
+    // determine the maximum
+    for (let i = 0; i < len; i++)
+    {
+      const p: number = data[i];
+
+      if (p > max)
+      {
+        max = p;
+      }
+
+      if (p)
+      {
+        cnt++;
+      }
+
+      sum = sum + p;
+    }
+
+    return {max: max, avg: sum / (cnt > 0 ? cnt : 1)};
   }
 
 }

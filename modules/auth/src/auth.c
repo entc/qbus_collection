@@ -451,6 +451,32 @@ static int __STDCALL qbus_auth_perm_get (QBus qbus, void* ptr, QBusM qin, QBusM 
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_perm_info (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_info (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_perm_put (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_put (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_perm_code_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -473,6 +499,19 @@ static int __STDCALL qbus_auth_perm_code_rm (QBus qbus, void* ptr, QBusM qin, QB
   
   // run the command
   return auth_perm_rm (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_perm_rpl (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_rpl (&auth_perm, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -566,13 +605,35 @@ int __STDCALL auth_context__on_perm_event (QJobs jobs, QJobsEvent event, void* u
   
   if (event->params)
   {
+    {
+      CapeString h = cape_json_to_s (event->params);
+      
+      printf ("EVENT: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+   
+    number_t apid = cape_udc_get_n (event->params, "apid", 0);
+    if (apid)
+    {
+      // create a temporary object
+      AuthPerm auth_perm = auth_perm_new (NULL, self->adbl_session, self->vault, self->perm_jobs);
+      
+      if (auth_perm__set_active (auth_perm, NULL, apid, 0, err))
+      {
+        
+      }
+      
+      auth_perm_del (&auth_perm);
+    }
+
     const CapeString token = cape_udc_get_s (event->params, "token", NULL);
     if (token)
     {
       // create a temporary object
       AuthPerm auth_perm = auth_perm_new (NULL, self->adbl_session, self->vault, self->perm_jobs);
       
-      if (auth_perm_remove (auth_perm, token, err))
+      if (auth_perm__set_active (auth_perm, token, 0, 0, err))
       {
         
       }
@@ -813,6 +874,14 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: token
   qbus_register (qbus, "token_perm_get"       , ctx, qbus_auth_perm_get, NULL, err);
 
+  // retrieve information about this token
+  //   args: apid
+  qbus_register (qbus, "token_perm_info"      , ctx, qbus_auth_perm_info, NULL, err);
+
+  // activate / deactive a token
+  //   args: apid
+  qbus_register (qbus, "token_perm_put"       , ctx, qbus_auth_perm_put, NULL, err);
+
   // get a permanent token
   //   args: token, [code], [active]
   qbus_register (qbus, "perm_code_set"        , ctx, qbus_auth_perm_code_set, NULL, err);
@@ -820,6 +889,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // remove permanent token
   //   args: token | apid
   qbus_register (qbus, "token_perm_rm"        , ctx, qbus_auth_perm_code_rm, NULL, err);
+
+  // add a new token but use predefined values (useage of limited lifespan)
+  //   args: apid
+  qbus_register (qbus, "token_perm_rpl"       , ctx, qbus_auth_perm_rpl, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

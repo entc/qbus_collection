@@ -1,38 +1,55 @@
 <div class="nav-page menu-height">
-  <div class="nav-sidebar-15em d-none d-lg-block">
 
-    <div class="ml-2">
+  <ng-container *ngIf="sidebar == false">
 
-      <ng-container *ngFor="let submenu of menu_structure">
+    <div class="nav-sidebar-15em d-none d-lg-block">
 
-        <ng-container *authSessionRole="submenu.auth">
+      <div class="ml-2">
 
-          <div class="text-muted text-right mt-2" *ngIf="submenu.name">
-            {{ submenu.name | transloco }}
-          </div>
+        <ng-container *ngFor="let submenu of menu_structure">
 
-          <div class="list-group mt-2">
+          <ng-container *authSessionRole="submenu.auth">
 
-            <ng-container *ngFor="let item of submenu.items">
+            <div class="text-muted text-right mt-2" *ngIf="submenu.name">
+              {{ submenu.name | transloco }}
+            </div>
 
-              <a *authSessionRole="item.auth" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="list-group-item list-group-item-action">
-                <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
-              </a>
+            <div class="list-group mt-2">
 
-            </ng-container>
+              <ng-container *ngFor="let item of submenu.items">
 
-          </div>
+                <a *authSessionRole="item.auth" routerLink="{{item.link}}" routerLinkActive="list-group-item-primary" class="list-group-item list-group-item-action">
+                  <span [innerHTML]="item.icon"></span>&nbsp;&nbsp;{{ item.name | transloco }}
+                </a>
+
+              </ng-container>
+
+            </div>
+
+          </ng-container>
 
         </ng-container>
 
-      </ng-container>
+      </div>
+
+    </div>
+    <div class="nav-page-content pl-4 pr-4">
+      <router-outlet></router-outlet>
+    </div>
+
+  </ng-container>
+  <ng-container *ngIf="sidebar == true">
+
+    <div class="sidebar-overlay">
 
     </div>
 
-  </div>
-  <div class="nav-page-content pl-4 pr-4">
-    <router-outlet></router-outlet>
-  </div>
+    <div class="pl-4 pr-4">
+      <router-outlet></router-outlet>
+    </div>
+
+  </ng-container>
+
 </div>
 
 <div menu-router-overlay [menu]="menu_structure" class="menu_overlay_bottom d-lg-none"></div>

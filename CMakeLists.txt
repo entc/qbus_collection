@@ -27,6 +27,7 @@ message (STATUS "ETC_LOCATION = ${ETC_LOCATION}")
 SUBDIRS(libs/cape)
 SUBDIRS(libs/adbl)
 SUBDIRS(libs/qbus)
+SUBDIRS(libs/qbus2)
 
 # helper libraries for modules
 SUBDIRS(libs/qcrypt)

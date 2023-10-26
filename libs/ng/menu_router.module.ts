@@ -9,28 +9,25 @@ import { MenuRouterComponent, MenuRouterModalComponent, MenuRouterOverlayCompone
 import { MenuRouterService } from './menu_router/service';
 
 @NgModule({
-  declarations: [
-    MenuRouterComponent,
-    MenuRouterModalComponent,
-    MenuRouterOverlayComponent
-  ],
-  imports: [
-    CommonModule,
-    NgbModule,
-    TrloModule,
-    RouterModule,
-    AuthSessionModule
-  ],
-  exports: [
-    MenuRouterComponent,
-    MenuRouterOverlayComponent
-  ],
-  providers: [
-    MenuRouterService
-  ],
-  entryComponents: [
-    MenuRouterModalComponent
-  ]
+    declarations: [
+        MenuRouterComponent,
+        MenuRouterModalComponent,
+        MenuRouterOverlayComponent
+    ],
+    imports: [
+        CommonModule,
+        NgbModule,
+        TrloModule,
+        RouterModule,
+        AuthSessionModule
+    ],
+    exports: [
+        MenuRouterComponent,
+        MenuRouterOverlayComponent
+    ],
+    providers: [
+        MenuRouterService
+    ]
 })
 export class MenuRouterModule
 {

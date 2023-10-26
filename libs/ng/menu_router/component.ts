@@ -17,6 +17,7 @@ export class MenuRouterComponent implements OnInit {
   public mobile_size: boolean = false;
 
   @Input('menu') menu_structure: MenuStructureSection[];
+  @Input('sidebar') sidebar: boolean = false;
 
   //-----------------------------------------------------------------------------
 

@@ -28,6 +28,8 @@ __CAPE_LIBEX   void         auth_perm_del           (AuthPerm*);
 
 __CAPE_LIBEX   int          auth_perm_remove        (AuthPerm, const CapeString token, CapeErr err);
 
+__CAPE_LIBEX   int          auth_perm__set_active   (AuthPerm, const CapeString token, number_t apid, number_t active, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int          auth_perm_add           (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
@@ -36,9 +38,15 @@ __CAPE_LIBEX   int          auth_perm_set           (AuthPerm*, QBusM qin, QBusM
 
 __CAPE_LIBEX   int          auth_perm_get           (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int          auth_perm_info          (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int          auth_perm_put           (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int          auth_perm_code_set      (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int          auth_perm_rm            (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int          auth_perm_rpl           (AuthPerm*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

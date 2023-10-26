@@ -115,6 +115,110 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_perm__intern__set_ttl (AuthPerm self, AdblTrx trx, number_t ttl, CapeErr err)
+{
+  int res;
+
+  CapeDatetime dt_current;
+  CapeDatetime dt_event;
+
+  // add to jobs
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n (params, "apid", self->apid);
+    
+    cape_datetime_utc (&dt_current);
+    
+    cape_datetime__add_n (&dt_current, ttl, &dt_event);
+    
+    // add a job to remove this token
+    // don't use rinfo and vsec
+    res = qjobs_add (self->jobs, &dt_event, ttl, &params, NULL, "AUTH", "PERM", self->apid, 0, NULL, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // unique key
+    cape_udc_add_n   (params, "id"           , self->apid);
+    cape_udc_add_d   (values, "toe"          , &dt_event);
+
+    // execute query
+    res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm__set_active (AuthPerm self, const CapeString token, number_t apid, number_t active, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx trx = NULL;
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    if (apid)
+    {
+      cape_udc_add_n      (params, "id"           , self->apid);
+    }
+
+    if (token)
+    {
+      cape_udc_add_s_cp   (params, "token", token);
+    }
+    
+    // add values
+    cape_udc_add_n        (values, "active"       , active);
+
+    // execute query
+    res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm set", "token was to active = %lu", active);
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_perm_remove__apid (AuthPerm self, number_t apid, number_t wpid, CapeErr err)
 {
   int res;
@@ -414,14 +518,6 @@ void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString 
   {
     CapeDatetime time_of_creation; cape_datetime_utc (&time_of_creation);
     cape_udc_add_d (values, "toc", &time_of_creation);
-    
-    if (ttl)
-    {
-      CapeDatetime time_of_invalidation;
-      cape_datetime__add_n (&time_of_creation, ttl, &time_of_invalidation);
-
-      cape_udc_add_d (values, "toe", &time_of_invalidation);
-    }
   }
 
   // add rinfo
@@ -439,6 +535,87 @@ void auth_perm__intern__values (AuthPerm self, CapeUdc values, const CapeString 
 
 //-----------------------------------------------------------------------------
 
+int auth_perm__internal__add (AuthPerm self, AdblTrx trx, number_t ttl, number_t rfid, const CapeString token, CapeString* p_rinfo, CapeString* p_content, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString code_hash = NULL;
+  
+  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
+  if (self->token == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  if (self->code)
+  {
+    code_hash = qcrypt__hash_sha256__hex_o (self->code, cape_str_size(self->code), err);
+    if (code_hash == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  {
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // insert values
+    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+
+    // set to active
+    cape_udc_add_n      (values, "active"       , 1);
+
+    // workspace ID
+    cape_udc_add_n      (values, "wpid"         , self->wpid);
+    
+    // activate the code handling
+    if (self->code)
+    {
+      cape_udc_add_n    (values, "code_active"  , 1);
+      cape_udc_add_s_mv (values, "code", &code_hash);
+    }
+    
+    if (rfid)
+    {
+      cape_udc_add_n    (values, "rfid"  , rfid);
+    }
+    
+    // add values
+    auth_perm__intern__values (self, values, token, ttl, p_rinfo, p_content);
+    
+    // execute query
+    self->apid = adbl_trx_insert (trx, "auth_perm", &values, err);
+    if (self->apid == 0)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+    
+    if (ttl > 0)
+    {
+      res = auth_perm__intern__set_ttl (self, trx, ttl, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+    }
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm add", "new token [%s] with rfid = %lu has been added with ttl = %lu", token, rfid, ttl);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&code_hash);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -446,10 +623,9 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
 
   // local objects
   number_t ttl = 0;
+  CapeString token = NULL;
   CapeString content = NULL;
   CapeString rinfo = NULL;
-  CapeString token = NULL;
-  CapeString code_hash = NULL;
   AdblTrx trx = NULL;
 
   // do some security checks
@@ -476,26 +652,9 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   {
     goto exit_and_cleanup;
   }
-
+  
   // generate the token
   token = cape_str_uuid ();
-  
-  self->token = qcrypt__hash_sha256__hex_o (token, cape_str_size(token), err);
-  if (self->token == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  if (self->code)
-  {
-    code_hash = qcrypt__hash_sha256__hex_o (self->code, cape_str_size(self->code), err);
-    if (code_hash == NULL)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-  }
 
   // start a new transaction
   trx = adbl_trx_new (self->adbl_session, err);
@@ -505,53 +664,10 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  res = auth_perm__internal__add (self, trx, ttl, 0, token, &rinfo, &content, err);
+  if (res)
   {
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // insert values
-    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
-    
-    // workspace ID
-    cape_udc_add_n      (values, "wpid"         , self->wpid);
-    
-    // activate the code handling
-    if (self->code)
-    {
-      cape_udc_add_n    (values, "code_active"  , 1);
-      cape_udc_add_s_mv (values, "code", &code_hash);
-    }
-
-    // add values
-    auth_perm__intern__values (self, values, token, ttl, &rinfo, &content);
-    
-    // execute query
-    self->apid = adbl_trx_insert (trx, "auth_perm", &values, err);
-    if (self->apid == 0)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-
-    if (ttl > 0)
-    {
-      CapeDatetime dt_current;
-      CapeDatetime dt_event;
-      
-      CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      cape_udc_add_s_cp (params, "token", self->token);
-      
-      cape_datetime_utc (&dt_current);
-      cape_datetime__add_n (&dt_current, ttl, &dt_event);
-
-      // add a job to remove this token
-      // don't use rinfo and vsec
-      res = qjobs_add (self->jobs, &dt_event, ttl, &params, NULL, "AUTH", "PERM", self->apid, 0, NULL, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-    }
+    goto exit_and_cleanup;
   }
   
   adbl_trx_commit (&trx, err);
@@ -564,7 +680,6 @@ int auth_perm_add (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
-  cape_str_del (&code_hash);
   cape_str_del (&content);
   cape_str_del (&rinfo);
   cape_str_del (&token);
@@ -652,28 +767,14 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     {
       goto exit_and_cleanup;
     }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm add", "new token [%s] with rfid = %lu overitten with ttl = %lu", token, self->rfid, 0);
   }
   else   // insert
   {
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // insert values
-    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
-    
-    // unique key
-    cape_udc_add_n      (values, "rfid"         , self->rfid);
-    
-    // workspace ID
-    cape_udc_add_n      (values, "wpid"         , self->wpid);
-    
-    // add values
-    auth_perm__intern__values (self, values, token, 0, &rinfo, &content);
-    
-    // execute query
-    self->apid = adbl_trx_insert (trx, "auth_perm", &values, err);
-    if (self->apid == 0)
+    res = auth_perm__internal__add (self, trx, 0, self->rfid, token, &rinfo, &content, err);
+    if (res)
     {
-      res = cape_err_code (err);
       goto exit_and_cleanup;
     }
   }
@@ -773,13 +874,12 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
     goto exit_and_cleanup;
   }
   
-  //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm get", "seek token = %s", self->token);
-  
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_s_cp   (params, "token"         , token_hash);
+    cape_udc_add_n      (params, "active"        , 1);
     cape_udc_add_n      (values, "id"            , 0);
     cape_udc_add_n      (values, "wpid"          , 0);
     cape_udc_add_s_cp   (values, "code"          , NULL);
@@ -799,6 +899,8 @@ int auth_perm__helper__get (AdblSession adbl_session, AuthVault vault, QBusM qin
   first_row = cape_udc_get_first (query_results);
   if (first_row == NULL)
   {
+    cape_log_fmt (CAPE_LL_ERROR, "AUTH", "perm get", "seek token = %s", token);
+    
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
     goto exit_and_cleanup;
   }
@@ -937,6 +1039,172 @@ int auth_perm_get (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm_info (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  
+  if (FALSE == qbus_message_role_has (qin, "auth_perm"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+
+  // fetch the workspace from the session
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->apid = cape_udc_get_n (qin->cdata, "apid", 0);
+  if (self->apid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_APID");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"            , self->apid);
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (values, "active"        , 0);
+    cape_udc_add_s_cp   (values, "rinfo"         , NULL);
+    cape_udc_add_s_cp   (values, "cdata"         , NULL);
+    cape_udc_add_d      (values, "toc"           , NULL);
+    cape_udc_add_d      (values, "toi"           , NULL);
+    cape_udc_add_d      (values, "toe"           , NULL);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "auth_perm", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_ext_first (query_results);
+  if (first_row == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_perm__intern__decrypt (self->vault, first_row, self->wpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  cape_udc_replace_mv (&(qout->cdata), &first_row);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm_put (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  number_t days;
+  number_t active;
+
+  // local objects
+  AdblTrx trx = NULL;
+
+  if (FALSE == qbus_message_role_has (qin, "auth_perm"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  // fetch the workspace from the session
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  self->apid = cape_udc_get_n (qin->cdata, "apid", 0);
+  if (self->apid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_APID");
+    goto exit_and_cleanup;
+  }
+  
+  // optional
+  days = cape_udc_get_n (qin->cdata, "days", 0);
+  
+  // optional
+  active = cape_udc_get_n (qin->cdata, "active", 0);
+  
+  // set the token to specific active status
+  res = auth_perm__set_active (self, NULL, self->apid, active, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  if (days > 0)
+  {
+    // start a new transaction
+    trx = adbl_trx_new (self->adbl_session, err);
+    if (trx == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+
+    res = auth_perm__intern__set_ttl (self, trx, days * 86400, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+
   auth_perm_del (p_self);
   return res;
 }
@@ -1112,6 +1380,119 @@ int auth_perm_rm (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  auth_perm_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_perm_rpl (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthPerm self = *p_self;
+
+  const CapeString vsec;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  CapeString token = NULL;
+  CapeString rinfo = NULL;
+  CapeString cdata = NULL;
+  CapeString rinfo_encrypted = NULL;
+  CapeString cdata_encrypted = NULL;
+
+  if (FALSE == qbus_message_role_has (qin, "auth_perm"))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  // fetch the workspace from the session
+  self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  if (self->wpid == 0)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+    goto exit_and_cleanup;
+  }
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  token = cape_udc_ext_s (qin->cdata, "token");
+  if (token == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_TOKEN");
+    goto exit_and_cleanup;
+  }
+
+  rinfo = cape_udc_ext_s (qin->cdata, "rinfo");
+  if (rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_RINFO");
+    goto exit_and_cleanup;
+  }
+
+  cdata = cape_udc_ext_s (qin->cdata, "cdata");
+  if (cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  vsec = auth_vault__vsec (self->vault, self->wpid);
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+    goto exit_and_cleanup;
+  }
+
+  rinfo_encrypted = qcrypt__encrypt (vsec, rinfo, err);
+  if (rinfo_encrypted == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  cdata_encrypted = qcrypt__encrypt (vsec, cdata, err);
+  if (cdata_encrypted == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = auth_perm__internal__add (self, trx, 3 * 86400, 0, token, &rinfo_encrypted, &cdata_encrypted, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  adbl_trx_commit (&trx, err);
+  res = CAPE_ERR_NONE;
+  
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_n (qout->cdata, "apid", self->apid);
+  
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+
+  cape_str_del (&cdata_encrypted);
+  cape_str_del (&rinfo_encrypted);
+  cape_str_del (&rinfo);
+  cape_str_del (&cdata);
+  cape_str_del (&token);
+
   auth_perm_del (p_self);
   return res;
 }

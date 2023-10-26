@@ -7,6 +7,7 @@ set(CORE_SOURCES
   qbus_frame.c
   qbus_route.c
   qbus_route_items.c
+  qbus_route_observables.c
   qbus_route_method.c
   qbus_logger.c
   qbus_logger_file.c
@@ -19,6 +20,7 @@ set(CORE_HEADERS
   qbus_frame.h
   qbus_route.h
   qbus_route_items.h
+  qbus_route_observables.h
   qbus_route_method.h
   qbus_logger.h
   qbus_logger_file.h

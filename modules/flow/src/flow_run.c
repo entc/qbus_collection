@@ -140,7 +140,8 @@ int flow_run_add__complete_run_in_database (FlowRun self, CapeUdc rdata, CapeErr
     goto exit_and_cleanup;
   }
   
-  if (rdata)
+  // only store the result in case there was no error
+  if (rdata && (err_run == NULL))
   {
     rdata_id = flow_data_add (trx, rdata, err);
     if (0 == rdata_id)
