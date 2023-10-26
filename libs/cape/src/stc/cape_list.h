@@ -84,9 +84,12 @@ typedef struct
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   CapeListCursor*   cape_list_cursor_create    (CapeList, int direction);
+#define cape_list_cursor_create  cape_list_cursor_new
+#define cape_list_cursor_destroy cape_list_cursor_del
 
-__CAPE_LIBEX   void              cape_list_cursor_destroy   (CapeListCursor**);
+__CAPE_LIBEX   CapeListCursor*   cape_list_cursor_new       (CapeList, int direction);
+
+__CAPE_LIBEX   void              cape_list_cursor_del       (CapeListCursor**);
 
 __CAPE_LIBEX   void              cape_list_cursor_init      (CapeList, CapeListCursor*, int direction);
 

@@ -1035,7 +1035,7 @@ void cape_map_cursor_init (CapeMap self, CapeMapCursor* cursor, int direction)
 
 //-----------------------------------------------------------------------------
 
-CapeMapCursor* cape_map_cursor_create (CapeMap self, int direction)
+CapeMapCursor* cape_map_cursor_new (CapeMap self, int direction)
 {
   CapeMapCursor* cursor = (CapeMapCursor*)malloc (sizeof(CapeMapCursor));
   
@@ -1046,7 +1046,7 @@ CapeMapCursor* cape_map_cursor_create (CapeMap self, int direction)
 
 //-----------------------------------------------------------------------------
 
-void cape_map_cursor_destroy (CapeMapCursor** pcursor)
+void cape_map_cursor_del (CapeMapCursor** pcursor)
 {
   CapeMapCursor* cursor = *pcursor;
   
