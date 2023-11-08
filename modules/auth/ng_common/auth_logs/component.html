@@ -1,17 +1,22 @@
 <table class="table mt-2">
   <tr>
-    <th width="80%">
-    </th>
     <th width="20%">
+      IP
+    </th>
+    <th width="80%">
+      {{ 'AUTH.INFO_BROWSER' | transloco }}
     </th>
   </tr>
   <tr *ngFor="let item of log_list">
     <td>
-      {{ item.ltime | trlo_locale }}<br>
-      <small>{{ item.info['userAgent'] }}</small>
+      <div>{{ item.ltime | trlo_timediff }}</div>
+      <small>{{ item.ip }}</small>
     </td>
-    <td>
-      {{ item.ip }}
+    <td class="text-right">
+      <div>
+        {{ item.ltime | trlo_locale }}
+      </div>
+      <small>{{ item.info['userAgent'] }}</small>
     </td>
   </tr>
 </table>

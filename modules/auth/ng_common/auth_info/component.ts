@@ -15,7 +15,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 }) export class AuthSessionInfoComponent {
 
   public sitem: AuthSessionItem;
-  public mode: number = 2;
+  public mode: number = 1;
 
   //---------------------------------------------------------------------------
 
