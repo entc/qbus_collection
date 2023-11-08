@@ -280,7 +280,14 @@ void adbl_session_close (AdblSession* p_self)
 
 CapeUdc adbl_session_query (AdblSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
 {
-  return self->pvd->pvd_get (self->session, table, p_params, p_values, err);
+  return self->pvd->pvd_get (self->session, table, p_params, p_values, 0, 0, NULL, NULL, err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc adbl_session_query_ex (AdblSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr err)
+{
+  return self->pvd->pvd_get (self->session, table, p_params, p_values, limit, offset, group_by, order_by, err);
 }
 
 //-----------------------------------------------------------------------------

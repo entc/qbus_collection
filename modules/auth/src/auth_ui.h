@@ -39,11 +39,15 @@ __CAPE_LIBEX   int     auth_ui_set         (AuthUI*, QBusM qin, QBusM qout, Cape
 
 __CAPE_LIBEX   int     auth_ui_add         (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
-__CAPE_LIBEX   int     auth_ui_pp          (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+__CAPE_LIBEX   int     auth_ui_pp_get      (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int     auth_ui_pp_put      (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_login       (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_login_get   (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int     auth_ui_login_logs  (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int     auth_ui_switch      (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 

@@ -56,9 +56,9 @@ int main (int argc, char *argv[])
         cape_udc_add_n       (columns, "fk01", 0);
         cape_udc_add_s_cp    (columns, "col01", NULL);
         cape_udc_add_s_cp    (columns, "col02", NULL);
-        
-        CapeUdc results = adbl_pvd_get (session, "test_table01", NULL, &columns, err);
-        
+
+        CapeUdc results = adbl_pvd_get (session, "test_table01", NULL, &columns, 0, 0, NULL, NULL, err);
+
         if (results)
         {
           cape_udc_del (&results);
@@ -131,9 +131,9 @@ int main (int argc, char *argv[])
         cape_udc_add_n       (columns, "fk01", 0);
         cape_udc_add_s_cp    (columns, "col01", NULL);
         cape_udc_add_s_cp    (columns, "col02", NULL);
-        
-        CapeUdc results = adbl_pvd_get (session, "test_table01", NULL, &columns, err);
-        
+
+        CapeUdc results = adbl_pvd_get (session, "test_table01", NULL, &columns, 0, 0, NULL, NULL, err);
+
         if (results)
         {
           cape_udc_del (&results);

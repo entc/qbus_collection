@@ -26,21 +26,27 @@ struct AdblPrepare_s
 
   CapeString group_by;
   CapeString order_by;
+
+  number_t limit;
+  number_t offset;
 };
 
 //-----------------------------------------------------------------------------
 
-AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
+AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by)
 {
   AdblPrepare self = CAPE_NEW(struct AdblPrepare_s);
   
   self->stmt = NULL;  
   self->values = NULL;
   self->params = NULL;
-  
-  self->group_by = NULL;
-  self->order_by = NULL;
-  
+
+  self->group_by = cape_str_cp (group_by);
+  self->order_by = cape_str_cp (order_by);
+
+  self->limit = limit;
+  self->offset = offset;
+
   // check all values
   if (p_values)
   {
@@ -60,12 +66,18 @@ AdblPrepare adbl_prepare_new (CapeUdc* p_params, CapeUdc* p_values)
       // check for special column entries
       if (cape_str_equal (name, ADBL_SPECIAL__GROUP_BY))
       {
-        self->group_by = cape_udc_s_mv (item, NULL);
+        CapeString h = cape_udc_s_mv (item, NULL);
+
+        cape_str_replace_mv (&(self->group_by), &h);
+
         cape_udc_del (&item);
       }
       else if (cape_str_equal (name, ADBL_SPECIAL__ORDER_BY))
       {
-        self->order_by = cape_udc_s_mv (item, NULL);
+        CapeString h = cape_udc_s_mv (item, NULL);
+
+        cape_str_replace_mv (&(self->order_by), &h);
+
         cape_udc_del (&item);
       }
       else switch (cape_udc_type(item))
@@ -814,6 +826,49 @@ void adbl_prepare_append_group_by (CapeStream stream, int ansi, const CapeString
 
 //-----------------------------------------------------------------------------
 
+void adbl_prepare_append_order_by (CapeStream stream, int ansi, const CapeString order_by)
+{
+  if (order_by)
+  {
+    if (order_by[0] == '-')
+    {
+      cape_stream_append_str (stream, " ORDER BY ");
+      cape_stream_append_str (stream, order_by + 1);
+      cape_stream_append_str (stream, " DESC");
+    }
+    else
+    {
+      cape_stream_append_str (stream, " ORDER BY ");
+      cape_stream_append_str (stream, order_by);
+      cape_stream_append_str (stream, " ASC");
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void adbl_prepare_append_limit (CapeStream stream, int ansi, number_t limit)
+{
+  if (limit > 0)
+  {
+    cape_stream_append_str (stream, " LIMIT ");
+    cape_stream_append_n (stream, limit);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void adbl_prepare_append_offset (CapeStream stream, int ansi, number_t offset)
+{
+  if (offset > 0)
+  {
+    cape_stream_append_str (stream, " OFFSET ");
+    cape_stream_append_n (stream, offset);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void adbl_pvd_append_table (CapeStream stream, int ansi, const char* schema, const char* table)
 {
   // schema and table name
@@ -853,7 +908,13 @@ int adbl_prepare_statement_select (AdblPrepare self, AdblPvdSession session, con
   self->params_used = adbl_prepare_append_where_clause (stream, ansi, self->params, table);
   
   adbl_prepare_append_group_by (stream, ansi, self->group_by);
-  
+
+  adbl_prepare_append_order_by (stream, ansi, self->order_by);
+
+  adbl_prepare_append_limit (stream, ansi, self->limit);
+
+  adbl_prepare_append_offset (stream, ansi, self->offset);
+
   res = adbl_prepare_prepare (self, session, stream, err);
   
   cape_stream_del (&stream);

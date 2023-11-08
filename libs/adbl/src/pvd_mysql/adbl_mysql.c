@@ -456,10 +456,10 @@ void __STDCALL adbl_pvd_close (AdblPvdSession* p_self)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc __STDCALL adbl_pvd_get (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
+CapeUdc __STDCALL adbl_pvd_get (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr err)
 {
-  AdblPvdCursor cursor = adbl_pvd_cursor_new (self, table, p_params, p_values, err);
-  
+  AdblPvdCursor cursor = adbl_pvd_cursor_new (self, table, p_params, p_values, limit, offset, group_by, order_by, err);
+
   if (cursor == NULL)
   {
     cape_log_msg (CAPE_LL_ERROR, "ADBL", "mysql get", cape_err_text(err));
@@ -509,8 +509,8 @@ number_t __STDCALL adbl_pvd_ins (AdblPvdSession self, const char* table, CapeUdc
   {
     goto exit_and_cleanup;
   }
-  
-  pre = adbl_prepare_new (NULL, p_values);
+
+  pre = adbl_prepare_new (NULL, p_values, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
@@ -593,9 +593,9 @@ exit_and_cleanup:
 int __STDCALL adbl_pvd_del (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeErr err)
 {
   int res;
-  
-  AdblPrepare pre = adbl_prepare_new (p_params, NULL);
-  
+
+  AdblPrepare pre = adbl_prepare_new (p_params, NULL, 0, 0, NULL, NULL);
+
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
 
@@ -716,8 +716,8 @@ int __STDCALL adbl_pvd_set (AdblPvdSession self, const char* table, CapeUdc* p_p
     res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
-  
-  pre = adbl_prepare_new (p_params, p_values);
+
+  pre = adbl_prepare_new (p_params, p_values, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
@@ -813,8 +813,8 @@ number_t __STDCALL adbl_pvd_ins_or_set (AdblPvdSession self, const char* table, 
   {
     goto exit_and_cleanup;
   }
-  
-  pre = adbl_prepare_new (p_params, p_values);
+
+  pre = adbl_prepare_new (p_params, p_values, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
@@ -955,11 +955,11 @@ int __STDCALL adbl_pvd_rollback (AdblPvdSession self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-AdblPvdCursor __STDCALL adbl_pvd_cursor_new (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
+AdblPvdCursor __STDCALL adbl_pvd_cursor_new (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr err)
 {
   int res;
-  AdblPrepare pre = adbl_prepare_new (p_params, p_values);
-  
+  AdblPrepare pre = adbl_prepare_new (p_params, p_values, limit, offset, group_by, order_by);
+
   cape_mutex_lock (self->mutex);
   
   // run the procedure
@@ -1153,7 +1153,7 @@ number_t __STDCALL adbl_pvd_atomic_dec (AdblPvdSession self, const char* table, 
   number_t ret = -1;
   
   int res;
-  AdblPrepare pre = adbl_prepare_new (p_params, NULL);
+  AdblPrepare pre = adbl_prepare_new (p_params, NULL, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
@@ -1237,7 +1237,7 @@ number_t __STDCALL adbl_pvd_atomic_inc (AdblPvdSession self, const char* table, 
   number_t ret = -1;
   
   int res;
-  AdblPrepare pre = adbl_prepare_new (p_params, NULL);
+  AdblPrepare pre = adbl_prepare_new (p_params, NULL, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);
@@ -1321,7 +1321,7 @@ number_t __STDCALL adbl_pvd_atomic_or (AdblPvdSession self, const char* table, C
   number_t ret = -1;
   
   int res;
-  AdblPrepare pre = adbl_prepare_new (p_params, NULL);
+  AdblPrepare pre = adbl_prepare_new (p_params, NULL, 0, 0, NULL, NULL);
 
   // mysqlclient is not thread safe, so we need to protect the resource with mutex
   cape_mutex_lock (self->mutex);

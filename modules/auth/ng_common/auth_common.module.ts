@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgxPaginationModule } from 'ngx-pagination';
 import { TrloModule } from '@qbus/trlo.module';
 import { QbngModule } from '@qbus/qbng.module';
@@ -12,8 +13,9 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 // components
 import { AuthRolesComponent } from './auth_roles/component';
 import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModalComponent, AuthUsersSessionsModalComponent, AuthUsersAddModalComponent } from './auth_users/component';
-import { AuthSessionInfoComponent, AuthSessionInfoModalComponent } from './auth_info/component';
+import { AuthSessionInfoComponent, AuthSessionInfoModalComponent, AuthSessionInfoNameModalComponent, AuthSessionInfoPasswordModalComponent } from './auth_info/component';
 import { AuthMsgsComponent } from './auth_msgs/component';
+import { AuthLogsComponent } from './auth_logs/component';
 
 //-----------------------------------------------------------------------------
 
@@ -27,11 +29,15 @@ import { AuthMsgsComponent } from './auth_msgs/component';
         AuthUsersAddModalComponent,
         AuthSessionInfoComponent,
         AuthSessionInfoModalComponent,
-        AuthMsgsComponent
+        AuthSessionInfoNameModalComponent,
+        AuthSessionInfoPasswordModalComponent,
+        AuthMsgsComponent,
+        AuthLogsComponent
     ],
     imports: [
         CommonModule,
         FormsModule,
+        NgbModule,
         NgxPaginationModule,
         TrloModule,
         QbngModule,
@@ -40,7 +46,8 @@ import { AuthMsgsComponent } from './auth_msgs/component';
     ],
     exports: [
         AuthUsersComponent,
-        AuthRolesComponent
+        AuthRolesComponent,
+        AuthLogsComponent
     ]
 })
 export class AuthCommonModule

@@ -25,7 +25,7 @@ __CAPE_LIBEX   void            __STDCALL adbl_pvd_close             (AdblPvdSess
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   CapeUdc         __STDCALL adbl_pvd_get               (AdblPvdSession, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr);    // returns NULL in case of error
+__CAPE_LIBEX   CapeUdc         __STDCALL adbl_pvd_get               (AdblPvdSession, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr);    // returns NULL in case of error
 
 __CAPE_LIBEX   number_t        __STDCALL adbl_pvd_ins               (AdblPvdSession, const char* table, CapeUdc* p_values, CapeErr);                       // returns the new ID (ID == 0 -> error)
 
@@ -52,7 +52,7 @@ struct AdblPvdCursor_s; typedef struct AdblPvdCursor_s* AdblPvdCursor;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AdblPvdCursor   __STDCALL adbl_pvd_cursor_new        (AdblPvdSession, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr);
+__CAPE_LIBEX   AdblPvdCursor   __STDCALL adbl_pvd_cursor_new        (AdblPvdSession, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr);
 
 __CAPE_LIBEX   void            __STDCALL adbl_pvd_cursor_del        (AdblPvdCursor*);
 

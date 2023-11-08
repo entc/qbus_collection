@@ -1,0 +1,30 @@
+<div class="modal-header">
+  <h5 class="modal-title"><i class="fa fa-user"></i>&nbsp;&nbsp;{{ 'AUTH.CHANGENAME' | transloco }}</h5>
+</div>
+<div class="modal-body">
+
+  <div class="input-group mb-1">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.FIRSTNAME' | transloco }}</small></span>
+    </div>
+    <input [(ngModel)]="sitem.firstname" type="text" class="form-control">
+  </div>
+
+  <div class="input-group mb-1">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.LASTNAME' | transloco }}</small></span>
+    </div>
+    <input [(ngModel)]="sitem.lastname" type="text" class="form-control">
+  </div>
+
+</div>
+<div class="modal-footer">
+  <div class="row w-100">
+    <div class="col-6 pr-1 pl-0 d-grid">
+      <button type="button" class="btn btn-outline-success btn-block" (click)="change_name_apply ()"><i class="fas fa-save"></i>&nbsp;&nbsp;{{ 'MISC.APPLY' | transloco }}</button>
+    </div>
+    <div class="col-6 pl-1 pr-0 d-grid">
+      <button type="button" class="btn btn-outline-secondary btn-block" (click)="modal.dismiss()">{{ 'MISC.CANCEL' | transloco }}</button>
+    </div>
+  </div>
+</div>

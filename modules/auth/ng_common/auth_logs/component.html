@@ -1,0 +1,17 @@
+<table class="table mt-2">
+  <tr>
+    <th width="80%">
+    </th>
+    <th width="20%">
+    </th>
+  </tr>
+  <tr *ngFor="let item of log_list">
+    <td>
+      {{ item.ltime | trlo_locale }}<br>
+      <small>{{ item.info['userAgent'] }}</small>
+    </td>
+    <td>
+      {{ item.ip }}
+    </td>
+  </tr>
+</table>

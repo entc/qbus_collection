@@ -99,6 +99,19 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_login_logs (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_login_logs (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -138,7 +151,7 @@ static int __STDCALL qbus_auth_ui_add (QBus qbus, void* ptr, QBusM qin, QBusM qo
 
 //-------------------------------------------------------------------------------------
 
-static int __STDCALL qbus_auth_ui_pp (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+static int __STDCALL qbus_auth__ui__pp_put (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
   
@@ -146,7 +159,20 @@ static int __STDCALL qbus_auth_ui_pp (QBus qbus, void* ptr, QBusM qin, QBusM qou
   AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
-  return auth_ui_pp (&auth_ui, qin, qout, err);
+  return auth_ui_pp_put (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__ui__pp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_pp_get (&auth_ui, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -757,6 +783,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: wpid
   qbus_register (qbus, "ui_login_get"         , ctx, qbus_auth_ui_login_get, NULL, err);
 
+  // get the login requests
+  //   args: wpid, gpid
+  qbus_register (qbus, "ui_login_logs"        , ctx, qbus_auth_ui_login_logs, NULL, err);
+
   // all user credential functions
   qbus_register (qbus, "getUI"                , ctx, qbus_auth_ui_get, NULL, err);
 
@@ -768,13 +798,17 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: usid, password
   qbus_register (qbus, "ui_set"               , ctx, qbus_auth_ui_set, NULL, err);
 
-  // change password for an user account
+  // add user
   //   args: username, password
   qbus_register (qbus, "ui_add"               , ctx, qbus_auth_ui_add, NULL, err);
 
   // check password by password policy
   //   args: password
-  qbus_register (qbus, "ui_pp"                , ctx, qbus_auth_ui_pp, NULL, err);
+  qbus_register (qbus, "ui_pp_put"            , ctx, qbus_auth__ui__pp_put, NULL, err);
+
+  // get password policy
+  //   args: password
+  qbus_register (qbus, "ui_pp_get"            , ctx, qbus_auth__ui__pp_get, NULL, err);
 
   // retrieve the config of the ui system
   //   args:

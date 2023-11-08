@@ -188,8 +188,8 @@ int adbl_pool_trx_rollback (AdblPool self, CapeListNode n, CapeErr err)
 CapeUdc adbl_pool_trx_query (AdblPool self, CapeListNode n, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
 {
   AdblPoolItem* item = cape_list_node_data (n);
-  
-  return self->pvd->pvd_get (item->handle, table, p_params, p_values, err);
+
+  return self->pvd->pvd_get (item->handle, table, p_params, p_values, 0, 0, NULL, NULL, err);
 }
 
 //-----------------------------------------------------------------------------

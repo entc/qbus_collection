@@ -131,7 +131,7 @@ void __STDCALL adbl_pvd_close (AdblPvdSession* p_self)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc __STDCALL adbl_pvd_get (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, CapeErr err)
+CapeUdc __STDCALL adbl_pvd_get (AdblPvdSession self, const char* table, CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by, CapeErr err)
 {
   AdblPvdCursor cursor = adbl_pvd_cursor_new (self, table, p_params, p_values, err);
   

@@ -37,7 +37,7 @@ struct AdblPvdCursor_s
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AdblPrepare     adbl_prepare_new                (CapeUdc* p_params, CapeUdc* p_values);
+__CAPE_LIBEX   AdblPrepare     adbl_prepare_new                (CapeUdc* p_params, CapeUdc* p_values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by);
 
 __CAPE_LIBEX   void            adbl_prepare_del                (AdblPrepare*);
 
