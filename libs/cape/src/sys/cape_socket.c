@@ -361,7 +361,7 @@ CapeString cape_sock__resolve (const CapeString host, CapeErr err)
 
 void cape_sock__close (void* sock)
 {
-  close (sock);
+  close ((long)sock);
 }
 
 //-----------------------------------------------------------------------------
