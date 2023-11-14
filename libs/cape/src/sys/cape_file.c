@@ -394,6 +394,34 @@ const CapeString cape_fs_extension (const CapeString source)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_fs_filename (const CapeString source)
+{
+  CapeString ret = NULL;
+  
+  if (source)
+  {
+    const CapeString filename = cape_fs_split (source, NULL);
+    
+    if (cape_str_not_empty (filename))
+    {
+      const char* pos = strrchr (filename, '.');
+      
+      if (pos)
+      {
+        ret = cape_str_sub (filename, (pos - filename));
+      }
+      else
+      {
+        ret = cape_str_cp (filename);
+      }
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_fs_path_create (const char* path, CapeErr err)
 {
 #ifdef __WINDOWS_OS

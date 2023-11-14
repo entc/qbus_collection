@@ -40,6 +40,9 @@ __CAPE_LIBEX   const CapeString   cape_fs_split          (const char* filepath, 
                                   /* returns the extension of a filename given */
 __CAPE_LIBEX   const CapeString   cape_fs_extension      (const CapeString);
 
+                                  /* create a copy of the filename without extension */
+__CAPE_LIBEX   CapeString         cape_fs_filename       (const CapeString);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeErr);
