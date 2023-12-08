@@ -17,7 +17,9 @@
 
 namespace cape
 {
-
+  // forward declaration
+  class UdcCursor;
+  
   //-----------------------------------------------------------------------------------------------------
 
   struct ListHolder
@@ -707,6 +709,8 @@ namespace cape
 
     void reset_as_reference (const Udc& rhs)
     {
+      clear ();
+
       m_obj = rhs.m_obj;
       m_owned = false;
     }
@@ -715,10 +719,11 @@ namespace cape
 
     void reset (Udc&& rhs)
     {
+      clear ();
+
       if (rhs.m_owned)
       {
-        // the other object ownes it -> transfer ownership
-        cape_udc_replace_mv (&m_obj, &(rhs.m_obj));
+        m_obj = cape_udc_mv (&(rhs.m_obj));
       }
       else
       {
@@ -729,6 +734,16 @@ namespace cape
       m_owned = rhs.m_owned;
     }
 
+    //-----------------------------------------------------------------------------
+    
+    void reset (CapeUdc obj)
+    {
+      clear ();
+      
+      m_owned = false;
+      m_obj = obj;
+    }
+    
     //-----------------------------------------------------------------------------
 
     friend std::ostream& operator<<(std::ostream& os, const Udc& udc)
@@ -905,10 +920,27 @@ namespace cape
 
       return cape_udc_mv (&m_obj);
     }
+    
+    //-----------------------------------------------------------------------------
+    
+    void clear ()
+    {
+      if (m_obj)
+      {
+        if (m_owned)
+        {
+          cape_udc_del (&m_obj);
+          
+          m_owned = false;
+        }
+        
+        m_obj = NULL;
+      }
+    }
 
     //-----------------------------------------------------------------------------
 
-    Udc clone ()
+    Udc clone () const
     {
       if (m_obj == NULL)
       {
@@ -1027,6 +1059,8 @@ namespace cape
 
     // the cape object
     CapeUdc m_obj;
+    
+    friend UdcCursor;
   };
 
   //-----------------------------------------------------------------------------------------------------
@@ -1203,13 +1237,9 @@ namespace cape
 
   public:
 
-    UdcCursor (cape::Udc& udc)
-    : m_cursor (cape_udc_cursor_new (udc.obj(), CAPE_DIRECTION_FORW))
-    {
-    }
-
-    UdcCursor (const CapeUdc udc)
-    : m_cursor (cape_udc_cursor_new (udc, CAPE_DIRECTION_FORW))
+    UdcCursor (cape::Udc& udc, int dir = CAPE_DIRECTION_FORW)
+    : m_udc (udc)
+    , m_cursor (cape_udc_cursor_new (udc.m_obj, dir))
     {
     }
 
@@ -1218,27 +1248,125 @@ namespace cape
       cape_udc_cursor_del (&m_cursor);
     }
 
+    //-----------------------------------------------------------------------------
+    
     bool next ()
     {
-      return cape_udc_cursor_next (m_cursor) == TRUE;
+      bool ret = cape_udc_cursor_next (m_cursor) == TRUE;
+      
+      if (ret)
+      {
+        m_item.reset (m_cursor->item);
+      }
+      else
+      {
+        m_item.clear ();
+      }
+      
+      return ret;
     }
 
-    cape::Udc item () const
+    //-----------------------------------------------------------------------------
+    
+    Udc operator[] (const char* name)
     {
-      return cape::Udc (m_cursor->item);
+      return m_item[name];
+    }
+        
+    //-----------------------------------------------------------------------------
+    
+    cape::Udc& item ()
+    {
+      return m_item;
     }
 
+    //-----------------------------------------------------------------------------
+    
     number_t position () const
     {
       return m_cursor->position;
     }
+    
+    //-----------------------------------------------------------------------------
+    
+    void remove_at_position ()
+    {
+      cape_udc_cursor_rm (m_udc.m_obj, m_cursor);
+      
+      m_item.reset_as_reference (m_cursor->item);
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    std::string to_string () const
+    {
+      return m_item.to_string ();
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    friend std::ostream& operator<<(std::ostream& os, const UdcCursor& cursor)
+    {
+      return os << cursor.to_string();
+    }
+    
+    //-----------------------------------------------------------------------------
 
   private:
 
+    cape::Udc& m_udc;
     CapeUdcCursor* m_cursor;
+    
+    cape::Udc m_item;
 
   };
 
+
+  //-----------------------------------------------------------------------------------------------------
+  
+  class UdcCursorConst
+  {
+    
+  public:
+    
+    UdcCursorConst (const CapeUdc udc)
+    : m_cursor (cape_udc_cursor_new (udc, CAPE_DIRECTION_FORW))
+    {
+    }
+    
+    ~UdcCursorConst ()
+    {
+      cape_udc_cursor_del (&m_cursor);
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    bool next ()
+    {
+      return cape_udc_cursor_next (m_cursor) == TRUE;
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    cape::Udc item () const
+    {
+      return cape::Udc (m_cursor->item);
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    number_t position () const
+    {
+      return m_cursor->position;
+    }
+        
+    //-----------------------------------------------------------------------------
+    
+  private:
+    
+    CapeUdcCursor* m_cursor;
+    
+  };
 
   //-----------------------------------------------------------------------------------------------------
 
