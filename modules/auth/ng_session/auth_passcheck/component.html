@@ -69,14 +69,14 @@
     <small><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ err1 | transloco }}</small>
   </div>
 
-  <div class="input-group mb-2">
-    <div class="input-group-prepend">
-      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
-    </div>
-    <input [ngModel]="pass_new2" (blur)="on_change_2 ($event)" [ngClass]="{'is-invalid': err2}" type="password" class="form-control">
-  </div>
-
 </ng-container>
+
+<div class="input-group mb-2">
+  <div class="input-group-prepend">
+    <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.PASSWORDNEW2' | transloco }}</small></span>
+  </div>
+  <input [ngModel]="pass_new2" (blur)="on_change_2 ($event)" [ngClass]="{'is-invalid': err2}" type="password" class="form-control">
+</div>
 
 <div *ngIf="err2" class="text-danger mb-2">
   <small><i class="fa fa-exclamation-triangle"></i>&nbsp;&nbsp;{{ err2 | transloco }}</small>

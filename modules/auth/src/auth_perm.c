@@ -187,7 +187,7 @@ int auth_perm__set_active (AuthPerm self, const CapeString token, number_t apid,
     
     if (apid)
     {
-      cape_udc_add_n      (params, "id"           , self->apid);
+      cape_udc_add_n      (params, "id"           , apid);
     }
 
     if (token)
@@ -209,7 +209,7 @@ int auth_perm__set_active (AuthPerm self, const CapeString token, number_t apid,
   adbl_trx_commit (&trx, err);
   res = CAPE_ERR_NONE;
   
-  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm set", "token was to active = %lu", active);
+  cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm set", "token [%lu] was to active = %lu", self->apid, active);
   
 exit_and_cleanup:
   

@@ -1195,7 +1195,7 @@ class AuthRecipients
 
   //---------------------------------------------------------------------------
 
-  on_password_changed()
+  public on_password_changed()
   {
     this.mode_next = true;
   }

@@ -91,10 +91,34 @@ export class TrloService
 
   //---------------------------------------------------------------------------
 
-  public diff_date (date_in_iso: string): string
+  public diff_date__future (date_in_iso: string): string
+  {
+    var time = new Date(date_in_iso).getTime() - new Date().getTime();
+
+    if (time < 0)
+    {
+      return this.translate('DATE.NAT');
+    }
+    else
+    {
+      return this.datetime_to_h (time);
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public diff_date__past (date_in_iso: string): string
   {
     var time = new Date().getTime() - new Date(date_in_iso).getTime();
-    return this.datetime_to_h (Math.abs(time));
+
+    if (time < 0)
+    {
+      return this.translate('DATE.NAT');
+    }
+    else
+    {
+      return this.datetime_to_h (time);
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -188,11 +212,11 @@ export class TrloPipeTimediff implements PipeTransform {
 
   //---------------------------------------------------------------------------
 
-  transform (value: string): string
+  transform (value: string, in_the_future: boolean = false): string
   {
     if (value)
     {
-      return this.trlo_service.diff_date (value);
+      return in_the_future ? this.trlo_service.diff_date__future (value) : this.trlo_service.diff_date__past (value);
     }
     else
     {

@@ -8,11 +8,6 @@ import { QbngErrorModalComponent } from '@qbus/qbng_modals/component';
 
 //=============================================================================
 
-//=============================================================================
-
-
-//=============================================================================
-
 @Directive({
   selector: '[authSessionRole]'
 })
@@ -132,7 +127,7 @@ export class AuthSessionRoleDirective {
   @Output() onChange = new EventEmitter();
 
   public pass_old: string;
-  public pass_new: string;
+  public pass_new: string = null;
   public err: string = null;
 
   public was_set: boolean = false;
