@@ -242,6 +242,19 @@ static int __STDCALL qbus_auth_ui_users (QBus qbus, void* ptr, QBusM qin, QBusM 
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth__wp_info_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_wp_info_get (&auth_gp, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__wp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -831,6 +844,9 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "ui_users"             , ctx, qbus_auth_ui_users, NULL, err);
 
   // -------- callback methods --------------------------------------------
+
+  // get all workspaces
+  qbus_register (qbus, "wp_info_get"          , ctx, qbus_auth__wp_info_get, NULL, err);
 
   // get all workspaces
   qbus_register (qbus, "workspaces_get"       , ctx, qbus_auth__wp_get, NULL, err);
