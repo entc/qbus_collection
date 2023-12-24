@@ -760,8 +760,6 @@ alert ('we run out of coffee, so it is not implemented');
     const navigator = window.navigator;
     const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
-    console.log('request session');
-
     let request = this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((event: HttpEvent<AuthSessionItem>) => {
 
       this.fetch_session__handle_event (event, response);

@@ -16,6 +16,7 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersRolesModa
 import { AuthSessionInfoComponent, AuthSessionInfoModalComponent, AuthSessionInfoNameModalComponent, AuthSessionInfoPasswordModalComponent } from './auth_info/component';
 import { AuthMsgsComponent } from './auth_msgs/component';
 import { AuthLogsComponent } from './auth_logs/component';
+import { AuthPermComponent } from './auth_perm/component';
 
 //-----------------------------------------------------------------------------
 
@@ -32,7 +33,8 @@ import { AuthLogsComponent } from './auth_logs/component';
         AuthSessionInfoNameModalComponent,
         AuthSessionInfoPasswordModalComponent,
         AuthMsgsComponent,
-        AuthLogsComponent
+        AuthLogsComponent,
+        AuthPermComponent
     ],
     imports: [
         CommonModule,
@@ -47,7 +49,8 @@ import { AuthLogsComponent } from './auth_logs/component';
     exports: [
         AuthUsersComponent,
         AuthRolesComponent,
-        AuthLogsComponent
+        AuthLogsComponent,
+        AuthPermComponent
     ]
 })
 export class AuthCommonModule

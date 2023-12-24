@@ -1,3 +1,5 @@
+<ng-container *ngIf="info | async as info_item; else loading">
+
 <table class="table" *authSessionRole="['admin','auth_wacc']">
   <tr>
     <th>
@@ -27,7 +29,7 @@
     <th>
       <div class="btn-group" role="group" aria-label="Basic example">
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
-        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add()"><i class="fa fa-plus fa-fw"></i></button>
+        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i></button>
       </div>
     </th>
   </tr>
@@ -82,7 +84,7 @@
       <div class="btn-group" role="group" aria-label="Basic example">
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs fa-fw"></i></button>
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_roles(item)"><i class="fa fa-lock fa-fw"></i></button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_sessions(item)"><i class="fa fa-clipboard-list fa-fw"></i></button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_sessions(item, info_item)"><i class="fa fa-clipboard-list fa-fw"></i></button>
       </div>
     </td>
   </tr>
@@ -102,3 +104,15 @@
   </tr>
   </ng-container>
 </table>
+
+</ng-container>
+
+<ng-template #loading>
+
+<!--
+  <div class="mt-4 mb-4 text-muted text-center">
+    <i class="fa fa-spinner fa-pulse fa-7x"></i>
+  </div>
+-->
+
+</ng-template>
