@@ -12,16 +12,24 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   selector: 'auth-info',
   templateUrl: './component.html',
   styleUrls: ['./component.css']
-}) export class AuthSessionInfoComponent {
+}) export class AuthSessionInfoComponent implements OnInit {
 
   public sitem: AuthSessionItem;
   public mode: number = 1;
+
+  private session_obj;
 
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession, private modal_service: NgbModal)
   {
-    auth_session.session.subscribe ((data: AuthSessionItem) => {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.session_obj = this.auth_session.session.subscribe ((data: AuthSessionItem) => {
 
       if (data)
       {
@@ -33,6 +41,13 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
       }
 
     });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.session_obj.unsubscribe();
   }
 
   //---------------------------------------------------------------------------

@@ -14,6 +14,8 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 export class AuthUsersComponent implements OnInit {
 
   public users: Observable<AuthUserItem[]> = null;
+  public info: Observable<AuthWpInfo> = of();
+
   private _wpid: number = null;
   private _auth: boolean = false;
   private session_obj;
@@ -47,6 +49,7 @@ export class AuthUsersComponent implements OnInit {
       if (data)
       {
         this._auth = true;
+        this.fetch_info ();
       }
       else
       {
@@ -63,6 +66,13 @@ export class AuthUsersComponent implements OnInit {
   ngOnDestroy()
   {
     this.session_obj.unsubscribe();
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private fetch_info ()
+  {
+    this.info = this.auth_session.json_rpc ('AUTH', 'wp_info_get', {wpid: this._wpid});
   }
 
   //-----------------------------------------------------------------------------
@@ -89,6 +99,7 @@ export class AuthUsersComponent implements OnInit {
     ctx.gpid = item.gpid;
     ctx.userid = item.userid;
     ctx.active = item.active == 1 ? true: false;
+    ctx.info = null;
 
     this.modal_service.open (AuthUsersSettingsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
@@ -108,34 +119,37 @@ export class AuthUsersComponent implements OnInit {
     ctx.wpid = Number(this._wpid);
     ctx.gpid = item.gpid;
     ctx.userid = item.userid;
+    ctx.info = null;
 
     this.modal_service.open (AuthUsersRolesModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
   }
 
   //-----------------------------------------------------------------------------
 
-  public open_sessions (item: AuthUserItem)
+  public open_sessions (item: AuthUserItem, info: AuthWpInfo)
   {
     var ctx: AuthUserContext = new AuthUserContext;
 
     ctx.wpid = Number(this._wpid);
     ctx.gpid = item.gpid;
     ctx.userid = item.userid;
+    ctx.info = info;
 
     this.modal_service.open (AuthUsersSessionsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
   }
 
   //-----------------------------------------------------------------------------
 
-  public open_add ()
+  public open_add (info: AuthWpInfo)
   {
     var ctx: AuthUserContext = new AuthUserContext;
 
     ctx.wpid = Number(this._wpid);
     ctx.gpid = null;
     ctx.userid = null;
+    ctx.info = info;
 
-    this.modal_service.open (AuthUsersAddModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
+    this.modal_service.open (AuthUsersAddModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'xl', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
       this.fetch ();
 
@@ -169,6 +183,14 @@ export class AuthUserContext
   gpid: number;
   userid: number;
   active: boolean;
+  info: AuthWpInfo;
+}
+
+class AuthWpInfo
+{
+  domain: string;
+  active: number;
+  name: string;
 }
 
 //=============================================================================
