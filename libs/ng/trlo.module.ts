@@ -1,7 +1,7 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, NgModule } from '@angular/core';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { inject, Injectable, NgModule, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule } from '@ngneat/transloco';
+import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule, provideTransloco } from '@ngneat/transloco';
 import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff, TrloPipeFilesize, TrloPipeTime, TranslocoDatepicker } from '@qbus/trlo_service/service';
 import { NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
 
@@ -17,15 +17,17 @@ registerLocaleData(localeFr, 'fr-FR');
 registerLocaleData(localeDe, 'de-DE');
 registerLocaleData(localePa, 'hi-IN');
 registerLocaleData(localePa, 'ta-IN');
-registerLocaleData(localePa, 'ro-RO');
+registerLocaleData(localeRo, 'ro-RO');
 
 //-----------------------------------------------------------------------------
 
 @Injectable({ providedIn: 'root' })
 export class TranslocoHttpLoader implements TranslocoLoader {
-  constructor(private http: HttpClient) {}
 
-  getTranslation(lang: string) {
+  private http = inject(HttpClient);
+
+  getTranslation(lang: string)
+  {
     return this.http.get<Translation>(`i18n/${lang}.json`);
   }
 }
@@ -56,20 +58,28 @@ export class TranslocoHttpLoader implements TranslocoLoader {
   ],
   providers:
   [
-    TrloService,
-    {
-      provide: TRANSLOCO_CONFIG,
-      useValue: translocoConfig({
-        availableLangs: ['de', 'en', 'fr', 'hi', 'ta', 'ro'],
-        defaultLang: 'de',
-        // Remove this option if your application doesn't support changing language in runtime.
-        reRenderOnLangChange: true
-      })
-    },
-    { provide: TRANSLOCO_LOADER, useClass: TranslocoHttpLoader },
-    { provide: NgbDatepickerI18n, useClass: TranslocoDatepicker }
+    TrloService
   ]
 })
 export class TrloModule {}
+
+//-----------------------------------------------------------------------------
+
+@NgModule({
+    exports: [ TranslocoModule ],
+    providers: [
+        provideTransloco({
+            config: {
+                availableLangs: ['de', 'en', 'fr', 'hi', 'ta', 'ro'],
+                defaultLang: 'en',
+                // Remove this option if your application doesn't support changing language in runtime.
+                reRenderOnLangChange: true,
+                prodMode: !isDevMode(),
+            },
+            loader: TranslocoHttpLoader
+        }),
+    ],
+})
+export class TranslocoRootModule {}
 
 //-----------------------------------------------------------------------------
