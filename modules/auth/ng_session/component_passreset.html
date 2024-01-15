@@ -18,12 +18,20 @@
     <input [(ngModel)]="pass_old" type="password" class="form-control">
   </div>
 
+  <ng-container *ngIf="err">
+    <div class="alert alert-danger" role="alert">
+      {{ err | transloco }}
+    </div>
+  </ng-container>
+
   <hr>
 
   <auth-password-checker (onChange)="on_check_password($event)"></auth-password-checker>
 
-  <div class="text-right mt-4" *ngIf="pass_new != null">
-    <button (click)="apply ()" type="button" class="btn btn-outline-primary btn-block">{{ 'AUTH.CHANGE' | transloco }}</button>
+  <hr>
+
+  <div class="text-right mt-4">
+    <button [disabled]="pass_new == null" (click)="apply ()" type="button" class="btn btn-outline-primary btn-block">{{ 'AUTH.CHANGE' | transloco }}</button>
   </div>
 
 </ng-container>

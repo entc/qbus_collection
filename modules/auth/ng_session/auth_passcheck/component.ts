@@ -10,13 +10,14 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 @Component({
   selector: 'auth-password-checker',
   templateUrl: './component.html'
-}) export class AuthPasscheckComponent {
+}) export class AuthPasscheckComponent implements OnInit {
 
   public pass_new1: string;
   public pass_new2: string;
   public err1: string | null = null;
   public err2: string | null = null;
-  public strength: number = 0;
+  public policy_context: AuthPasswordPolicyContext;
+  public policy_current: AuthPasswordPolicyContext;
 
   @Output() onChange = new EventEmitter();
 
@@ -26,11 +27,30 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   {
   }
 
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_pp_get', {}).subscribe((data: AuthPasswordPolicyContext) => {
+
+      this.policy_context = data;
+
+    }, (err: QbngErrorHolder) => {
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+  }
+
   //---------------------------------------------------------------------------
 
   public password_strength_text (): string
   {
-    switch (this.strength)
+    switch (this.policy_current.strength)
     {
       case 0: return 'AUTH.PASS_NOPOLICY';
       case 1: return 'AUTH.PASS_WEAK';
@@ -51,11 +71,11 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
       this.pass_new2 = '';
       this.err2 = null;
 
-      this.auth_session.json_rpc ('AUTH', 'ui_pp', {secret : target.value}).subscribe((data: object) => {
+      this.auth_session.json_rpc ('AUTH', 'ui_pp_put', {secret : target.value}).subscribe((data: AuthPasswordPolicyContext) => {
 
-        this.strength = data['strength'];
+        this.policy_current = data;
         this.pass_new1 = target.value;
-        this.err1 = null;
+        this.err1 = data['err_text'];
 
       }, (err: QbngErrorHolder) => {
 
@@ -93,4 +113,17 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
       this.onChange.emit (this.pass_new1);
     }
   }
+}
+
+//---------------------------------------------------------------------------
+
+class AuthPasswordPolicyContext
+{
+  invalid: number;
+  length: number;
+  lower_case: number;
+  numbers: number;
+  special_chars: number;
+  upper_case: number;
+  strength: number;
 }

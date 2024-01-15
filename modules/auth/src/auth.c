@@ -99,6 +99,19 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_ui_login_logs (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_login_logs (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -138,7 +151,7 @@ static int __STDCALL qbus_auth_ui_add (QBus qbus, void* ptr, QBusM qin, QBusM qo
 
 //-------------------------------------------------------------------------------------
 
-static int __STDCALL qbus_auth_ui_pp (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+static int __STDCALL qbus_auth__ui__pp_put (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
   
@@ -146,7 +159,20 @@ static int __STDCALL qbus_auth_ui_pp (QBus qbus, void* ptr, QBusM qin, QBusM qou
   AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
   
   // run the command
-  return auth_ui_pp (&auth_ui, qin, qout, err);
+  return auth_ui_pp_put (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__ui__pp_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  
+  // run the command
+  return auth_ui_pp_get (&auth_ui, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -212,6 +238,19 @@ static int __STDCALL qbus_auth_ui_users (QBus qbus, void* ptr, QBusM qin, QBusM 
   
   // run the command
   return auth_ui_users (&auth_ui, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth__wp_info_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  
+  // run the command
+  return auth_wp_info_get (&auth_gp, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -451,6 +490,32 @@ static int __STDCALL qbus_auth_perm_get (QBus qbus, void* ptr, QBusM qin, QBusM 
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_perm_info (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_info (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_perm_put (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_put (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_perm_code_set (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -473,6 +538,19 @@ static int __STDCALL qbus_auth_perm_code_rm (QBus qbus, void* ptr, QBusM qin, QB
   
   // run the command
   return auth_perm_rm (&auth_perm, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
+static int __STDCALL qbus_auth_perm_rpl (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthPerm auth_perm = auth_perm_new (qbus, ctx->adbl_session, ctx->vault, ctx->perm_jobs);
+  
+  // run the command
+  return auth_perm_rpl (&auth_perm, qin, qout, err);
 }
 
 //-------------------------------------------------------------------------------------
@@ -566,13 +644,35 @@ int __STDCALL auth_context__on_perm_event (QJobs jobs, QJobsEvent event, void* u
   
   if (event->params)
   {
+    {
+      CapeString h = cape_json_to_s (event->params);
+      
+      printf ("EVENT: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+   
+    number_t apid = cape_udc_get_n (event->params, "apid", 0);
+    if (apid)
+    {
+      // create a temporary object
+      AuthPerm auth_perm = auth_perm_new (NULL, self->adbl_session, self->vault, self->perm_jobs);
+      
+      if (auth_perm__set_active (auth_perm, NULL, apid, 0, err))
+      {
+        
+      }
+      
+      auth_perm_del (&auth_perm);
+    }
+
     const CapeString token = cape_udc_get_s (event->params, "token", NULL);
     if (token)
     {
       // create a temporary object
       AuthPerm auth_perm = auth_perm_new (NULL, self->adbl_session, self->vault, self->perm_jobs);
       
-      if (auth_perm_remove (auth_perm, token, err))
+      if (auth_perm__set_active (auth_perm, token, 0, 0, err))
       {
         
       }
@@ -696,6 +796,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: wpid
   qbus_register (qbus, "ui_login_get"         , ctx, qbus_auth_ui_login_get, NULL, err);
 
+  // get the login requests
+  //   args: wpid, gpid
+  qbus_register (qbus, "ui_login_logs"        , ctx, qbus_auth_ui_login_logs, NULL, err);
+
   // all user credential functions
   qbus_register (qbus, "getUI"                , ctx, qbus_auth_ui_get, NULL, err);
 
@@ -707,13 +811,17 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: usid, password
   qbus_register (qbus, "ui_set"               , ctx, qbus_auth_ui_set, NULL, err);
 
-  // change password for an user account
+  // add user
   //   args: username, password
   qbus_register (qbus, "ui_add"               , ctx, qbus_auth_ui_add, NULL, err);
 
   // check password by password policy
   //   args: password
-  qbus_register (qbus, "ui_pp"                , ctx, qbus_auth_ui_pp, NULL, err);
+  qbus_register (qbus, "ui_pp_put"            , ctx, qbus_auth__ui__pp_put, NULL, err);
+
+  // get password policy
+  //   args: password
+  qbus_register (qbus, "ui_pp_get"            , ctx, qbus_auth__ui__pp_get, NULL, err);
 
   // retrieve the config of the ui system
   //   args:
@@ -736,6 +844,9 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "ui_users"             , ctx, qbus_auth_ui_users, NULL, err);
 
   // -------- callback methods --------------------------------------------
+
+  // get all workspaces
+  qbus_register (qbus, "wp_info_get"          , ctx, qbus_auth__wp_info_get, NULL, err);
 
   // get all workspaces
   qbus_register (qbus, "workspaces_get"       , ctx, qbus_auth__wp_get, NULL, err);
@@ -813,6 +924,14 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   //   args: token
   qbus_register (qbus, "token_perm_get"       , ctx, qbus_auth_perm_get, NULL, err);
 
+  // retrieve information about this token
+  //   args: apid
+  qbus_register (qbus, "token_perm_info"      , ctx, qbus_auth_perm_info, NULL, err);
+
+  // activate / deactive a token
+  //   args: apid
+  qbus_register (qbus, "token_perm_put"       , ctx, qbus_auth_perm_put, NULL, err);
+
   // get a permanent token
   //   args: token, [code], [active]
   qbus_register (qbus, "perm_code_set"        , ctx, qbus_auth_perm_code_set, NULL, err);
@@ -820,6 +939,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   // remove permanent token
   //   args: token | apid
   qbus_register (qbus, "token_perm_rm"        , ctx, qbus_auth_perm_code_rm, NULL, err);
+
+  // add a new token but use predefined values (useage of limited lifespan)
+  //   args: apid
+  qbus_register (qbus, "token_perm_rpl"       , ctx, qbus_auth_perm_rpl, NULL, err);
 
   // -------- callback methods --------------------------------------------
 

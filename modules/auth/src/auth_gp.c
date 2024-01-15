@@ -414,6 +414,86 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_wp_info_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthGP self = *p_self;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+
+  // check roles
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+
+    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+      goto exit_and_cleanup;
+    }
+  }
+  else if (qin->rinfo)
+  {
+    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
+  }
+  
+  // query
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"               , self->wpid);
+    cape_udc_add_n      (values, "active"           , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    cape_udc_add_s_cp   (values, "domain"           , NULL);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_workspaces", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+  
+  cape_udc_replace_mv (&(qout->cdata), &first_row);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  
+  auth_gp_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_wp_add (AdblTrx trx, const CapeString vsec, number_t wpid, CapeUdc gpdata, number_t* p_gpid, CapeErr err)
 {
   int res;

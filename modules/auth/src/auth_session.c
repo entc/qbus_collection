@@ -439,8 +439,6 @@ exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
   
-  qbus_message_del (&msg);
-  
   cape_udc_del (&query_results);
   cape_udc_del (&roles);
   
