@@ -81,7 +81,7 @@ void qbus_engines_pvd__on_route_request (QBusEnginesPvd self, QBusPvdConnection 
 {
   QBusFrame frame = *p_frame;
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] << module = %s, sender = %s", frame->module, frame->sender);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [REQ] << module = %s, sender = %s", frame->module, frame->sender);
 
   if (cape_str_empty (frame->module))
   {
@@ -107,7 +107,7 @@ void qbus_engines_pvd__on_route_response (QBusEnginesPvd self, QBusPvdConnection
 {
   CapeUdc route_nodes = qbus_frame_get_udc (frame);
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] << module = %s, sender = %s", frame->module, frame->sender);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [RES] << module = %s, sender = %s", frame->module, frame->sender);
   
   if (cape_str_equal (qbus_route_name_get (self->route), frame->module))
   {
@@ -127,7 +127,7 @@ void qbus_engines_pvd__on_route_update (QBusEnginesPvd self, QBusPvdConnection c
 {
   CapeUdc route_nodes = qbus_frame_get_udc (frame);
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [UPD] << module = %s, sender = %s", frame->module, frame->sender);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "route [UPD] << module = %s, sender = %s", frame->module, frame->sender);
   
   if (cape_str_equal (qbus_route_name_get (self->route), frame->module))
   {

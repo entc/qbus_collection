@@ -367,7 +367,7 @@ const CapeString qbus_config_get_name (QBusConfig self)
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_config_s (QBusConfig self, const char* name, const CapeString default_val)
+const CapeString qbus_config__s (QBusConfig self, const char* name, const CapeString default_val)
 {
   CapeUdc config_node;
   
@@ -393,7 +393,7 @@ const CapeString qbus_config_s (QBusConfig self, const char* name, const CapeStr
 
 //-----------------------------------------------------------------------------
 
-CapeUdc qbus_config_node (QBusConfig self, const char* name)
+CapeUdc qbus_config__node (QBusConfig self, const char* name)
 {
   CapeUdc config_node;
 
@@ -417,7 +417,7 @@ CapeUdc qbus_config_node (QBusConfig self, const char* name)
 
 //-----------------------------------------------------------------------------
 
-number_t qbus_config_n (QBusConfig self, const char* name, number_t default_val)
+number_t qbus_config__n (QBusConfig self, const char* name, number_t default_val)
 {
   CapeUdc config_node;
   
@@ -443,7 +443,7 @@ number_t qbus_config_n (QBusConfig self, const char* name, number_t default_val)
 
 //-----------------------------------------------------------------------------
 
-double qbus_config_f (QBusConfig self, const char* name, double default_val)
+double qbus_config__f (QBusConfig self, const char* name, double default_val)
 {
   CapeUdc config_node;
   
@@ -469,7 +469,7 @@ double qbus_config_f (QBusConfig self, const char* name, double default_val)
 
 //-----------------------------------------------------------------------------
 
-int qbus_config_b (QBusConfig self, const char* name, int default_val)
+int qbus_config__b (QBusConfig self, const char* name, int default_val)
 {
   CapeUdc config_node;
   

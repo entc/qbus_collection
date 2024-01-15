@@ -32,4 +32,16 @@ __CAPE_LOCAL   const CapeString   qbus_config_get_name          (QBusConfig);
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LOCAL   number_t           qbus_config__n                (QBusConfig, const char* name, number_t default_val);
+
+__CAPE_LOCAL   const CapeString   qbus_config__s                (QBusConfig, const char* name, const CapeString default_val);
+
+__CAPE_LOCAL   double             qbus_config__f                (QBusConfig, const char* name, double default_val);
+
+__CAPE_LOCAL   int                qbus_config__b                (QBusConfig, const char* name, int default_val);
+
+__CAPE_LOCAL   CapeUdc            qbus_config__node             (QBusConfig, const char* name);
+
+//-----------------------------------------------------------------------------
+
 #endif
