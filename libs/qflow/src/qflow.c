@@ -86,7 +86,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qflow_set (QFlow self, number_t current)
+void qflow_set (QFlow self)
 {
   if (self)
   {

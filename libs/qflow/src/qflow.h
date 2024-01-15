@@ -15,6 +15,7 @@
 #define QFLOW_STATE_INITIAL         1
 #define QFLOW_STATE_RUNNING         2
 #define QFLOW_STATE_COMPLETE        3
+#define QFLOW_STATE_ERROR           4
 
 //-----------------------------------------------------------------------------
 
@@ -28,7 +29,7 @@ __CAPE_LIBEX     void        qflow_del      (QFlow*);
 
 __CAPE_LIBEX     void        qflow_add      (QFlow, const CapeString, number_t max);
 
-__CAPE_LIBEX     void        qflow_set      (QFlow, number_t current);
+__CAPE_LIBEX     void        qflow_set      (QFlow);
 
 //-----------------------------------------------------------------------------
 
