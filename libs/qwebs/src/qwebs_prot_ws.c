@@ -275,6 +275,9 @@ void* __STDCALL qwebs_prot_websocket__on_upgrade (void* user_ptr, QWebsRequest r
   
 exit_and_cleanup:
   
+  cape_str_del (&accept_key__text);
+  cape_stream_del (&accept_key__hash);
+  
   return ret;
 }
 

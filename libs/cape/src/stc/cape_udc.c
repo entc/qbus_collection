@@ -2070,7 +2070,8 @@ int cape_udc_cursor_prev (CapeUdcCursor* cursor)
 
 void cape_udc_cursor_rm (CapeUdc self, CapeUdcCursor* cursor)
 {
-  
+  CapeUdc h = cape_udc_cursor_ext (self, cursor);
+  cape_udc_del (&h);
 }
 
 //-----------------------------------------------------------------------------
