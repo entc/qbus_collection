@@ -1,0 +1,30 @@
+<ng-container *ngIf="info">
+
+<div class="card mb-4">
+  <div class="card-body d-flex justify-content-between">
+    <span>{{ 'AUTH.PERM_CREATED' | transloco }}&nbsp;&nbsp;{{info.toc | trlo_locale}}</span>
+    <span>{{ 'AUTH.PERM_VALID_UNTIL' | transloco }}&nbsp;&nbsp;{{info.toe | trlo_locale}}</span>
+  </div>
+</div>
+
+<div class="alert alert-success" role="alert" *ngIf="info.active == 1">
+  {{ 'AUTH.PERM_ACTIVE' | transloco }}
+</div>
+
+<div class="alert alert-danger" role="alert" *ngIf="info.active == 0">
+  {{ 'AUTH.PERM_INACTIVE' | transloco }}
+  <hr>
+
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <span class="input-group-text">{{ 'DATE.DAYS' | transloco }}</span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="days">
+    <div class="input-group-append">
+      <button (click)="activate()" class="btn btn-outline-secondary" type="button">{{ 'AUTH.PERM_ACTIVATE' | transloco }}</button>
+    </div>
+  </div>
+
+</div>
+
+</ng-container>

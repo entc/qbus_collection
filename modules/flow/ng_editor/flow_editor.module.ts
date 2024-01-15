@@ -13,49 +13,48 @@ import { PageToolbarModule } from '@qbus/page_toolbar.module';
 import { FlowWidgetUsrFormComponent, FlowWorkstepsComponent, FlowWidgetFunctionComponent, FlowWorkstepsAddModalComponent } from './flow_editor_worksteps/component';
 import { FlowEditorComponent, FlowEditorAddModalComponent, FlowEditorPermModalComponent } from './flow_editor_workflows/component';
 import { FlowUserFormService, FlowFunctionService } from './flow_editor_worksteps/services';
-import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent } from './flow_editor_worksteps/widgets';
+import { FlowWidgetSyncronComponent, FlowWidgetAsyncronComponent, FlowWidgetWaitforlistComponent, FlowWidgetSplitComponent, FlowWidgetSwitchComponent, FlowWidgetIfComponent, FlowWidgetCopyComponent, FlowWidgetCreateNodeComponent, FlowWidgetMoveComponent, FlowWidgetSleepComponent } from './flow_editor_worksteps/widgets';
 
 //-----------------------------------------------------------------------------
 
 @NgModule({
-  declarations:
-  [
-    FlowEditorComponent,
-    FlowEditorAddModalComponent,
-    FlowEditorPermModalComponent,
-    FlowWorkstepsComponent,
-    FlowWorkstepsAddModalComponent,
-    FlowWidgetFunctionComponent,
-    FlowWidgetUsrFormComponent,
-    FlowWidgetSyncronComponent,
-    FlowWidgetAsyncronComponent,
-    FlowWidgetWaitforlistComponent,
-    FlowWidgetSplitComponent,
-    FlowWidgetSwitchComponent,
-    FlowWidgetIfComponent,
-    FlowWidgetCopyComponent,
-    FlowWidgetCreateNodeComponent,
-    FlowWidgetMoveComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    PageToolbarModule,
-    NgbModule,
-    TrloModule,
-    QbngModule,
-    AuthSessionModule
-  ],
-  providers: [
-    FlowFunctionService,
-    FlowUserFormService
-  ],
-  exports: [
-    FlowWorkstepsComponent,
-    FlowWidgetFunctionComponent,
-    FlowWidgetUsrFormComponent
-  ]
-
+    declarations: [
+        FlowEditorComponent,
+        FlowEditorAddModalComponent,
+        FlowEditorPermModalComponent,
+        FlowWorkstepsComponent,
+        FlowWorkstepsAddModalComponent,
+        FlowWidgetFunctionComponent,
+        FlowWidgetUsrFormComponent,
+        FlowWidgetSyncronComponent,
+        FlowWidgetAsyncronComponent,
+        FlowWidgetWaitforlistComponent,
+        FlowWidgetSplitComponent,
+        FlowWidgetSwitchComponent,
+        FlowWidgetIfComponent,
+        FlowWidgetCopyComponent,
+        FlowWidgetCreateNodeComponent,
+        FlowWidgetMoveComponent,
+        FlowWidgetSleepComponent
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        PageToolbarModule,
+        NgbModule,
+        TrloModule,
+        QbngModule,
+        AuthSessionModule
+    ],
+    providers: [
+        FlowFunctionService,
+        FlowUserFormService
+    ],
+    exports: [
+        FlowWorkstepsComponent,
+        FlowWidgetFunctionComponent,
+        FlowWidgetUsrFormComponent
+    ]
 })
 export class FlowEditorModule
 {

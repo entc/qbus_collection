@@ -13,6 +13,9 @@
 // ADBL includes
 #include <adbl.h>
 
+// qjobs includes
+#include <qjobs.h>
+
 //-----------------------------------------------------------------------------
 
 #define FLOW_STATE__NONE              0

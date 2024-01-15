@@ -12,6 +12,9 @@
 // ADBL includes
 #include <adbl.h>
 
+// QJobs includes
+#include <qjobs.h>
+
 //-----------------------------------------------------------------------------
 
 #define FLOW_CDATA__PSID              "psid"
@@ -30,7 +33,7 @@ struct FlowProcess_s; typedef struct FlowProcess_s* FlowProcess;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   FlowProcess    flow_process_new         (QBus, AdblSession, CapeQueue);
+__CAPE_LIBEX   FlowProcess    flow_process_new         (QBus, AdblSession, CapeQueue, QJobs);
 
 __CAPE_LIBEX   void           flow_process_del         (FlowProcess*);
 
@@ -57,6 +60,8 @@ __CAPE_LIBEX   int            flow_process_prev        (FlowProcess*, QBusM qin,
 __CAPE_LIBEX   int            flow_process_step        (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
 
 __CAPE_LIBEX   int            flow_process_instance_rm (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
+
+__CAPE_LIBEX   int            flow_process_wait_get    (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

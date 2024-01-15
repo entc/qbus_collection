@@ -24,15 +24,15 @@ struct AdblPrepare_s; typedef struct AdblPrepare_s* AdblPrepare;
 struct AdblPvdCursor_s
 {
   MYSQL_STMT* stmt;
-
+  
   number_t pos;
-
+  
   AdblBindVars binds;
-
+  
   CapeUdc values;
-
+  
   CapeMutex mutex;   // reference
-
+  
 };
 
 //-----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ __CAPE_LIBEX   AdblPvdCursor   adbl_prepare_to_cursor          (AdblPrepare*, Ca
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int             adbl_prepare_init               (AdblPrepare, AdblPvdSession session, MYSQL* mysql, CapeErr err);
+__CAPE_LIBEX   int             adbl_prepare_init               (AdblPrepare, AdblPvdSession session, MYSQL* mysql, CapeErr err); 
 
 __CAPE_LIBEX   int             adbl_prepare_binds_params       (AdblPrepare, CapeErr err);
 

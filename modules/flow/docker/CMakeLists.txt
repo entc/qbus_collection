@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.4)
 
-PROJECT(qmod_flow)
+PROJECT(globeon)
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)                         # activates -fPic on linux
 SET(CMAKE_MACOSX_RPATH 0)                                       # strip away rpath
@@ -23,5 +23,6 @@ SUBDIRS(../qbus_collection/libs/adbl/src)
 SUBDIRS(../qbus_collection/libs/qcrypt/src)
 SUBDIRS(../qbus_collection/libs/qbus/src)
 SUBDIRS(../qbus_collection/libs/qflow/src)
+SUBDIRS(../qbus_collection/libs/qjobs/src)
 
 SUBDIRS(../qbus_collection/modules/flow/src)

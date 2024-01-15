@@ -69,6 +69,8 @@ exit_and_cleanup:
 
 int run_test_01 (CapeErr err)
 {
+  int res = CAPE_ERR_NONE;
+  
   {
     CapeString rb01 = cape_fs_path_rebuild ("/home/cape/../../etc", err);
     
@@ -97,8 +99,44 @@ int run_test_01 (CapeErr err)
       printf ("RB03: %s\n", rb03);
 
       cape_str_del (&rb03);
+      
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "wrong result #1");
+    }
+    else
+    {
+      cape_err_clr (err);
     }
   }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int run_test_02 (CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+
+  {
+    CapeString h = cape_fs_filename ("/tmp/testfile.txt");
+    
+    if (h)
+    {
+      printf ("FILENAME: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+  }
+  {
+    const CapeString h = cape_fs_extension ("/tmp/testfile.txt");
+    
+    if (h)
+    {
+      printf ("EXTENSION: %s\n", h);
+    }
+  }
+
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -115,6 +153,12 @@ int main (int argc, char *argv[])
   CapeString path_child_folder = cape_fs_path_merge (path_test_folder, "child");
   
   res = run_test_01 (err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = run_test_02 (err);
   if (res)
   {
     goto exit_and_cleanup;

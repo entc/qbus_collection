@@ -22,27 +22,23 @@ const routes: Routes = [
 ];
 
 @NgModule({
-  declarations:
-  [
-    FlowProcessComponent,
-    FlowProcessDetailsComponent,
-    FlowProcessDataModalComponent,
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    FlowLogsModule,
-    PageToolbarModule,
-    NgbModule,
-    TrloModule,
-    QbngModule,
-    AuthSessionModule,
-    RouterModule.forChild(routes)
-  ],
-  exports: [RouterModule],
-  entryComponents: [
-    FlowProcessDataModalComponent,
-  ]
+    declarations: [
+        FlowProcessComponent,
+        FlowProcessDetailsComponent,
+        FlowProcessDataModalComponent,
+    ],
+    imports: [
+        CommonModule,
+        FormsModule,
+        FlowLogsModule,
+        PageToolbarModule,
+        NgbModule,
+        TrloModule,
+        QbngModule,
+        AuthSessionModule,
+        RouterModule.forChild(routes)
+    ],
+    exports: [RouterModule]
 })
 export class FlowAdminModule
 {

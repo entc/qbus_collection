@@ -11,7 +11,6 @@ struct FlowRunStep_s
 {
   QBus qbus;
   FlowRunDbw dbw;
-  
 };
 
 //-----------------------------------------------------------------------------
@@ -19,10 +18,10 @@ struct FlowRunStep_s
 FlowRunStep flow_run_step_new (QBus qbus)
 {
   FlowRunStep self = CAPE_NEW (struct FlowRunStep_s);
-  
+
   self->qbus = qbus;
   self->dbw = NULL;
-  
+
   return self;
 }
 
@@ -40,9 +39,9 @@ void flow_run_step_del (FlowRunStep* p_self, FlowRunDbw* p_dbw)
       *p_dbw = self->dbw;
       self->dbw = NULL;
     }
-    
+
     flow_run_dbw_del (&(self->dbw));
-    
+
     CAPE_DEL (p_self, struct FlowRunStep_s);
   }
 }
@@ -53,7 +52,7 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
 {
   int res;
   FlowRunStep self = ptr;
-  
+
   if (qin->err)
   {
     cape_log_fmt (CAPE_LL_ERROR, "FLOW", "method sync", "error: %s", cape_err_text (qin->err));
@@ -63,7 +62,7 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
   }
 
   cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "send request");
-  
+
   if (qin->cdata)
   {
     number_t cb_counter = cape_udc_get_n (qin->cdata, "cb_counter", 0);
@@ -72,23 +71,23 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
       // this is a special case to transfer the process flow to an external logic
       // -> sets the process to halt
       // -> at some point the flow_set method must be called to continue with this process
-      
+
       // set the process to halt
       flow_run_dbw_state_set (self->dbw, FLOW_STATE__HALT, NULL);
 
       res = CAPE_ERR_NONE;
       goto exit_and_cleanup;
     }
-    
+
     /*
     {
       CapeString h = cape_json_to_s (qin->cdata);
-      
+
       printf ("................................................................................\n");
       printf ("RETURNED CDATA: %s\n", h);
     }
     */
-     
+
     flow_run_dbw_tdata__merge_to (self->dbw, &(qin->cdata));
   }
   else
@@ -106,12 +105,12 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
   res = flow_run_dbw_continue (&(self->dbw), FLOW_ACTION__PRIM, NULL, err);
 
 exit_and_cleanup:
-  
+
   if (res && self->dbw)
   {
     flow_run_dbw_state_set (self->dbw, FLOW_STATE__ERROR, err);
   }
-  
+
   flow_run_step_del (&self, NULL);
   return CAPE_ERR_NONE;
 }
@@ -123,11 +122,11 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   int res;
   FlowRunStep self = *p_self;
   FlowRunDbw dbw = *p_dbw;
-  
+
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
-  
+
   // objects needed to call remote QBUS method
   CapeUdc cdata = NULL;
   CapeUdc clist = NULL;
@@ -139,10 +138,10 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
     {
       res = CAPE_ERR_NONE;
     }
-    
+
     goto exit_and_cleanup;
   }
-  
+
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "method sync", "          call | %s : %s                      |", module, method);
   cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
@@ -152,42 +151,42 @@ int flow_run_step__method__syncron__call (FlowRunStep* p_self, FlowRunDbw* p_dbw
   {
     goto exit_and_cleanup;
   }
-  
+
   flow_run_dbw_tdata__merge_in (dbw, cdata);
-  
+
   // call
   if (self->qbus)
   {
     QBusM msg = qbus_message_new (NULL, NULL);
-    
+
     cape_udc_replace_cp (&(msg->rinfo), flow_run_dbw_rinfo_get (dbw));
 
     // transfer QBUS objects
     cape_udc_replace_mv (&(msg->cdata), &cdata);
     cape_udc_replace_mv (&(msg->clist), &clist);
-    
+
     // transfer owership of dbw to self objects
     self->dbw = dbw;
     *p_dbw = NULL;
-    
+
     cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "send request");
-    
+
     res = qbus_send (self->qbus, module, method, msg, self, flow_run_step__method__syncron__on_call, err);
-    
+
     if (res == CAPE_ERR_NONE)
     {
       *p_self = NULL;
       res = CAPE_ERR_CONTINUE;
     }
-    
+
     qbus_message_del (&msg);
   }
-  
+
 exit_and_cleanup:
-  
+
   cape_str_del (&module);
   cape_str_del (&method);
-  
+
   cape_udc_del (&cdata);
   cape_udc_del (&clist);
 
@@ -210,7 +209,7 @@ int flow_run_step__method__syncron (FlowRunStep* p_self, FlowRunDbw* p_dbw, Cape
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "          call | continue                         |");
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sync", "---------------+----------------------------------+");
-      
+
       if (params)
       {
         const CapeString cb_log = cape_udc_get_s (params, "cb_log", NULL);
@@ -219,11 +218,11 @@ int flow_run_step__method__syncron (FlowRunStep* p_self, FlowRunDbw* p_dbw, Cape
           //flow_run_dbw__event_add (*p_dbw, CAPE_ERR_NONE, cb_log, 0, 0);
         }
       }
-      
+
       break;
     }
   }
-  
+
   return CAPE_ERR_NONE;
 }
 
@@ -234,7 +233,7 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
   int res;
   FlowRunStep self = *p_self;
   FlowRunDbw dbw = *p_dbw;
-  
+
   // local objects
   CapeString module = NULL;
   CapeString method = NULL;
@@ -265,7 +264,7 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
   if (self->qbus)
   {
     QBusM msg = qbus_message_new (NULL, NULL);
-    
+
     cape_udc_replace_cp (&(msg->rinfo), flow_run_dbw_rinfo_get (dbw));
 
     // transfer QBUS objects
@@ -275,17 +274,17 @@ int flow_run_step__method__async (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
     // transfer owership of dbw to self objects
     self->dbw = dbw;
     *p_dbw = NULL;
-    
+
     res = qbus_send (self->qbus, module, method, msg, NULL, NULL, err);
-        
+
     qbus_message_del (&msg);
   }
 
 exit_and_cleanup:
-  
+
   cape_str_del (&module);
   cape_str_del (&method);
-  
+
   cape_udc_del (&cdata);
   cape_udc_del (&clist);
 
@@ -316,7 +315,7 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
       const CapeString uuid;
       CapeString code = NULL;
       CapeUdc code_node;
-      
+
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "          wait | continue                         |");
       cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method wait", "---------------+----------------------------------+");
@@ -326,17 +325,17 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
         res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'params' is missing");
         goto exit_and_cleanup;
       }
-      
+
       uuid = cape_udc_get_s (params, "uuid", NULL);
       if (NULL == uuid)
       {
-        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'params' is missing");
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "'uuid' is missing");
         goto exit_and_cleanup;
       }
 
       // optional
       code_node = cape_udc_get (params, "code");
-      
+
       if (code_node) switch (cape_udc_type (code_node))
       {
         case CAPE_UDC_STRING:
@@ -350,9 +349,9 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
           break;
         }
       }
-      
+
       res = flow_run_dbw_wait__check_item (*p_dbw, uuid, code, err);
-      
+
       cape_str_del (&code);
       break;
     }
@@ -362,8 +361,46 @@ int flow_run_step__method__wait (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc
       break;
     }
   }
-  
+
 exit_and_cleanup:
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int flow_run_step__method__sleep (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeUdc params, CapeErr err)
+{
+  int res;
+
+  // get the current state of the step
+  switch (flow_run_dbw_state_get (*p_dbw))
+  {
+    case FLOW_STATE__NONE:
+    {
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "---------------+----------------------------------+");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "         sleep | initialize                       |");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "---------------+----------------------------------+");
+
+      res = flow_run_dbw_sleep__init (*p_dbw, err);
+
+      break;
+    }
+    case FLOW_STATE__HALT:
+    {
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "---------------+----------------------------------+");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "         sleep | continue                         |");
+      cape_log_msg (CAPE_LL_DEBUG, "FLOW", "method sleep", "---------------+----------------------------------+");
+
+      res = CAPE_ERR_NONE;
+      break;
+    }
+    default:
+    {
+      res = CAPE_ERR_CONTINUE;
+      break;
+    }
+  }
 
   return res;
 }
@@ -378,17 +415,17 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
 
   CapeUdc list = NULL;
   CapeUdcCursor* cursor = NULL;
-  
+
   number_t syncid = 0;
   number_t wfid;
   CapeString refid_name = NULL;
-    
+
   res = flow_run_dbw_xdata__split (dbw, &list, &wfid, &refid_name, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  
+
   // create sync object
   syncid = flow_run_dbw_sync__add (dbw, cape_udc_size (list), err);
   if (syncid == 0)
@@ -403,7 +440,7 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
 
   // set state halt to commit all changes so far
   flow_run_dbw_state_set (dbw, FLOW_STATE__HALT, NULL);
-  
+
   cursor = cape_udc_cursor_new (list, CAPE_DIRECTION_FORW);
   while (cape_udc_cursor_next (cursor))
   {
@@ -414,21 +451,21 @@ int flow_run_step__method__split_add (FlowRunStep* p_self, FlowRunDbw* p_dbw, Ca
     {
       refid = cape_udc_get_n (item, refid_name, 0);
     }
-    
+
     res = flow_run_dbw_inherit (dbw, wfid, syncid, refid, &item, err);
     if (res)
     {
       goto exit_and_cleanup;
     }
   }
-  
+
   res = CAPE_ERR_CONTINUE;
-  
+
 exit_and_cleanup:
-  
+
   cape_udc_cursor_del (&cursor);
   cape_udc_del (&list);
-  
+
   return res;
 }
 
@@ -455,7 +492,7 @@ int flow_run_step__method__split (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
 
         return flow_run_step__method__split_add (p_self, p_dbw, err);
       }
-      
+
       break;
     }
     case FLOW_STATE__HALT:
@@ -468,11 +505,11 @@ int flow_run_step__method__split (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
       {
         return CAPE_ERR_NONE;
       }
-      
+
       break;
     }
   }
-  
+
   return CAPE_ERR_CONTINUE;
 }
 
@@ -480,9 +517,9 @@ int flow_run_step__method__split (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeEr
 
 int flow_run_step__start_task (FlowRunStep* p_self, CapeErr err)
 {
-  
-  
-  
+
+
+
   return CAPE_ERR_NONE;
 }
 
@@ -511,22 +548,22 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
   FlowRunDbw dbw = *p_dbw;
 
   CapeUdc switch_case;
-  
+
   // local objects
   CapeString value = NULL;
   CapeUdc switch_node = NULL;
-  
+
   res = flow_run_dbw_xdata__switch (dbw, &value, &switch_node, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-      
+
   if (NULL == switch_node)
   {
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " CASE          | precondition failed              |");
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", "---------------+----------------------------------+");
-    
+
     res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
@@ -536,7 +573,7 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
     res = cape_err_set (err, CAPE_ERR_RUNTIME, "no value defined");
     goto exit_and_cleanup;
   }
-    
+
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " VALUE         | value %8s                   |", value);
   cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", "---------------+----------------------------------+");
 
@@ -546,10 +583,10 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
   {
     number_t wfid = cape_udc_n (switch_case, 0);
     number_t syncid;
-    
+
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", " CASE          | match, wfid: %4i                |", wfid);
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "switch add", "---------------+----------------------------------+");
-    
+
     // create sync object
     syncid = flow_run_dbw_sync__add (dbw, 1, err);
     if (syncid == 0)
@@ -557,7 +594,7 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
       res = cape_err_code (err);
       goto exit_and_cleanup;
     }
-    
+
     // transfer owership of dbw to self objects
     self->dbw = dbw;
     *p_dbw = NULL;
@@ -580,11 +617,11 @@ int flow_run_step__switch__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr 
 
     res = CAPE_ERR_NONE;
   }
-  
+
 exit_and_cleanup:
 
   cape_str_del (&value);
-  
+
   return res;
 }
 
@@ -611,11 +648,11 @@ int flow_run_step__switch (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
         return flow_run_step__switch__add (p_self, p_dbw, err);
       }
-      
+
       break;
     }
   }
-  
+
   return CAPE_ERR_NONE;
 }
 
@@ -629,7 +666,7 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
   CapeUdc value_node = NULL;
   number_t wfid = 0;
-  
+
   res = flow_run_dbw_xdata__if (dbw, &value_node, &wfid, err);
   if (res)
   {
@@ -673,7 +710,7 @@ int flow_run_step__if__add (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
     res = CAPE_ERR_NONE;
   }
-  
+
 exit_and_cleanup:
 
   if (cape_err_code (err))
@@ -707,29 +744,11 @@ int flow_run_step__if (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
 
         return flow_run_step__if__add (p_self, p_dbw, err);
       }
-      
+
       break;
     }
   }
-  
-  return CAPE_ERR_NONE;
-}
 
-//-----------------------------------------------------------------------------
-
-int flow_run_step__subscribe (FlowRunStep* p_self, FlowRunDbw* p_dbw, CapeErr err)
-{
-  FlowRunStep self = *p_self;
-  
-  // get the current state of the step
-  switch (flow_run_dbw_state_get (*p_dbw))
-  {
-    case FLOW_STATE__NONE:
-    {
-      return flow_run_dbw_subscribe (*p_dbw);
-    }
-  }
-  
   return CAPE_ERR_NONE;
 }
 
@@ -759,25 +778,25 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     case FLOW_ACTION__NONE:
     {
       cape_log_msg (CAPE_LL_WARN, "FLOW", "run step", "no action was given");
-      
+
       res = CAPE_ERR_NONE;
       goto exit_and_cleanup;
     }
   }
-  
+
   {
     CapeUdc rinfo = flow_run_dbw_rinfo_get (*p_dbw);
-    
+
     cape_log_fmt (CAPE_LL_DEBUG, "FLOW", "run step", "run step with action = %i, fctid = %i, wpid = %i", action, flow_run_dbw_fctid_get (*p_dbw), cape_udc_get_n (rinfo, "wpid", 0));
   }
-  
+
   // check for condition
   if (flow_run_dbw_condition (*p_dbw) == FALSE)
   {
     res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
-  
+
   switch (flow_run_dbw_fctid_get (*p_dbw))
   {
     case 3:    // call another module's method (syncron)
@@ -793,6 +812,11 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     case 5:    // wait
     {
       res = flow_run_step__method__wait (p_self, p_dbw, *p_params, err);
+      break;
+    }
+    case 6:
+    {
+      res = flow_run_step__method__sleep (p_self, p_dbw, *p_params, err);
       break;
     }
     case 10:   // split into several taskflows, sync at the end and continue this taskflow
@@ -813,11 +837,6 @@ int flow_run_step_set (FlowRunStep* p_self, FlowRunDbw* p_dbw, number_t action, 
     case 13:   // if
     {
       res = flow_run_step__if (p_self, p_dbw, err);
-      break;
-    }
-    case 14:   // wait for observable
-    {
-      res = flow_run_step__subscribe (p_self, p_dbw, err);
       break;
     }
     case 21:   // place a message on the desktop

@@ -8,58 +8,28 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
 //-----------------------------------------------------------------------------
 
-/*
-@Component({
-  selector: 'auth-session-menu',
-  templateUrl: './component.html'
-}) export class AuthSessionMenuComponent {
-
-  public session: BehaviorSubject<AuthSessionItem>;
-  public ticks: number;
-
-  //---------------------------------------------------------------------------
-
-  constructor (public auth_session: AuthSession, private modal_service: NgbModal)
-  {
-    this.session = auth_session.session;
-    auth_session.idle.subscribe (s => this.ticks = s);
-  }
-
-  //---------------------------------------------------------------------------
-
-  public login (): void
-  {
-    this.auth_session.show_login ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  public open_info (): void
-  {
-    this.modal_service.open (AuthSessionInfoModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then(() => {
-
-    }, () => {
-
-    });
-  }
-
-}
-*/
-//-----------------------------------------------------------------------------
-
 @Component({
   selector: 'auth-info',
-  templateUrl: './component.html'
-}) export class AuthSessionInfoComponent {
+  templateUrl: './component.html',
+  styleUrls: ['./component.css']
+}) export class AuthSessionInfoComponent implements OnInit {
 
   public sitem: AuthSessionItem;
-  public mode: number = 0;
+  public mode: number = 1;
+
+  private session_obj;
 
   //---------------------------------------------------------------------------
 
-  constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
+  constructor (public modal: NgbActiveModal, private auth_session: AuthSession, private modal_service: NgbModal)
   {
-    auth_session.session.subscribe ((data: AuthSessionItem) => {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.session_obj = this.auth_session.session.subscribe ((data: AuthSessionItem) => {
 
       if (data)
       {
@@ -73,86 +43,41 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
     });
   }
 
-  //---------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------
 
-  toogle_edit ()
+  ngOnDestroy()
   {
-    this.mode = 1;
+    this.session_obj.unsubscribe();
   }
 
   //---------------------------------------------------------------------------
 
-  untoogle_edit ()
+  public open_rename ()
   {
-    this.mode = 0;
+    this.modal_service.open (AuthSessionInfoNameModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthSessionItem, useValue: this.sitem}])});
   }
 
   //---------------------------------------------------------------------------
 
-  logout_submit ()
+  public open_change_password ()
   {
-    this.auth_session.disable ();
-    this.modal.dismiss ();
+    this.modal_service.open (AuthSessionInfoPasswordModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthSessionItem, useValue: this.sitem}])});
   }
 
   //---------------------------------------------------------------------------
 
-  change_name ()
-  {
-    this.mode = 2;
-  }
-
-  //---------------------------------------------------------------------------
-
-  change_name_apply ()
-  {
-    this.auth_session.json_rpc ('AUTH', 'globperson_set', {firstname : this.sitem.firstname, lastname : this.sitem.lastname}).subscribe(() => {
-
-      this.reset_mode ();
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  change_password ()
-  {
-    this.mode = 3;
-  }
-
-  //---------------------------------------------------------------------------
-
-  change_password_apply ()
+  private disable_account ()
   {
 
   }
 
   //---------------------------------------------------------------------------
 
-  open_messages_modal ()
+  public open_disable_account ()
   {
-    this.mode = 5;
-  }
+    var holder: QbngOptionHolder = new QbngOptionHolder ('AUTH.ACCDEACTIVATE', 'AUTH.ACCDEACTIVATE_INFO', 'AUTH.ACCDEACTIVATE');
 
-  //---------------------------------------------------------------------------
-
-  disabe_account ()
-  {
-    this.mode = 4;
-  }
-
-  //---------------------------------------------------------------------------
-
-  disabe_account_apply ()
-  {
-
-  }
-
-  //---------------------------------------------------------------------------
-
-  reset_mode ()
-  {
-    this.mode = 1;
+    this.modal_service.open (QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => this.disable_account (), () => {});
   }
 }
 
@@ -166,6 +91,55 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, private auth_session: AuthSession)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public logout_submit ()
+  {
+    this.auth_session.disable ();
+    this.modal.dismiss ();
+  }
+
+};
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-session-info-name-modal-component',
+  templateUrl: './modal_name.html'
+}) export class AuthSessionInfoNameModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private auth_session: AuthSession, private modal_service: NgbModal, public sitem: AuthSessionItem)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public change_name_apply ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'globperson_set', {firstname : this.sitem.firstname, lastname : this.sitem.lastname}).subscribe(() => {
+
+      this.modal.close();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+};
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-session-info-password-modal-component',
+  templateUrl: './modal_password.html'
+}) export class AuthSessionInfoPasswordModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private auth_session: AuthSession, public sitem: AuthSessionItem)
   {
   }
 

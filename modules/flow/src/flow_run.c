@@ -125,7 +125,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int flow_run_add__complete_run_in_database (FlowRun self, CapeUdc rdata, CapeErr err)
+int flow_run_add__complete_run_in_database (FlowRun self, CapeUdc rdata, CapeErr err_run, CapeErr err)
 {
   int res;
   
@@ -140,7 +140,8 @@ int flow_run_add__complete_run_in_database (FlowRun self, CapeUdc rdata, CapeErr
     goto exit_and_cleanup;
   }
   
-  if (rdata)
+  // only store the result in case there was no error
+  if (rdata && (err_run == NULL))
   {
     rdata_id = flow_data_add (trx, rdata, err);
     if (0 == rdata_id)
@@ -157,8 +158,18 @@ int flow_run_add__complete_run_in_database (FlowRun self, CapeUdc rdata, CapeErr
     cape_udc_add_n (params, "id"        , self->raid);
     cape_udc_add_n (params, "wpid"      , self->wpid);
 
-    cape_udc_add_n (values, "state"     , QFLOW_STATE_COMPLETE);
+    if (err_run)
+    {
+      cape_udc_add_n    (values, "state"     , QFLOW_STATE_ERROR);
 
+      cape_udc_add_n    (values, "err_code"  , cape_err_code (err_run));
+      cape_udc_add_s_cp (values, "err_text"  , cape_err_text (err_run));
+    }
+    else
+    {
+      cape_udc_add_n    (values, "state"     , QFLOW_STATE_COMPLETE);
+    }
+    
     if (rdata_id)
     {
       cape_udc_add_n (values, "rdata"   , rdata_id);
@@ -199,21 +210,13 @@ static int __STDCALL flow_run__on_call (QBus qbus, void* ptr, QBusM qin, QBusM q
   
   cape_stoptimer_stop (self->st);
   
-  if (qin->err)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, cape_err_text (qin->err));
-    goto exit_and_cleanup;
-  }
-  
-  res = flow_run_add__complete_run_in_database (self, qin->cdata, err);
+  res = flow_run_add__complete_run_in_database (self, qin->cdata, qin->err, err);
   if (res)
   {
     
   }
-  
+
 exit_and_cleanup:
-  
-  
   
   flow_run_del (&self);
   
@@ -249,7 +252,8 @@ static void __STDCALL flow_run__queue_worker (void* ptr, number_t action, number
   res = qbus_send (self->qbus, self->module, self->method, msg, self, flow_run__on_call, err);
   if (res)
   {
-    
+    cape_log_fmt (CAPE_LL_ERROR, "FLOW", "flow run", "runtime error: %s", cape_err_text (err));
+
   }
   
   qbus_message_del (&msg);
@@ -334,6 +338,16 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL flow_run_get__on_compare (CapeUdc obj1, CapeUdc obj2)
+{
+  number_t rsid1 = cape_udc_get_n (obj1, "rsid", 0);
+  number_t rsid2 = cape_udc_get_n (obj2, "rsid", 0);
+  
+  return (rsid1 > rsid2) ? -1 : (rsid1 < rsid2) ? 1 : 0;
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -394,6 +408,8 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_s_cp   (values, "name"             , NULL);
     cape_udc_add_n      (values, "max"              , 0);
     cape_udc_add_n      (values, "cur"              , 0);
+    cape_udc_add_n      (values, "err_code"         , 0);
+    cape_udc_add_s_cp   (values, "err_text"         , NULL);
 
     // default size is 4000 -> increase to 20000 bytes
     cape_udc_add_s_cp   (values, "rdata"          , "{\"size\": 20000}");
@@ -405,13 +421,15 @@ int flow_run_get (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
       res = cape_err_code (err);
       goto exit_and_cleanup;
     }
-    
-    first_row = cape_udc_ext_first (query_results);
-    if (first_row == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_DATASET");
-      goto exit_and_cleanup;
-    }
+  }
+
+  cape_udc_sort_list (query_results, flow_run_get__on_compare);
+  
+  first_row = cape_udc_ext_first (query_results);
+  if (first_row == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_DATASET");
+    goto exit_and_cleanup;
   }
 
   cape_stoptimer_stop (st);

@@ -8,7 +8,7 @@
           {{ 'AUTH.MSGSRECIPIENT' | transloco }}
         </th>
         <th>
-          <button *ngIf="new_item == null" (click)="new_start()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus"></i></button>
+          <button *ngIf="new_item == null" (click)="new_start()" type="button" class="btn btn-success btn-sm"><i class="fa fa-plus fa-fw"></i></button>
         </th>
       </tr>
       <tr *ngIf="new_item">
@@ -17,15 +17,15 @@
           <div class="btn-group mr-3">
             <div class="btn-group" ngbDropdown role="group" aria-label="Button group with nested dropdown">
               <button class="btn btn-sm btn-outline-secondary" ngbDropdownToggle [ngSwitch]="new_item.type">
-                <span *ngSwitchCase="1"><i class="fa fa-envelope"></i></span>
-                <span *ngSwitchCase="2"><i class="fa fa-phone"></i></span>
+                <span *ngSwitchCase="1"><i class="fa fa-envelope fa-fw"></i></span>
+                <span *ngSwitchCase="2"><i class="fa fa-phone fa-fw"></i></span>
               </button>
               <div class="dropdown-menu" ngbDropdownMenu>
                 <button (click)="new_item.type = 1" type="button" class="dropdown-item">
-                  <i class="fa fa-envelope"></i>&nbsp;&nbsp;{{ 'AUTH.MSGSEMAIL' | transloco }}
+                  <i class="fa fa-envelope fa-fw"></i>&nbsp;&nbsp;{{ 'AUTH.MSGSEMAIL' | transloco }}
                 </button>
                 <button (click)="new_item.type = 2" type="button" class="dropdown-item">
-                  <i class="fa fa-phone"></i>&nbsp;&nbsp;{{ 'AUTH.MSGSPHONE' | transloco }}
+                  <i class="fa fa-phone fa-fw"></i>&nbsp;&nbsp;{{ 'AUTH.MSGSPHONE' | transloco }}
                 </button>
               </div>
             </div>
@@ -36,8 +36,8 @@
         </td>
         <td>
           <div class="btn-group" role="group" aria-label="Basic example">
-            <button (click)="new_apply()" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-plus"></i></button>
-            <button (click)="new_cancel()" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i></button>
+            <button (click)="new_apply()" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-plus fa-fw"></i></button>
+            <button (click)="new_cancel()" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times fa-fw"></i></button>
           </div>
         </td>
 
@@ -47,16 +47,16 @@
         <ng-container *ngIf="item.mode == 0">
 
           <td [ngSwitch]="item.type">
-            <span *ngSwitchCase="1" class="badge badge-secondary"><i class="fa fa-envelope"></i></span>
-            <span *ngSwitchCase="2" class="badge badge-secondary"><i class="fa fa-phone"></i></span>
+            <span *ngSwitchCase="1" class="badge badge-secondary"><i class="fa fa-envelope fa-fw"></i></span>
+            <span *ngSwitchCase="2" class="badge badge-secondary"><i class="fa fa-phone fa-fw"></i></span>
           </td>
           <td>
             {{item.email}}
           </td>
           <td>
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button (click)="open_edit(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></button>
-              <button (click)="open_rm(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-trash"></i></button>
+              <button (click)="open_edit(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit fa-fw"></i></button>
+              <button (click)="open_rm(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-trash fa-fw"></i></button>
             </div>
           </td>
 
@@ -86,8 +86,8 @@
           </td>
           <td>
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button (click)="apply(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-check"></i></button>
-              <button (click)="cancel_edit(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times"></i></button>
+              <button (click)="apply(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-check fa-fw"></i></button>
+              <button (click)="cancel_edit(item)" type="button" class="btn btn-sm btn-outline-secondary"><i class="fas fa-times fa-fw"></i></button>
             </div>
           </td>
 
@@ -101,8 +101,8 @@
           </td>
           <td>
             <div class="btn-group" role="group" aria-label="Basic example">
-              <button (click)="rm_apply(item)" type="button" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-              <button (click)="rm_cancel(item)" type="button" class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i></button>
+              <button (click)="rm_apply(item)" type="button" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash fa-fw"></i></button>
+              <button (click)="rm_cancel(item)" type="button" class="btn btn-sm btn-outline-danger"><i class="fas fa-times fa-fw"></i></button>
             </div>
           </td>
 

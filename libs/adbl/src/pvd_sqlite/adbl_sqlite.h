@@ -18,7 +18,7 @@ __CAPE_LIBEX   void            __STDCALL adbl_pvd_close             (AdblPvdSess
 //-----------------------------------------------------------------------------
 
 // params    = {"id" : 12, "userid" : 10}           -> ... where id = 12 and userid = 10
-// values    = [{"id" : 2, "userid" : 12, "data1" : "hello", "data2" : "world"}]
+// values    = [{"id" : 2, "userid" : 12, "data1" : "hello", "data2" : "world"}]   
 //
 //    -> SELECT id, userid, data1, data2 FROM ... -> template for return values
 //    -> INSERT (id, userid, data1, data2) VALUES (2, 12, "hello", "world")

@@ -1,4 +1,4 @@
-FROM qore/qbus2:buster
+FROM qore/qbus:buster
 
 COPY docker /qore
 RUN mkdir /build && cd /build && cmake ../qore/flow && make install
@@ -8,11 +8,13 @@ FROM bitnami/minideb:buster
 RUN apt-get update && apt-get install -y \
   libmariadb-dev-compat \
   libssl-dev \
+#  valgrind \
   && rm -rf /var/lib/apt/lists/*
-  
+
 COPY --from=0 /opt .
 
 WORKDIR /mods
 
 ENTRYPOINT ["/mods/qbus_mod_flow"]
+#ENTRYPOINT ["valgrind"]
 CMD ["-d", "socket:127.0.0.1:33340"]

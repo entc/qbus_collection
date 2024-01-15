@@ -12,6 +12,9 @@
 // ADBL includes
 #include <adbl.h>
 
+// qjobs includes
+#include <qjobs.h>
+
 //-----------------------------------------------------------------------------
 
 #define FLOW_ACTION__PRIM             0    // first time this task was called
@@ -34,7 +37,7 @@ struct FlowRunDbw_s; typedef struct FlowRunDbw_s* FlowRunDbw;
 //-----------------------------------------------------------------------------
 // constructor / destructor
 
-__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, CapeQueue, number_t wpid, number_t psid, const CapeString remote, CapeUdc rinfo, number_t refid);
+__CAPE_LOCAL   FlowRunDbw   flow_run_dbw_new               (QBus, AdblSession, CapeQueue, QJobs, number_t wpid, number_t psid, const CapeString remote, CapeUdc rinfo, number_t refid);
 
 __CAPE_LOCAL   void         flow_run_dbw_del               (FlowRunDbw*);
 
@@ -126,9 +129,10 @@ __CAPE_LOCAL   int          flow_run_dbw_wait__init          (FlowRunDbw, CapeEr
                             /* check for a wait item */
 __CAPE_LOCAL   int          flow_run_dbw_wait__check_item    (FlowRunDbw, const CapeString uuid, const CapeString code, CapeErr err);
 
-__CAPE_LOCAL   int          flow_run_dbw_condition           (FlowRunDbw);
+                            /* create sleep item */
+__CAPE_LOCAL   int          flow_run_dbw_sleep__init         (FlowRunDbw, CapeErr err);
 
-__CAPE_LOCAL   int          flow_run_dbw_subscribe           (FlowRunDbw);
+__CAPE_LOCAL   int          flow_run_dbw_condition           (FlowRunDbw);
 
 //-----------------------------------------------------------------------------
 // sync tools
