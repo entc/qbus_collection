@@ -1,4 +1,4 @@
-import { Component, Injectable, Injector, Pipe, PipeTransform } from '@angular/core';
+import { Component, Injectable, Injector, Pipe, PipeTransform, Input } from '@angular/core';
 import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
 import { Observable, BehaviorSubject } from 'rxjs';
@@ -64,37 +64,61 @@ export class TrloService
   {
     if (datetime_in_ms < 1000)
     {
-      return Math.floor (datetime_in_ms) + ' ms';
+      return Math.floor (datetime_in_ms) + ' ' + this.translate('DATE.MS');
     }
     else if (datetime_in_ms < 60000)
     {
-      return Math.floor (datetime_in_ms / 1000) + ' sec';
+      return Math.floor (datetime_in_ms / 1000) + ' ' + this.translate('DATE.SECONDS');
     }
     else if (datetime_in_ms < 3600000)
     {
       var min = Math.floor (datetime_in_ms / 60000);
       var sec = Math.floor ((datetime_in_ms - min * 60000) / 1000);
-      return min + ':' + String(sec).padStart(2 ,"0") + ' min';
+      return min + ':' + String(sec).padStart(2 ,"0") + ' ' + this.translate('DATE.MINUTES');
     }
     else if (datetime_in_ms < 86400000)
     {
       var hrs = Math.floor (datetime_in_ms / 3600000);
       var min = Math.floor ((datetime_in_ms - hrs * 3600000) / 60000);
 
-      return hrs + ':' + String(min).padStart(2 ,"0") + ' hrs';
+      return hrs + ':' + String(min).padStart(2 ,"0") + ' ' + this.translate('DATE.HOURS');
     }
     else
     {
-      return Math.floor (datetime_in_ms / 86400000) + ' days';
+      return Math.floor (datetime_in_ms / 86400000) + ' ' + this.translate('DATE.DAYS');
     }
   }
 
   //---------------------------------------------------------------------------
 
-  public diff_date (date_in_iso: string): string
+  public diff_date__future (date_in_iso: string): string
+  {
+    var time = new Date(date_in_iso).getTime() - new Date().getTime();
+
+    if (time < 0)
+    {
+      return this.translate('DATE.NAT');
+    }
+    else
+    {
+      return this.datetime_to_h (time);
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public diff_date__past (date_in_iso: string): string
   {
     var time = new Date().getTime() - new Date(date_in_iso).getTime();
-    return this.datetime_to_h (Math.abs(time));
+
+    if (time < 0)
+    {
+      return this.translate('DATE.NAT');
+    }
+    else
+    {
+      return this.datetime_to_h (time);
+    }
   }
 
   //---------------------------------------------------------------------------
@@ -115,7 +139,7 @@ export class TrloService
 //=============================================================================
 
 @Component({
-  selector: 'trlo-service-component',
+  selector: 'trlo-selector',
   templateUrl: './component.html',
   styleUrls: ['./component.scss']
 }) export class TrloServiceComponent {
@@ -123,18 +147,25 @@ export class TrloService
   public locale: BehaviorSubject<string>;
 
   // this member is needed for the select html element
-  public locales;
+  public _locales;
+
+  //---------------------------------------------------------------------------
+
+  @Input() set locales (locales)
+  {
+    this._locales = locales;
+  }
 
   //---------------------------------------------------------------------------
 
   constructor (private trlo_service: TrloService)
   {
-    this.locales = this.trlo_service.locales;
+    this._locales = this.trlo_service.locales;
   }
 
   //---------------------------------------------------------------------------
 
-  updateLocale (e: Event)
+  public set_locale (e: Event)
   {
     const target = e.target as HTMLSelectElement;
 
@@ -181,11 +212,11 @@ export class TrloPipeTimediff implements PipeTransform {
 
   //---------------------------------------------------------------------------
 
-  transform (value: string): string
+  transform (value: string, in_the_future: boolean = false): string
   {
     if (value)
     {
-      return this.trlo_service.diff_date (value);
+      return in_the_future ? this.trlo_service.diff_date__future (value) : this.trlo_service.diff_date__past (value);
     }
     else
     {
