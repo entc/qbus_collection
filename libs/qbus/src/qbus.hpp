@@ -452,6 +452,10 @@ namespace qbus
       {
         return cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
       }
+      catch (...)
+      {
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "unknown");
+      }
     }
 
     template <class V, class ...Ts> static int run (void (*fct)(std::unique_ptr<T>&, QBus, V&), QBus qbus, V& v, CapeErr err, Ts&&... args)
@@ -471,6 +475,10 @@ namespace qbus
       catch (std::exception& e)
       {
         return cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+      }
+      catch (...)
+      {
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "unknown");
       }
     }
 
@@ -494,6 +502,10 @@ namespace qbus
       catch (std::exception& e)
       {
         return cape_err_set (err, CAPE_ERR_RUNTIME, e.what());
+      }
+      catch (...)
+      {
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "unknown");
       }
     }
   };
