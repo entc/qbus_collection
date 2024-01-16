@@ -583,3 +583,38 @@ void qbus_rm_on_change (QBus self, void* obj)
 }
 
 //-----------------------------------------------------------------------------
+
+const CapeString qbus_config_s (QBus self, const char* name, const CapeString default_val)
+{
+  return qbus_config__s (self->config, name, default_val);
+}
+
+//-----------------------------------------------------------------------------
+
+number_t qbus_config_n (QBus self, const char* name, number_t default_val)
+{
+  return qbus_config__n (self->config, name, default_val);
+}
+
+//-----------------------------------------------------------------------------
+
+double qbus_config_f (QBus self, const char* name, double default_val)
+{
+  return qbus_config__f (self->config, name, default_val);
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_config_b (QBus self, const char* name, int default_val)
+{
+  return qbus_config__b (self->config, name, default_val);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_config_node (QBus self, const char* name)
+{
+  return qbus_config__node (self->config, name);
+}
+
+//-----------------------------------------------------------------------------
