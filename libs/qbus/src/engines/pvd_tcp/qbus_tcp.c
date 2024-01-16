@@ -18,6 +18,8 @@
 #include <arpa/inet.h>
 #include <time.h>
 
+#define PVD2_TCP_MAX_BUFFER_SIZE 10000
+
 // includes specific event subsystem
 #if defined __BSD_OS
 
@@ -66,6 +68,9 @@ struct QBusPvdFD_s
   
   // keep the last frame for decoding
   QBusFrame last_frame;
+  
+  // use this buffer to handle frames
+  CapeStream buffer;
   
 }; typedef struct QBusPvdFD_s* QBusPvdFD;
 
@@ -144,7 +149,10 @@ QBusPvdFD pvd2_pfd_new (void* handle, int handle_type, QBusPvdEntity entity)
   self->entity = entity;
   
   self->last_frame = qbus_frame_new ();
+  self->buffer = cape_stream_new ();
   
+  cape_stream_cap (self->buffer, PVD2_TCP_MAX_BUFFER_SIZE);
+
   return self;
 }
 
@@ -187,7 +195,7 @@ void pvd2_pfd__send (QBusPvdFD self, CapeStream s)
       {
         // TODO: add to writefds
       }
-      else if((errno != EINPROGRESS) && (errno != EAGAIN))
+      else if ((errno != EINPROGRESS) && (errno != EAGAIN))
       {
         CapeErr err = cape_err_new ();
         
@@ -285,57 +293,63 @@ int pvd2_pfd_event (QBusPvdFD self, QBusPvdCtx ctx, QBusPvdFD* p_new_pfd)
     case QBUS_PVD_MODE_CONNECT:
     case QBUS_PVD_MODE_REMOTE:
     case QBUS_PVD_MODE_CLIENT: // read
-    {      
-      char buffer[1024];
-      
-      ssize_t readBytes = recv ((long)self->handle, buffer, 1024, 0);
-      
-      //printf ("read bytes: %zd\n", readBytes);
-      
-      if (readBytes < 0)
+    {
+      while (TRUE)
       {
-        if ((errno == ECONNRESET) || (errno == ECONNREFUSED))
-        {
-          // reset by peer
-          return FALSE;
-        }
-        else if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket read", "error while writing data to the socket [%i]", errno);
-          
-        }
+        ssize_t readBytes = recv ((long)self->handle, cape_stream_pos (self->buffer), PVD2_TCP_MAX_BUFFER_SIZE, 0);
         
-        return TRUE;
-      }
-      else if (readBytes == 0)
-      {
-        // disconnect
-        return FALSE;
-      }
-      else
-      {
-        number_t total_written = 0;
-
-        // set callbacks
-        pvd2_entity__cb_on_connect (self->entity, self);
+        //printf ("read bytes: %zd\n", readBytes);
         
-        while (total_written < readBytes)
+        if (readBytes < 0)
         {
-          number_t written = 0;
-          
-          if (qbus_frame_decode (self->last_frame, buffer + total_written, readBytes - total_written, &written))
+          if ((errno == ECONNRESET) || (errno == ECONNREFUSED))
           {
-            pvd2_entity__cb_on_frame (self->entity, &(self->last_frame));
-            
-            // to be on the safe side
-            qbus_frame_del (&(self->last_frame));
-            
-            self->last_frame = qbus_frame_new ();
+            // reset by peer
+            return FALSE;
+          }
+          else if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+          {
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket read", "error while reading data from the socket [%i]", errno);
+            return FALSE;
           }
           
-          total_written += written;
+          return TRUE;
         }
-        
+        else if (readBytes == 0)
+        {
+          // disconnect
+          return FALSE;
+        }
+        else
+        {
+          number_t total_written = 0;
+          
+          // set callbacks
+          //        pvd2_entity__cb_on_connect (self->entity, self);
+          
+          while (total_written < readBytes)
+          {
+            number_t written = 0;
+            
+            if (qbus_frame_decode (self->last_frame, cape_stream_pos (self->buffer) + total_written, readBytes - total_written, &written))
+            {
+              pvd2_entity__cb_on_frame (self->entity, &(self->last_frame));
+              
+              // to be on the safe side
+              qbus_frame_del (&(self->last_frame));
+              
+              self->last_frame = qbus_frame_new ();
+            }
+            
+            total_written += written;
+          }
+          
+          if (readBytes < PVD2_TCP_MAX_BUFFER_SIZE)
+          {
+            // leave the while loop
+            break;
+          }
+        }
       }
       
       break; 
@@ -369,6 +383,7 @@ void pvd2_ctx__get_fds (QBusPvdCtx self, fd_set* pset, int changed_fds)
         
         selected_fds_left--;
 
+        // handle the event
         if (pvd2_pfd_event (pfd, self, &new_pfd))
         {
           if (new_pfd)
@@ -448,18 +463,22 @@ int __STDCALL pvd2_ctx__main_worker (void* ptr)
 {
   QBusPvdCtx self = ptr;
   
-  cape_thread_nosignals ();
-  
   fd_set readfds;
   fd_set writefds;
-  
+
   struct timeval timeout;
 
+  // disable signals in this thread
+  cape_thread_nosignals ();
+
+  // initialize fd sets
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
 
+  // add pipe end to the read set
   FD_SET(self->pipe_fd[0], &readfds);
   
+  // convert fds into fd sets
   pvd2_ctx__set_fds (self, &readfds, &writefds);
   
   timeout.tv_usec = 0;
@@ -489,12 +508,14 @@ int __STDCALL pvd2_ctx__main_worker (void* ptr)
       // check the control 'channel'
       if (FD_ISSET (self->pipe_fd[0], &readfds))
       {
+        // read all bytes from the pipe
         ret = (pvd2_ctx__retrieve_last_ctrl (self) == THREAD_SIGNAL_MSG__UPDATE);
         changed_fds--;
       }
 
       if (changed_fds > 0)
       {
+        // continue with read fds
         pvd2_ctx__get_fds (self, &readfds, changed_fds);
       }
       
