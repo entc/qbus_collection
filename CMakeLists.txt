@@ -39,3 +39,6 @@ SUBDIRS(libs/qflow)
 SUBDIRS(modules/webs)
 SUBDIRS(modules/auth)
 SUBDIRS(modules/flow)
+
+# tools
+SUBDIRS(tools/cldd)
