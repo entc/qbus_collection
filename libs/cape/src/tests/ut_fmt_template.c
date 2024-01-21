@@ -1,4 +1,6 @@
 #include "fmt/cape_template.h"
+#include "fmt/cape_json.h"
+#include "sys/cape_file.h"
 
 // c includes
 #include <stdio.h>
@@ -10,6 +12,76 @@ static char* __STDCALL main__on_pipe (const char* name, const char* pipe, const 
   //printf ("ON PIPE: name = '%s', pipe = '%s', value = '%s'\n", pipe, value);
   
   return cape_str_cp ("13");
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL test_custom_files__on_load (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
+{
+  cape_stream_append_buf (ptr, bufdat, buflen);
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL test_custom_files__on_text (void* ptr, const char* text)
+{
+  cape_stream_append_str (ptr, text);
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+void test_custom_files (CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeStream s1 = NULL;
+  CapeStream s2 = NULL;
+  CapeUdc params = NULL;
+  CapeTemplate template_engine = NULL;
+
+  params = cape_json_from_file ("params.json", err);
+  if (NULL == params)
+  {
+    goto exit_and_cleanup;
+  }
+
+  s1 = cape_stream_new ();
+  
+  res = cape_fs_file_load (NULL, "template.txt", s1, test_custom_files__on_load, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  template_engine = cape_template_new ();
+  
+  res = cape_template_compile_str (template_engine, cape_stream_get (s1), err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  s2 = cape_stream_new ();
+
+  res = cape_template_apply (template_engine, params, s2, test_custom_files__on_text, NULL, NULL, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  printf ("-----------------------------------\n");
+  printf ("%s\n", cape_stream_get (s2));
+  printf ("-----------------------------------\n");
+
+exit_and_cleanup:
+  
+  cape_template_del (&template_engine);
+  cape_udc_del (&params);
+  cape_stream_del (&s1);
+  cape_stream_del (&s2);
 }
 
 //-----------------------------------------------------------------------------
@@ -268,12 +340,14 @@ int main (int argc, char *argv[])
     {
       printf ("ERR %s\n", cape_err_text(err));
     }
-
+    
     cape_str_del (&h);
     
     cape_udc_del (&n1);
     cape_udc_del (&n2);
   }
+
+  test_custom_files (err);
   
 exit_and_cleanup:
 
