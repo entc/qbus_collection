@@ -333,28 +333,74 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString cape_sock__resolve (const CapeString host, CapeErr err)
+void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
 {
-  struct addrinfo hints, *res;
-  
-  memset (&hints, 0, sizeof (hints));
-  hints.ai_family = PF_UNSPEC;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags |= AI_CANONNAME;
-  
-  if (getaddrinfo (host, NULL, &hints, &res) == 0)
+  switch (sa->sa_family) 
   {
-    CapeString h = cape_str_cp (res->ai_canonname);
-    
-    freeaddrinfo (res);
-    
-    return h;
+    case AF_INET:
+    {
+      inet_ntop (AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), bufdat, buflen);
+      break;
+    }
+    case AF_INET6:
+    {
+      inet_ntop (AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), bufdat, buflen);
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
+{
+  CapeString ret = NULL;
+
+  int res;
+  struct addrinfo* addr_result;
+  
+  res = getaddrinfo (host, 0, 0, &addr_result);
+  
+  if (res != 0)
+  {
+    cape_err_lastOSError (err);
+    goto exit_and_cleanup;
   }
   else
   {
-    cape_err_lastOSError (err);
-    return NULL;
+    /*
+    struct addrinfo *a;
+    char address[64];
+    
+    for (a = addr; a; a = a->ai_next)
+    {
+      cape_net__ntop (a->ai_addr, address, 64);
+      
+      cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
+    }
+    */
   }
+  
+  {
+    struct addrinfo* addr_current = addr_result;
+    
+    while (addr_current && addr_current->ai_family != AF_INET)
+    {
+      addr_current = addr_current->ai_next;
+    }
+    
+    if (addr_current)
+    {
+      ret = CAPE_ALLOC (65);
+      
+      cape_net__ntop (addr_current->ai_addr, ret, 64);
+    }
+  }
+  
+exit_and_cleanup:
+  
+  freeaddrinfo (addr_result);
+  return ret;
 }
 
 //-----------------------------------------------------------------------------

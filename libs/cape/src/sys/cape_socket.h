@@ -25,7 +25,9 @@ __CAPE_LIBEX   void*         cape_sock__icmp__new         (CapeErr err);
 
 __CAPE_LIBEX   void          cape_sock__close             (void*);
 
-__CAPE_LIBEX   CapeString    cape_sock__resolve           (const CapeString host, CapeErr err);
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   CapeString    cape_net__resolve            (const CapeString host, int ipv6, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
