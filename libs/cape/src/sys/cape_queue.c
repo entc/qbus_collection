@@ -267,6 +267,8 @@ struct CapeQueueItem_s
   
   cape_queue_cb_fct on_done;
   
+  cape_queue_cb_fct on_cancel;
+  
   void* ptr;
   
   CapeSync sync;    // reference
@@ -616,20 +618,27 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
           {
             cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
             
-            // try to cancel the thread
-            cape_thread_cancel (ti->thread);
-            
-            // release the item allocations and call the on_done method
-            // -> not all memory might be released
-            // -> this depends on the user function implementations
-            cape_queue__item__on_del (ti->item);
-            
-            // reset the state
-            ti->busy_cnt = 0;
-            ti->item = NULL;
-            
-            // restart the thread
-            cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
+            if (ti->item->on_cancel)
+            {
+              ti->item->on_cancel (ti->item->ptr, ti->item->pos, 0);
+            }
+            else
+            {
+              // try to cancel the thread
+              cape_thread_cancel (ti->thread);
+              
+              // release the item allocations and call the on_done method
+              // -> not all memory might be released
+              // -> this depends on the user function implementations
+              cape_queue__item__on_del (ti->item);
+              
+              // reset the state
+              ti->busy_cnt = 0;
+              ti->item = NULL;
+              
+              // restart the thread
+              cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
+            }            
           }
         }
       }
@@ -679,12 +688,13 @@ int cape_queue_start  (CapeQueue self, int amount_of_threads, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, cape_queue_cb_fct on_done, void* ptr, number_t pos)
+void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, cape_queue_cb_fct on_done, cape_queue_cb_fct on_cancel, void* ptr, number_t pos)
 {
   CapeQueueItem item = CAPE_NEW (struct CapeQueueItem_s);
   
   item->on_done = on_done;
   item->on_event = on_event;
+  item->on_cancel = on_cancel;
   item->ptr = ptr;
   item->sync = sync;
   item->pos = pos;

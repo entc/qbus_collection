@@ -36,7 +36,7 @@ int main (int argc, char *argv[])
     
     for (i = 0; i < 10; i++)
     {
-      cape_queue_add (queue01, sync01, cape_queue01_callback, NULL, NULL, i);
+      cape_queue_add (queue01, sync01, cape_queue01_callback, NULL, NULL, NULL, i);
     }
   }
 

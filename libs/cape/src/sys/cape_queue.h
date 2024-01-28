@@ -42,7 +42,7 @@ __CAPE_LIBEX   void        cape_queue_del          (CapeQueue*);
                            /*
                             * adds a new task
                             */
-__CAPE_LIBEX   void        cape_queue_add          (CapeQueue, CapeSync, cape_queue_cb_fct on_event, cape_queue_cb_fct on_done, void* ptr, number_t pos);
+__CAPE_LIBEX   void        cape_queue_add          (CapeQueue, CapeSync, cape_queue_cb_fct on_event, cape_queue_cb_fct on_done, cape_queue_cb_fct on_cancel, void* ptr, number_t pos);
 
                            /*
                             * starts the queueing in background

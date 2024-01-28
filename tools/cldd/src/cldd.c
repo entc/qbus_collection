@@ -4,6 +4,9 @@
 #include <fmt/cape_parser_line.h>
 #include <fmt/cape_tokenizer.h>
 
+// qcrypt includes
+#include <qcrypt_file.h>
+
 //-----------------------------------------------------------------------------
 
 void cp_file (const CapeString file, const CapeString image_path)
@@ -33,8 +36,21 @@ void cp_file (const CapeString file, const CapeString image_path)
   
   printf ("copy %s -> %s\n", file, dest_file);
   
-exit_and_cleanup:
+  CapeString hash1 = qcrypt__hash_md5_file (file, err);
+  CapeString hash2 = qcrypt__hash_md5_file (dest_file, err);
+
+  cape_log_fmt (CAPE_LL_INFO, "CLDD", "validate", "%s <-> %s", hash1, hash2);    
   
+  if (!cape_str_equal (hash1, hash2))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CLDD", "copy file", "hash missmatch");    
+  }
+  
+exit_and_cleanup:
+
+  cape_str_del (&hash1);
+  cape_str_del (&hash2);
+
   cape_str_del (&path2);
 
   cape_str_del (&dest_file);
