@@ -322,7 +322,7 @@ int flow_run_add (FlowRun* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   // add to queue
-  cape_queue_add (self->queue, NULL, flow_run__queue_worker, NULL, self, 0);
+  cape_queue_add (self->queue, NULL, flow_run__queue_worker, NULL, NULL, self, 0);
   *p_self = NULL;
 
   res = CAPE_ERR_NONE;

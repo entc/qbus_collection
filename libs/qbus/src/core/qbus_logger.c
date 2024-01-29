@@ -264,7 +264,7 @@ void qbus_logger_msg (QBusLogger self, const CapeString remote, const CapeString
     item->remote = cape_str_cp (remote);
     item->message = cape_str_cp (message);
     
-    cape_queue_add (self->queue, NULL, qbus_logger_msg__worker, NULL, item, 0);
+    cape_queue_add (self->queue, NULL, qbus_logger_msg__worker, NULL, NULL, item, 0);
   }
   
   cape_map_cursor_destroy (&cursor);

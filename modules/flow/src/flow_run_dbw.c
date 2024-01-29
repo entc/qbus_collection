@@ -1446,7 +1446,7 @@ int flow_run_dbw_start (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, 
     goto exit_and_cleanup;
   }
 
-  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, NULL, self, action);
   *p_self = NULL;
 
   res = CAPE_ERR_NONE;
@@ -1484,7 +1484,7 @@ int flow_run_dbw_continue (FlowRunDbw* p_self, number_t action, CapeUdc* p_param
   }
 
   // add process to queue
-  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, NULL, self, action);
 
   // ownership was transfered to queue user ptr
   *p_self = NULL;
@@ -1871,7 +1871,7 @@ int flow_run_dbw_next (FlowRunDbw* p_self, CapeErr err)
   }
 
   // continue in background process
-  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, FLOW_ACTION__PRIM);
+  cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, NULL, self, FLOW_ACTION__PRIM);
 
   // transfer ownership to background process
   *p_self = NULL;
@@ -1944,7 +1944,7 @@ int flow_run_dbw_set (FlowRunDbw* p_self, number_t action, CapeUdc* p_params, Ca
     }
 
     // continue in background process
-    cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, self, action);
+    cape_queue_add (self->queue, NULL, flow_run_dbw__queue_worker, NULL, NULL, self, action);
 
     // transfer ownership to background process
     *p_self = NULL;

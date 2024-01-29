@@ -140,7 +140,7 @@ int main (int argc, char *argv[])
   
   for (i = 0; i < 100; i++)
   {
-    cape_queue_add (queue, sync, worker_part, NULL, session, 0);
+    cape_queue_add (queue, sync, worker_part, NULL, NULL, session, 0);
   }
   
   cape_sync_wait (sync);

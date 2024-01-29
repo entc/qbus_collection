@@ -599,7 +599,7 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
   {
     number_t busy_threads = 0;
 
-    cape_thread_sleep (2000);
+    cape_thread_sleep (self->timeout_in_ds);
 
     {
       CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
@@ -620,7 +620,12 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
             
             if (ti->item->on_cancel)
             {
+              cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "run user defined callback");
+
               ti->item->on_cancel (ti->item->ptr, ti->item->pos, 0);
+
+              // reset the state
+              ti->busy_cnt = 0;
             }
             else
             {
