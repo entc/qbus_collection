@@ -327,6 +327,10 @@ void cape_udc_merge_mv (CapeUdc self, CapeUdc* p_udc)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc cape_udc_merge__item (CapeUdc* p_origin, CapeUdc other);
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_merge_cp__item__node (CapeUdc origin, const CapeUdc other)
 {
   if (origin->type == other->type)
@@ -336,12 +340,14 @@ void cape_udc_merge_cp__item__node (CapeUdc origin, const CapeUdc other)
     while (cape_udc_cursor_next (cursor))
     {
       CapeUdc h1 = cursor->item;
-      CapeUdc h2 = cape_udc_get (origin, h1->name);
+      CapeUdc h2 = cape_udc_ext (origin, h1->name);
       
       if (h2)
       {
-        // we found this node in our self node
-        cape_udc_merge_cp (h2, h1);
+        CapeUdc h = cape_udc_merge__item (&h2, h1);
+        
+        // append
+        cape_udc_add (origin, &h);
       }
       else
       {
@@ -374,6 +380,41 @@ void cape_udc_merge_cp__item__list (CapeUdc origin, const CapeUdc other)
     
     cape_udc_cursor_del (&cursor);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_merge__item (CapeUdc* p_origin, CapeUdc other)
+{
+  CapeUdc ret = cape_udc_mv (p_origin);
+  
+  if (ret->type == other->type)
+  {
+    switch (ret->type)
+    {
+      case CAPE_UDC_NODE:
+      {
+        cape_udc_merge_cp__item__node (ret, other);
+        break;
+      }
+      case CAPE_UDC_LIST:
+      {
+        cape_udc_merge_cp__item__list (ret, other);
+        break;
+      }
+      default:
+      {
+        cape_udc_replace_cp (&ret, other);
+        break;
+      }
+    }
+  }
+  else
+  {
+    cape_udc_replace_cp (&ret, other);
+  }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
