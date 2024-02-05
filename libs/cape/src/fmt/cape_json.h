@@ -25,7 +25,7 @@ __CAPE_LIBEX   CapeStream        cape_json_to_stream        (const CapeUdc sourc
 
 __CAPE_LIBEX   CapeUdc           cape_json_from_file        (const CapeString file, CapeErr err);
 
-__CAPE_LIBEX   int               cape_json_to_file          (const CapeString file, const CapeUdc source, CapeErr err);
+__CAPE_LIBEX   int               cape_json_to_file          (const CapeString file, const CapeUdc source, int nice, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

@@ -447,28 +447,54 @@ void cape_json_escape (CapeStream stream, const CapeString source)
   }
 }
 
+#define INDENTATION_SPACES 2
+
 //-----------------------------------------------------------------------------------------------------------
 
-void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, fct_cape_stream_base64_encode cb_encode)
+void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, fct_cape_stream_base64_encode cb_encode, int nice, number_t indentation_prev)
 {
+  number_t indentation = indentation_prev;
+  
   switch (cape_udc_type (node))
   {
     case CAPE_UDC_LIST:
     {
       CapeUdcCursor* cursor = cape_udc_cursor_new (node, CAPE_DIRECTION_FORW);
-
+      
       cape_stream_append_c (stream, '[');
 
+      indentation += INDENTATION_SPACES;
+
+      if (nice)
+      {
+        cape_stream_append_c (stream, '\n'); 
+        cape_stream_append_c_series (stream, ' ', indentation);
+      }
+      
       while (cape_udc_cursor_next (cursor))
       {
         if (cursor->position)
         {
           cape_stream_append_c (stream, ',');
+
+          if (nice)
+          {
+            cape_stream_append_c (stream, '\n');        
+            cape_stream_append_c_series (stream, ' ', indentation);
+          }
         }
         
-        cape_json_fill (stream, cursor->item, max_bytes, cb_encode);
+        cape_json_fill (stream, cursor->item, max_bytes, cb_encode, nice, indentation);
       }
 
+      indentation -= INDENTATION_SPACES;
+      
+      if (nice)
+      {
+        cape_stream_append_c (stream, '\n');        
+        cape_stream_append_c_series (stream, ' ', indentation);
+      }
+      
       cape_stream_append_c (stream, ']');
 
       cape_udc_cursor_del (&cursor);
@@ -478,14 +504,28 @@ void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, 
     case CAPE_UDC_NODE:
     {
       CapeUdcCursor* cursor = cape_udc_cursor_new (node, CAPE_DIRECTION_FORW);
-      
+            
       cape_stream_append_c (stream, '{');
+      
+      indentation += INDENTATION_SPACES;
+
+      if (nice)
+      {
+        cape_stream_append_c (stream, '\n'); 
+        cape_stream_append_c_series (stream, ' ', indentation);
+      }
       
       while (cape_udc_cursor_next (cursor))
       {
         if (cursor->position)
         {
           cape_stream_append_c (stream, ',');
+          
+          if (nice)
+          {
+            cape_stream_append_c (stream, '\n');        
+            cape_stream_append_c_series (stream, ' ', indentation);
+          }
         }
         
         cape_stream_append_c (stream, '"');
@@ -494,7 +534,15 @@ void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, 
         
         cape_stream_append_str (stream, "\":");
 
-        cape_json_fill (stream, cursor->item, max_bytes, cb_encode);
+        cape_json_fill (stream, cursor->item, max_bytes, cb_encode, nice, indentation);
+      }
+      
+      indentation -= INDENTATION_SPACES;
+      
+      if (nice)
+      {
+        cape_stream_append_c (stream, '\n');        
+        cape_stream_append_c_series (stream, ' ', indentation);
       }
       
       cape_stream_append_c (stream, '}');
@@ -590,7 +638,7 @@ CapeString cape_json_to_s (const CapeUdc source)
 {
   CapeStream stream = cape_stream_new ();
   
-  cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream);
+  cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream, FALSE, 0);
   
   return cape_stream_to_str (&stream);
 }
@@ -601,7 +649,7 @@ CapeString cape_json_to_s__ex (const CapeUdc source, fct_cape_stream_base64_enco
 {
   CapeStream stream = cape_stream_new ();
   
-  cape_json_fill (stream, source, 0, cb_encode);
+  cape_json_fill (stream, source, 0, cb_encode, FALSE, 0);
   
   return cape_stream_to_str (&stream);
 }
@@ -612,7 +660,7 @@ CapeString cape_json_to_s_max (const CapeUdc source, number_t max_item_size)
 {
   CapeStream stream = cape_stream_new ();
 
-  cape_json_fill (stream, source, max_item_size, NULL);
+  cape_json_fill (stream, source, max_item_size, NULL, FALSE, 0);
 
   return cape_stream_to_str (&stream);
 }
@@ -623,7 +671,7 @@ CapeStream cape_json_to_stream (const CapeUdc source)
 {
   CapeStream stream = cape_stream_new ();
   
-  cape_json_fill (stream, source, 0, NULL);
+  cape_json_fill (stream, source, 0, NULL, FALSE, 0);
 
   return stream;
 }
@@ -685,7 +733,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_json_to_file (const CapeString file, const CapeUdc source, CapeErr err)
+int cape_json_to_file (const CapeString file, const CapeUdc source, int nice, CapeErr err)
 {
   int res;  
   CapeFileHandle fh = NULL;
@@ -707,7 +755,7 @@ int cape_json_to_file (const CapeString file, const CapeUdc source, CapeErr err)
     const char* buf;
     CapeStream stream = cape_stream_new ();
   
-    cape_json_fill (stream, source, 0, NULL);
+    cape_json_fill (stream, source, 0, NULL, nice, 0);
   
     buf = cape_stream_data (stream);
 

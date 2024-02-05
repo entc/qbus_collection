@@ -79,6 +79,15 @@ __CAPE_LIBEX   off_t              cape_fs_file_size      (const char* path, Cape
 
 //-----------------------------------------------------------------------------
 
+struct CapeFileAc_s; typedef struct CapeFileAc_s* CapeFileAc;
+
+__CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
+
+                                  /* returns file permissions or ACLs, including UID and GID */
+__CAPE_LIBEX   CapeFileAc         cape_fs_file_ac        (const char* path, CapeErr);
+
+//-----------------------------------------------------------------------------
+
 typedef int  (__STDCALL *fct_cape_fs_file_load)   (void* ptr, const char* bufdat, number_t buflen, CapeErr err);
 
 __CAPE_LIBEX   int                cape_fs_file_load      (const CapeString path, const CapeString file, void* ptr, fct_cape_fs_file_load, CapeErr);
@@ -94,6 +103,10 @@ __CAPE_LIBEX   CapeFileHandle     cape_fh_new            (const CapeString path,
 __CAPE_LIBEX   void               cape_fh_del            (CapeFileHandle*);
 
 __CAPE_LIBEX   int                cape_fh_open           (CapeFileHandle, int flags, CapeErr);
+
+__CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int flags, int ac, CapeErr);
+
+__CAPE_LIBEX   int                cape_fh_open_ac        (CapeFileHandle, int flags, CapeFileAc*, CapeErr);
 
 __CAPE_LIBEX   void*              cape_fh_fd             (CapeFileHandle);
 

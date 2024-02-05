@@ -105,6 +105,8 @@ __CAPE_LIBEX void              cape_stream_append_fmt (CapeStream, const char*, 
 
 __CAPE_LIBEX void              cape_stream_append_c (CapeStream, char);
 
+__CAPE_LIBEX void              cape_stream_append_c_series (CapeStream, char, number_t amount);
+
 __CAPE_LIBEX void              cape_stream_append_n (CapeStream, number_t);
 
 __CAPE_LIBEX void              cape_stream_append_f (CapeStream, double);

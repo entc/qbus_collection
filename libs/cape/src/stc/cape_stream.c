@@ -405,6 +405,19 @@ void cape_stream_append_c (CapeStream self, char c)
 
 //-----------------------------------------------------------------------------
 
+void cape_stream_append_c_series (CapeStream self, char c, number_t amount)
+{
+  if (amount > 0)
+  {
+    cape_stream_reserve (self, amount);
+    
+    memset (self->pos, c, amount);
+    self->pos += amount;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_append_n (CapeStream self, number_t val)
 {
   cape_stream_reserve (self, 26);  // for very long intergers

@@ -904,7 +904,7 @@ void qbus_config_save (QBus self, CapeUdc config)
     int res;
     CapeErr err = cape_err_new ();
     
-    res = cape_json_to_file (self->config_file, config, err);
+    res = cape_json_to_file (self->config_file, config, TRUE, err);
     if (res)
     {
       // dump error text

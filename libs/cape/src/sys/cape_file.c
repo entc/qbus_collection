@@ -769,14 +769,21 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
   char* buffer = NULL;
   CapeFileHandle fh_s = cape_fh_new (NULL, source);
   CapeFileHandle fh_d = cape_fh_new (NULL, destination);
-
+  CapeFileAc ac = NULL;
+  
   res = cape_fh_open (fh_s, O_RDONLY, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
-  res = cape_fh_open (fh_d, O_WRONLY | O_CREAT, err);
+  ac = cape_fs_file_ac (source, err);
+  if (ac == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = cape_fh_open_ac (fh_d, O_WRONLY | O_CREAT, &ac, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -812,6 +819,8 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
   res = CAPE_ERR_NONE;
 
 exit_and_cleanup:
+
+  cape_fs_ac_del (&ac);
 
   cape_fh_del (&fh_d);
   cape_fh_del (&fh_s);
@@ -874,6 +883,67 @@ exit_and_cleanup:
   }
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+struct CapeFileAc_s
+{
+#ifdef __WINDOWS_OS
+  
+  
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+  
+  mode_t permissions;
+  uid_t uid;
+  gid_t gid; 
+  
+#endif    
+};
+
+//-----------------------------------------------------------------------------
+
+void cape_fs_ac_del (CapeFileAc* p_self)
+{
+  if (*p_self)
+  {
+    //CapeFileAc self = *p_self;
+    
+    
+    CAPE_DEL (p_self, struct CapeFileAc_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_file_ac (const char* path, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+  
+  
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+  
+  struct stat st;
+  
+  if (stat (path, &st) == -1)
+  {
+    cape_err_lastOSError (err);
+    return NULL;
+  }
+
+  {
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+    
+    self->permissions = st.st_mode;
+    self->uid = st.st_uid;
+    self->gid = st.st_gid;
+    
+    return self;
+  }
+  
+#endif  
 }
 
 //-----------------------------------------------------------------------------
@@ -1027,14 +1097,84 @@ const CapeString cape_fh_file (CapeFileHandle self)
 
 int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
 {
-  self->fd = open (self->file, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+  return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+}
 
+//-----------------------------------------------------------------------------
+
+int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
+{
+  self->fd = open (self->file, flags, permissions);
+  
   if (self->fd == -1)
   {
     return cape_err_lastOSError (err);
   }
-
+  
   return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr err)
+{
+  int res;
+  CapeFileAc ac = *p_ac;
+  
+//  uid_t euid;
+//  gid_t egid;
+  
+  // retrieve the effective uid and gid
+//  euid = geteuid ();
+//  egid = geteuid ();
+  
+  // set a new effective UID
+/*  if (seteuid (ac->uid) == -1)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", ac->uid);
+
+    res = cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+
+  // set a new effective GID
+  if (setegid (egid) == -1)
+  {
+    seteuid (euid);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", ac->gid);
+    
+    res = cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+*/  
+  res = cape_fh_open_ex (self, flags, ac->permissions, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  /*
+  // set the old effective UID
+  if (seteuid (euid) == -1)
+  {
+    res = cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+  
+  // set a new effective GID
+  if (setegid (egid) == -1)
+  {
+    res = cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+  */
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_fs_ac_del (p_ac);
+  return res;
 }
 
 //-----------------------------------------------------------------------------
