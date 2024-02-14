@@ -11,7 +11,6 @@
 
 #include <windows.h>
 #include <shlwapi.h>
-#define CAPE_FS_FOLDER_SEP   '\\'
 
 #elif defined __LINUX_OS
 
@@ -23,8 +22,6 @@
 #include <dirent.h>
 #include <fts.h>
 #include <sys/stat.h>
-
-#define CAPE_FS_FOLDER_SEP   '/'
 
 #elif defined __BSD_OS
 
@@ -41,8 +38,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fts.h>
-
-#define CAPE_FS_FOLDER_SEP   '/'
 
 #endif
 
@@ -891,8 +886,8 @@ struct CapeFileAc_s
 {
 #ifdef __WINDOWS_OS
   
-  
-  
+  SECURITY_DESCRIPTOR* sp;
+
 #elif defined __LINUX_OS || defined __BSD_OS
   
   mode_t permissions;
@@ -908,8 +903,9 @@ void cape_fs_ac_del (CapeFileAc* p_self)
 {
   if (*p_self)
   {
-    //CapeFileAc self = *p_self;
+    CapeFileAc self = *p_self;
     
+		CAPE_FREE(self->sp);
     
     CAPE_DEL (p_self, struct CapeFileAc_s);
   }
@@ -921,8 +917,26 @@ CapeFileAc cape_fs_file_ac (const char* path, CapeErr err)
 {
 #ifdef __WINDOWS_OS
   
-  
-  
+  DWORD LengthNeeded = 0;
+  SECURITY_DESCRIPTOR* sp = CAPE_ALLOC (100);
+
+  BOOL rs = GetFileSecurity (path, ATTRIBUTE_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION, sp, 100, &LengthNeeded);
+	if (!rs)
+	{
+		CAPE_FREE (sp);
+
+		cape_err_lastOSError (err);
+		return NULL;
+	}
+
+	{
+		CapeFileAc self = CAPE_NEW(struct CapeFileAc_s);
+
+		self->sp = sp;
+
+		return self;
+	}
+
 #elif defined __LINUX_OS || defined __BSD_OS
   
   struct stat st;
@@ -1620,6 +1634,18 @@ const CapeString cape_dc_name (CapeDirCursor self)
   }
 
   return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString cape_dc_path(CapeDirCursor self)
+{
+	if (self->dhandle)
+	{
+		return self->data.cFileName;
+	}
+
+	return NULL;
 }
 
 //-----------------------------------------------------------------------------

@@ -27,6 +27,8 @@ int main (int argc, char *argv[])
   
   cape_fh_del (&fh);
   
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "test md5_file");
+
   // check md5
   {
     CapeString h = qcrypt__hash_md5_file ("md5_test", err);
@@ -47,7 +49,9 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
   }
 
-  // check sha256
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "test sha256_file");
+	
+	// check sha256
   {
     CapeString h = qcrypt__hash_sha256_file ("md5_test", err);
     if (h == NULL)
@@ -65,19 +69,25 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
   }
 
-  res = qcrypt__encrypt_file ("md5_test", "encrypted_test", "mySecret!", err);
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "encrypt file");
+	
+	res = qcrypt__encrypt_file ("md5_test", "encrypted_test", "mySecret!", err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
-  res = qcrypt__decrypt_file ("encrypted_test", "decrypted_test", "mySecret!", err);
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "decrypt file");
+	
+	res = qcrypt__decrypt_file ("encrypted_test", "decrypted_test", "mySecret!", err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
-  // check md5
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "check md5");
+	
+	// check md5
   {
     CapeString h = qcrypt__hash_md5_file ("decrypted_test", err);
     if (h == NULL)
@@ -95,6 +105,8 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
   }
   
+	cape_log_msg(CAPE_LL_DEBUG, "TEST", "main", "check json");
+
   // load the object from the file
   content = cape_json_from_file ("md5_test", err);
   if (content == NULL)

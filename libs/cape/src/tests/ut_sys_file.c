@@ -72,7 +72,8 @@ int run_test_01 (CapeErr err)
   int res = CAPE_ERR_NONE;
   
   {
-    CapeString rb01 = cape_fs_path_rebuild ("/home/cape/../../etc", err);
+		CapeString path = cape_str_fmt("%chome%ccape%c..%c..%cetc", CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP);
+    CapeString rb01 = cape_fs_path_rebuild (path, err);
     
     if (rb01)
     {
@@ -80,9 +81,12 @@ int run_test_01 (CapeErr err)
       
       cape_str_del (&rb01);
     }
+
+		cape_str_del(&path);
   }
   {
-    CapeString rb02 = cape_fs_path_rebuild ("home/cape/../../etc", err);
+		CapeString path = cape_str_fmt("home%ccape%c..%c..%cetc", CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP);
+		CapeString rb02 = cape_fs_path_rebuild (path, err);
     
     if (rb02)
     {
@@ -90,9 +94,12 @@ int run_test_01 (CapeErr err)
 
       cape_str_del (&rb02);
     }
-  }
+	
+		cape_str_del(&path);
+	}
   {
-    CapeString rb03 = cape_fs_path_rebuild ("/cape/../../etc", err);
+		CapeString path = cape_str_fmt("%ccape%c..%c..%cetc", CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP, CAPE_FS_FOLDER_SEP);
+		CapeString rb03 = cape_fs_path_rebuild (path, err);
     
     if (rb03)
     {
@@ -106,7 +113,9 @@ int run_test_01 (CapeErr err)
     {
       cape_err_clr (err);
     }
-  }
+	
+		cape_str_del(&path);
+	}
   
   return res;
 }

@@ -588,7 +588,77 @@ CapeString qcrypt__hash_md5_file (const CapeString source, CapeErr err)
 {
 #if defined __WINDOWS_OS
   
-  
+  const MD5LEN = 16;
+
+	int res;
+	CapeString ret = NULL;
+
+	DWORD cbHash = MD5LEN;
+
+	// local objects
+	char* buffer_read = CAPE_ALLOC(QCRYPT_BUFFER_SIZE);
+	unsigned char* binary_hash = CAPE_ALLOC(MD5LEN);
+	CapeFileHandle fh = cape_fh_new(NULL, source);
+
+	// windows API handles
+	HCRYPTPROV hProv = 0;
+	HCRYPTHASH hHash = 0;
+
+	res = cape_fh_open(fh, O_RDONLY, err);
+	if (res)
+	{
+		goto exit_and_cleanup;
+	}
+
+	if (!CryptAcquireContext (&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	if (!CryptCreateHash (hProv, CALG_MD5, 0, 0, &hHash))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	while (TRUE)
+	{
+		number_t bytes_read = cape_fh_read_buf (fh, buffer_read, QCRYPT_BUFFER_SIZE);
+		if (bytes_read > 0)
+		{
+			if (!CryptHashData (hHash, buffer_read, bytes_read, 0))
+			{
+				cape_err_lastOSError(err);
+				goto exit_and_cleanup;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	if (!CryptGetHashParam (hHash, HP_HASHVAL, binary_hash, &cbHash, 0))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	// convert the md5 result into a hex-string
+	ret = cape_str_hex(binary_hash, MD5LEN);
+
+exit_and_cleanup:
+	
+	if (hHash) CryptDestroyHash (hHash);
+	if (hProv) CryptReleaseContext (hProv, 0);
+
+	CAPE_FREE(buffer_read);
+	CAPE_FREE(binary_hash);
+	cape_fh_del(&fh);
+
+	return ret;
+
 #else
   
   int res;
@@ -646,7 +716,77 @@ CapeString qcrypt__hash_sha256_file (const CapeString source, CapeErr err)
 {
 #if defined __WINDOWS_OS
   
-  
+	const SHA256LEN = 64;
+
+	int res;
+	CapeString ret = NULL;
+
+	DWORD cbHash = SHA256LEN;
+
+	// local objects
+	char* buffer_read = CAPE_ALLOC(QCRYPT_BUFFER_SIZE);
+	unsigned char* binary_hash = CAPE_ALLOC(SHA256LEN);
+	CapeFileHandle fh = cape_fh_new(NULL, source);
+
+	// windows API handles
+	HCRYPTPROV hProv = 0;
+	HCRYPTHASH hHash = 0;
+
+	res = cape_fh_open(fh, O_RDONLY, err);
+	if (res)
+	{
+		goto exit_and_cleanup;
+	}
+
+	if (!CryptAcquireContext(&hProv, NULL, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, 0))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	while (TRUE)
+	{
+		number_t bytes_read = cape_fh_read_buf(fh, buffer_read, QCRYPT_BUFFER_SIZE);
+		if (bytes_read > 0)
+		{
+			if (!CryptHashData(hHash, buffer_read, bytes_read, 0))
+			{
+				cape_err_lastOSError(err);
+				goto exit_and_cleanup;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	if (!CryptGetHashParam(hHash, HP_HASHVAL, binary_hash, &cbHash, 0))
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+
+	// convert the sha256 result into a hex-string
+	ret = cape_str_hex(binary_hash, SHA256LEN);
+
+exit_and_cleanup:
+
+	if (hHash) CryptDestroyHash(hHash);
+	if (hProv) CryptReleaseContext(hProv, 0);
+
+	CAPE_FREE(buffer_read);
+	CAPE_FREE(binary_hash);
+	cape_fh_del(&fh);
+
+	return ret;
+
 #else
 
   int res;

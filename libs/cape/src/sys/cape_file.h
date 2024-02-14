@@ -10,6 +10,14 @@
 
 //=============================================================================
 
+#ifdef __WINDOWS_OS
+#define CAPE_FS_FOLDER_SEP   '\\'
+#else
+#define CAPE_FS_FOLDER_SEP   '/'
+#endif
+
+//=============================================================================
+
                                   /* constructs a path from 2 paths given using the system separator */
 __CAPE_LIBEX   CapeString         cape_fs_path_merge     (const char* path1, const char* path2);
 

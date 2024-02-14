@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#define u_t unsigned
+#define number_t long long
+
 #else
 
 #include <malloc.h>
@@ -26,14 +29,12 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#define u_t unsigned
+#define number_t long
+
 #endif
 
 #include <stdio.h>
-
-//-----------------------------------------------------------------------------
-
-#define u_t unsigned
-#define number_t long
 
 //-----------------------------------------------------------------------------
 

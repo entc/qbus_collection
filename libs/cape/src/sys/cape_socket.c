@@ -674,4 +674,86 @@ int cape_sock__noneblocking (void* sock, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+void cape_net__ntop (LPSOCKADDR sa, DWORD length, char* bufdat, number_t buflen)
+{
+	DWORD buflen_local = (DWORD)buflen;
+
+	switch (sa->sa_family)
+	{
+		case AF_INET:
+		{
+			WSAAddressToStringA (sa, length, NULL, (LPSTR)bufdat, &buflen_local);
+			break;
+		}
+		case AF_INET6:
+		{
+			WSAAddressToString (sa, length, NULL, (LPSTR)bufdat, &buflen_local);
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
+{
+	CapeString ret = NULL;
+
+	int res;
+
+	// local objects
+	ADDRINFOA* addr_result = NULL;
+
+	// in windows the WSA system must be initialized first
+	if (!init_wsa())
+	{
+		goto exit_and_cleanup;
+	}
+
+	res = GetAddrInfoA (host, 0, 0, &addr_result);
+
+	if (res != 0)
+	{
+		cape_err_lastOSError(err);
+		goto exit_and_cleanup;
+	}
+	else
+	{
+		/*
+		ADDRINFOA* a;
+		char address[64];
+
+		for (a = addr_result; a; a = a->ai_next)
+		{
+			cape_net__ntop ((LPSOCKADDR)a->ai_addr, (DWORD)a->ai_addrlen, address, 64);
+
+			cape_log_fmt(CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
+		}
+		*/
+	}
+
+	{
+		ADDRINFOA* addr_current = addr_result;
+
+		while (addr_current && addr_current->ai_family != AF_INET)
+		{
+			addr_current = addr_current->ai_next;
+		}
+
+		if (addr_current)
+		{
+			ret = CAPE_ALLOC(65);
+
+			cape_net__ntop ((LPSOCKADDR)addr_current->ai_addr, (DWORD)addr_current->ai_addrlen, ret, 64);
+		}
+	}
+
+exit_and_cleanup:
+
+	FreeAddrInfoA (addr_result);
+	return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 #endif
