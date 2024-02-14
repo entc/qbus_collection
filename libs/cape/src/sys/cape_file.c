@@ -905,8 +905,14 @@ void cape_fs_ac_del (CapeFileAc* p_self)
   {
     CapeFileAc self = *p_self;
     
+#ifdef __WINDOWS_OS
+
 		CAPE_FREE(self->sp);
     
+#elif defined __LINUX_OS || defined __BSD_OS
+
+#endif
+
     CAPE_DEL (p_self, struct CapeFileAc_s);
   }
 }

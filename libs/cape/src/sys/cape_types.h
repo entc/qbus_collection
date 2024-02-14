@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <memory.h>
 
+#define u_t unsigned
+#define number_t long
+
 #elif defined __OpenBSD__
 
 #include <memory.h>
