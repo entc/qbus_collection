@@ -716,7 +716,7 @@ CapeString qcrypt__hash_sha256_file (const CapeString source, CapeErr err)
 {
 #if defined __WINDOWS_OS
   
-	const SHA256LEN = 64;
+	const SHA256LEN = 32;
 
 	int res;
 	CapeString ret = NULL;
