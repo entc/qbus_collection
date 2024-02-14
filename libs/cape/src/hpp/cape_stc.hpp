@@ -557,7 +557,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name) + ", values = " + std::string(value);
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       cape_udc_add_s_cp (m_obj, name, value);
@@ -569,7 +571,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       cape_udc_add_s_mv (m_obj, name, p_value);
@@ -581,7 +585,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       cape_udc_add_d (m_obj, name, value);
@@ -593,7 +599,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::add_cp (m_obj, StringTrans<S>::c_str (name), val);
@@ -605,7 +613,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::add_cp (m_obj, name, val);
@@ -617,7 +627,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::add_mv (m_obj, name, val);
@@ -629,7 +641,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {add}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::add_mv (m_obj, NULL, val);
@@ -641,7 +655,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {=}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::set (m_obj, val);
@@ -764,7 +780,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {as}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return UdcTransType<T>::as (m_obj, default_value);
@@ -776,7 +794,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {as} value = " + std::string(default_value);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return cape_udc_s (m_obj, default_value);
@@ -795,7 +815,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {first}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return Udc (cape_udc_get_first (m_obj));
@@ -807,7 +829,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {first}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       CapeUdc h = cape_udc_ext_first (m_obj);
@@ -820,7 +844,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {get} name = " + std::string(name);
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return Udc (cape_udc_get (m_obj, StringTrans<S>::c_str(name)));
@@ -874,7 +900,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {put} name = " + std::string(name);
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::put (m_obj, StringTrans<S>::c_str(name), value);
@@ -886,7 +914,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {put} name = " + std::string(name);
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       UdcTransType<T>::put (m_obj, name, value);
@@ -898,7 +928,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {obj}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return m_obj;
@@ -910,7 +942,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {release}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       if (false == m_owned)
@@ -944,7 +978,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {clone}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       CapeUdc h = cape_udc_cp (m_obj);
@@ -958,7 +994,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {clone_or_release}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       if (m_owned)
@@ -984,7 +1022,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {name}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return cape_udc_name (m_obj);
@@ -996,7 +1036,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {to_string}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       cape::String h (cape_json_to_s (m_obj));
@@ -1047,7 +1089,9 @@ namespace cape
     {
       if (m_obj == NULL)
       {
-        throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        std::string error_message = "UDC object has no content: {type}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
       return cape_udc_type (m_obj);
