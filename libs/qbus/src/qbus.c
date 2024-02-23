@@ -1,9 +1,9 @@
 #include "qbus.h" 
-#include "qbus_engine.h"
-#include "qbus_route.h"
-#include "qbus_connection.h"
 #include "qbus_types.h"
-#include "qbus_logger.h"
+#include "qbus_method.h"
+#include "qbus_route.h"
+
+#include "tl1/qbus_tl1.h"
 
 // c includes
 #include <stdlib.h>
@@ -33,21 +33,8 @@
 #include "sys/cape_btrace.h"
 #include "sys/cape_thread.h"
 
-// engines
-#include "../engines/tcp/engine_tcp.h"
-
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qbus_engines__on_del (void* key, void* val)
-{
-  {
-    CapeString h = key; cape_str_del (&h);
-  }
-  {
-    QBusEngine h = val; qbus_engine_del (&h);
-  }
-}
+// TopLevel1 qbus includes
+#include "tl1/qbus_tl1.h"
 
 //-----------------------------------------------------------------------------
 
@@ -62,28 +49,8 @@ struct QBus_s
   // config
   CapeUdc config;
   
-  CapeString config_file;
-  
-  CapeMap engines;
-  
-  QBusLogger logger;
+  CapeString config_file;  
 };
-
-//-----------------------------------------------------------------------------
-
-void qbus_new__internal__set_default_engines (QBus self)
-{
-  {
-    QBusEngine engine = qbus_engine_default (self->route);
-    
-    cape_map_insert (self->engines, (void*)cape_str_cp ("socket"), engine);
-  }
-  {
-    QBusEngine engine = qbus_engine_default (self->route);
-
-    cape_map_insert (self->engines, (void*)cape_str_cp ("tcp"), engine);
-  }
-}
 
 //-----------------------------------------------------------------------------
 
@@ -95,8 +62,7 @@ QBus qbus_new (const char* module_origin)
   self->name = cape_str_cp (module_origin);  
   cape_str_to_upper (self->name);
   
-  self->logger = qbus_logger_new ();
-  self->route = qbus_route_new (self, self->name);
+  self->route = qbus_route_new ();
   
   self->aio = cape_aio_context_new ();
   
@@ -105,9 +71,6 @@ QBus qbus_new (const char* module_origin)
   
   self->config = NULL;
   self->config_file = NULL;
-  
-  self->engines = cape_map_new (NULL, qbus_engines__on_del, NULL);
-  qbus_new__internal__set_default_engines (self);
   
   return self;
 }
@@ -484,13 +447,10 @@ int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage 
 
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
 {
-  // correct chain key
-  // -> the key for the start must be NULL
-  cape_str_del (&(msg->chain_key));
   
-  qbus_route_request (self->route, module, method, msg, ptr, onMsg, FALSE, err);
+  QbusMethod method = qbus_method_new (msg->chain_key, ptr, onMsg);
 
-  return CAPE_ERR_NONE;
+  
 }
 
 //-----------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 #ifndef __QBUS__H
 #define __QBUS__H 1
 
+#include "qbus_method.h"
+
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
@@ -48,11 +50,6 @@ struct QBusMessage_s
   CapeString sender;     // don't change this
   
 }; typedef struct QBusMessage_s* QBusM;
-
-//-----------------------------------------------------------------------------
-
-typedef int    (__STDCALL         *fct_qbus_onMessage)   (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
-typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
 
 //-----------------------------------------------------------------------------
 

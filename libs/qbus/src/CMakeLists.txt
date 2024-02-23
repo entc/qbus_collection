@@ -1,26 +1,27 @@
 # abstract operation-system layer
 INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 
-SUBDIRS(core)
-SUBDIRS(adapter/java)
-SUBDIRS(adapter/python)
-SUBDIRS(adapter_example)
-SUBDIRS(tests)
+subdirs(tl1/lib)
+#subdirs(tl2/lib)
 
-set(WSRV_SOURCES
+set(QBUS_SOURCES
   qbus.c
+  qbus_method.c
+  qbus_route.c
 )
 
-set(WSRV_HEADERS
+set(QBUS_HEADERS
   qbus.h
+  qbus_method.h
+  qbus_route.h
   qbus.hpp
   qbus_types.h
 )
 
 #----------------------------------------------------------------------------------
 
-add_library             (qbus SHARED ${WSRV_SOURCES} ${WSRV_HEADERS})
-target_link_libraries   (qbus qbus_core cape qcrypt qbus_pvd_tcp)
+add_library             (qbus SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
+target_link_libraries   (qbus cape qcrypt qbus_tl1)
 set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 INSTALL (TARGETS qbus DESTINATION lib)
@@ -40,5 +41,5 @@ message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
 
 #----------------------------------------------------------------------------------
 
-SUBDIRS(pvd_example)
-SUBDIRS(pvd_tcp)
+#SUBDIRS(pvd_example)
+#SUBDIRS(pvd_tcp)
