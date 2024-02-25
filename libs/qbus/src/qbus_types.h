@@ -8,6 +8,36 @@
 #include <aio/cape_aio_sock.h>
 
 //-----------------------------------------------------------------------------
+
+struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
+
+//-----------------------------------------------------------------------------
+
+struct QBusMessage_s
+{
+  number_t mtype;
+  
+  CapeUdc clist;    // list of all parameters
+  
+  CapeUdc cdata;    // public object as parameters
+  
+  CapeUdc pdata;    // private object as parameters
+  
+  CapeUdc rinfo;
+  
+  CapeUdc files;    // if the content is too big, payload is stored in temporary files
+  
+  CapeStream blob;  // binary blob within the CapeStream
+  
+  CapeErr err;
+  
+  CapeString chain_key;  // don't change this key
+  
+  CapeString sender;     // don't change this
+  
+}; typedef struct QBusMessage_s* QBusM;
+
+//-----------------------------------------------------------------------------
 // object typedefs and definitions
 
 typedef struct QbusPvdCtx_s* QbusPvdCtx;

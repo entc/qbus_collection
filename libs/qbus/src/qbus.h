@@ -2,16 +2,13 @@
 #define __QBUS__H 1
 
 #include "qbus_method.h"
+#include "qbus_types.h"
 
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
 #include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
-
-//=============================================================================
-
-struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
 
 //-----------------------------------------------------------------------------
 
@@ -26,30 +23,6 @@ __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, Ca
 #define QBUS_MTYPE_NONE         0
 #define QBUS_MTYPE_JSON         1
 #define QBUS_MTYPE_FILE         2
-
-struct QBusMessage_s
-{
-  number_t mtype;
-
-  CapeUdc clist;    // list of all parameters
-  
-  CapeUdc cdata;    // public object as parameters
-  
-  CapeUdc pdata;    // private object as parameters
-  
-  CapeUdc rinfo;
-  
-  CapeUdc files;    // if the content is too big, payload is stored in temporary files
-  
-  CapeStream blob;  // binary blob within the CapeStream
-  
-  CapeErr err;
-  
-  CapeString chain_key;  // don't change this key
-  
-  CapeString sender;     // don't change this
-  
-}; typedef struct QBusMessage_s* QBusM;
 
 //-----------------------------------------------------------------------------
 
