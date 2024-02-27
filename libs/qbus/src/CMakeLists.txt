@@ -8,12 +8,14 @@ set(QBUS_SOURCES
   qbus.c
   qbus_method.c
   qbus_route.c
+  qbus_storage.c
 )
 
 set(QBUS_HEADERS
   qbus.h
   qbus_method.h
   qbus_route.h
+  qbus_storage.h
   qbus.hpp
   qbus_types.h
 )

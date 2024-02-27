@@ -5,7 +5,8 @@ set(QBUS_TL1_SOURCES
   qbus_manifold.c
 )
 
-set(QBUS_TL2_HEADERS
+set(QBUS_TL1_HEADERS
+  ../qbus_tl1.h
 )
 
 #----------------------------------------------------------------------------------

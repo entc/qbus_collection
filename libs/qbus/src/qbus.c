@@ -2,6 +2,7 @@
 #include "qbus_types.h"
 #include "qbus_method.h"
 #include "qbus_route.h"
+#include "qbus_storage.h"
 
 #include "tl1/qbus_tl1.h"
 
@@ -49,8 +50,69 @@ struct QBus_s
   // config
   CapeUdc config;
   
-  CapeString config_file;  
+  CapeString config_file;
+  
+  QBusManifold manifold;
+  
+  QBusStorage storage;
+
 };
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus__on_rm (void* user_ptr)
+{
+  QBus self = user_ptr;
+  
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus__on_add (void* user_ptr, const char* module, void* node)
+{
+  QBus self = user_ptr;
+
+  qbus_route_add (self->route, module, node);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method)
+{
+  QBus self = user_ptr;
+
+  if (p_qbus_method)
+  {
+
+    
+  }
+  else
+  {
+    QBusMethod method = qbus_storage_get (self->storage, method_name);
+    
+    if (method)
+    {
+      
+      
+    }
+    else
+    {
+      
+      
+    }
+    
+  }
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus__on_emit (void* user_ptr)
+{
+  QBus self = user_ptr;
+
+}
 
 //-----------------------------------------------------------------------------
 
@@ -72,6 +134,10 @@ QBus qbus_new (const char* module_origin)
   self->config = NULL;
   self->config_file = NULL;
   
+  self->manifold = qbus_manifold_new (self, qbus__on_add, qbus__on_rm, qbus__on_call, qbus__on_emit);
+  
+  self->storage = qbus_storage_new ();
+  
   return self;
 }
 
@@ -79,24 +145,31 @@ QBus qbus_new (const char* module_origin)
 
 void qbus_del (QBus* p_self)
 {
-  QBus self = *p_self;
-  
-  cape_aio_context_del (&(self->aio));
-  
-  cape_str_del (&(self->name));
-  
-  //qbus_engine_tcp_inc_del (&(self->engine_tcp_inc));
-  //qbus_engine_tcp_out_del (&(self->engine_tcp_out));
-  
-  qbus_route_del (&(self->route));
- // qbus_logger_del (&(self->logger));
-
-  cape_udc_del (&(self->config));
-  cape_str_del (&(self->config_file));
-  
-  //cape_map_del (&(self->engines));
-  
-  CAPE_DEL (p_self, struct QBus_s);
+  if (*p_self)
+  {
+    QBus self = *p_self;
+    
+    qbus_storage_del (&(self->storage));
+    
+    qbus_manifold_del (&(self->manifold));
+    
+    cape_aio_context_del (&(self->aio));
+    
+    cape_str_del (&(self->name));
+    
+    //qbus_engine_tcp_inc_del (&(self->engine_tcp_inc));
+    //qbus_engine_tcp_out_del (&(self->engine_tcp_out));
+    
+    qbus_route_del (&(self->route));
+    // qbus_logger_del (&(self->logger));
+    
+    cape_udc_del (&(self->config));
+    cape_str_del (&(self->config_file));
+    
+    //cape_map_del (&(self->engines));
+    
+    CAPE_DEL (p_self, struct QBus_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -321,9 +394,32 @@ int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, Cape
 
 int qbus_register (QBus self, const char* method, void* ptr, fct_qbus_onMessage onMsg, fct_qbus_onRemoved onRm, CapeErr err)
 {
-  
+  return qbus_storage_add (self->storage, method, ptr, onMsg, err);
+}
 
-  return CAPE_ERR_NONE;
+//-----------------------------------------------------------------------------
+
+int qbus_send__request (QBus self, const char* module, const char* method, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
+{
+  int res;
+
+  while (TRUE)
+  {
+    void* node = qbus_route_get (self->route, module);
+    
+    if (NULL == node)
+    {
+      // error
+      break;
+    }
+    
+    res = qbus_manifold_send (self->manifold, &node);
+    if (res)
+    {
+      // OK
+      break;
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -333,7 +429,7 @@ int qbus_send (QBus self, const char* module, const char* method, QBusM msg, voi
   // create a new method object to store callback, user pointer and status
   QBusMethod qbus_method = qbus_method_new (msg->chain_key, ptr, onMsg);
 
-  
+  return qbus_send__request (self, module, method, msg, &qbus_method, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -353,20 +449,23 @@ int qbus_test_s (QBus self, const char* module, const char* method, CapeErr err)
 
 int qbus_continue (QBus self, const char* module, const char* method, QBusM qin, void** p_ptr, fct_qbus_onMessage on_msg, CapeErr err)
 {
-  int res;
+  // local objects
+  QBusMethod qbus_method = NULL;
   
   if (p_ptr)
   {
-    //res = qbus_route_request (self->route, module, method, qin, *p_ptr, on_msg, TRUE, err);
+    // create a new method object to store callback, user pointer and status
+    qbus_method = qbus_method_new (qin->chain_key, *p_ptr, on_msg);
 
     *p_ptr = NULL;
   }
   else
   {
-    //res = qbus_route_request (self->route, module, method, qin, NULL, on_msg, TRUE, err);
+    // create a new method object to store callback, user pointer and status
+    qbus_method = qbus_method_new (qin->chain_key, NULL, NULL);
   }
     
-  return res;
+  return qbus_send__request (self, module, method, qin, &qbus_method, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -410,6 +509,8 @@ QBusConnection const qbus_find_conn (QBus self, const char* module)
 
 void qbus_conn_request (QBus self, QBusConnection const conn, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg)
 {
+  
+  
   //qbus_route_conn_request (self->route, conn, module, method, msg, ptr, onMsg, FALSE);
 }
 
