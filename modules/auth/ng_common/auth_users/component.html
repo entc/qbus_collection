@@ -1,110 +1,190 @@
 <ng-container *ngIf="info | async as info_item; else loading">
 
-<table class="table" *authSessionRole="['admin','auth_wacc']">
-  <tr>
-    <th>
-      <span class="badge badge-secondary width_5em">USER</span>
-      <span class="badge badge-primary width_5em">GPID</span>
-    </th>
-    <th>
-      ACTIVE
-    </th>
-    <th>
-    </th>
-    <th width="100%">
-      {{ 'AUTH.FIRSTNAME' | transloco }} / {{ 'AUTH.LASTNAME' | transloco }}
-    </th>
-    <th>
-      MSG
-    </th>
-    <th>
-      2F
-    </th>
-    <th>
-      TTL
-    </th>
-    <th>
-      Locale
-    </th>
-    <th>
-      <div class="btn-group" role="group" aria-label="Basic example">
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
-        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i></button>
-      </div>
-    </th>
-  </tr>
-  <ng-container *ngFor="let item of users | async">
-  <tr>
-    <td style="padding-bottom: 0px;" rowspan="2">
-      <span class="badge badge-secondary width_5em">{{item.userid}}</span>
-      <span class="badge badge-primary width_5em">{{item.gpid}}</span>
-    </td>
-    <td style="padding-bottom: 0px;">
-      <ng-container *ngIf="item.active == 0">
-        <span class="badge badge-danger width_5em"><i class="fa fa-ban"></i></span>
-      </ng-container>
-      <ng-container *ngIf="item.active == 1">
-        <span class="badge badge-success width_5em"><i class="fa fa-check"></i></span>
-      </ng-container>
-    </td>
-    <td style="padding-bottom: 0px;">
-      <ng-container *ngIf="item.state == 1">
-        <i class="far fa-user"></i>
-      </ng-container>
-      <ng-container *ngIf="item.state == 2">
-        <i class="fas fa-user"></i>
-      </ng-container>
-    </td>
-    <td style="padding-bottom: 0px;">
-      <strong>{{item.firstname}} {{item.lastname}}</strong>
-    </td>
-    <td style="padding-bottom: 0px;">
-      <ng-container *ngIf="item.opt_msgs == 0">
-        <span class="badge badge-secondary width_3em">-</span>
-      </ng-container>
-      <ng-container *ngIf="item.opt_msgs == 1">
-        <span class="badge badge-success width_3em"><i class="fa fa-envelope"></i></span>
-      </ng-container>
-    </td>
-    <td style="padding-bottom: 0px;">
-      <ng-container *ngIf="item.opt_2factor == 0">
-        <span class="badge badge-secondary width_3em">-</span>
-      </ng-container>
-      <ng-container *ngIf="item.opt_2factor == 1">
-        <span class="badge badge-success width_3em"><i class="fa fa-shield-alt"></i></span>
-      </ng-container>
-    </td>
-    <td style="padding-bottom: 0px;">
-      {{item.opt_ttl}}
-    </td>
-    <td style="padding-bottom: 0px;">
-      {{item.opt_locale}}
-    </td>
-    <td style="padding-bottom: 0px;" rowspan="2">
-      <div class="btn-group" role="group" aria-label="Basic example">
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs fa-fw"></i></button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_roles(item)"><i class="fa fa-lock fa-fw"></i></button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_sessions(item, info_item)"><i class="fa fa-clipboard-list fa-fw"></i></button>
-      </div>
-    </td>
-  </tr>
-  <tr>
-    <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted" colspan="2" >
-      <small><i class="fa fa-eye"></i>&nbsp;{{item.last | trlo_timediff}}</small>
-    </td>
-    <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted">
-      <small><i class="fa fa-network-wired"></i>&nbsp;&nbsp;{{item.ip}}</small>
-    </td>
-    <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted" colspan="3" >
-      <small><i class="fa fa-calendar"></i>&nbsp;&nbsp;{{item.last | trlo_locale}}</small>
-    </td>
-    <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted">
-      <small><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{item.logins}}</small>
-    </td>
-  </tr>
-  </ng-container>
-</table>
+  <ng-container *authSessionRole="['admin','auth_wacc']">
 
+    <div class="btn-group" role="group" aria-label="Basic example">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
+      <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i></button>
+    </div>
+
+    <ng-container *ngFor="let item of users | async">
+
+      <div class="card mt-2">
+
+        <div class="row no-gutters">
+          <div class="col-1 text-center p-1">
+            <div>
+              <img src="img/logo.png" alt="image" style="width: 60px; height: 60px;" class="m-1">
+            </div>
+          </div>
+          <div class="col-11">
+            <div class="card-header border-left border-start">
+
+              <div class="row">
+                <div class="col-2">
+                  <span class="badge badge-secondary bg-secondary width_5em">{{item.userid}}</span>&nbsp;
+                  <span class="badge badge-primary bg-primary width_5em">{{item.gpid}}</span>
+                </div>
+                <div class="col-4">
+                  <ng-container *ngIf="item.state == 1">
+                    <i class="far fa-user"></i>
+                  </ng-container>
+                  <ng-container *ngIf="item.state == 2">
+                    <i class="fas fa-user"></i>
+                  </ng-container>
+                  &nbsp;&nbsp;<strong>{{item.firstname}} {{item.lastname}}</strong>
+                </div>
+                <div class="col-6 text-right text-end">
+
+                  <div class="btn-group" role="group" aria-label="Basic example">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs fa-fw"></i></button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_roles(item)"><i class="fa fa-lock fa-fw"></i></button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_sessions(item, info_item)"><i class="fa fa-clipboard-list fa-fw"></i></button>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+            <div class="card-body">
+
+              <div class="row">
+                <div class="col-2">
+                  <small><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{item.logins}}</small>
+                </div>
+                <div class="col-2 text-muted">
+                  {{ 'AUTH.LASTLOGIN' | transloco }}
+                </div>
+                <div class="col-2 text-muted">
+                  <small><i class="fa fa-eye"></i>&nbsp;{{item.last | trlo_timediff}}</small>
+                </div>
+                <div class="col-2 text-muted">
+                  <small><i class="fa fa-calendar"></i>&nbsp;&nbsp;{{item.last | trlo_locale}}</small>
+                </div>
+                <div class="col-4 text-muted">
+                  <small><i class="fa fa-network-wired"></i>&nbsp;&nbsp;{{item.ip}}</small>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+
+  </ng-container>
+
+<!--
+<table class="table" *authSessionRole="['admin','auth_wacc']">
+  <thead>
+    <tr>
+      <th>
+        <span class="badge badge-secondary width_5em">USER</span>
+        <span class="badge badge-primary width_5em">GPID</span>
+      </th>
+      <th>
+        ACTIVE
+      </th>
+      <th>
+      </th>
+      <th width="100%">
+        {{ 'AUTH.FIRSTNAME' | transloco }} / {{ 'AUTH.LASTNAME' | transloco }}
+      </th>
+      <th>
+        MSG
+      </th>
+      <th>
+        2F
+      </th>
+      <th>
+        TTL
+      </th>
+      <th>
+        Locale
+      </th>
+      <th>
+        <div class="btn-group" role="group" aria-label="Basic example">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
+          <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i></button>
+        </div>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <ng-container *ngFor="let item of users | async">
+    <tr>
+      <td style="padding-bottom: 0px;" rowspan="2">
+        <span class="badge badge-secondary width_5em">{{item.userid}}</span>
+        <span class="badge badge-primary width_5em">{{item.gpid}}</span>
+      </td>
+      <td style="padding-bottom: 0px;">
+        <ng-container *ngIf="item.active == 0">
+          <span class="badge badge-danger width_5em"><i class="fa fa-ban"></i></span>
+        </ng-container>
+        <ng-container *ngIf="item.active == 1">
+          <span class="badge badge-success width_5em"><i class="fa fa-check"></i></span>
+        </ng-container>
+      </td>
+      <td style="padding-bottom: 0px;">
+        <ng-container *ngIf="item.state == 1">
+          <i class="far fa-user"></i>
+        </ng-container>
+        <ng-container *ngIf="item.state == 2">
+          <i class="fas fa-user"></i>
+        </ng-container>
+      </td>
+      <td style="padding-bottom: 0px;">
+        <strong>{{item.firstname}} {{item.lastname}}</strong>
+      </td>
+      <td style="padding-bottom: 0px;">
+        <ng-container *ngIf="item.opt_msgs == 0">
+          <span class="badge badge-secondary width_3em">-</span>
+        </ng-container>
+        <ng-container *ngIf="item.opt_msgs == 1">
+          <span class="badge badge-success width_3em"><i class="fa fa-envelope"></i></span>
+        </ng-container>
+      </td>
+      <td style="padding-bottom: 0px;">
+        <ng-container *ngIf="item.opt_2factor == 0">
+          <span class="badge badge-secondary width_3em">-</span>
+        </ng-container>
+        <ng-container *ngIf="item.opt_2factor == 1">
+          <span class="badge badge-success width_3em"><i class="fa fa-shield-alt"></i></span>
+        </ng-container>
+      </td>
+      <td style="padding-bottom: 0px;">
+        {{item.opt_ttl}}
+      </td>
+      <td style="padding-bottom: 0px;">
+        {{item.opt_locale}}
+      </td>
+      <td style="padding-bottom: 0px;" rowspan="2">
+        <div class="btn-group" role="group" aria-label="Basic example">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_settings(item)"><i class="fa fa-cogs fa-fw"></i></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_roles(item)"><i class="fa fa-lock fa-fw"></i></button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_sessions(item, info_item)"><i class="fa fa-clipboard-list fa-fw"></i></button>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted" colspan="2" >
+        <small><i class="fa fa-eye"></i>&nbsp;{{item.last | trlo_timediff}}</small>
+      </td>
+      <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted">
+        <small><i class="fa fa-network-wired"></i>&nbsp;&nbsp;{{item.ip}}</small>
+      </td>
+      <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted" colspan="3" >
+        <small><i class="fa fa-calendar"></i>&nbsp;&nbsp;{{item.last | trlo_locale}}</small>
+      </td>
+      <td style="border-top: 0px; padding-top: 0.2em;" class="text-muted">
+        <small><i class="fa fa-sign-in-alt"></i>&nbsp;&nbsp;{{item.logins}}</small>
+      </td>
+    </tr>
+    </ng-container>
+  </tbody>
+</table>
+-->
 </ng-container>
 
 <ng-template #loading>

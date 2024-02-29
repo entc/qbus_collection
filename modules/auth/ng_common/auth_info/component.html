@@ -15,23 +15,23 @@
             <div class="col">
               <h4 class="card-title float-left">{{ sitem.firstname }}&nbsp;{{ sitem.lastname }}&nbsp;&nbsp;<button class="btn btn-link" (click)="open_rename()"><i class="fa fa-edit fa-fw"></i></button></h4>
             </div>
-            <div class="col text-right">
-              <span class="badge badge-secondary width_7em">GPID: {{ sitem.gpid }}</span>
+            <div class="col text-right text-end">
+              <span class="badge badge-secondary bg-secondary width_7em">GPID: {{ sitem.gpid }}</span>
             </div>
         </div>
         <div class="row">
             <div class="col">
               {{ sitem.workspace }}
             </div>
-            <div class="col text-right">
-              <span class="badge badge-secondary width_7em">WPID: {{ sitem.wpid }}</span>
+            <div class="col text-right text-end">
+              <span class="badge badge-secondary bg-secondary width_7em">WPID: {{ sitem.wpid }}</span>
             </div>
         </div>
         <div class="row">
             <div class="col">
               <small class="text-muted">{{ 'AUTH.LASTLOGIN' | transloco }}</small>
             </div>
-            <div class="col text-right width_10em" *ngIf="sitem.lt">
+            <div class="col text-right width_10em text-end" *ngIf="sitem.lt">
               <small class="text-muted">{{sitem.lt | trlo_timediff}}</small>
             </div>
         </div>
@@ -66,10 +66,10 @@
 
     <ng-container *ngSwitchCase="1">
 
-      <div class="text-right">
+      <div class="text-right text-end">
         <button type="button" class="btn btn-link" (click)="open_change_password ()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
       </div>
-      <div class="text-right">
+      <div class="text-right text-end">
         <button type="button" class="btn btn-link" (click)="open_disable_account ()">{{ 'AUTH.ACCDEACTIVATE' | transloco }}</button>
       </div>
 
@@ -81,7 +81,7 @@
           <div class="col">
             {{ 'AUTH.LASTHOST' | transloco }}
           </div>
-          <div class="col text-right width_10em">
+          <div class="col text-right width_10em text-end">
             {{sitem.remote}}
           </div>
       </div>
