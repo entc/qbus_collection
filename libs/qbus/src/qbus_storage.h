@@ -27,4 +27,8 @@ __CAPE_LIBEX   QBusMethod         qbus_storage_get              (QBusStorage, co
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   void               qbus_storage_queue_add        (QBusStorage, QBusMethod);
+
+//-----------------------------------------------------------------------------
+
 #endif 
