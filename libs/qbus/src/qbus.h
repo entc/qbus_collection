@@ -10,9 +10,12 @@
 #include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
 
+// TopLevel1 qbus includes
+#include "tl1/qbus_tl1.h"
+
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBus               qbus_new               (const char* module);
+__CAPE_LIBEX   QBus               qbus_new               (const char* module, QBusManifold);
 
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
@@ -27,7 +30,7 @@ __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, Ca
 //-----------------------------------------------------------------------------
 
                                                          /* this will initialize qbus (for testing) -> same as wait without waiting */
-__CAPE_LIBEX   int                qbus_init              (QBus, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr);
+__CAPE_LIBEX   int                qbus_init              (QBus, number_t workers, CapeErr);
 
 __CAPE_LIBEX   int                qbus_register          (QBus, const char* method, void* ptr, fct_qbus_onMessage, fct_qbus_onRemoved, CapeErr);
 

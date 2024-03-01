@@ -83,9 +83,39 @@ void* qbus_route_get (QBusRoute self, const char* module)
 
 //-----------------------------------------------------------------------------
 
-void qbus_route_add (QBusRoute self, const char* module, void* node)
+void __STDCALL qbus_route__destinations__on_del (void* ptr)
 {
   
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_route_add (QBusRoute self, const char* uuid, const char* module, void* node)
+{
+  cape_mutex_lock (self->mutex);
+
+  {
+    CapeList destinations;
+    
+    CapeMapNode n = cape_map_find (self->routes, (void*)module);
+    if (n)
+    {
+      destinations = cape_map_node_value (n);
+    }
+    else
+    {
+      destinations = cape_list_new (qbus_route__destinations__on_del);
+      
+      cape_map_insert (self->routes, (void*)cape_str_cp (module), (void*)destinations);
+    }
+  
+    // TODO: increase ref for node
+  
+    cape_list_push_back (destinations, node);
+    
+  }
+  
+  cape_mutex_unlock (self->mutex);
 }
 
 //-----------------------------------------------------------------------------

@@ -23,7 +23,7 @@ __CAPE_LIBEX   void               qbus_route_del               (QBusRoute*);
 
 __CAPE_LIBEX   void*              qbus_route_get               (QBusRoute, const char* module);
 
-__CAPE_LIBEX   void               qbus_route_add               (QBusRoute, const char* module, void*);
+__CAPE_LIBEX   void               qbus_route_add               (QBusRoute, const char* uuid, const char* module, void*);
 
 //-----------------------------------------------------------------------------
 

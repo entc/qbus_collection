@@ -55,6 +55,7 @@ int cape_btrace_activate (CapeErr err)
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <memory.h>
 
 #define _XOPEN_SOURCE
 #include <ucontext.h>
@@ -148,6 +149,7 @@ int cape_btrace_activate (CapeErr err)
   */
   
   struct sigaction sigact;
+  memset (&sigact, 0x0, sizeof(struct sigaction));
 
   sigact.sa_sigaction = cape_btrace_hdlr;
   sigact.sa_flags = SA_RESTART | SA_SIGINFO;

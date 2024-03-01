@@ -14,7 +14,17 @@ struct QBusManifold_s
 
 QBusManifold qbus_manifold_new (void* user_ptr, fct_qbus_manifold__on_add on_add, fct_qbus_manifold__on_rm on_rm, fct_qbus_manifold__on_call on_call, fct_qbus_manifold__on_emit on_emit)
 {
-  
+    QBusManifold self = CAPE_NEW (struct QBusManifold_s);
+
+    self->user_ptr = user_ptr;
+
+    self->on_call = on_call;
+    self->on_emit = on_emit;
+
+    self->on_add = on_add;
+    self->on_rm = on_rm;
+
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -22,6 +32,15 @@ QBusManifold qbus_manifold_new (void* user_ptr, fct_qbus_manifold__on_add on_add
 void qbus_manifold_del (QBusManifold* p_self)
 {
   
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeString name, void* user_ptr, fct_qbus_manifold__on_add, fct_qbus_manifold__on_rm, fct_qbus_manifold__on_call, fct_qbus_manifold__on_emit, CapeErr err)
+{
+    
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

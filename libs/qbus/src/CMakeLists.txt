@@ -2,6 +2,7 @@
 INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 
 subdirs(tl1/lib)
+subdirs(tl1/emu)
 #subdirs(tl2/lib)
 
 set(QBUS_SOURCES
@@ -24,7 +25,13 @@ set(QBUS_HEADERS
 
 add_library             (qbus SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
 target_link_libraries   (qbus cape qcrypt qbus_tl1)
-set_target_properties   (qbus PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
+
+#----------------------------------------------------------------------------------
+
+add_library             (qbus_emu SHARED ${QBUS_SOURCES} ${QBUS_HEADERS})
+target_link_libraries   (qbus_emu cape qcrypt qbus_tl1_emu)
+
+#----------------------------------------------------------------------------------
 
 INSTALL (TARGETS qbus DESTINATION lib)
 
