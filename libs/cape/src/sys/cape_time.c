@@ -8,7 +8,10 @@
 
 #if defined __LINUX_OS || defined __BSD_OS
 
+#ifndef _BSD_SOURCE
 #define _BSD_SOURCE
+#endif
+
 #define cape_sscanf sscanf
 
 #include <sys/time.h>

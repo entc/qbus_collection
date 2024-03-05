@@ -56,7 +56,10 @@ int cape_btrace_activate (CapeErr err)
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
+#endif
+
 #include <ucontext.h>
 
 //-----------------------------------------------------------------------------
