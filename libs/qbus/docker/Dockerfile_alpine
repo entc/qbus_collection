@@ -12,6 +12,7 @@ RUN apk add --no-cache \
   pcre-dev \
   curl-dev \
   libressl-dev \
-  libuuid
+  libuuid \
+  fts-dev
 
 ARG CACHEBUST=1
