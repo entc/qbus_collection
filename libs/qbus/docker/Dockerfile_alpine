@@ -4,6 +4,7 @@ RUN apk add --no-cache \
   make \
   cmake \
   musl-dev \
+  libexecinfo-dev \
   linux-headers \
   gcc \
   g++ \
