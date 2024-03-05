@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
   libpcre3-dev \
   libcurl4-openssl-dev \
   libssl-dev \
-  uuid-dev \
-  && rm -rf /var/lib/apt/lists/*
+  uuid-dev
 
 ARG CACHEBUST=1
