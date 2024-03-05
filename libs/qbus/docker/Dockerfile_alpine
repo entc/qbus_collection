@@ -1,0 +1,14 @@
+FROM alpine:3.14
+
+RUN apk add --no-cache \
+  cmake \
+  gcc \
+  g++ \
+  mariadb-dev \
+  sqlite-dev \
+  pcre-dev \
+  curl-dev \
+  libressl-dev \
+  libuuid
+
+ARG CACHEBUST=1
