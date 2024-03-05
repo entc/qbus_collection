@@ -1,6 +1,6 @@
 FROM bitnami/minideb:bookworm
 
-RUN apt-get update && apt-get install -y \
+RUN rm -r /var/lib/apt/lists/* && apt-get update && apt-get install -y \
   cmake \
   gcc \
   g++ \
