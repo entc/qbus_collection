@@ -12,7 +12,7 @@
 #include <sys/socket.h>	// basic socket definitions
 #include <sys/types.h>
 #include <arpa/inet.h>	// inet(3) functions
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <netdb.h>
 
