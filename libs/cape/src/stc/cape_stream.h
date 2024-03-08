@@ -73,6 +73,9 @@ __CAPE_LIBEX void              cape_stream_set (CapeStream, number_t bytes_appen
                                /* get the current position */
 __CAPE_LIBEX char*             cape_stream_pos (CapeStream);
 
+                               /* decrease the used bytes */
+__CAPE_LIBEX void              cape_stream_dec (CapeStream, number_t bytes_reverted);
+
 //-----------------------------------------------------------------------------
 // stream position settings
 

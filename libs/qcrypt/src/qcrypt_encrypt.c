@@ -153,6 +153,9 @@ int qencrypt_base64_finalize (QEncryptBase64 self, CapeErr err)
   // adjust the stream to the correct written bytes
   cape_stream_set (self->product, len);
   
+  // remove last byte
+  cape_stream_dec (self->product, 1);
+  
   return CAPE_ERR_NONE;
 
 #endif

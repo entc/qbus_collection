@@ -298,6 +298,18 @@ void cape_stream_set (CapeStream self, number_t bytes_appended)
 
 //-----------------------------------------------------------------------------
 
+void cape_stream_dec (CapeStream self, number_t bytes_reverted)
+{
+  self->pos -= bytes_reverted;
+  
+  if (self->pos < self->buffer)
+  {
+    self->pos = self->buffer;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 char* cape_stream_pos (CapeStream self)
 {
   return self->pos;
