@@ -15,7 +15,8 @@ find_package(PThread)
 find_package(Math)
 find_package(Fts QUIET)
 
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0")
+
 SET(CMAKE_C_FLAGS_DEBUG "-O0")
 
 #----------------------------------------------------------------------------------
