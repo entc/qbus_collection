@@ -89,6 +89,8 @@ __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char c);
 
+__CAPE_LIBEX   CapeString         cape_str_unwrap        (const CapeString, char l, char r);
+
                                   /*
                                   removes invalid UTF-8 characters
                                    */

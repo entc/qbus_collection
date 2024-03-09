@@ -1165,6 +1165,48 @@ CapeString cape_str_trim_lr (const CapeString source, char l, char r)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_unwrap (const CapeString self, char l, char r)
+{
+  CapeString ret = cape_str_cp (self);
+  
+  if (ret)
+  {
+    const char* posl;
+    char* posw;
+    
+    // find first character 'l'
+    for (posl = ret; *posl; posl++)
+    {
+      if (*posl == l) break;
+    }
+    
+    if (*posl)
+    {
+      // step to character after 'l'
+      posl++;
+    }
+    else
+    {
+      // 'l' was not found
+      posl = ret;
+    }
+
+    // copy to last character 'r'
+    for (posw = ret; *posl; posl++, posw++)
+    {
+      if (*posl == r) break;
+      *posw = *posl;
+    }
+    
+    // set termination
+    *posw = 0;
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_trim_c (const CapeString source, char c)
 {
   return cape_str_trim_lr (source, c, c);
