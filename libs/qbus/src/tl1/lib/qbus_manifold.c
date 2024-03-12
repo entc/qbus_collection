@@ -31,7 +31,12 @@ QBusManifold qbus_manifold_new (void* user_ptr, fct_qbus_manifold__on_add on_add
 
 void qbus_manifold_del (QBusManifold* p_self)
 {
-  
+  if (*p_self)
+  {
+    QBusManifold self = *p_self;
+    
+    CAPE_DEL (p_self, struct QBusManifold_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
