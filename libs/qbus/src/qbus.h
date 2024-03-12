@@ -1,19 +1,21 @@
 #ifndef __QBUS__H
 #define __QBUS__H 1
 
+#include "qbus_method.h"
+#include "qbus_types.h"
+
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
 #include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
 
-//=============================================================================
-
-struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
+// TopLevel1 qbus includes
+#include "tl1/qbus_tl1.h"
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBus               qbus_new               (const char* module);
+__CAPE_LIBEX   QBus               qbus_new               (const char* module, QBusManifold);
 
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
@@ -25,39 +27,10 @@ __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, Ca
 #define QBUS_MTYPE_JSON         1
 #define QBUS_MTYPE_FILE         2
 
-struct QBusMessage_s
-{
-  number_t mtype;
-
-  CapeUdc clist;    // list of all parameters
-  
-  CapeUdc cdata;    // public object as parameters
-  
-  CapeUdc pdata;    // private object as parameters
-  
-  CapeUdc rinfo;
-  
-  CapeUdc files;    // if the content is too big, payload is stored in temporary files
-  
-  CapeStream blob;  // binary blob within the CapeStream
-  
-  CapeErr err;
-  
-  CapeString chain_key;  // don't change this key
-  
-  CapeString sender;     // don't change this
-  
-}; typedef struct QBusMessage_s* QBusM;
-
-//-----------------------------------------------------------------------------
-
-typedef int    (__STDCALL         *fct_qbus_onMessage)   (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
-typedef void   (__STDCALL         *fct_qbus_onRemoved)   (void* ptr);
-
 //-----------------------------------------------------------------------------
 
                                                          /* this will initialize qbus (for testing) -> same as wait without waiting */
-__CAPE_LIBEX   int                qbus_init              (QBus, CapeUdc binds, CapeUdc remotes, number_t workers, CapeErr);
+__CAPE_LIBEX   int                qbus_init              (QBus, number_t workers, CapeErr);
 
 __CAPE_LIBEX   int                qbus_register          (QBus, const char* method, void* ptr, fct_qbus_onMessage, fct_qbus_onRemoved, CapeErr);
 
