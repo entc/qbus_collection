@@ -1,4 +1,5 @@
 #include "qbus_method.h"
+#include "qbus.h"
 
 //-----------------------------------------------------------------------------
 
@@ -39,3 +40,20 @@ void qbus_method_del (QBusMethod* p_self)
 
 //-----------------------------------------------------------------------------
 
+int qbus_method_run (QBusMethod self, QBus qbus, CapeErr err)
+{
+  if (self->user_fct)
+  {
+    QBusM qin = qbus_message_new (self->chainkey, NULL);
+    QBusM qout = qbus_message_new (NULL, NULL);
+    
+    self->user_fct (qbus, self->user_ptr, qin, qout, err);
+    
+    qbus_message_del (&qin);
+    qbus_message_del (&qout);
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------

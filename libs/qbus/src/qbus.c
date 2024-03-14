@@ -33,6 +33,17 @@
 #include "fmt/cape_tokenizer.h"
 #include "sys/cape_btrace.h"
 #include "sys/cape_thread.h"
+#include <sys/cape_queue.h>
+
+//-----------------------------------------------------------------------------
+
+struct QBusEventContext_s
+{
+  QBus qbus;                 // reference
+  QBusMethod method_own;     // owned
+  QBusMethod method_ref;     // reference
+  
+}; typedef struct QBusEventContext_s* QBusEventContext;
 
 //-----------------------------------------------------------------------------
 
@@ -54,6 +65,7 @@ struct QBus_s
   
   QBusStorage storage;
 
+  CapeQueue queue;
 };
 
 //-----------------------------------------------------------------------------
@@ -78,14 +90,56 @@ void __STDCALL qbus__on_add (void* user_ptr, const char* uuid, const char* modul
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
+{
+  int res;
+  QBusEventContext qec = ptr;
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  if (qec->method_own)
+  {
+    res = qbus_method_run (qec->method_own, qec->qbus, err);
+    
+    qbus_method_del (&(qec->method_own));
+  }
+  else if (qec->method_ref)
+  {
+    res = qbus_method_run (qec->method_ref, qec->qbus, err);
+  }
+  
+  if (res == CAPE_ERR_CONTINUE)
+  {
+    // dont't send response
+  }
+  else
+  {
+    qbus_manifold_response (qec->qbus->manifold);
+  }
+  
+  cape_err_del (&err);
+  
+  CAPE_DEL (&qec, struct QBusEventContext_s);
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method)
 {
   QBus self = user_ptr;
 
   if (p_qbus_method)
   {
-
+    QBusEventContext qec = CAPE_NEW (struct QBusEventContext_s);
     
+    qec->qbus = self;
+    qec->method_ref = NULL;
+
+    qec->method_own = *p_qbus_method;
+    *p_qbus_method = NULL;
+    
+    cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
   }
   else
   {
@@ -93,17 +147,19 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     
     if (method)
     {
+      QBusEventContext qec = CAPE_NEW (struct QBusEventContext_s);
+
+      qec->qbus = self;
+      qec->method_ref = method;
+      qec->method_own = NULL;
       
-      
+      cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
     }
     else
     {
-      
-      
+      qbus_manifold_response (self->manifold);
     }
-    
   }
-  
 }
 
 //-----------------------------------------------------------------------------
@@ -140,6 +196,8 @@ QBus qbus_new (const char* module_origin, QBusManifold manifold)
   
   self->storage = qbus_storage_new ();
   
+  self->queue = cape_queue_new (60000);  // 1 minute timeout
+  
   return self;
 }
 
@@ -150,6 +208,8 @@ void qbus_del (QBus* p_self)
   if (*p_self)
   {
     QBus self = *p_self;
+    
+    cape_queue_del (&(self->queue));
     
     qbus_storage_del (&(self->storage));
     
@@ -187,6 +247,12 @@ int qbus_init (QBus self, number_t workers, CapeErr err)
     return res;
   }
   
+  res = cape_queue_start (self->queue, workers, err);
+  if (res)
+  {
+    return res;
+  }
+
   return CAPE_ERR_NONE;
 }
 
