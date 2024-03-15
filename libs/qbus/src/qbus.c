@@ -139,6 +139,8 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     qec->method_own = *p_qbus_method;
     *p_qbus_method = NULL;
     
+    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "on call", "queued process [user] for = %s", method_name);
+    
     cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
   }
   else
@@ -152,7 +154,9 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
       qec->qbus = self;
       qec->method_ref = method;
       qec->method_own = NULL;
-      
+
+      cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "on call", "queued process [registered] for = %s", method_name);
+
       cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
     }
     else

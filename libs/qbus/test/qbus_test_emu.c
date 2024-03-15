@@ -70,6 +70,7 @@ int __STDCALL th1_worker (void* ptr)
   
   for (runs = 0; runs < 100; runs++)
   {
+    printf ("RUNS: %lu\n", runs);
     {
       QBusM msg = qbus_message_new (NULL, NULL);
       
