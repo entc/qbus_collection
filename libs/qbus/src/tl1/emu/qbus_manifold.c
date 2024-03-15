@@ -63,12 +63,14 @@ void qbus_manifold_member_add (QBusManifoldMember self, const char* uuid, const 
 
 //-----------------------------------------------------------------------------
 
-void qbus_manifold_member_call (QBusManifoldMember self, const CapeString method_name, QBusMethod* p_qbus_method)
+int qbus_manifold_member_call (QBusManifoldMember self, const CapeString method_name, QBusMethod* p_qbus_method, CapeErr err)
 {
   if (self->on_call)
   {
     self->on_call (self->user_ptr, method_name, p_qbus_method);
   }
+  
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -181,11 +183,11 @@ void qbus_manifold_response (QBusManifold self)
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method_name, QBusM msg, QBusMethod* p_qbus_method)
+int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method_name, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
 {
   CapeMapNode n = *p_node;
   
-  qbus_manifold_member_call (cape_map_node_value (n), method_name, p_qbus_method);
+  return qbus_manifold_member_call (cape_map_node_value (n), method_name, p_qbus_method, err);
 }
 
 //-----------------------------------------------------------------------------

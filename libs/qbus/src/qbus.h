@@ -21,6 +21,8 @@ __CAPE_LIBEX   void               qbus_del               (QBus*);
 
 __CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc bind, CapeUdc remotes, number_t workers, CapeErr);
 
+__CAPE_LIBEX   int                qbus_next              (QBus, CapeErr);
+
 //-----------------------------------------------------------------------------
 
 #define QBUS_MTYPE_NONE         0

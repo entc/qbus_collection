@@ -71,7 +71,7 @@ void qbus_manifold_response (QBusManifold self)
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method)
+int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
 {
   
 }

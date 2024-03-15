@@ -258,28 +258,9 @@ int qbus_init (QBus self, number_t workers, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qbus_wait__intern (QBus self, CapeErr err)
+int qbus_next (QBus self, CapeErr err)
 {
-  int res;
-  
-  // activate signal handling strategy
-  res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  // wait infinite and let the AIO subsystem handle all events
-  res = cape_aio_context_wait (self->aio, err);
-  
-exit_and_cleanup:
-  
-  if (res)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "wait", "runtime error: %s", cape_err_text (err));
-  }
-  
-  return res;
+  return cape_aio_context_next (self->aio, -1, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -294,7 +275,21 @@ int qbus_wait (QBus self, CapeUdc binds, CapeUdc remotes, number_t workers, Cape
     return res;
   }
   
-  return qbus_wait__intern (self, err);
+  // activate signal handling strategy
+  res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // wait infinite and let the AIO subsystem handle all events
+  while (qbus_next (self, err) == CAPE_ERR_NONE);
+
+  res = cape_err_code (err);
+  
+exit_and_cleanup:
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -316,11 +311,11 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
     
     if (NULL == node)
     {
-      // error
+      res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "module not found");
       break;
     }
     
-    res = qbus_manifold_send (self->manifold, &node, method, msg, p_qbus_method);
+    res = qbus_manifold_send (self->manifold, &node, method, msg, p_qbus_method, err);
     if (res)
     {
       // OK
@@ -1114,8 +1109,8 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);    
 
     // *** main loop ***
-    qbus_wait__intern (self, err);
-    
+    while (qbus_next (self, err) == CAPE_ERR_NONE);
+
     tcsetattr(STDIN_FILENO, TCSANOW, &saved);
   }
 

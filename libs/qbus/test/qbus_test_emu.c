@@ -2,6 +2,7 @@
 
 // cape includes
 #include <sys/cape_thread.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -34,14 +35,60 @@ static int __STDCALL app_on_done (QBus qbus, void* ptr, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL th1_worker__on_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL th1_worker (void* ptr)
 {
   int res;
+  number_t runs = 0;
   
   CapeErr err = cape_err_new ();
   QBus qbus = qbus_new ("TEST1", ptr);
 
-  res = qbus_wait (qbus, NULL, NULL, 2, err);
+  res = qbus_init (qbus, 2, err);
+  if (res)
+  {
+    return res;
+  }
+
+  // activate signal handling strategy
+  res = cape_aio_context_set_interupts (qbus_aio (qbus), TRUE, TRUE, err);
+  if (res)
+  {
+    return res;
+  }
+
+  // wait for all modules to be initialized
+  cape_thread_sleep (300);
+  
+  for (runs = 0; runs < 100; runs++)
+  {
+    {
+      QBusM msg = qbus_message_new (NULL, NULL);
+      
+      res = qbus_send (qbus, "TEST2", "test_method", msg, NULL, th1_worker__on_method, err);
+      
+      qbus_message_del (&msg);
+    }
+    
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "TEST", "qbus send", "returned error: %s", cape_err_text (err));
+      break;
+    }
+    
+    if (qbus_next (qbus, err))
+    {
+      break;
+    }
+  }
   
   qbus_del (&qbus);
   cape_err_del (&err);
