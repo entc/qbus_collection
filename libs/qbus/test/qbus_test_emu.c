@@ -10,27 +10,11 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
 {
   int res;
   
+  cape_log_msg (CAPE_LL_DEBUG, "TEST", "on method", "function is called");
+  
   res = CAPE_ERR_NONE;
   
   return res;
-}
-
-//-----------------------------------------------------------------------------
-
-static int __STDCALL app_on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
-{
-  // register methods
-  qbus_register (qbus, "test_method", NULL, test_method, NULL, err);
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-static int __STDCALL app_on_done (QBus qbus, void* ptr, CapeErr err)
-{
-  
-  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -106,6 +90,9 @@ int __STDCALL th2_worker (void* ptr)
   CapeErr err = cape_err_new ();
   QBus qbus = qbus_new ("TEST2", ptr);
   
+  // register methods
+  qbus_register (qbus, "test_method", NULL, test_method, NULL, err);
+
   res = qbus_wait (qbus, NULL, NULL, 2, err);
   
   qbus_del (&qbus);
