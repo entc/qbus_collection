@@ -39,7 +39,7 @@ __CAPE_LIBEX   void               qbus_manifold_subscribe         (QBusManifold)
 
 __CAPE_LIBEX   void               qbus_manifold_response          (QBusManifold);
 
-__CAPE_LIBEX   int                qbus_manifold_send              (QBusManifold, void** p_node);
+__CAPE_LIBEX   int                qbus_manifold_send              (QBusManifold, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method);
 
 //-----------------------------------------------------------------------------
 

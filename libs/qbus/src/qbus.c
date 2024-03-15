@@ -320,7 +320,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
       break;
     }
     
-    res = qbus_manifold_send (self->manifold, &node);
+    res = qbus_manifold_send (self->manifold, &node, method, msg, p_qbus_method);
     if (res)
     {
       // OK
