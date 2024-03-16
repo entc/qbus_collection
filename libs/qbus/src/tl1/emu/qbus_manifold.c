@@ -14,13 +14,14 @@ struct QBusManifoldMember_s
   fct_qbus_manifold__on_add on_add;
   fct_qbus_manifold__on_rm on_rm;
   fct_qbus_manifold__on_call on_call;
+  fct_qbus_manifold__on_recv on_recv;
   fct_qbus_manifold__on_emit on_emit;
   
 }; typedef struct QBusManifoldMember_s* QBusManifoldMember;
 
 //-----------------------------------------------------------------------------
 
-QBusManifoldMember qbus_manifold_member_new (const CapeString name, void* user_ptr, fct_qbus_manifold__on_add on_add, fct_qbus_manifold__on_rm on_rm, fct_qbus_manifold__on_call on_call, fct_qbus_manifold__on_emit on_emit)
+QBusManifoldMember qbus_manifold_member_new (const CapeString name, void* user_ptr, fct_qbus_manifold__on_add on_add, fct_qbus_manifold__on_rm on_rm, fct_qbus_manifold__on_call on_call,fct_qbus_manifold__on_recv on_recv, fct_qbus_manifold__on_emit on_emit)
 {
   QBusManifoldMember self = CAPE_NEW (struct QBusManifoldMember_s);
   
@@ -135,7 +136,7 @@ void qbus_manifold_del (QBusManifold* p_self)
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeString name, void* user_ptr, fct_qbus_manifold__on_add on_add, fct_qbus_manifold__on_rm on_rm, fct_qbus_manifold__on_call on_call, fct_qbus_manifold__on_emit on_emit, CapeErr err)
+int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeString name, void* user_ptr, fct_qbus_manifold__on_add on_add, fct_qbus_manifold__on_rm on_rm, fct_qbus_manifold__on_call on_call, fct_qbus_manifold__on_recv on_recv, fct_qbus_manifold__on_emit on_emit, CapeErr err)
 {
   printf ("manifold init uuid = %s\n", uuid);
   
@@ -148,7 +149,7 @@ int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeStri
     return cape_err_set (err, CAPE_ERR_EOF, "already set");
   }
 
-  member = qbus_manifold_member_new (name, user_ptr, on_add, on_rm, on_call, on_emit);
+  member = qbus_manifold_member_new (name, user_ptr, on_add, on_rm, on_call, on_recv, on_emit);
   
   n = cape_map_insert (self->members, (void*)cape_str_cp (uuid), member);
 

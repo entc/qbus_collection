@@ -185,6 +185,15 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus__on_recv (void* user_ptr)
+{
+  QBus self = user_ptr;
+
+  
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus__on_emit (void* user_ptr)
 {
   QBus self = user_ptr;
@@ -262,7 +271,7 @@ int qbus_init (QBus self, number_t workers, CapeErr err)
     return res;
   }
   
-  res = qbus_manifold_init (self->manifold, self->uuid, self->name, self, qbus__on_add, qbus__on_rm, qbus__on_call, qbus__on_emit, err);
+  res = qbus_manifold_init (self->manifold, self->uuid, self->name, self, qbus__on_add, qbus__on_rm, qbus__on_call, qbus__on_recv, qbus__on_emit, err);
   if (res)
   {
     return res;
