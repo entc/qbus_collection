@@ -169,6 +169,13 @@ export class Graph {
     box.x = x / elem_rect.width * 100;
     box.y = y / elem_rect.height * 100;
 
+    this.box_send_coordinates (box);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  private box_send_coordinates (box: GraphBox)
+  {
     if (this.on_mv_cb)
     {
       this.on_mv_cb (box);
@@ -245,8 +252,8 @@ export class Graph {
 
   private box__resize_buttons__adjust (box: GraphBox, rect: GraphRect): void
   {
-    this.rd.setStyle (box.div_nw, 'left', String(rect.x - GRAPH_RESIZE_AREA__HALF) + 'px');
-    this.rd.setStyle (box.div_nw, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
+    //this.rd.setStyle (box.div_nw, 'left', String(rect.x - GRAPH_RESIZE_AREA__HALF) + 'px');
+    //this.rd.setStyle (box.div_nw, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
 
     //this.rd.setStyle (box.div_ne, 'left', String(rect.x + rect.w - GRAPH_RESIZE_AREA__HALF) + 'px');
     //this.rd.setStyle (box.div_ne, 'top' , String(rect.y - GRAPH_RESIZE_AREA__HALF) + 'px');
@@ -266,8 +273,8 @@ export class Graph {
     this.rd.setStyle (box.div_sw, 'left', rect.x - GRAPH_RESIZE_AREA__HALF + 'px');
     this.rd.setStyle (box.div_sw, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
 
-    //this.rd.setStyle (box.div_se, 'left', rect.x + rect.w - GRAPH_RESIZE_AREA__HALF + 'px');
-    //this.rd.setStyle (box.div_se, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
+    this.rd.setStyle (box.div_se, 'left', rect.x + rect.w - GRAPH_RESIZE_AREA__HALF + 'px');
+    this.rd.setStyle (box.div_se, 'top' , rect.y + rect.h - GRAPH_RESIZE_AREA__HALF + 'px');
   }
 
   //-----------------------------------------------------------------------------
@@ -284,6 +291,7 @@ export class Graph {
       box.ev_mm = this.rd.listen (dom_el, 'mousemove', (event) => this.box__resize__on_mousemove (event, box, mx, my, sx, sy));
       box.ev_mu = this.rd.listen (document, 'mouseup', (event) => this.box__resize__on_mouseup (event, box, mx, my, sx, sy));
 
+      // this sets the mv_x and mv_y values
       box.init_move__mouse_event (event);
     }
   }
@@ -420,11 +428,14 @@ export class Graph {
 
   private box__option_buttons__adjust (box: GraphBox, rect: GraphRect): void
   {
+    this.rd.setStyle (box.div_nw, 'left', String(rect.x - GRAPH_OPTION_AREA__HALF) + 'px');
+    this.rd.setStyle (box.div_nw, 'top' , String(rect.y - GRAPH_OPTION_AREA - 2) + 'px');
+
     this.rd.setStyle (box.div_ne, 'left', String(rect.x + rect.w - GRAPH_OPTION_AREA__HALF) + 'px');
     this.rd.setStyle (box.div_ne, 'top' , String(rect.y - GRAPH_OPTION_AREA - 2) + 'px');
 
-    this.rd.setStyle (box.div_se, 'left', String(rect.x + rect.w - GRAPH_OPTION_AREA__HALF) + 'px');
-    this.rd.setStyle (box.div_se, 'top' , String(rect.y + rect.h + 2) + 'px');
+    //this.rd.setStyle (box.div_se, 'left', String(rect.x + rect.w - GRAPH_OPTION_AREA__HALF) + 'px');
+    //this.rd.setStyle (box.div_se, 'top' , String(rect.y + rect.h + 2) + 'px');
   }
 
   //-----------------------------------------------------------------------------
@@ -454,17 +465,20 @@ export class Graph {
     // get the top and left coordinates of the box element
     var elem_rect = dom_el.getBoundingClientRect ();
 
-    box.div_nw = this.box__resize__append_button (box, dom_el, 'nw-resize', 1, 1, -1, -1);
+    //box.div_nw = this.box__resize__append_button (box, dom_el, 'nw-resize', 1, 1, -1, -1);
     //box.div_ne = this.box__resize__append_button (box, dom_el, 'ne-resize', 0, 1, 1, -1);
     box.div_n  = this.box__resize__append_button (box, dom_el, 'n-resize', 0, 1, 0, -1);
     box.div_e  = this.box__resize__append_button (box, dom_el, 'e-resize', 0, 0, 1, 0);
     box.div_w  = this.box__resize__append_button (box, dom_el, 'w-resize', 1, 0, -1, 0);
     box.div_s  = this.box__resize__append_button (box, dom_el, 's-resize', 0, 0, 0, 1);
     box.div_sw = this.box__resize__append_button (box, dom_el, 'sw-resize', 1, 0, -1, 1);
-    //box.div_se = this.box__resize__append_button (box, dom_el, 'se-resize', 0, 0, 1, 1);
+    box.div_se = this.box__resize__append_button (box, dom_el, 'se-resize', 0, 0, 1, 1);
 
-    box.div_ne = this.box__option__append_button (box, dom_el, 'hand', 'times', this.on_delete_cb);
-    box.div_se = this.box__option__append_button (box, dom_el, 'hand', 'pen', this.on_edit_cb);
+    //box.div_ne = this.box__option__append_button (box, dom_el, 'hand', 'times', this.on_delete_cb);
+    //box.div_se = this.box__option__append_button (box, dom_el, 'hand', 'pen', this.on_edit_cb);
+
+    box.div_nw = this.box__option__append_button (box, dom_el, 'hand', 'times', this.on_delete_cb);
+    box.div_ne = this.box__option__append_button (box, dom_el, 'hand', 'pen', this.on_edit_cb);
 
     var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
@@ -514,6 +528,9 @@ export class Graph {
     // do a simple move transformation
     rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
 
+    // align on snap points
+    rect.snap (box, this.boxes, elem_rect);
+
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
 
@@ -526,17 +543,21 @@ export class Graph {
   {
     if (event.which === 1)  // only react on left mouse button
     {
+      box.ev_mm();
+      box.ev_mu();
+
       const dom_el = this.el_dom.nativeElement;
 
       // get the top and left coordinates of the box element
       var elem_rect = dom_el.getBoundingClientRect ();
 
-      box.ev_mm();
-      box.ev_mu();
-
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
+      // do a simple move transformation
       rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
+
+      // align on snap points
+      rect.snap (box, this.boxes, elem_rect);
 
       this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
       this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -852,6 +873,75 @@ class GraphRect
     this.y = Math.floor ((this.y + y) / grid_y) * grid_y;
 
     this.check_borders (elem_rect);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public snap (box: GraphBox, boxes: GraphBox[], elem_rect)
+  {
+    let snapy = 0;
+    let snapx = 0;
+
+    // recalculate the percentage values
+    let x = this.x / elem_rect.width  * 100;
+    let y = this.y / elem_rect.height * 100;
+
+    // check other boxes if we have any kind of alignment
+    boxes.forEach((e: GraphBox) => {
+
+      if (e != box) {
+
+        let midy = e.y + e.h / 2 - box.h / 2;
+        let midx = e.x + e.w / 2 - box.w / 2;
+
+        if (midy < y + 1 && midy > y - 1)
+        {
+          snapy = midy;
+        }
+
+        if (midx < x + 1 && midx > x - 1)
+        {
+          snapx = midx;
+        }
+
+        if (snapy == 0 && snapx == 0)
+        {
+          if (e.y < y + 1 && e.y > y - 1)
+          {
+            snapy = e.y;
+          }
+
+          if (e.x < x + 1 && e.x > x - 1)
+          {
+            snapx = e.x;
+          }
+
+          let maxy = e.y + e.h - box.h;
+          let maxx = e.x + e.w - box.w;
+
+          if (maxy < y + 1 && maxy > y - 1)
+          {
+            snapy = maxy;
+          }
+
+          if (maxx < x + 1 && maxx > x - 1)
+          {
+            snapx = maxx;
+          }
+        }
+      }
+
+    });
+
+    if (snapy > 0)
+    {
+      this.y = elem_rect.height * snapy / 100;
+    }
+
+    if (snapx > 0)
+    {
+      this.x = elem_rect.width * snapx / 100;
+    }
   }
 
   //---------------------------------------------------------------------------
