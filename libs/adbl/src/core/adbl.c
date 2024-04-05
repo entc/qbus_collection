@@ -705,3 +705,20 @@ void adbl_values_add__group_by (CapeUdc values, const CapeString group)
 }
 
 //-----------------------------------------------------------------------------
+
+void adbl_values_add__count (CapeUdc values, const CapeString result_name)
+{
+  cape_udc_add_s_cp (values, ADBL_SPECIAL__COUNT, result_name);
+}
+
+//-----------------------------------------------------------------------------
+
+void adbl_values_add__sum (CapeUdc values, const CapeString result_name, const CapeString column)
+{
+  CapeUdc h = cape_udc_add_node (values, ADBL_SPECIAL__SUM);
+  
+  cape_udc_add_s_cp (h, "_N", result_name);
+  cape_udc_add_s_cp (h, "_C", column);
+}
+
+//-----------------------------------------------------------------------------

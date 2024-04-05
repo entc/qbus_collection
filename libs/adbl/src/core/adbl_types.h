@@ -23,6 +23,8 @@
 #define ADBL_SPECIAL__ORDER_BY         "__orderby"
 #define ADBL_SPECIAL__LIMIT            "__limit"
 #define ADBL_SPECIAL__OFFSET           "__offset"
+#define ADBL_SPECIAL__COUNT            "__cnt"
+#define ADBL_SPECIAL__SUM              "__sum"
 
 //-----------------------------------------------------------------------------
 

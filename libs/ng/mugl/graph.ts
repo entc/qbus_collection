@@ -309,6 +309,9 @@ export class Graph {
 
     rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
 
+    // align on snap points
+    rect.snap_resize (box, this.boxes, elem_rect, mx, my, sx, sy);
+
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
     this.rd.setStyle (box.dom_box, 'width', '' + rect.w + 'px');
@@ -335,6 +338,9 @@ export class Graph {
       var rect: GraphRect = new GraphRect (box.x, box.y, box.w, box.h, elem_rect);
 
       rect.resize (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y, mx, my, sx, sy);
+
+      // align on snap points
+      rect.snap_resize (box, this.boxes, elem_rect, mx, my, sx, sy);
 
       this.box_set_size (box, rect.x, rect.y, rect.w, rect.h, elem_rect);
     }
@@ -529,7 +535,7 @@ export class Graph {
     rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
 
     // align on snap points
-    rect.snap (box, this.boxes, elem_rect);
+    rect.snap_move (box, this.boxes, elem_rect);
 
     this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
     this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -557,7 +563,7 @@ export class Graph {
       rect.move (event.clientX - box.mv_x, event.clientY - box.mv_y, elem_rect, this.grid_x, this.grid_y);
 
       // align on snap points
-      rect.snap (box, this.boxes, elem_rect);
+      rect.snap_move (box, this.boxes, elem_rect);
 
       this.rd.setStyle (box.dom_box, 'left', '' + rect.x + 'px');
       this.rd.setStyle (box.dom_box, 'top', '' + rect.y + 'px');
@@ -877,7 +883,7 @@ class GraphRect
 
   //---------------------------------------------------------------------------
 
-  public snap (box: GraphBox, boxes: GraphBox[], elem_rect)
+  public snap_move (box: GraphBox, boxes: GraphBox[], elem_rect)
   {
     let snapy = 0;
     let snapx = 0;
@@ -942,6 +948,58 @@ class GraphRect
     {
       this.x = elem_rect.width * snapx / 100;
     }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public snap_resize (box: GraphBox, boxes: GraphBox[], elem_rect, mx: number, my: number, sx: number, sy: number)
+  {
+    let snaph = 0;
+    let snapw = 0;
+
+    // recalculate the percentage values
+    let x = this.x / elem_rect.width  * 100;
+    let y = this.y / elem_rect.height * 100;
+    let w = this.w / elem_rect.width  * 100;
+    let h = this.h / elem_rect.height  * 100;
+
+    // check other boxes if we have any kind of alignment
+    boxes.forEach((e: GraphBox) => {
+
+      if (e != box) {
+
+        if (e.h < h + 1 && e.h > h - 1)
+        {
+          snaph = e.h;
+        }
+
+        if (e.w < w + 1 && e.w > w - 1)
+        {
+          snapw = e.w;
+        }
+
+      }
+
+    });
+
+    if (snaph > 0)
+    {
+      let h = elem_rect.height * snaph / 100;
+      let d = this.h - h;
+
+      this.y = this.y + d * my;
+      this.h = h;
+    }
+
+    if (snapw > 0)
+    {
+      let w = elem_rect.width * snapw / 100;
+      let d = this.w - w;
+
+      this.x = this.x + d * mx;
+      this.w = w;
+    }
+
   }
 
   //---------------------------------------------------------------------------
