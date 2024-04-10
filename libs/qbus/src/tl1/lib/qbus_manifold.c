@@ -64,14 +64,14 @@ void qbus_manifold_subscribe (QBusManifold self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_manifold_response (QBusManifold self, const CapeString chainkey)
+void qbus_manifold_response (QBusManifold self, const CapeString module_ident, const CapeString method_ident)
 {
   
 }
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
+int qbus_manifold_send (QBusManifold self, const CapeString uuid, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
 {
   
 }

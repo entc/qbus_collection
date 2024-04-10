@@ -19,7 +19,7 @@ typedef void          (__STDCALL *fct_qbus_manifold__on_rm)       (void* user_pt
 
 typedef void          (__STDCALL *fct_qbus_manifold__on_add)      (void* user_ptr, const char* uuid, const char* module, void* node);
 
-typedef void          (__STDCALL *fct_qbus_manifold__on_call)     (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString chainkey);
+typedef void          (__STDCALL *fct_qbus_manifold__on_call)     (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString src_module_ident, const CapeString src_method_ident);
 
 typedef void          (__STDCALL *fct_qbus_manifold__on_recv)     (void* user_ptr);
 
@@ -39,9 +39,9 @@ __CAPE_LIBEX   void               qbus_manifold_emit              (QBusManifold)
 
 __CAPE_LIBEX   void               qbus_manifold_subscribe         (QBusManifold);
 
-__CAPE_LIBEX   void               qbus_manifold_response          (QBusManifold, const CapeString chainkey);
+__CAPE_LIBEX   void               qbus_manifold_response          (QBusManifold, const CapeString module_ident, const CapeString method_ident);
 
-__CAPE_LIBEX   int                qbus_manifold_send              (QBusManifold, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method, CapeErr);
+__CAPE_LIBEX   int                qbus_manifold_send              (QBusManifold, const CapeString uuid, void** p_node, const CapeString method, QBusM msg, QBusMethod* p_qbus_method, CapeErr);
 
 //-----------------------------------------------------------------------------
 

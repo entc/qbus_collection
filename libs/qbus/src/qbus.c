@@ -39,10 +39,12 @@
 
 struct QBusEventContext_s
 {
-  QBus qbus;                 // reference
-  QBusMethod method_own;     // owned
-  QBusMethod method_ref;     // reference
-  CapeString chainkey;       // owned
+  QBus qbus;                      // reference
+  QBusMethod method_own;          // owned
+  QBusMethod method_ref;          // reference
+  
+  CapeString src_module_ident;    // owned
+  CapeString src_method_ident;    // owned
   
 }; typedef struct QBusEventContext_s* QBusEventContext;
 
@@ -99,6 +101,8 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
   // local objects
   CapeErr err = cape_err_new ();
   
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on method", "call local method");
+
   if (qec->method_own)
   {
     res = qbus_method_run (qec->method_own, qec->qbus, err);
@@ -116,16 +120,17 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
   }
   else
   {
-    if (qec->chainkey)
+    if (qec->src_module_ident)
     {
-      qbus_manifold_response (qec->qbus->manifold, qec->chainkey);
+      qbus_manifold_response (qec->qbus->manifold, qec->src_module_ident, qec->src_method_ident);
     }
   }
   
   cape_err_del (&err);
 
   {
-    cape_str_del (&(qec->chainkey));
+    cape_str_del (&(qec->src_module_ident));
+    cape_str_del (&(qec->src_method_ident));
     
     CAPE_DEL (&qec, struct QBusEventContext_s);
   }
@@ -133,7 +138,7 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString chainkey)
+void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString src_module_ident, const CapeString src_method_ident)
 {
   QBus self = user_ptr;
 
@@ -142,14 +147,16 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     QBusEventContext qec = CAPE_NEW (struct QBusEventContext_s);
     
     qec->qbus = self;
-    qec->chainkey = cape_str_cp (chainkey);
+    
+    qec->src_module_ident = cape_str_cp (src_module_ident);
+    qec->src_method_ident = cape_str_cp (src_method_ident);
 
     qec->method_ref = NULL;
 
     qec->method_own = *p_qbus_method;
     *p_qbus_method = NULL;
     
-    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "on call", "queued process [user] for = %s", method_name);
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on call", "queued process [user]");
     
     cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
   }
@@ -162,12 +169,14 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
       QBusEventContext qec = CAPE_NEW (struct QBusEventContext_s);
 
       qec->qbus = self;
-      qec->chainkey = cape_str_cp (chainkey);
+
+      qec->src_module_ident = cape_str_cp (src_module_ident);
+      qec->src_method_ident = cape_str_cp (src_method_ident);
 
       qec->method_ref = method;
       qec->method_own = NULL;
 
-      cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "on call", "queued process [registered] for = %s", method_name);
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on call", "queued process [registered] for = %s", method_name);
 
       cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
     }
@@ -175,9 +184,9 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     {
       cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on call", "method '%s' not found", method_name);
 
-      if (chainkey)
+      if (src_method_ident)
       {
-        qbus_manifold_response (self->manifold, chainkey);
+        qbus_manifold_response (self->manifold, src_module_ident, src_method_ident);
       }
     }
   }
@@ -345,7 +354,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
       break;
     }
     
-    res = qbus_manifold_send (self->manifold, &node, method, msg, p_qbus_method, err);
+    res = qbus_manifold_send (self->manifold, self->uuid, &node, method, msg, p_qbus_method, err);
     if (res == CAPE_ERR_NONE)
     {
       // OK

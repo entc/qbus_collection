@@ -64,11 +64,11 @@ void qbus_manifold_member_add (QBusManifoldMember self, const char* uuid, const 
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_member_call (QBusManifoldMember self, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString chainkey, CapeErr err)
+int qbus_manifold_member_call (QBusManifoldMember self, const CapeString src_module_ident, const CapeString src_method_ident, const CapeString method_name, QBusMethod* p_qbus_method, CapeErr err)
 {
   if (self->on_call)
   {
-    self->on_call (self->user_ptr, method_name, p_qbus_method, chainkey);
+    self->on_call (self->user_ptr, method_name, p_qbus_method, src_module_ident, src_method_ident);
   }
   
   return CAPE_ERR_NONE;
@@ -103,7 +103,7 @@ void __STDCALL qbus_manifold__chains__on_del (void* key, void* val)
     CapeString h = key; cape_str_del (&h);
   }
   {
-    
+    QBusMethod method = val; qbus_method_del (&method);
   }
 }
 
@@ -193,36 +193,59 @@ void qbus_manifold_subscribe (QBusManifold self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_manifold_response (QBusManifold self, const CapeString chainkey)
+void qbus_manifold_response (QBusManifold self, const CapeString module_ident, const CapeString method_ident)
 {
-  CapeMapNode n = cape_map_find (self->chains, (void*)chainkey);
+  // TODO check for p_node
+  printf ("response -> {%s} CK[%s]\n", module_ident, method_ident);
+  
+  CapeMapNode n = cape_map_find (self->members, (void*)module_ident);
   
   if (n)
   {
-    QBusMethod qbus_method = cape_map_node_value (n);
+    QBusManifoldMember m = cape_map_node_value (n);
     
-    cape_map_erase (self->chains, n);
+    printf ("found node\n");
+
+    // check for the method
+    {
+      CapeMapNode n2 = cape_map_find (self->chains, (void*)method_ident);
+      
+      if (n2)
+      {
+        CapeErr err = cape_err_new ();
+        
+        QBusMethod method = cape_map_node_value (n2);
+        
+        int res = qbus_manifold_member_call (m, NULL, NULL, NULL, &method, err);
+
+        cape_map_node_set (n2, (void*)method);
+        
+        cape_map_erase (self->chains, n2);
+        
+        cape_err_del (&err);
+      }
+    }
   }
 }
 
 //-----------------------------------------------------------------------------
 
-int qbus_manifold_send (QBusManifold self, void** p_node, const CapeString method_name, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
+int qbus_manifold_send (QBusManifold self, const CapeString module_ident, void** p_node, const CapeString method_name, QBusM msg, QBusMethod* p_qbus_method, CapeErr err)
 {
   CapeMapNode n = *p_node;
   
-  CapeString chainkey = cape_str_uuid ();
+  CapeString method_ident = cape_str_uuid ();
 
-  cape_map_insert (self->chains, (void*)chainkey, (void*)*p_qbus_method);
+  cape_map_insert (self->chains, (void*)method_ident, (void*)*p_qbus_method);
   *p_qbus_method = NULL;
 
   // shortcut of sending it to the peer
   {
     QBusManifoldMember m = cape_map_node_value (n);
     
-    printf ("send = %s -> %s\n", m->name, method_name);
+    printf ("send {%s} -> %s {%s} -> %s CK[%s]\n", module_ident, m->name, cape_map_node_key (n), method_name, method_ident);
     
-    return qbus_manifold_member_call (m, method_name, NULL, chainkey, err);
+    return qbus_manifold_member_call (m, module_ident, method_ident, method_name, NULL, err);
   }
 }
 

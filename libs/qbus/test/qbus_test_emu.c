@@ -10,7 +10,7 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
 {
   int res;
   
-  cape_log_msg (CAPE_LL_DEBUG, "TEST", "on method", "function is called");
+  cape_log_msg (CAPE_LL_DEBUG, "TEST2", "on method", "function is called");
   
   res = CAPE_ERR_NONE;
   
@@ -21,7 +21,9 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
 
 int __STDCALL th1_worker__on_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  
+
+  cape_log_msg (CAPE_LL_DEBUG, "TEST1", "on method", "on method");
+
   
   return CAPE_ERR_NONE;
 }
@@ -68,7 +70,7 @@ int __STDCALL th1_worker (void* ptr)
       cape_log_fmt (CAPE_LL_ERROR, "TEST", "qbus send", "returned error: %s", cape_err_text (err));
       break;
     }
-    
+
     if (qbus_next (qbus, err))
     {
       break;
