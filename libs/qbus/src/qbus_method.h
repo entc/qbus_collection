@@ -24,7 +24,7 @@ __CAPE_LIBEX   QBusMethod         qbus_method_new               (const CapeStrin
 
 __CAPE_LIBEX   void               qbus_method_del               (QBusMethod*);
 
-__CAPE_LIBEX   int                qbus_method_run               (QBusMethod, QBus, CapeErr);
+__CAPE_LIBEX   int                qbus_method_run               (QBusMethod, QBus, QBusM qin, QBusM qout, CapeErr);
 
 //-----------------------------------------------------------------------------
 

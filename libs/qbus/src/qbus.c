@@ -43,8 +43,7 @@ struct QBusEventContext_s
   QBusMethod method_own;          // owned
   QBusMethod method_ref;          // reference
   
-  CapeString src_module_ident;    // owned
-  CapeString src_method_ident;    // owned
+  QBusM msg;                      // owned
   
 }; typedef struct QBusEventContext_s* QBusEventContext;
 
@@ -100,18 +99,19 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
   
   // local objects
   CapeErr err = cape_err_new ();
+  QBusM qout = qbus_message_new (NULL, NULL);
   
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on method", "call local method");
-
+  
   if (qec->method_own)
   {
-    res = qbus_method_run (qec->method_own, qec->qbus, err);
+    res = qbus_method_run (qec->method_own, qec->qbus, qec->msg, qout, err);
     
     qbus_method_del (&(qec->method_own));
   }
   else if (qec->method_ref)
   {
-    res = qbus_method_run (qec->method_ref, qec->qbus, err);
+    res = qbus_method_run (qec->method_ref, qec->qbus, qec->msg, qout, err);
   }
   
   if (res == CAPE_ERR_CONTINUE)
@@ -120,17 +120,21 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
   }
   else
   {
-    if (qec->src_module_ident)
+    if (qec->msg && qec->msg->module_ident)
     {
-      qbus_manifold_response (qec->qbus->manifold, qec->src_module_ident, qec->src_method_ident);
+      // tranfer the idents to the output
+      cape_str_replace_mv (&(qout->module_ident), &(qec->msg->module_ident));
+      cape_str_replace_mv (&(qout->method_ident), &(qec->msg->method_ident));
+      
+      qbus_manifold_response (qec->qbus->manifold, qout);
     }
   }
   
+  qbus_message_del (&qout);
   cape_err_del (&err);
 
   {
-    cape_str_del (&(qec->src_module_ident));
-    cape_str_del (&(qec->src_method_ident));
+    qbus_message_del (&(qec->msg));
     
     CAPE_DEL (&qec, struct QBusEventContext_s);
   }
@@ -138,7 +142,7 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, const CapeString src_module_ident, const CapeString src_method_ident)
+void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, QBusM msg)
 {
   QBus self = user_ptr;
 
@@ -148,8 +152,14 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     
     qec->qbus = self;
     
-    qec->src_module_ident = cape_str_cp (src_module_ident);
-    qec->src_method_ident = cape_str_cp (src_method_ident);
+    if (msg)
+    {
+      qec->msg = qbus_message_data_mv (msg);
+    }
+    else
+    {
+      qec->msg = NULL;
+    }
 
     qec->method_ref = NULL;
 
@@ -170,8 +180,14 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
 
       qec->qbus = self;
 
-      qec->src_module_ident = cape_str_cp (src_module_ident);
-      qec->src_method_ident = cape_str_cp (src_method_ident);
+      if (msg)
+      {
+        qec->msg = qbus_message_data_mv (msg);
+      }
+      else
+      {
+        qec->msg = NULL;
+      }
 
       qec->method_ref = method;
       qec->method_own = NULL;
@@ -184,9 +200,9 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     {
       cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on call", "method '%s' not found", method_name);
 
-      if (src_method_ident)
+      if (msg->module_ident)
       {
-        qbus_manifold_response (self->manifold, src_module_ident, src_method_ident);
+        qbus_manifold_response (self->manifold, msg);
       }
     }
   }
@@ -370,7 +386,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
 {
   // create a new method object to store callback, user pointer and status
-  QBusMethod qbus_method = qbus_method_new (msg->chain_key, ptr, onMsg);
+  QBusMethod qbus_method = qbus_method_new (msg->method_ident, ptr, onMsg);
 
   return qbus_send__request (self, module, method, msg, &qbus_method, err);
 }
@@ -398,14 +414,14 @@ int qbus_continue (QBus self, const char* module, const char* method, QBusM qin,
   if (p_ptr)
   {
     // create a new method object to store callback, user pointer and status
-    qbus_method = qbus_method_new (qin->chain_key, *p_ptr, on_msg);
+    qbus_method = qbus_method_new (qin->method_ident, *p_ptr, on_msg);
 
     *p_ptr = NULL;
   }
   else
   {
     // create a new method object to store callback, user pointer and status
-    qbus_method = qbus_method_new (qin->chain_key, NULL, NULL);
+    qbus_method = qbus_method_new (qin->method_ident, NULL, NULL);
   }
     
   return qbus_send__request (self, module, method, qin, &qbus_method, err);
@@ -487,22 +503,12 @@ void qbus_emitter_next (QBus self, QBusEmitter emitter, CapeUdc data)
 
 //-----------------------------------------------------------------------------
 
-QBusM qbus_message_new (const CapeString key, const CapeString sender)
+QBusM qbus_message_new ()
 {
   QBusM self = CAPE_NEW (struct QBusMessage_s);
   
-  if (key)
-  {
-    // clone the key
-    self->chain_key = cape_str_cp (key);
-  }
-  else
-  {
-    // create a new key
-    self->chain_key = cape_str_uuid ();    
-  }
-  
-  self->sender = cape_str_cp (sender);
+  self->module_ident = NULL;
+  self->method_ident = NULL;
   
   // init the objects
   self->cdata = NULL;
@@ -551,8 +557,8 @@ void qbus_message_del (QBusM* p_self)
     cape_udc_del (&(self->rinfo));
     cape_udc_del (&(self->files));
     
-    cape_str_del (&(self->chain_key));
-    cape_str_del (&(self->sender));
+    cape_str_del (&(self->method_ident));
+    cape_str_del (&(self->module_ident));
     
     CAPE_DEL (p_self, struct QBusMessage_s);
   }
@@ -564,8 +570,8 @@ QBusM qbus_message_data_mv (QBusM source)
 {
   QBusM self = CAPE_NEW (struct QBusMessage_s);
 
-  self->chain_key = cape_str_cp (source->chain_key);
-  self->sender = cape_str_cp (source->sender);
+  self->method_ident = cape_str_cp (source->method_ident);
+  self->module_ident = cape_str_cp (source->module_ident);
 
   // move the objects
   self->cdata = cape_udc_mv (&(source->cdata));

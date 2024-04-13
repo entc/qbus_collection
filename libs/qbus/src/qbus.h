@@ -80,7 +80,7 @@ __CAPE_LIBEX   void               qbus_conn_request      (QBus, QBusConnection c
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBusM              qbus_message_new       (const CapeString key, const CapeString sender);
+__CAPE_LIBEX   QBusM              qbus_message_new       ();
 
 __CAPE_LIBEX   void               qbus_message_del       (QBusM*);
 

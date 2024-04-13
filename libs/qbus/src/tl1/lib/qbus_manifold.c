@@ -64,7 +64,7 @@ void qbus_manifold_subscribe (QBusManifold self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_manifold_response (QBusManifold self, const CapeString module_ident, const CapeString method_ident)
+void qbus_manifold_response (QBusManifold self, QBusM msg)
 {
   
 }

@@ -3,6 +3,7 @@
 // cape includes
 #include <sys/cape_thread.h>
 #include <sys/cape_log.h>
+#include <fmt/cape_json.h>
 
 //-----------------------------------------------------------------------------
 
@@ -11,6 +12,22 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
   int res;
   
   cape_log_msg (CAPE_LL_DEBUG, "TEST2", "on method", "function is called");
+  
+  if (qin->cdata)
+  {
+    CapeString h = cape_json_to_s (qin->cdata);
+    
+    printf ("qin:cdata = %s\n", h);
+    
+    cape_str_del (&h);
+  }
+  else
+  {
+    printf ("NO CDATA\n");
+  }
+  
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_n (qout->cdata, "good bye", 42);
   
   res = CAPE_ERR_NONE;
   
@@ -21,9 +38,20 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
 
 int __STDCALL th1_worker__on_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-
   cape_log_msg (CAPE_LL_DEBUG, "TEST1", "on method", "on method");
 
+  if (qin->cdata)
+  {
+    CapeString h = cape_json_to_s (qin->cdata);
+    
+    printf ("qin:cdata = %s\n", h);
+    
+    cape_str_del (&h);
+  }
+  else
+  {
+    printf ("NO CDATA\n");
+  }
   
   return CAPE_ERR_NONE;
 }
@@ -58,7 +86,11 @@ int __STDCALL th1_worker (void* ptr)
   {
     printf ("RUNS: %lu\n", runs);
     {
-      QBusM msg = qbus_message_new (NULL, NULL);
+      QBusM msg = qbus_message_new ();
+      
+      msg->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_s_cp (msg->cdata, "welcome", "hello world");
       
       res = qbus_send (qbus, "TEST2", "test_method", msg, NULL, th1_worker__on_method, err);
       

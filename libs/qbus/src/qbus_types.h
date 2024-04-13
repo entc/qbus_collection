@@ -31,9 +31,9 @@ struct QBusMessage_s
   
   CapeErr err;
   
-  CapeString chain_key;  // don't change this key
+  CapeString module_ident;  // don't change
   
-  CapeString sender;     // don't change this
+  CapeString method_ident;  // don't change
   
 }; typedef struct QBusMessage_s* QBusM;
 
