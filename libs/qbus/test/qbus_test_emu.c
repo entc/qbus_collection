@@ -7,11 +7,11 @@
 
 //-----------------------------------------------------------------------------
 
-static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+static int __STDCALL test3_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   
-  cape_log_msg (CAPE_LL_DEBUG, "TEST2", "on method", "function is called");
+  cape_log_msg (CAPE_LL_DEBUG, "TEST3", "on method", "function is called");
   
   if (qin->cdata)
   {
@@ -30,6 +30,35 @@ static int __STDCALL test_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, C
   cape_udc_add_n (qout->cdata, "good bye", 42);
   
   res = CAPE_ERR_NONE;
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL test2_method_response (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  cape_log_msg (CAPE_LL_DEBUG, "TEST2", "on method", "response");
+
+  cape_udc_replace_mv (&(qout->cdata), &(qin->cdata));
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL test2_method (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+
+  cape_log_msg (CAPE_LL_DEBUG, "TEST2", "on method", "function is called");
+
+  // clean up
+  qbus_message_clr (qin, CAPE_UDC_NODE);
+  
+  cape_udc_add_s_cp (qin->cdata, "test", "hello");
+  
+  res = qbus_continue (qbus, "TEST3", "test_method", qin, (void**)NULL, test2_method_response, err);
   
   return res;
 }
@@ -61,28 +90,17 @@ int __STDCALL th1_worker__on_method (QBus qbus, void* ptr, QBusM qin, QBusM qout
 int __STDCALL th1_worker (void* ptr)
 {
   int res;
-  number_t runs = 0;
+  QBus qbus = ptr;
   
+  number_t runs = 0;
+
+  // local objects
   CapeErr err = cape_err_new ();
-  QBus qbus = qbus_new ("TEST1", ptr);
-
-  res = qbus_init (qbus, 2, err);
-  if (res)
-  {
-    return res;
-  }
-
-  // activate signal handling strategy
-  res = cape_aio_context_set_interupts (qbus_aio (qbus), TRUE, TRUE, err);
-  if (res)
-  {
-    return res;
-  }
 
   // wait for all modules to be initialized
-  cape_thread_sleep (300);
+  cape_thread_sleep (100);
   
-  for (runs = 0; runs < 100; runs++)
+  for (runs = 0; runs < 1; runs++)
   {
     printf ("RUNS: %lu\n", runs);
     {
@@ -96,22 +114,12 @@ int __STDCALL th1_worker (void* ptr)
       
       qbus_message_del (&msg);
     }
-    
-    if (res)
-    {
-      cape_log_fmt (CAPE_LL_ERROR, "TEST", "qbus send", "returned error: %s", cape_err_text (err));
-      break;
-    }
-
-    if (qbus_next (qbus, err))
-    {
-      break;
-    }
   }
-  
-  qbus_del (&qbus);
+
+  // wait
+  cape_thread_sleep (100);
+
   cape_err_del (&err);
-  
   return FALSE;
 }
 
@@ -124,8 +132,6 @@ int __STDCALL th2_worker (void* ptr)
   CapeErr err = cape_err_new ();
   QBus qbus = qbus_new ("TEST2", ptr);
   
-  // register methods
-  qbus_register (qbus, "test_method", NULL, test_method, NULL, err);
 
   res = qbus_wait (qbus, NULL, NULL, 2, err);
   
@@ -139,25 +145,60 @@ int __STDCALL th2_worker (void* ptr)
 
 int main (int argc, char *argv[])
 {
+  int res;
+  
+  CapeErr err = cape_err_new ();
   QBusManifold manifold = qbus_manifold_new ();
+  
+  QBus qbus01 = qbus_new ("TEST1", manifold);
+  QBus qbus02 = qbus_new ("TEST2", manifold);
+  QBus qbus03 = qbus_new ("TEST3", manifold);
   
   CapeThread th1 = cape_thread_new ();
   CapeThread th2 = cape_thread_new ();
   
+  res = qbus_init (qbus01, 2, err);
+  if (res)
+  {
+    return res;
+  }
+
+  res = qbus_init (qbus02, 2, err);
+  if (res)
+  {
+    return res;
+  }
+
+  res = qbus_init (qbus03, 2, err);
+  if (res)
+  {
+    return res;
+  }
+
+  // register methods
+  qbus_register (qbus02, "test_method", NULL, test2_method, NULL, err);
+  qbus_register (qbus03, "test_method", NULL, test3_method, NULL, err);
+  
   cape_thread_nosignals   ();
   
-  cape_thread_start (th1, th1_worker, manifold);
-  cape_thread_start (th2, th2_worker, manifold);
+  cape_thread_start (th1, th1_worker, qbus01);
+//  cape_thread_start (th2, th1_worker, qbus01);
   
   cape_thread_join (th1);
-  cape_thread_join (th2);
+//  cape_thread_join (th2);
+  
+exit_and_cleanup:
   
   cape_thread_del (&th1);
   cape_thread_del (&th2);
 
+  qbus_del (&qbus01);
+  qbus_del (&qbus02);
+  qbus_del (&qbus03);
+
   qbus_manifold_del (&manifold);
   
-  return 0;
+  return res;
 }
 
 //-----------------------------------------------------------------------------

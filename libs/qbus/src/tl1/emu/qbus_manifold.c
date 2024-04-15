@@ -237,6 +237,11 @@ int qbus_manifold_send (QBusManifold self, const CapeString module_ident, void**
 {
   CapeMapNode n = *p_node;
   
+  // transfer idents into qbus_method
+  QBusMethod method = *p_qbus_method;
+  
+  
+  
   cape_str_del (&(msg->method_ident));
   msg->method_ident = cape_str_uuid ();
 
