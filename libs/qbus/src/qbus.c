@@ -386,7 +386,7 @@ int qbus_send__request (QBus self, const char* module, const char* method, QBusM
 int qbus_send (QBus self, const char* module, const char* method, QBusM msg, void* ptr, fct_qbus_onMessage onMsg, CapeErr err)
 {
   // create a new method object to store callback, user pointer and status
-  QBusMethod qbus_method = qbus_method_new (msg->method_ident, ptr, onMsg);
+  QBusMethod qbus_method = qbus_method_new (ptr, onMsg, msg->module_ident, msg->method_ident);
 
   return qbus_send__request (self, module, method, msg, &qbus_method, err);
 }
@@ -414,14 +414,14 @@ int qbus_continue (QBus self, const char* module, const char* method, QBusM qin,
   if (p_ptr)
   {
     // create a new method object to store callback, user pointer and status
-    qbus_method = qbus_method_new (qin->method_ident, *p_ptr, on_msg);
+    qbus_method = qbus_method_new (*p_ptr, on_msg, qin->module_ident, qin->method_ident);
 
     *p_ptr = NULL;
   }
   else
   {
     // create a new method object to store callback, user pointer and status
-    qbus_method = qbus_method_new (qin->method_ident, NULL, NULL);
+    qbus_method = qbus_method_new (NULL, NULL, qin->module_ident, qin->method_ident);
   }
     
   return qbus_send__request (self, module, method, qin, &qbus_method, err);

@@ -67,7 +67,7 @@ int qbus_storage_add (QBusStorage self, const CapeString method, void* user_ptr,
     }
     else
     {
-      QBusMethod method_holder = qbus_method_new (NULL, user_ptr, on_msg);
+      QBusMethod method_holder = qbus_method_new (user_ptr, on_msg, NULL, NULL);
       
       cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)method_holder);
       

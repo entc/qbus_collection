@@ -20,7 +20,7 @@ struct QBusMethod_s; typedef struct QBusMethod_s* QBusMethod; // use a simple ve
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBusMethod         qbus_method_new               (const CapeString chainkey, void* user_ptr, fct_qbus_onMessage user_fct);
+__CAPE_LIBEX   QBusMethod         qbus_method_new               (void* user_ptr, fct_qbus_onMessage user_fct, const CapeString module_ident, const CapeString method_ident);
 
 __CAPE_LIBEX   void               qbus_method_del               (QBusMethod*);
 

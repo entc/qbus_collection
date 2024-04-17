@@ -5,7 +5,8 @@
 
 struct QBusMethod_s
 {
-  CapeString chainkey;
+  CapeString module_ident;
+  CapeString method_ident;
   
   void* user_ptr;
   fct_qbus_onMessage user_fct;
@@ -13,13 +14,15 @@ struct QBusMethod_s
  
 //-----------------------------------------------------------------------------
  
-QBusMethod qbus_method_new (const CapeString chainkey, void* user_ptr, fct_qbus_onMessage user_fct)
+QBusMethod qbus_method_new (void* user_ptr, fct_qbus_onMessage user_fct, const CapeString module_ident, const CapeString method_ident)
 {
   QBusMethod self = CAPE_NEW (struct QBusMethod_s);
   
-  self->chainkey = cape_str_cp (chainkey);
   self->user_ptr = user_ptr;
   self->user_fct = user_fct;
+  
+  self->module_ident = cape_str_cp (module_ident);
+  self->method_ident = cape_str_cp (method_ident);
   
   return self;
 }
@@ -32,7 +35,8 @@ void qbus_method_del (QBusMethod* p_self)
   {
     QBusMethod self = *p_self;
     
-    cape_str_del (&(self->chainkey));
+    cape_str_del (&(self->module_ident));
+    cape_str_del (&(self->method_ident));
     
     CAPE_DEL (p_self, struct QBusMethod_s);
   }
