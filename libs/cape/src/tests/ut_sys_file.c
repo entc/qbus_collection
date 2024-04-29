@@ -150,6 +150,41 @@ int run_test_02 (CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int run_test_03 (CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+
+  CapeString path0 = cape_fs_path_current (NULL);
+  CapeString path1 = cape_fs_path_current ("path1");
+  CapeString path2 = cape_fs_path_merge (path1, "path2");
+  CapeString path3 = cape_fs_path_merge_3 (path0, "path1", "path2");
+  CapeString path4 = cape_fs_path_reduce (path3);
+
+  if (FALSE == cape_str_equal (path2, path3))
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "compare paths #1");
+    goto exit_and_cleanup;
+  }
+
+  if (FALSE == cape_str_equal (path4, path1))
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "compare paths #2");
+    goto exit_and_cleanup;
+  }
+
+exit_and_cleanup:
+  
+  cape_str_del (&path0);
+  cape_str_del (&path1);
+  cape_str_del (&path2);
+  cape_str_del (&path3);
+  cape_str_del (&path4);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res;
@@ -159,6 +194,7 @@ int main (int argc, char *argv[])
 
   // folders to play around
   CapeString path_test_folder = cape_fs_path_current ("TestFolder");
+  CapeString path_test_clone = cape_fs_path_current ("TestClone");
   CapeString path_child_folder = cape_fs_path_merge (path_test_folder, "child");
   
   res = run_test_01 (err);
@@ -168,6 +204,12 @@ int main (int argc, char *argv[])
   }
 
   res = run_test_02 (err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = run_test_03 (err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -185,6 +227,12 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
+  res = cape_fs_path_cp (path_test_folder, path_test_clone, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
   res = cape_fs_path_rm (path_test_folder, TRUE, err);
   if (res)
   {
@@ -196,12 +244,14 @@ int main (int argc, char *argv[])
   {
     goto exit_and_cleanup;
   }
-
+  
+  /*
   res = cape_fs_path_rm (path_test_folder, TRUE, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
+   */
   
   res = run_test_file (err);
   if (res)
