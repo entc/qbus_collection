@@ -54,9 +54,22 @@ struct QBusManifoldMember_s
   fct_qbus_manifold__on_recv on_recv;
   fct_qbus_manifold__on_emit on_emit;
   
-  QBusManifoldSubscriber sub;
-  
+  CapeMap subs;
+  CapeMutex subs_mutex;
+
 }; typedef struct QBusManifoldMember_s* QBusManifoldMember;
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_manifold__subs__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QBusManifoldSubscriber h = val; qbus_manifold_subscriber_del (&h);
+  }
+}
 
 //-----------------------------------------------------------------------------
 
@@ -74,6 +87,9 @@ QBusManifoldMember qbus_manifold_member_new (const CapeString name, void* user_p
   self->on_add = on_add;
   self->on_rm = on_rm;
   
+  self->subs = cape_map_new (cape_map__compare__s, qbus_manifold__subs__on_del, NULL);
+  self->subs_mutex = cape_mutex_new ();
+
   return self;
 }
 
@@ -86,7 +102,9 @@ void qbus_manifold_member_del (QBusManifoldMember* p_self)
     QBusManifoldMember self = *p_self;
     
     cape_str_del (&(self->name));
-    
+    cape_mutex_del (&(self->subs_mutex));
+    cape_map_del (&(self->subs));
+
     CAPE_DEL (p_self, struct QBusManifoldMember_s);
   }
 }
@@ -115,13 +133,48 @@ int qbus_manifold_member_call (QBusManifoldMember self, const CapeString method_
 
 //-----------------------------------------------------------------------------
 
+void qbus_manifold_member_subscribe (QBusManifoldMember self, const CapeString module_uuid, const CapeString module_name, const CapeString value_name)
+{
+  cape_mutex_lock (self->subs_mutex);
+
+  {
+    CapeMapNode n = cape_map_find (self->subs, (void*)value_name);
+    if (NULL == n)
+    {
+      printf ("[subscriber] -> add, ident = %s, name = %s, value = %s\n", module_uuid, module_name, value_name);
+
+      cape_map_insert (self->subs, (void*)cape_str_cp (value_name), (void*)qbus_manifold_subscriber_new (module_uuid, module_name));
+    }
+  }
+  
+  cape_mutex_unlock (self->subs_mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_manifold_member_emit (QBusManifoldMember self, const CapeString val_name, const CapeString val_data)
+{
+  // check if we find subscriptors
+  cape_mutex_lock (self->subs_mutex);
+
+  {
+    CapeMapNode n = cape_map_find (self->subs, (void*)val_name);
+    if (n)
+    {
+      
+    }
+  }
+  
+  cape_mutex_unlock (self->subs_mutex);
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusManifold_s
 {
   CapeMap members;
   CapeMap chains;
   CapeMutex chains_mutex;
-  CapeMap subs;
-  CapeMutex subs_mutex;
 };
 
 //-----------------------------------------------------------------------------
@@ -150,28 +203,14 @@ void __STDCALL qbus_manifold__chains__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_manifold__subs__on_del (void* key, void* val)
-{
-  {
-    CapeString h = key; cape_str_del (&h);
-  }
-  {
-    QBusManifoldSubscriber h = val; qbus_manifold_subscriber_del (&h);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
 QBusManifold qbus_manifold_new ()
 {
   QBusManifold self = CAPE_NEW (struct QBusManifold_s);
 
   self->members = cape_map_new (cape_map__compare__s, qbus_manifold__members__on_del, NULL);
   self->chains = cape_map_new (cape_map__compare__s, qbus_manifold__chains__on_del, NULL);
-  self->subs = cape_map_new (cape_map__compare__s, qbus_manifold__subs__on_del, NULL);
 
   self->chains_mutex = cape_mutex_new ();
-  self->subs_mutex = cape_mutex_new ();
   
   return self;
 }
@@ -184,12 +223,10 @@ void qbus_manifold_del (QBusManifold* p_self)
   {
     QBusManifold self = *p_self;
     
-    cape_mutex_del (&(self->subs_mutex));
     cape_mutex_del (&(self->chains_mutex));
     
     cape_map_del (&(self->chains));
     cape_map_del (&(self->members));
-    cape_map_del (&(self->subs));
 
     CAPE_DEL (p_self, struct QBusManifold_s);
   }
@@ -240,7 +277,7 @@ int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeStri
 
 //-----------------------------------------------------------------------------
 
-QBusManifoldMember qbus_manifold_member (QBusManifold self, const CapeString module_ident)
+QBusManifoldMember qbus_manifold__get_member (QBusManifold self, const CapeString module_ident)
 {
   QBusManifoldMember ret = NULL;
 
@@ -258,41 +295,26 @@ QBusManifoldMember qbus_manifold_member (QBusManifold self, const CapeString mod
 
 void qbus_manifold_emit (QBusManifold self, const CapeString val_name, const CapeString val_data)
 {
-  // check if we find subscriptors
-  cape_mutex_lock (self->subs_mutex);
-
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_new (self->members, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
   {
-    CapeMapNode n = cape_map_find (self->subs, (void*)val_name);
-    if (n)
-    {
-      
-    }
+    qbus_manifold_member_emit (cape_map_node_value (cursor->node), val_name, val_data);
   }
   
-  cape_mutex_unlock (self->subs_mutex);
+  cape_map_cursor_del (&cursor);
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_manifold_subscribe (QBusManifold self, const CapeString uuid, const CapeString module_uuid, const CapeString module_name, const CapeString value_name)
 {
-  QBusManifoldMember member = qbus_manifold_member (self, uuid);
+  QBusManifoldMember member = qbus_manifold__get_member (self, uuid);
   
   if (member)
   {
-    cape_mutex_lock (self->subs_mutex);
-
-    {
-      CapeMapNode n = cape_map_find (self->subs, (void*)value_name);
-      if (NULL == n)
-      {
-        printf ("[subscriber] -> add, ident = %s, name = %s, value = %s\n", module_uuid, module_name, value_name);
-
-        cape_map_insert (self->subs, (void*)cape_str_cp (value_name), (void*)qbus_manifold_subscriber_new (member, module_uuid, module_name));
-      }
-    }
-    
-    cape_mutex_unlock (self->subs_mutex);
+    qbus_manifold_member_subscribe (member, module_uuid, module_name, value_name);
   }
 }
 
@@ -323,7 +345,7 @@ QBusMethod qbus_manifold_response__pop (QBusManifold self, const CapeString meth
 
 void qbus_manifold_response (QBusManifold self, QBusM msg)
 {
-  QBusManifoldMember member = qbus_manifold_member (self, msg->module_ident);
+  QBusManifoldMember member = qbus_manifold__get_member (self, msg->module_ident);
 
   // TODO check for p_node
   printf ("response -> {%s} CK[%s]\n", msg->module_ident, msg->method_ident);
