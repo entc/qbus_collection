@@ -113,6 +113,10 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
   {
     res = qbus_method_run (qec->method_ref, qec->qbus, qec->msg, qout, err);
   }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_WRONG_STATE, "ERR.QEC_METHOD");
+  }
   
   if (res == CAPE_ERR_CONTINUE)
   {
