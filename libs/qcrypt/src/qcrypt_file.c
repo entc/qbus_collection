@@ -22,6 +22,7 @@
 
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #endif
 
@@ -659,6 +660,79 @@ exit_and_cleanup:
 
 	return ret;
 
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+  
+  int res;
+  CapeString ret = NULL;
+  
+  unsigned int digest_len = 0;
+  
+  // local objects
+  EVP_MD_CTX* mdctx = NULL;
+  char* buffer_read = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  unsigned char* binary_hash = NULL;
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+  
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  if ((mdctx = EVP_MD_CTX_new ()) == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  if (1 != EVP_DigestInit_ex (mdctx, EVP_md5(), NULL))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize digest");
+    goto exit_and_cleanup;
+  }
+  
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer_read, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      if (1 != EVP_DigestUpdate (mdctx, buffer_read, bytes_read))
+      {
+        cape_err_set (err, CAPE_ERR_RUNTIME, "can't update MD5");
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  if ((binary_hash = CAPE_ALLOC (EVP_MD_size(EVP_md5()))) == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't allocate memory");
+    goto exit_and_cleanup;
+  }
+  
+  if (1 != EVP_DigestFinal_ex (mdctx, binary_hash, &digest_len))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize MD5");
+    goto exit_and_cleanup;
+  }
+  
+  // convert the binary result into a hex-string
+  ret = cape_str_hex (binary_hash, digest_len);
+  
+exit_and_cleanup:
+  
+  if (mdctx) EVP_MD_CTX_free (mdctx);
+  
+  cape_fh_del (&fh);
+  CAPE_FREE (buffer_read);
+  CAPE_FREE (binary_hash);
+  
+  return ret;
+
 #else
   
   int res;
@@ -786,6 +860,79 @@ exit_and_cleanup:
 	cape_fh_del(&fh);
 
 	return ret;
+
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+
+  int res;
+  CapeString ret = NULL;
+
+  unsigned int digest_len = 0;
+
+  // local objects
+  EVP_MD_CTX* mdctx = NULL;
+  char* buffer_read = CAPE_ALLOC (QCRYPT_BUFFER_SIZE);
+  unsigned char* binary_hash = NULL;
+  CapeFileHandle fh = cape_fh_new (NULL, source);
+
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  if ((mdctx = EVP_MD_CTX_new ()) == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize SHA256");
+    goto exit_and_cleanup;
+  }
+
+  if (1 != EVP_DigestInit_ex (mdctx, EVP_sha256(), NULL))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize digest");
+    goto exit_and_cleanup;
+  }
+
+  while (TRUE)
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, buffer_read, QCRYPT_BUFFER_SIZE);
+    if (bytes_read > 0)
+    {
+      if (1 != EVP_DigestUpdate (mdctx, buffer_read, bytes_read))
+      {
+        cape_err_set (err, CAPE_ERR_RUNTIME, "can't update SHA256");
+        goto exit_and_cleanup;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+  
+  if ((binary_hash = CAPE_ALLOC (EVP_MD_size(EVP_sha256()))) == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't allocate memory");
+    goto exit_and_cleanup;
+  }
+  
+  if (1 != EVP_DigestFinal_ex (mdctx, binary_hash, &digest_len))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  // convert the binary result into a hex-string
+  ret = cape_str_hex (binary_hash, digest_len);
+
+exit_and_cleanup:
+  
+  if (mdctx) EVP_MD_CTX_free (mdctx);
+
+  cape_fh_del (&fh);
+  CAPE_FREE (buffer_read);
+  CAPE_FREE (binary_hash);
+  
+  return ret;
 
 #else
 

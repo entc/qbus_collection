@@ -88,6 +88,8 @@ void __STDCALL qbus__on_add (void* user_ptr, const char* uuid, const char* modul
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on add", "add new node name = %s, uuid = %s", module, uuid);
   
   qbus_route_add (self->route, uuid, module, node);
+  
+  qbus_manifold_subscribe (self->manifold, self->uuid, uuid, NULL, "_load");
 }
 
 //-----------------------------------------------------------------------------
@@ -223,7 +225,7 @@ void __STDCALL qbus__on_recv (void* user_ptr)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_emit (void* user_ptr)
+void __STDCALL qbus__on_emit (void* user_ptr, const CapeString uuid, const CapeString name)
 {
   QBus self = user_ptr;
 
@@ -479,9 +481,9 @@ void qbus_conn_request (QBus self, QBusConnection const conn, const char* module
 
 //-----------------------------------------------------------------------------
 
-QBusSubscriber qbus_subscribe (QBus self, int type, const CapeString module, const CapeString name, CapeErr err)
+QBusSubscriber qbus_subscribe (QBus self, const CapeString module_ident, const CapeString module_name, const CapeString name, CapeErr err)
 {
-  
+  qbus_manifold_subscribe (self->manifold, self->uuid, module_ident, module_name, name);
 }
 
 //-----------------------------------------------------------------------------

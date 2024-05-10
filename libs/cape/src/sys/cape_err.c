@@ -20,8 +20,7 @@
 struct CapeErr_s
 {
     char* text;
-    
-    unsigned long code;
+    int code;
 };
 
 //-----------------------------------------------------------------------------
@@ -67,7 +66,7 @@ const char* cape_err_text (CapeErr self)
 
 //-----------------------------------------------------------------------------
 
-unsigned long cape_err_code (CapeErr self)
+int cape_err_code (CapeErr self)
 {
   return self->code;
 }

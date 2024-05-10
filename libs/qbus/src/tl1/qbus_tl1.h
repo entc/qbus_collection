@@ -23,7 +23,7 @@ typedef void          (__STDCALL *fct_qbus_manifold__on_call)     (void* user_pt
 
 typedef void          (__STDCALL *fct_qbus_manifold__on_recv)     (void* user_ptr);
 
-typedef void          (__STDCALL *fct_qbus_manifold__on_emit)     (void* user_ptr);
+typedef void          (__STDCALL *fct_qbus_manifold__on_emit)     (void* user_ptr, const CapeString uuid, const CapeString name);
 
 //-----------------------------------------------------------------------------
 
@@ -35,9 +35,9 @@ __CAPE_LIBEX   int                qbus_manifold_init              (QBusManifold,
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void               qbus_manifold_emit              (QBusManifold);
+__CAPE_LIBEX   void               qbus_manifold_emit              (QBusManifold, const CapeString val_name, const CapeString val_data);
 
-__CAPE_LIBEX   void               qbus_manifold_subscribe         (QBusManifold);
+__CAPE_LIBEX   void               qbus_manifold_subscribe         (QBusManifold, const CapeString uuid, const CapeString module_uuid, const CapeString module_name, const CapeString value_name);
 
 __CAPE_LIBEX   void               qbus_manifold_response          (QBusManifold, QBusM msg);
 

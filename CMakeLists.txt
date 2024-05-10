@@ -1,4 +1,5 @@
 PROJECT (qbus_collection)
+cmake_minimum_required(VERSION 3.24)
 
 SET(CMAKE_VERBOSE_MAKEFILE OFF)
 SET(CMAKE_MACOSX_RPATH 0)

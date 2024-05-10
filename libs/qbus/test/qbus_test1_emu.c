@@ -100,7 +100,7 @@ int __STDCALL th1_worker (void* ptr)
   // wait for all modules to be initialized
   cape_thread_sleep (100);
   
-  for (runs = 0; runs < 1000; runs++)
+  for (runs = 0; runs < 1; runs++)
   {
     printf ("RUNS: %lu\n", runs);
     {

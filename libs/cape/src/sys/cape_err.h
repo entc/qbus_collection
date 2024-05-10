@@ -60,7 +60,7 @@ __CAPE_LIBEX   int               cape_err_set_fmt__i    (CapeErr, int line_numbe
 
 __CAPE_LIBEX   const char*       cape_err_text          (CapeErr);
 
-__CAPE_LIBEX   unsigned long     cape_err_code          (CapeErr);
+__CAPE_LIBEX   int               cape_err_code          (CapeErr);
 
 __CAPE_LIBEX   int               cape_err_lastOSError_i   (CapeErr, int line_number, const char* file);
 
