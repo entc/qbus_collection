@@ -216,8 +216,7 @@ void qbus_manifold_response (QBusManifold self, QBusM msg)
         
         QBusMethod method = cape_map_node_value (n2);
         
-        cape_str_del (&(msg->module_ident));
-        cape_str_del (&(msg->method_ident));
+        qbus_method_idents (method, &(msg->module_ident), &(msg->method_ident));
         
         int res = qbus_manifold_member_call (m, NULL, &method, msg, err);
 

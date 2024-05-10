@@ -26,6 +26,8 @@ __CAPE_LIBEX   void               qbus_method_del               (QBusMethod*);
 
 __CAPE_LIBEX   int                qbus_method_run               (QBusMethod, QBus, QBusM qin, QBusM qout, CapeErr);
 
+__CAPE_LIBEX   void               qbus_method_idents            (QBusMethod, CapeString* p_module_ident, CapeString* p_method_ident);
+
 //-----------------------------------------------------------------------------
 
 #endif 
