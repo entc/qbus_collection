@@ -55,3 +55,11 @@ int qbus_method_run (QBusMethod self, QBus qbus, QBusM qin, QBusM qout, CapeErr 
 }
 
 //-----------------------------------------------------------------------------
+
+void qbus_method_idents (QBusMethod self, CapeString* p_module_ident, CapeString* p_method_ident)
+{
+  cape_str_replace_cp (p_module_ident, self->module_ident);
+  cape_str_replace_cp (p_method_ident, self->method_ident);
+}
+
+//-----------------------------------------------------------------------------

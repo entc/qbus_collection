@@ -337,12 +337,16 @@ void qbus_manifold_response (QBusManifold self, QBusM msg)
     if (method)
     {
       CapeErr err = cape_err_new ();
-      
-      cape_str_del (&(msg->module_ident));
-      cape_str_del (&(msg->method_ident));
-      
+
+      // move module identifiactions into the method object
+      qbus_method_idents (method, &(msg->module_ident), &(msg->method_ident));
+            
       int res = qbus_manifold_member_call (member, NULL, &method, msg, err);
-      
+      if (res)
+      {
+        
+      }
+
       cape_err_del (&err);
       qbus_method_del (&method);
     }
@@ -372,7 +376,7 @@ int qbus_manifold_send (QBusManifold self, const CapeString module_ident, void**
   {
     QBusManifoldMember m = cape_map_node_value (n);
     
-    printf ("send {%s} -> %s {%s} -> %s CK[%s]\n", module_ident, m->name, cape_map_node_key (n), method_name, msg->method_ident);
+    printf ("send {%s} -> %s {%s} -> %s CK[%s]\n", module_ident, m->name, (CapeString)cape_map_node_key (n), method_name, msg->method_ident);
     
     return qbus_manifold_member_call (m, method_name, NULL, msg, err);
   }
