@@ -37,6 +37,10 @@
 
 //-----------------------------------------------------------------------------
 
+#define QBUS_SUBS_LOAD    "_L"
+
+//-----------------------------------------------------------------------------
+
 struct QBusEventContext_s
 {
   QBus qbus;                      // reference
@@ -89,7 +93,7 @@ void __STDCALL qbus__on_add (void* user_ptr, const char* uuid, const char* modul
   
   qbus_route_add (self->route, uuid, module, node);
   
-  qbus_manifold_subscribe (self->manifold, self->uuid, uuid, NULL, "_load");
+  qbus_manifold_subscribe (self->manifold, self->uuid, uuid, NULL, QBUS_SUBS_LOAD);
 }
 
 //-----------------------------------------------------------------------------
@@ -229,11 +233,24 @@ void __STDCALL qbus__on_emit (void* user_ptr, CapeUdc val, const CapeString uuid
 {
   QBus self = user_ptr;
 
-  CapeString h = cape_json_to_s (val);
+  const CapeString value_name = cape_udc_name (val);
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on emit", "value = %s", h);
+  // check for system subscribers
+  if (value_name[0] == '_')
+  {
+    if (cape_str_equal (value_name, QBUS_SUBS_LOAD))
+    {
+      qbus_route_set (self->route, uuid, cape_udc_n (val, 0));
+    }
+  }
+  else
+  {
+    CapeString h = cape_json_to_s (val);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on emit", "value = %s", h);
 
-  cape_str_del (&h);
+    cape_str_del (&h);
+  }
 }
 
 //-----------------------------------------------------------------------------

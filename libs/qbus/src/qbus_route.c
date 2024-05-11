@@ -119,3 +119,14 @@ void qbus_route_add (QBusRoute self, const char* uuid, const char* module, void*
 }
 
 //-----------------------------------------------------------------------------
+
+void qbus_route_set (QBusRoute self, const char* uuid, number_t load)
+{
+  cape_mutex_lock (self->mutex);
+
+  
+  
+  cape_mutex_unlock (self->mutex);
+}
+
+//-----------------------------------------------------------------------------
