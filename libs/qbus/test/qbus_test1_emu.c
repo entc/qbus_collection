@@ -181,6 +181,34 @@ int main (int argc, char *argv[])
   
   cape_thread_nosignals   ();
   
+  {
+    CapeUdc h = cape_udc_new (CAPE_UDC_NUMBER, "_load");
+    cape_udc_set_n (h, 1);
+        
+    qbus_emit (qbus01, h);
+
+    cape_udc_del (&h);
+  }
+
+  {
+    CapeUdc h = cape_udc_new (CAPE_UDC_NUMBER, "_load");
+    cape_udc_set_n (h, 2);
+        
+    qbus_emit (qbus02, h);
+
+    cape_udc_del (&h);
+  }
+
+  {
+    CapeUdc h = cape_udc_new (CAPE_UDC_NUMBER, "_load");
+    cape_udc_set_n (h, 3);
+        
+    qbus_emit (qbus03, h);
+
+    cape_udc_del (&h);
+  }
+
+
   cape_thread_start (th1, th1_worker, qbus01);
 //  cape_thread_start (th2, th1_worker, qbus01);
   

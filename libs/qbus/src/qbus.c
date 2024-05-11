@@ -225,10 +225,15 @@ void __STDCALL qbus__on_recv (void* user_ptr)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_emit (void* user_ptr, const CapeString uuid, const CapeString name)
+void __STDCALL qbus__on_emit (void* user_ptr, CapeUdc val, const CapeString uuid, const CapeString name)
 {
   QBus self = user_ptr;
 
+  CapeString h = cape_json_to_s (val);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on emit", "value = %s", h);
+
+  cape_str_del (&h);
 }
 
 //-----------------------------------------------------------------------------
@@ -488,23 +493,9 @@ QBusSubscriber qbus_subscribe (QBus self, const CapeString module_ident, const C
 
 //-----------------------------------------------------------------------------
 
-QBusEmitter qbus_emitter_add (QBus self, const CapeString name, CapeErr err)
+void qbus_emit (QBus self, CapeUdc val)
 {
-  
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_emitter_rm (QBus self, QBusEmitter emitter, CapeErr err)
-{
-  
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_emitter_next (QBus self, QBusEmitter emitter, CapeUdc data)
-{
-  
+  qbus_manifold_emit (self->manifold, self->uuid, val);
 }
 
 //-----------------------------------------------------------------------------

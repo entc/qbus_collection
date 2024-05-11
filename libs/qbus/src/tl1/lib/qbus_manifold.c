@@ -50,7 +50,7 @@ int qbus_manifold_init (QBusManifold self, const CapeString uuid, const CapeStri
 
 //-----------------------------------------------------------------------------
 
-void qbus_manifold_emit (QBusManifold self, const CapeString val_name, const CapeString val_data)
+void qbus_manifold_emit (QBusManifold self, const CapeString uuid, CapeUdc val)
 {
   
 }

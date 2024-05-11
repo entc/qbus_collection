@@ -114,11 +114,7 @@ typedef int      (__STDCALL     *fct_qbus_on_emit) (QBusSubscriber, void* user_p
 
 __CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, const CapeString module_ident, const CapeString module_name, const CapeString name, CapeErr);
 
-__CAPE_LIBEX   QBusEmitter        qbus_emitter_add       (QBus, const CapeString name, CapeErr);
-
-__CAPE_LIBEX   int                qbus_emitter_rm        (QBus, QBusEmitter, CapeErr);
-
-__CAPE_LIBEX   void               qbus_emitter_next      (QBus, QBusEmitter, CapeUdc data);
+__CAPE_LIBEX   void               qbus_emit              (QBus, CapeUdc);
 
 //-----------------------------------------------------------------------------
 
