@@ -1151,7 +1151,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
       }
       case CAPE_UDC_NUMBER:
       {
-        log_level = cape_udc_n (arg_d, log_level);
+        log_level = (CapeLogLevel)cape_udc_n (arg_d, log_level);
         break;
       }
     }

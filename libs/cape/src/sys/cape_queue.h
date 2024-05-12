@@ -49,7 +49,7 @@ __CAPE_LIBEX   void        cape_queue_add          (CapeQueue, CapeSync, cape_qu
                             * -> threads will be created
                             * -> amount of threads defines the worker threads waiting for events
                             */
-__CAPE_LIBEX   int         cape_queue_start        (CapeQueue, int amount_of_threads, CapeErr err);
+__CAPE_LIBEX   int         cape_queue_start        (CapeQueue, number_t amount_of_threads, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
