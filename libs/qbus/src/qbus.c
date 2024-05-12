@@ -98,7 +98,7 @@ void __STDCALL qbus__on_add (void* user_ptr, const char* uuid, const char* modul
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
+void __STDCALL qbus__on_queue_method (void* ptr, number_t pos, number_t queue_size)
 {
   int res;
   QBusEventContext qec = ptr;
@@ -152,6 +152,27 @@ void __STDCALL qbus__on_method (void* ptr, number_t pos, number_t queue_size)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus__on_queue_emit (void* ptr, number_t pos, number_t queue_size)
+{
+  int res;
+  QBusEventContext qec = ptr;
+
+  // local objects
+  CapeErr err = cape_err_new ();
+
+  res = qbus_method_run (qec->method_ref, qec->qbus, qec->msg, NULL, err);
+
+  cape_err_del (&err);
+  
+  {
+    qbus_message_del (&(qec->msg));
+    
+    CAPE_DEL (&qec, struct QBusEventContext_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBusMethod* p_qbus_method, QBusM msg)
 {
   QBus self = user_ptr;
@@ -178,7 +199,7 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on call", "queued process [user]");
     
-    cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
+    cape_queue_add (self->queue, NULL, qbus__on_queue_method, NULL, NULL, qec, 0);
   }
   else
   {
@@ -204,7 +225,7 @@ void __STDCALL qbus__on_call (void* user_ptr, const CapeString method_name, QBus
 
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on call", "queued process [registered] for = %s", method_name);
 
-      cape_queue_add (self->queue, NULL, qbus__on_method, NULL, NULL, qec, 0);
+      cape_queue_add (self->queue, NULL, qbus__on_queue_method, NULL, NULL, qec, 0);
     }
     else
     {
@@ -229,7 +250,18 @@ void __STDCALL qbus__on_recv (void* user_ptr)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus__on_emit (void* user_ptr, CapeUdc val, const CapeString uuid, const CapeString name)
+CapeString qbus_subs__gen_method (const CapeString module_ident, const CapeString module_name, const CapeString name)
+{
+  CapeString ret = NULL;
+  
+  ret = cape_str_fmt ("@%s", name);
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus__on_emit (void* user_ptr, CapeUdc val, const CapeString module_ident, const CapeString module_name)
 {
   QBus self = user_ptr;
 
@@ -240,16 +272,32 @@ void __STDCALL qbus__on_emit (void* user_ptr, CapeUdc val, const CapeString uuid
   {
     if (cape_str_equal (value_name, QBUS_SUBS_LOAD))
     {
-      qbus_route_set (self->route, uuid, cape_udc_n (val, 0));
+      qbus_route_set (self->route, module_ident, cape_udc_n (val, 0));
     }
   }
   else
   {
-    CapeString h = cape_json_to_s (val);
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on emit", "value = %s", h);
+    CapeString method_name = qbus_subs__gen_method (module_ident, module_name, value_name);
 
-    cape_str_del (&h);
+    QBusMethod method = qbus_storage_get (self->storage, method_name);
+    
+    if (method)
+    {
+      QBusEventContext qec = CAPE_NEW (struct QBusEventContext_s);
+
+      qec->qbus = self;
+      qec->msg = qbus_message_new ();
+      qec->msg->cdata = cape_udc_cp (val);
+
+      qec->method_ref = method;
+      qec->method_own = NULL;
+
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on call", "queued process [registered] for = %s", method_name);
+
+      cape_queue_add (self->queue, NULL, qbus__on_queue_emit, NULL, NULL, qec, 0);
+    }
+
+    cape_str_del (&method_name);
   }
 }
 
@@ -503,9 +551,36 @@ void qbus_conn_request (QBus self, QBusConnection const conn, const char* module
 
 //-----------------------------------------------------------------------------
 
-QBusSubscriber qbus_subscribe (QBus self, const CapeString module_ident, const CapeString module_name, const CapeString name, CapeErr err)
+int qbus_subscribe (QBus self, const CapeString module_ident, const CapeString module_name, const CapeString name, void* user_ptr, fct_qbus_onMessage user_fct, CapeErr err)
 {
+  int res;
+  
+  // local objects
+  CapeString method_name = qbus_subs__gen_method (module_ident, module_name, name);
+  
+  if (NULL == method_name)
+  {
+    res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.IDENT_NAME");
+    goto exit_and_cleanup;
+  }
+  
+  printf ("register method = %s\n", method_name);
+  
+  res = qbus_storage_add (self->storage, method_name, user_ptr, user_fct, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // tell all other modules, that we are interested in this value
   qbus_manifold_subscribe (self->manifold, self->uuid, module_ident, module_name, name);
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&method_name);
+  return res;
 }
 
 //-----------------------------------------------------------------------------

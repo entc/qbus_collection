@@ -87,6 +87,17 @@ int __STDCALL th1_worker__on_method (QBus qbus, void* ptr, QBusM qin, QBusM qout
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL test1_emit (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  CapeString h = cape_json_to_s (qin->cdata);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on emit", "value = %s", h);
+
+  cape_str_del (&h);
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL th1_worker (void* ptr)
 {
   int res;
@@ -179,6 +190,8 @@ int main (int argc, char *argv[])
   qbus_register (qbus02, "test_method", NULL, test2_method, NULL, err);
   qbus_register (qbus03, "test_method", NULL, test3_method, NULL, err);
   
+  qbus_subscribe (qbus01, NULL, "TEST2", "val1", NULL, test1_emit, err);
+  
   cape_thread_nosignals   ();
   
   {
@@ -204,6 +217,15 @@ int main (int argc, char *argv[])
     cape_udc_set_n (h, 3);
         
     qbus_emit (qbus03, h);
+
+    cape_udc_del (&h);
+  }
+
+  {
+    CapeUdc h = cape_udc_new (CAPE_UDC_NUMBER, "val1");
+    cape_udc_set_n (h, 42);
+        
+    qbus_emit (qbus02, h);
 
     cape_udc_del (&h);
   }

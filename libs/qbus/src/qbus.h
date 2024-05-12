@@ -105,14 +105,7 @@ __CAPE_LIBEX   void               qbus_instance          (const char* name, void
 
 //-----------------------------------------------------------------------------
 
-struct QBusSubscriber_s; typedef struct QBusSubscriber_s* QBusSubscriber;
-struct QBusEmitter_s; typedef struct QBusEmitter_s* QBusEmitter;
-
-typedef int      (__STDCALL     *fct_qbus_on_emit) (QBusSubscriber, void* user_ptr, int type, CapeUdc data, CapeErr);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   QBusSubscriber     qbus_subscribe         (QBus, const CapeString module_ident, const CapeString module_name, const CapeString name, CapeErr);
+__CAPE_LIBEX   int                qbus_subscribe         (QBus, const CapeString module_ident, const CapeString module_name, const CapeString name, void* user_ptr, fct_qbus_onMessage, CapeErr err);
 
 __CAPE_LIBEX   void               qbus_emit              (QBus, CapeUdc);
 
