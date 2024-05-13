@@ -3,7 +3,7 @@ INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 
 subdirs(tl1/lib)
 subdirs(tl1/emu)
-#subdirs(tl2/lib)
+subdirs(tl2)
 
 set(QBUS_SOURCES
   qbus.c

@@ -246,6 +246,7 @@ exit_and_cleanup:
   qbus_del (&qbus03);
 
   qbus_manifold_del (&manifold);
+  cape_err_del (&err);
   
   return res;
 }
