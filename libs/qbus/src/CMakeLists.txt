@@ -1,8 +1,7 @@
 # abstract operation-system layer
 INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "core" ".")
 
-subdirs(tl1/lib)
-subdirs(tl1/emu)
+subdirs(tl1)
 subdirs(tl2)
 
 set(QBUS_SOURCES
