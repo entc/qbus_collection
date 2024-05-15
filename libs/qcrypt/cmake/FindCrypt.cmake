@@ -34,17 +34,17 @@ if (NOT CRYPT_FOUND)
 	  # we can use windows onw crypto libs
 	ELSE()
 
-	  INCLUDE(FindPackageHandleStandardArgs)
+	  #INCLUDE(FindPackageHandleStandardArgs)
 
 	  ##____________________________________________________________________________
 	  ## Check for the header files
 
 	  find_path (CRYPT_INCLUDES
-		NAMES openssl/aes.h
-		HINTS ${CMAKE_INSTALL_PREFIX}
+		NAMES openssl/aes.h openssl/evp.h
+		HINTS /opt/local/openssl-3
 		PATH_SUFFIXES include
 		)
-
+		
 	  ##____________________________________________________________________________
 	  ## Check for the library
 

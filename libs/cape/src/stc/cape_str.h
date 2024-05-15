@@ -91,6 +91,9 @@ __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_unwrap        (const CapeString, char l, char r);
 
+                                  /* compares 2 strings and returns source after equality ended */
+__CAPE_LIBEX   CapeString         cape_str_delta_l       (const CapeString source_long, const CapeString compare_short);
+
                                   /*
                                   removes invalid UTF-8 characters
                                    */

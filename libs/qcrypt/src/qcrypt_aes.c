@@ -15,6 +15,7 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 
 #endif
 

@@ -24,6 +24,9 @@ __CAPE_LIBEX   CapeString         cape_fs_path_merge     (const char* path1, con
                                   /* constructs a path from 3 paths given using the system separator */
 __CAPE_LIBEX   CapeString         cape_fs_path_merge_3   (const char* path1, const char* path2, const char* path3);
 
+                                  /* reduce the path from the end */
+__CAPE_LIBEX   CapeString         cape_fs_path_reduce    (const char* path);
+
                                   /* constructs the current path gathering from the system.
                                    -> if a filepath is given it will be appended to the current path */
 __CAPE_LIBEX   CapeString         cape_fs_path_current   (const char* filepath);
@@ -57,11 +60,19 @@ __CAPE_LIBEX   int                cape_fs_path_create    (const char* path, Cape
 
 __CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeErr);
 
+                                  /* creates a path like cape_fs_path_create only if it not exists */
+__CAPE_LIBEX   int                cape_fs_path_create_e  (const char* path, CapeErr);
+
+                                  /* creates a path like cape_fs_path_create_x only if it not exists */
+__CAPE_LIBEX   int                cape_fs_path_create_xe (const char* path, CapeErr);
+
 __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, CapeErr);
 
 __CAPE_LIBEX   int                cape_fs_path_exists    (const char* path);
 
 __CAPE_LIBEX   int                cape_fs_path_rm        (const char* path, int force_on_none_empty, CapeErr);
+
+__CAPE_LIBEX   int                cape_fs_path_cp        (const char* source, const char* destination, CapeErr);
 
 //-----------------------------------------------------------------------------
 

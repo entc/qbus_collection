@@ -3,6 +3,7 @@
 
 #include "stc/cape_list.h"
 #include "stc/cape_stream.h"
+#include "stc/cape_map.h"
 #include "fmt/cape_tokenizer.h"
 
 //-----------------------------------------------------------------------------
@@ -63,6 +64,30 @@ CapeString cape_fs_path_merge_3 (const char* path1, const char* path2, const cha
   cape_str_del (&h1);
 
   return h2;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_fs_path_reduce (const char* path)
+{
+  char* ret = NULL;
+  const char* last_sep_position = NULL;
+  
+  if (path == NULL)
+  {
+    return NULL;
+  }
+
+  // try to find the last position of the separator
+  last_sep_position = strrchr (path, CAPE_FS_FOLDER_SEP);
+
+  if (last_sep_position)
+  {
+    // extract the path from the origin filepath
+    ret = cape_str_sub (path, last_sep_position - path);
+  }
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -511,6 +536,62 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int cape_fs_path_create_e (const char* path, CapeErr err)
+{
+  struct stat st;
+  
+  if (cape_str_empty (path))
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
+  }
+  
+  if (stat (path, &st) != 0)
+  {
+    // not found or other error
+    // try to create the path
+    return cape_fs_path_create (path, err);
+  }
+
+  if (FALSE == S_ISDIR (st.st_mode))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_create_xe (const char* path, CapeErr err)
+{
+  struct stat st;
+  
+  if (cape_str_empty (path))
+  {
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
+  }
+  
+  if (stat (path, &st) != 0)
+  {
+    // not found or other error
+    // try to create the path
+    return cape_fs_path_create_x (path, err);
+  }
+  
+  if (FALSE == S_ISDIR (st.st_mode))
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+    
+    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+  }
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 static void __STDCALL cape_fs_path_size__on_del (void* ptr)
 {
   CapeString h = ptr; cape_str_del (&h);
@@ -653,6 +734,205 @@ int cape_fs_path_rm (const char* path, int force_on_none_empty, CapeErr err)
 exit_and_cleanup:
 
   cape_dc_del (&c);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL cape_fs_path_cp__lists_on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    CapeString h = val; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_cp__fill_lists (const char* source, const char* destination, CapeMap list_dirs, CapeMap list_file, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeDirCursor dc = NULL;
+  CapeString current_path = cape_str_cp (destination);
+  number_t current_level = 0;
+
+  dc = cape_dc_new (source, err);
+  if (dc == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  while (cape_dc_next (dc))
+  {
+    switch (cape_dc_type (dc))
+    {
+      case CAPE_DC_TYPE__DIR:
+      {
+        number_t level = cape_dc_level (dc);
+        
+        if (level > current_level)
+        {
+          CapeString h = cape_fs_path_merge (current_path, cape_dc_name (dc));
+          cape_str_replace_mv (&current_path, &h);
+          
+          current_level++;
+        }
+        else if (level < current_level)
+        {
+          CapeString h = cape_fs_path_reduce (current_path);
+          cape_str_replace_mv (&current_path, &h);
+          
+          current_level--;
+        }
+        
+        // append current path
+        {
+          CapeMapNode n = cape_map_find (list_dirs, (void*)current_path);
+          if (NULL == n)
+          {
+            cape_map_insert (list_dirs, (void*)cape_str_cp (current_path), (void*)NULL);
+          }
+        }
+        
+        break;
+      }
+      case CAPE_DC_TYPE__FILE:
+      {
+        CapeString delta = cape_str_delta_l (cape_dc_path (dc), source);
+        CapeString h = cape_fs_path_merge (destination, delta);
+
+        // append current file
+        {
+          CapeMapNode n = cape_map_find (list_file, (void*)h);
+          if (NULL == n)
+          {
+            cape_map_insert (list_file, (void*)cape_str_mv (&h), (void*)cape_str_cp (cape_dc_path (dc)));
+          }
+        }
+        
+        cape_str_del (&h);
+        cape_str_del (&delta);
+        break;
+      }
+      case CAPE_DC_TYPE__LINK:
+      {
+        // not supported at the moment
+        break;
+      }
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_str_del (&current_path);
+  cape_dc_del (&dc);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_cp__create_dirs (CapeMap list_dirs, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_new (list_dirs, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    res = cape_fs_path_create_xe ((CapeString)cape_map_node_key (cursor->node), err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_map_cursor_del (&cursor);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_cp__create_files (CapeMap list_file, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeMapCursor* cursor = cape_map_cursor_new (list_file, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    const CapeString src = (CapeString)cape_map_node_value (cursor->node);
+    const CapeString dst = (CapeString)cape_map_node_key (cursor->node);
+    
+    res = cape_fs_file_cp (src, dst, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_map_cursor_del (&cursor);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_cp (const char* source, const char* destination, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeMap list_file = cape_map_new (cape_map__compare__s, cape_fs_path_cp__lists_on_del, NULL);
+  CapeMap list_dirs = cape_map_new (cape_map__compare__s, cape_fs_path_cp__lists_on_del, NULL);
+
+  // try to create the destination path
+  res = cape_fs_path_create_x (destination, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // fill both lists with directories and files to create
+  res = cape_fs_path_cp__fill_lists (source, destination, list_dirs, list_file, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_fs_path_cp__create_dirs (list_dirs, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = cape_fs_path_cp__create_files (list_file, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_map_del (&list_dirs);
+  cape_map_del (&list_file);
   return res;
 }
 

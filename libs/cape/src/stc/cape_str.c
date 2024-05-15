@@ -1207,6 +1207,40 @@ CapeString cape_str_unwrap (const CapeString self, char l, char r)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_delta_l (const CapeString source_long, const CapeString compare_short)
+{
+  CapeString ret = NULL;
+  
+  if (NULL == source_long)
+  {
+    return NULL;
+  }
+  
+  if (NULL == compare_short)
+  {
+    ret = cape_str_cp (source_long);
+  }
+  else
+  {
+    const char* l1 = source_long;
+    const char* l2 = compare_short;
+    
+    for (; *l1 && *l2; l1++, l2++)
+    {
+      if (*l1 != *l2)
+      {
+        break;
+      }
+    }
+    
+    ret = cape_str_sub (l1, l1 - source_long);
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_trim_c (const CapeString source, char c)
 {
   return cape_str_trim_lr (source, c, c);

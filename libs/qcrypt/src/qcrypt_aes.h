@@ -35,20 +35,21 @@
 
 struct QCryptAESKeys_s; typedef struct QCryptAESKeys_s* QCryptAESKeys;
 
-// openssl includes
-#include <openssl/evp.h>
+// openssl types
+struct evp_cipher_st;
+struct evp_cipher_ctx_st;
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__sha256         (const CapeString secret, const EVP_CIPHER* cypher, CapeErr err);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__sha256         (const CapeString secret, const struct evp_cipher_st* cypher, CapeErr err);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__md5_en         (const CapeString secret, const EVP_CIPHER* cypher, CapeStream product);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__md5_en         (const CapeString secret, const struct evp_cipher_st* cypher, CapeStream product);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__md5_de         (const CapeString secret, const EVP_CIPHER* cypher, const char* bufdat, number_t buflen, CapeErr err);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__md5_de         (const CapeString secret, const struct evp_cipher_st* cypher, const char* bufdat, number_t buflen, CapeErr err);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__padding_zero   (const CapeString secret, const EVP_CIPHER* cypher);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__padding_zero   (const CapeString secret, const struct evp_cipher_st* cypher);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__ansiX923       (const CapeString secret, const EVP_CIPHER* cypher);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__ansiX923       (const CapeString secret, const struct evp_cipher_st* cypher);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__padding_pkcs7  (const CapeString secret, const EVP_CIPHER* cypher);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__padding_pkcs7  (const CapeString secret, const struct evp_cipher_st* cypher);
 
 __CAPE_LIBEX  void               qcrypt_aes_keys_del                 (QCryptAESKeys* p_self);
 
@@ -62,9 +63,9 @@ __CAPE_LIBEX  unsigned char*     qcrypt_aes_iv                       (QCryptAESK
 
 __CAPE_LIBEX  void               qcrypt_aes_padding__ansiX923_pad    (unsigned char* bufdat, number_t buflen, number_t offset);
 
-__CAPE_LIBEX  int                qcrypt_aes__handle_error            (EVP_CIPHER_CTX* ctx, CapeErr err);
+__CAPE_LIBEX  int                qcrypt_aes__handle_error            (struct evp_cipher_ctx_st* ctx, CapeErr err);
 
-__CAPE_LIBEX  const EVP_CIPHER*  qencrypt_aes__get_cipher            (number_t type);
+__CAPE_LIBEX  const struct evp_cipher_st*  qencrypt_aes__get_cipher            (number_t type);
 
 //-----------------------------------------------------------------------------
 
