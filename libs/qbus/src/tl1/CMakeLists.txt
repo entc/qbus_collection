@@ -5,11 +5,13 @@ set(QBUS_TL1_HEADERS
   qbus_tl1.h
   qbus_chains.h
   qbus_member.h
+  qbus_subscriber.h
 )
 
 set(QBUS_TL1_SOURCES
-  qbus_member.c
   qbus_chains.c
+  qbus_member.c
+  qbus_subscriber.c
 )
 
 #----------------------------------------------------------------------------------

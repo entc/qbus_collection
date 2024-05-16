@@ -34,7 +34,7 @@ void auth_roles_del (AuthRoles* p_self)
 {
   if (*p_self)
   {
-    AuthRoles self = *p_self;
+    //AuthRoles self = *p_self;
     
     
     CAPE_DEL (p_self, struct AuthRoles_s);
@@ -161,12 +161,12 @@ int auth_roles_ui_get (AuthRoles* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthRoles self = *p_self;
 
-  number_t gpid;
-  number_t userid;
+  number_t wpid = 0;
+  number_t gpid = 0;
+  number_t userid = 0;
 
   // local objects
   CapeUdc query_results = NULL;
-  number_t wpid = 0;
 
   res = auth_roles__internal__input (qin, &wpid, &gpid, &userid, err);
   if (res)
