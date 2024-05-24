@@ -12,11 +12,21 @@ struct QBusEngine_s; typedef struct QBusEngine_s* QBusEngine; // use a simple ve
 
 //-----------------------------------------------------------------------------
 
+typedef void          (__STDCALL *fct_qbus_engine__on_connect)       (void* user_ptr, void* node);
+
+typedef void          (__STDCALL *fct_qbus_engine__on_disconnect)    (void* user_ptr);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   QBusEngine         qbus_engine_new               ();
 
 __CAPE_LIBEX   void               qbus_engine_del               (QBusEngine*);
 
-__CAPE_LIBEX   int                qbus_engine_init              (QBusEngine, CapeErr err);
+__CAPE_LIBEX   int                qbus_engine_init              (QBusEngine, void* user_ptr, fct_qbus_engine__on_connect, fct_qbus_engine__on_disconnect, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+
 
 //-----------------------------------------------------------------------------
 

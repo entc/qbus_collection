@@ -26,6 +26,8 @@ __CAPE_LIBEX   const CapeString        qbus_manifold_member_name   (QBusManifold
 
 __CAPE_LIBEX   void                    qbus_manifold_member_add    (QBusManifoldMember, const char* uuid, const char* module, void* node);
 
+__CAPE_LIBEX   void                    qbus_manifold_member_set    (QBusManifoldMember, void* node);
+
 __CAPE_LIBEX   int                     qbus_manifold_member_call   (QBusManifoldMember, const CapeString method_name, QBusMethod* p_qbus_method, QBusM msg, CapeErr err);
 
 __CAPE_LIBEX   void                    qbus_manifold_member_emit   (QBusManifoldMember, CapeUdc val, const CapeString uuid, const CapeString name);

@@ -73,6 +73,13 @@ void qbus_manifold_member_add (QBusManifoldMember self, const char* uuid, const 
 
 //-----------------------------------------------------------------------------
 
+void qbus_manifold_member_set (QBusManifoldMember self, void* node)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_manifold_member_call (QBusManifoldMember self, const CapeString method_name, QBusMethod* p_qbus_method, QBusM msg, CapeErr err)
 {
   if (self->on_call)

@@ -1,5 +1,5 @@
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("../../../cape/src" "..")
+INCLUDE_DIRECTORIES("../../../cape/src" ".." "../tl2")
 
 set(QBUS_TL1_HEADERS
   qbus_tl1.h
