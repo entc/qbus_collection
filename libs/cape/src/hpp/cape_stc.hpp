@@ -1173,6 +1173,13 @@ namespace cape
     static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
   };
 
+  template <> struct UdcTransType<double&>
+  {
+//    static void add_cp (CapeUdc obj, const char* name, const double& value) { cape_udc_add_f (obj, name, value); }
+    static void add_mv (CapeUdc obj, const char* name, double& value) { cape_udc_add_f (obj, name, value); }
+//    static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
+  };
+
   template <> struct UdcTransType<float>
   {
     static void add_cp (CapeUdc obj, const char* name, float const& value) { cape_udc_add_f (obj, name, (double)value); }
