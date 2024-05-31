@@ -685,6 +685,20 @@ void adbl_param_add__between_n (CapeUdc params, const CapeString name, number_t 
 
 //-----------------------------------------------------------------------------
 
+void adbl_param_add__between_f (CapeUdc params, const CapeString name, double from, double until)
+{
+  CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
+
+  cape_udc_add_n (h, ADBL_SPECIAL__TYPE, ADBL_TYPE__BETWEEN);
+
+  cape_udc_add_f (h, ADBL_SPECIAL__BETWEEN_FROM, from);
+  cape_udc_add_f (h, ADBL_SPECIAL__BETWEEN_TO, until);
+  
+  cape_udc_add (params, &h);
+}
+
+//-----------------------------------------------------------------------------
+
 void adbl_param_add__between_d (CapeUdc params, const CapeString name, const CapeDatetime* from, const CapeDatetime* until)
 {
   CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
