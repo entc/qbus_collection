@@ -1120,7 +1120,7 @@ namespace cape
   {
     static void add_cp (CapeUdc obj, const char* name, const int& value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
-    static int as (CapeUdc obj, int dv = 0) { return cape_udc_n (obj, dv); }
+    static int as (CapeUdc obj, int dv = 0) { return (int)cape_udc_n (obj, dv); }
     static void put (CapeUdc obj, const char* name, const int& value) { cape_udc_put_n (obj, name, value); }
     static void set (CapeUdc obj, const int& value) { cape_udc_set_n (obj, value); }
   };
