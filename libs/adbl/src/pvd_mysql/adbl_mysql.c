@@ -211,7 +211,7 @@ int adbl_pvd_connect (AdblPvdSession self, CapeErr err)
      */
      
     // connect
-    if (mysql_real_connect (self->mysql, host, user, pass, self->schema, port, 0, CLIENT_MULTI_RESULTS) != self->mysql)
+    if (mysql_real_connect (self->mysql, host, user, pass, self->schema, (int)port, 0, CLIENT_MULTI_RESULTS) != self->mysql)
     {
       res = adbl_pvd__error (self, err);
       goto exit_and_cleanup;

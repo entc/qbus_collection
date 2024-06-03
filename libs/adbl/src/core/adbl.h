@@ -115,7 +115,11 @@ __CAPE_LIBEX   void          adbl_param_add__loe_than_d      (CapeUdc params, co
                              /* less or equal */
 __CAPE_LIBEX   void          adbl_param_add__loe_than_n      (CapeUdc params, const CapeString name, number_t value);
 
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   void          adbl_param_add__between_n       (CapeUdc params, const CapeString name, number_t from, number_t until);
+
+__CAPE_LIBEX   void          adbl_param_add__between_f       (CapeUdc params, const CapeString name, double from, double until);
 
 __CAPE_LIBEX   void          adbl_param_add__between_d       (CapeUdc params, const CapeString name, const CapeDatetime* from, const CapeDatetime* until);
 

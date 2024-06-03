@@ -13,15 +13,13 @@ struct AdblBindVars_s
 {  
   MYSQL_BIND* binds;
   
-  int size;
-  
-  int pos;
-  
+  number_t size;
+  number_t pos;
 };
 
 //------------------------------------------------------------------------------------------------------
 
-AdblBindVars adbl_bindvars_new (int size)
+AdblBindVars adbl_bindvars_new (number_t size)
 {
   number_t bindSize;
   
@@ -517,7 +515,7 @@ int adbl_bind_get (MYSQL_BIND* bind, CapeUdc item)
     case CAPE_UDC_BOOL:
     {
       number_t* h = bind->buffer;      
-      cape_udc_set_b (item, *h);
+      cape_udc_set_b (item, (int)*h);
       
       break;
     }
@@ -535,7 +533,7 @@ int adbl_bind_get (MYSQL_BIND* bind, CapeUdc item)
       dt.minute = h->minute;
       dt.sec = h->second;
       
-      dt.usec = h->second_part;
+      dt.usec = (unsigned int)(h->second_part);
       dt.msec = dt.usec / 1000;
       
       cape_udc_set_d (item, &dt);
