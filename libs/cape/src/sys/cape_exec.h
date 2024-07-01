@@ -23,6 +23,8 @@ __CAPE_LIBEX   void              cape_exec_append_s     (CapeExec, const char* p
 
 __CAPE_LIBEX   void              cape_exec_append_fmt   (CapeExec, const char* format, ...);
 
+__CAPE_LIBEX   void              cape_exec_env_set      (CapeExec, const char* name, const char* parameter);
+
 __CAPE_LIBEX   const CapeString  cape_exec_get_stdout   (CapeExec);
 
 __CAPE_LIBEX   const CapeString  cape_exec_get_stderr   (CapeExec);

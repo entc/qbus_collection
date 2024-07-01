@@ -1029,13 +1029,13 @@ CapeString cape_datetime_s__DOY (const CapeDatetime* dt)
       {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
       {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
   };
-  
+
   // Calculate if year is leap one
   int leap = ((dt->year % 4 == 0 && dt->year %100 != 0) || (dt->year % 400 == 0));
-  
+
   // Get doy
   int doy = days[leap][dt->month] + dt->day;
-    
+
   return cape_str_fmt ("%04i%03i%02i%02i%02i", dt->year, doy, dt->hour, dt->minute, dt->sec);
 }
 
@@ -1087,6 +1087,19 @@ int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text
   dt->usec = 0;
 
   return cape_sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__date_sce (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+
+  return cape_sscanf (datetime_in_text, "%u/%u/%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
 }
 
 //-----------------------------------------------------------------------------

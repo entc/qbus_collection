@@ -1,5 +1,5 @@
 <div class="input-group w-100">
-  <select (change)="set_locale($event)" class="custom-select input-select">
+  <select (change)="set_locale($event)" class="custom-select input-select form-select">
     <option *ngFor="let l of _locales" [value]="l.value" [selected]="l.value === locale">{{ l.label }}</option>
   </select>
 </div>
