@@ -747,6 +747,16 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void reset_as_reference (CapeUdc obj)
+    {
+      clear ();
+
+      m_obj = obj;
+      m_owned = false;
+    }
+
+    //-----------------------------------------------------------------------------
+
     void reset (Udc&& rhs)
     {
       clear ();
@@ -766,12 +776,12 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    void reset (CapeUdc obj)
+    void reset (CapeUdc* p_obj)
     {
       clear ();
 
-      m_owned = false;
-      m_obj = obj;
+      m_owned = true;
+      m_obj = cape_udc_mv (p_obj);
     }
 
     //-----------------------------------------------------------------------------
@@ -871,6 +881,50 @@ namespace cape
     Udc get (const char* name)
     {
       return Udc (cape_udc_get (m_obj, name));
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename S, typename T> T get (const S& name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, StringTrans<S>::c_str(name));
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> T get (const char* name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
     }
 
     //-----------------------------------------------------------------------------
