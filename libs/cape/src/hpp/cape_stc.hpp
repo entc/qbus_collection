@@ -211,6 +211,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void clear () const
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_clr (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     const char* data () const
     {
       if (m_obj == NULL)
@@ -277,6 +289,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    operator const char*()
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      return cape_stream_get (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     /*
     cape::Stream& operator<<(std::ostream&(*f)(std::ostream&))
     {
@@ -310,6 +334,30 @@ namespace cape
       }
 
       cape_stream_append_str (m_obj, text);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (number_t val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_n (m_obj, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (char val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_c (m_obj, val);
     }
 
     //-----------------------------------------------------------------------------
