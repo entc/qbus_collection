@@ -167,7 +167,7 @@ void cape_datetime_utc__ms (CapeDatetime* dt, time_t unix_time_since_1970)
 
   cape_datetime__convert_timeinfo (dt, l01);
 
-  dt->msec = unix_time_since_1970 - h * 1000;
+  dt->msec = (unsigned int)(unix_time_since_1970 - h * 1000);
   dt->usec = 0;
 
   dt->is_utc = TRUE;
