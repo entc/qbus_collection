@@ -929,6 +929,28 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    Udc get_or_create (const char* name, int type)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {get} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (NULL == h)
+      {
+        CapeUdc h2 = cape_udc_new (type, name);
+
+        h = cape_udc_add (m_obj, &h2);
+      }
+
+      return Udc (h);
+    }
+
+    //-----------------------------------------------------------------------------
+
     Udc operator[] (const char* name)
     {
       CapeUdc h = cape_udc_get (m_obj, name);
