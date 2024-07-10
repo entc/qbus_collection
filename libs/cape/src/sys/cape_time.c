@@ -12,6 +12,10 @@
 #define _BSD_SOURCE
 #endif
 
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #define cape_sscanf sscanf
 
 #include <sys/time.h>
@@ -591,28 +595,7 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 // Function doesn't change the time zone, so take care to use same time zone for input and result (e.g. both UTC)
 void cape_datetime__remove_s (const CapeDatetime* self, const CapeString delta, CapeDatetime* result)
 {
-#if defined __WINDOWS_OS
-
-
-#else
-
-  struct timeval time_timeval;
-  struct tm* time_tm;
-
-  // convert cape datetime into c time struct
-  time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
-
-  // substract delta from time_timeval
-  cape_datetime__intern_sub_delta (&time_timeval, delta);
-
-  // convert into time struct
-  time_tm = gmtime (&(time_timeval.tv_sec));
-
-  // convert into result
-  cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
-
-#endif
+  cape_datetime__sub_s (self, delta, result);
 }
 
 //-----------------------------------------------------------------------------
@@ -646,7 +629,7 @@ void cape_datetime__add_s (const CapeDatetime* input, const CapeString delta, Ca
 
 //-----------------------------------------------------------------------------
 
-void cape_datetime__sub_s (const CapeDatetime* input, const CapeString delta, CapeDatetime* result)
+void cape_datetime__sub_s (const CapeDatetime* self, const CapeString delta, CapeDatetime* result)
 {
 #if defined __WINDOWS_OS
 
@@ -657,8 +640,8 @@ void cape_datetime__sub_s (const CapeDatetime* input, const CapeString delta, Ca
   struct tm* time_tm;
 
   // convert cape datetime into c time struct
-  time_timeval.tv_sec = cape_datetime_n__unix (input);
-  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+  time_timeval.tv_sec = cape_datetime_n__unix (self);
+  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
 
   // accumulate delta to time_timeval
   cape_datetime__intern_sub_delta (&time_timeval, delta);
