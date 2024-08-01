@@ -281,23 +281,36 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
+CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen, const CapeString prefix)
 {
 #ifdef __WINDOWS_OS
 
 
 #else
 
+  number_t off = 0;
   number_t len = ((buflen + 2) / 3 * 4) + 1;
-  CapeString ret = CAPE_ALLOC (len);
+  CapeString ret = NULL;
   
+  if (prefix)
+  {
+    off = cape_str_size (prefix);
+    
+    ret = CAPE_ALLOC (len + off);
+    memcpy (ret, prefix, off);
+  }
+  else
+  {
+    ret = CAPE_ALLOC (len);
+  }
+    
   // openssl function
-  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret, (const unsigned char*)bufdat, (int)buflen);
+  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret + off, (const unsigned char*)bufdat, (int)buflen);
   
   // everything worked fine
   if ((decodedSize > 0) && (decodedSize < len))
   {
-    ret[decodedSize] = 0;
+    ret[decodedSize + off] = 0;
     return ret;
   }
 
@@ -311,7 +324,7 @@ CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
 
 CapeString qcrypt__encode_base64_m (const CapeStream source)
 {
-  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source));
+  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source), NULL);
 }
 
 //-----------------------------------------------------------------------------
