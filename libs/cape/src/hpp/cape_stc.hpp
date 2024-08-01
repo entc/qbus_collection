@@ -211,6 +211,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void clear () const
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_clr (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     const char* data () const
     {
       if (m_obj == NULL)
@@ -277,6 +289,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    operator const char*()
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      return cape_stream_get (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     /*
     cape::Stream& operator<<(std::ostream&(*f)(std::ostream&))
     {
@@ -310,6 +334,30 @@ namespace cape
       }
 
       cape_stream_append_str (m_obj, text);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (number_t val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_n (m_obj, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (char val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_c (m_obj, val);
     }
 
     //-----------------------------------------------------------------------------
@@ -747,6 +795,16 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void reset_as_reference (CapeUdc obj)
+    {
+      clear ();
+
+      m_obj = obj;
+      m_owned = false;
+    }
+
+    //-----------------------------------------------------------------------------
+
     void reset (Udc&& rhs)
     {
       clear ();
@@ -766,12 +824,12 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    void reset (CapeUdc obj)
+    void reset (CapeUdc* p_obj)
     {
       clear ();
 
-      m_owned = false;
-      m_obj = obj;
+      m_owned = true;
+      m_obj = cape_udc_mv (p_obj);
     }
 
     //-----------------------------------------------------------------------------
@@ -871,6 +929,72 @@ namespace cape
     Udc get (const char* name)
     {
       return Udc (cape_udc_get (m_obj, name));
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename S, typename T> T get (const S& name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, StringTrans<S>::c_str(name));
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> T get (const char* name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    Udc get_or_create (const char* name, int type)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {get} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (NULL == h)
+      {
+        CapeUdc h2 = cape_udc_new (type, name);
+
+        h = cape_udc_add (m_obj, &h2);
+      }
+
+      return Udc (h);
     }
 
     //-----------------------------------------------------------------------------
