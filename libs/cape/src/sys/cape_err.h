@@ -54,17 +54,17 @@ __CAPE_LIBEX   void              cape_err_del           (CapeErr*);         // r
 
 __CAPE_LIBEX   void              cape_err_clr           (CapeErr);
 
-__CAPE_LIBEX   int               cape_err_set__i        (CapeErr, int line_number, const char* file, unsigned long err_code, const char* error_message);
+__CAPE_LIBEX   int               cape_err_set__i        (CapeErr, int line_number, const char* file, int err_code, const char* error_message);
 
-__CAPE_LIBEX   int               cape_err_set_fmt__i    (CapeErr, int line_number, const char* file, unsigned long err_code, const char* error_message, ...);
+__CAPE_LIBEX   int               cape_err_set_fmt__i    (CapeErr, int line_number, const char* file, int err_code, const char* error_message, ...);
 
 __CAPE_LIBEX   const char*       cape_err_text          (CapeErr);
 
-__CAPE_LIBEX   unsigned long     cape_err_code          (CapeErr);
+__CAPE_LIBEX   int               cape_err_code          (CapeErr);
 
 __CAPE_LIBEX   int               cape_err_lastOSError_i   (CapeErr, int line_number, const char* file);
 
-__CAPE_LIBEX   int               cape_err_formatErrorOS_i (CapeErr, int line_number, const char* file, unsigned long errCode);
+__CAPE_LIBEX   int               cape_err_formatErrorOS_i (CapeErr, int line_number, const char* file, int errCode);
 
 //-----------------------------------------------------------------------------
 

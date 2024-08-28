@@ -40,6 +40,17 @@ __CAPE_LIBEX  CapeStream     qcrypt__decode_base64_o     (const char* bufdat, nu
 //-----------------------------------------------------------------------------
 // hash methods
 
+__CAPE_LIBEX  CapeString     qcrypt__hash_sha512__hex_m  (const CapeStream source, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__hash_sha512__hex_o  (const char* bufdat, number_t buflen, CapeErr err);
+
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha512__bin_m  (const CapeStream source, CapeErr err);
+
+__CAPE_LIBEX  CapeStream     qcrypt__hash_sha512__bin_o  (const char* bufdat, number_t buflen, CapeErr err);
+
+//-----------------------------------------------------------------------------
+// hash methods
+
 __CAPE_LIBEX  CapeString     qcrypt__hash_sha256__hex_m  (const CapeStream source, CapeErr err);
 
 __CAPE_LIBEX  CapeString     qcrypt__hash_sha256__hex_o  (const char* bufdat, number_t buflen, CapeErr err);
