@@ -21,7 +21,7 @@ struct CapeErr_s
 {
     char* text;
     
-    unsigned long code;
+    int code;
 };
 
 //-----------------------------------------------------------------------------
@@ -67,14 +67,14 @@ const char* cape_err_text (CapeErr self)
 
 //-----------------------------------------------------------------------------
 
-unsigned long cape_err_code (CapeErr self)
+int cape_err_code (CapeErr self)
 {
   return self->code;
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_err_set__i (CapeErr self, int line_number, const char* file, unsigned long code, const char* error_message)
+int cape_err_set__i (CapeErr self, int line_number, const char* file, int code, const char* error_message)
 {
   self->code = code;
   
@@ -91,7 +91,7 @@ int cape_err_set__i (CapeErr self, int line_number, const char* file, unsigned l
 
 //-----------------------------------------------------------------------------
 
-int cape_err_set_fmt__i (CapeErr self, int line_number, const char* file, unsigned long code, const char* error_message, ...)
+int cape_err_set_fmt__i (CapeErr self, int line_number, const char* file, int code, const char* error_message, ...)
 {
   char buffer [1002];
   
@@ -120,7 +120,7 @@ int cape_err_set_fmt__i (CapeErr self, int line_number, const char* file, unsign
 
 //-----------------------------------------------------------------------------
 
-int cape_err_formatErrorOS_i (CapeErr self, int line_number, const char* file, unsigned long errCode)
+int cape_err_formatErrorOS_i (CapeErr self, int line_number, const char* file, int errCode)
 {
 #ifdef __WINDOWS_OS
 
