@@ -715,6 +715,90 @@ CapeString cape_str_random_n (number_t len)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_str_password (number_t len, number_t cnt_upper, number_t cnt_lower, number_t cnt_digit, number_t cnt_special)
+{
+  const char* specials = "!+-_*$?:#&@;~%";
+  
+  number_t len_min = cnt_upper + cnt_lower + cnt_digit + cnt_special;
+  number_t len_max = len > len_min ? len : len_min;
+  number_t p = 0;
+  number_t len_upper, len_lower, len_digit, len_special;
+  
+  CapeString self = CAPE_ALLOC (len_max + 1);
+  
+  // this will set all chars to 0 and also adds the terminator
+  memset (self, 0, len_max + 1);
+  
+  // calculate the additional length
+  {
+    number_t delta = len_max - len_min;
+   
+    len_upper = (number_t)(delta * 0.20);
+    len_lower = (number_t)(delta * 0.60);
+    len_digit = (number_t)(delta * 0.10);
+    len_special = delta - (len_upper + len_lower + len_digit);
+    
+    len_upper += cnt_upper;
+    len_lower += cnt_lower;
+    len_digit += cnt_digit;
+    len_special += cnt_special;
+  }
+  
+  // upper
+  {
+    number_t i;
+    for (i = 0; i < len_upper; i++, p++)
+    {
+      self[p] = (rand() % 26) + 65;
+    }
+  }
+
+  // lower
+  {
+    number_t i;
+    for (i = 0; i < len_lower; i++, p++)
+    {
+      self[p] = (rand() % 26) + 97;
+    }
+  }
+
+  // digits
+  {
+    number_t i;
+    for (i = 0; i < len_digit; i++, p++)
+    {
+      self[p] = (rand() % 10) + 48;
+    }
+  }
+
+  // special
+  {
+    number_t i;
+    for (i = 0; i < len_special; i++, p++)
+    {
+      self[p] = specials[(rand() % 14)];
+    }
+  }
+  
+  // shuffle
+  {
+    number_t i;
+    for (i = len_max - 1; i > 0; i--)
+    {
+      number_t j = (number_t) (drand48() * (i + 1));
+      
+      // switch position
+      char t = self[j];
+      self[j] = self[i];
+      self[i] = t;
+    }
+  }
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_str_flp (const CapeString format, va_list valist)
 {
   CapeString ret = NULL;

@@ -25,6 +25,8 @@ __CAPE_LIBEX   CapeString         cape_str_random_s      (number_t len);        
 
 __CAPE_LIBEX   CapeString         cape_str_random_n      (number_t len);                                // create a randwom string with the length (len)
 
+__CAPE_LIBEX   CapeString         cape_str_password      (number_t len, number_t cnt_upper, number_t cnt_lower, number_t cnt_digit, number_t cnt_special);
+
 __CAPE_LIBEX   CapeString         cape_str_fmt           (const CapeString format, ...);                // format to string
 
 __CAPE_LIBEX   CapeString         cape_str_flp           (const CapeString format, va_list);            // format to string
