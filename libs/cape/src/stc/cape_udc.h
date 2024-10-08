@@ -150,6 +150,8 @@ __CAPE_LIBEX   CapeUdc              cape_udc_get_list         (CapeUdc, const Ca
 
 __CAPE_LIBEX   CapeUdc              cape_udc_get_first        (CapeUdc);
 
+__CAPE_LIBEX   CapeUdc              cape_udc_get_last         (CapeUdc);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeString           cape_udc_ext_s            (CapeUdc, const CapeString name);
@@ -216,16 +218,16 @@ __CAPE_LIBEX   void                 cape_udc_add_n__max       (CapeUdc, const Ca
 
 typedef struct
 {
-  
+
   CapeUdc item;
-  
+
   int position;
-  
+
   int direction;
-  
+
   void* data;   // for internal use (don't change it)
   u_t type;     // for internal use (don't change it)
-  
+
 } CapeUdcCursor;
 
 //-----------------------------------------------------------------------------

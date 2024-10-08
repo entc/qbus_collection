@@ -91,6 +91,9 @@ __CAPE_LIBEX   CapeString         cape_str_trim_lr       (const CapeString, char
 
 __CAPE_LIBEX   CapeString         cape_str_trim_c        (const CapeString, char c);
 
+                                  /* find the first word, trim everything which follows */
+__CAPE_LIBEX   CapeString         cape_str_trim_lrstrict (const CapeString);
+
 __CAPE_LIBEX   CapeString         cape_str_unwrap        (const CapeString, char l, char r);
 
                                   /* compares 2 strings and returns source after equality ended */
@@ -118,7 +121,7 @@ __CAPE_LIBEX   CapeString         cape_str_cp_replaced   (const CapeString sourc
 __CAPE_LIBEX   void               cape_str_replace_cp    (CapeString*, const CapeString source);      // replaces the object with a const string
 
 __CAPE_LIBEX   void               cape_str_replace_mv    (CapeString*, CapeString*);                  // replaces the object with another object
-  
+
 __CAPE_LIBEX   void               cape_str_replace       (CapeString*, const CapeString seek, const CapeString replace_with);
 
 //-----------------------------------------------------------------------------
