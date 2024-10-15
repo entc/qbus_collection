@@ -1114,6 +1114,16 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
 
             break;
           }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
+            
+            break;
+          }
           default:
           {
             // ignore
