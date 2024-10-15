@@ -19,7 +19,7 @@ namespace cape
 {
   // forward declaration
   class UdcCursor;
-  
+
   //-----------------------------------------------------------------------------------------------------
 
   struct ListHolder
@@ -211,6 +211,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void clear () const
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_clr (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     const char* data () const
     {
       if (m_obj == NULL)
@@ -277,6 +289,18 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    operator const char*()
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      return cape_stream_get (m_obj);
+    }
+
+    //-----------------------------------------------------------------------------
+
     /*
     cape::Stream& operator<<(std::ostream&(*f)(std::ostream&))
     {
@@ -310,6 +334,30 @@ namespace cape
       }
 
       cape_stream_append_str (m_obj, text);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (number_t val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_n (m_obj, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void append (char val)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+
+      cape_stream_append_c (m_obj, val);
     }
 
     //-----------------------------------------------------------------------------
@@ -558,7 +606,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {add} name = " + std::string(name) + ", values = " + std::string(value);
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -623,6 +671,20 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    template <typename T> void add (const char* name, T &val)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      UdcTransType<T>::add_cp (m_obj, name, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
     template <typename T> void add (const char* name, T&& val)
     {
       if (m_obj == NULL)
@@ -656,7 +718,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {=}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -733,6 +795,16 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void reset_as_reference (CapeUdc obj)
+    {
+      clear ();
+
+      m_obj = obj;
+      m_owned = false;
+    }
+
+    //-----------------------------------------------------------------------------
+
     void reset (Udc&& rhs)
     {
       clear ();
@@ -751,15 +823,15 @@ namespace cape
     }
 
     //-----------------------------------------------------------------------------
-    
-    void reset (CapeUdc obj)
+
+    void reset (CapeUdc* p_obj)
     {
       clear ();
-      
-      m_owned = false;
-      m_obj = obj;
+
+      m_owned = true;
+      m_obj = cape_udc_mv (p_obj);
     }
-    
+
     //-----------------------------------------------------------------------------
 
     friend std::ostream& operator<<(std::ostream& os, const Udc& udc)
@@ -781,7 +853,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {as}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -816,7 +888,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {first}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -830,7 +902,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {first}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -845,7 +917,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {get} name = " + std::string(name);
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -857,6 +929,72 @@ namespace cape
     Udc get (const char* name)
     {
       return Udc (cape_udc_get (m_obj, name));
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename S, typename T> T get (const S& name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, StringTrans<S>::c_str(name));
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> T get (const char* name, T const& default_value)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {as}";
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (h)
+      {
+        return UdcTransType<T>::as (h, default_value);
+      }
+      else
+      {
+        return default_value;
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    Udc get_or_create (const char* name, int type)
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {get} name = " + std::string(name);
+
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+
+      CapeUdc h = cape_udc_get (m_obj, name);
+      if (NULL == h)
+      {
+        CapeUdc h2 = cape_udc_new (type, name);
+
+        h = cape_udc_add (m_obj, &h2);
+      }
+
+      return Udc (h);
     }
 
     //-----------------------------------------------------------------------------
@@ -901,7 +1039,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {put} name = " + std::string(name);
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -915,7 +1053,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {put} name = " + std::string(name);
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -929,7 +1067,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {obj}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -943,7 +1081,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {release}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -954,9 +1092,9 @@ namespace cape
 
       return cape_udc_mv (&m_obj);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     void clear ()
     {
       if (m_obj)
@@ -964,10 +1102,10 @@ namespace cape
         if (m_owned)
         {
           cape_udc_del (&m_obj);
-          
+
           m_owned = false;
         }
-        
+
         m_obj = NULL;
       }
     }
@@ -979,7 +1117,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {clone}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -995,7 +1133,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {clone_or_release}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -1008,12 +1146,12 @@ namespace cape
         return cape_udc_cp (m_obj);
       }
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     void merge (const cape::Udc& merger)
     {
-      cape_udc_merge_cp (m_obj, merger.m_obj);      
+      cape_udc_merge_cp (m_obj, merger.m_obj);
     }
 
     //-----------------------------------------------------------------------------
@@ -1023,7 +1161,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {name}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -1037,7 +1175,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {to_string}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -1090,7 +1228,7 @@ namespace cape
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {type}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
 
@@ -1110,7 +1248,7 @@ namespace cape
 
     // the cape object
     CapeUdc m_obj;
-    
+
     friend UdcCursor;
   };
 
@@ -1120,7 +1258,7 @@ namespace cape
   {
     static void add_cp (CapeUdc obj, const char* name, const int& value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
-    static int as (CapeUdc obj, int dv = 0) { return cape_udc_n (obj, dv); }
+    static int as (CapeUdc obj, int dv = 0) { return (int)cape_udc_n (obj, dv); }
     static void put (CapeUdc obj, const char* name, const int& value) { cape_udc_put_n (obj, name, value); }
     static void set (CapeUdc obj, const int& value) { cape_udc_set_n (obj, value); }
   };
@@ -1173,6 +1311,13 @@ namespace cape
     static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
   };
 
+  template <> struct UdcTransType<double&>
+  {
+//    static void add_cp (CapeUdc obj, const char* name, const double& value) { cape_udc_add_f (obj, name, value); }
+    static void add_mv (CapeUdc obj, const char* name, double& value) { cape_udc_add_f (obj, name, value); }
+//    static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
+  };
+
   template <> struct UdcTransType<float>
   {
     static void add_cp (CapeUdc obj, const char* name, float const& value) { cape_udc_add_f (obj, name, (double)value); }
@@ -1209,7 +1354,7 @@ namespace cape
     static std::string as (CapeUdc obj, const char* dv = "") { return std::string (cape_udc_s (obj, dv)); }
   };
 
-  template <> struct UdcTransType<cape::String&>
+  template <> struct UdcTransType<cape::String>
   {
     static void add_cp (CapeUdc obj, const char* name, const cape::String& value) { cape_udc_add_s_cp (obj, name, value.m_obj); }
     static void add_mv (CapeUdc obj, const char* name, cape::String& value) { cape_udc_add_s_mv (obj, name, &(value.m_obj)); }
@@ -1300,11 +1445,11 @@ namespace cape
     }
 
     //-----------------------------------------------------------------------------
-    
+
     bool next ()
     {
       bool ret = cape_udc_cursor_next (m_cursor) == TRUE;
-      
+
       if (ret)
       {
         m_item.reset (m_cursor->item);
@@ -1313,110 +1458,110 @@ namespace cape
       {
         m_item.clear ();
       }
-      
+
       return ret;
     }
 
     //-----------------------------------------------------------------------------
-    
+
     Udc operator[] (const char* name)
     {
       return m_item[name];
     }
-        
+
     //-----------------------------------------------------------------------------
-    
+
     cape::Udc& item ()
     {
       return m_item;
     }
 
     //-----------------------------------------------------------------------------
-    
+
     number_t position () const
     {
       return m_cursor->position;
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     void remove_at_position ()
     {
       cape_udc_cursor_rm (m_udc.m_obj, m_cursor);
-      
+
       m_item.reset_as_reference (m_cursor->item);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     std::string to_string () const
     {
       return m_item.to_string ();
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     friend std::ostream& operator<<(std::ostream& os, const UdcCursor& cursor)
     {
       return os << cursor.to_string();
     }
-    
+
     //-----------------------------------------------------------------------------
 
   private:
 
     cape::Udc& m_udc;
     CapeUdcCursor* m_cursor;
-    
+
     cape::Udc m_item;
 
   };
 
 
   //-----------------------------------------------------------------------------------------------------
-  
+
   class UdcCursorConst
   {
-    
+
   public:
-    
+
     UdcCursorConst (const CapeUdc udc)
     : m_cursor (cape_udc_cursor_new (udc, CAPE_DIRECTION_FORW))
     {
     }
-    
+
     ~UdcCursorConst ()
     {
       cape_udc_cursor_del (&m_cursor);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     bool next ()
     {
       return cape_udc_cursor_next (m_cursor) == TRUE;
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     cape::Udc item () const
     {
       return cape::Udc (m_cursor->item);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     number_t position () const
     {
       return m_cursor->position;
     }
-        
+
     //-----------------------------------------------------------------------------
-    
+
   private:
-    
+
     CapeUdcCursor* m_cursor;
-    
+
   };
 
   //-----------------------------------------------------------------------------------------------------

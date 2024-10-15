@@ -1,6 +1,7 @@
 #include "cape_stream.h"
 #include "fmt/cape_dragon4.h"
 #include "sys/cape_types.h"
+#include "sys/cape_file.h"
 
 // c includes
 #include <stdio.h>
@@ -584,6 +585,49 @@ void cape_stream_append_bd (CapeStream self, double val, int network_byte_order)
   }
 
   self->pos += 8;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_stream_to_file (CapeStream self, const CapeString file, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeFileHandle fh = cape_fh_new (NULL, file);
+  
+  // try to create a new file
+  res = cape_fh_open (fh, O_CREAT | O_TRUNC | O_WRONLY, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // write the content of the stream into a file
+  {
+    number_t bytes_to_write = self->pos - self->buffer;
+    number_t bytes_written = 0;
+      
+    while (bytes_written < bytes_to_write)
+    {
+      number_t bytes_written_part = cape_fh_write_buf (fh, self->buffer + bytes_written, bytes_to_write - bytes_written);
+      if (bytes_written_part == 0)
+      {
+        // some error happened
+        res = cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+      }
+      
+      bytes_written = bytes_written + bytes_written_part;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_fh_del (&fh);
+  return res;
 }
 
 //-----------------------------------------------------------------------------

@@ -132,4 +132,8 @@ __CAPE_LIBEX void              cape_stream_append_bd  (CapeStream, double, int n
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX int               cape_stream_to_file    (CapeStream, const CapeString file, CapeErr);
+
+//-----------------------------------------------------------------------------
+
 #endif

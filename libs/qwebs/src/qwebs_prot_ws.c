@@ -327,17 +327,41 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
   
   CapeString h = cape_cursor_scan_s (cursor, self->data_size);
   
-  if (self->masking_key)
-  {
-    for (i = 0; i < self->data_size; i++)
-    {
-      h[i] = h[i] ^ self->masking_key[i % 4];
-    }
-  }
   
-  if (self->ws->on_msg)
+  // handle some opcodes
+  switch (self->opcode)
   {
-    self->ws->on_msg (self->conn_ptr, h);
+    case RFC_WEBSOCKET_FRAME__TEXT:   // text frame
+    {
+      if (self->masking_key)
+      {
+        for (i = 0; i < self->data_size; i++)
+        {
+          h[i] = h[i] ^ self->masking_key[i % 4];
+        }
+      }
+      
+      if (self->ws->on_msg)
+      {
+        self->ws->on_msg (self->conn_ptr, h);
+      }
+      
+      break;
+    }
+    case RFC_WEBSOCKET_FRAME__CLOSED:   // connection close frame
+    {
+      // TODO: close connection
+      
+      break;
+    }
+    case RFC_WEBSOCKET_FRAME__PING:   // ping
+    {
+      //cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
+
+      qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__PONG, h, self->data_size);
+      
+      break;
+    }
   }
   
   cape_str_del (&h);

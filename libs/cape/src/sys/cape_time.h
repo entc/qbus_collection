@@ -178,6 +178,9 @@ __CAPE_LIBEX   int             cape_datetime__date_de     (CapeDatetime*, const 
                                /* 1970-01-01 */
 __CAPE_LIBEX   int             cape_datetime__date_iso    (CapeDatetime*, const CapeString datetime_in_text);
 
+                               /* yyyy/mm/dd hh:mm:ss.sss */
+__CAPE_LIBEX   int             cape_datetime__date_sce    (CapeDatetime*, const CapeString datetime_in_text);
+
 //-----------------------------------------------------------------------------
 
 struct CapeStopTimer_s; typedef struct CapeStopTimer_s* CapeStopTimer;

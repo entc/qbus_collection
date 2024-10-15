@@ -12,6 +12,10 @@
 #define _BSD_SOURCE
 #endif
 
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #define cape_sscanf sscanf
 
 #include <sys/time.h>
@@ -167,7 +171,7 @@ void cape_datetime_utc__ms (CapeDatetime* dt, time_t unix_time_since_1970)
 
   cape_datetime__convert_timeinfo (dt, l01);
 
-  dt->msec = unix_time_since_1970 - h * 1000;
+  dt->msec = (unsigned int)(unix_time_since_1970 - h * 1000);
   dt->usec = 0;
 
   dt->is_utc = TRUE;
@@ -591,28 +595,7 @@ void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 // Function doesn't change the time zone, so take care to use same time zone for input and result (e.g. both UTC)
 void cape_datetime__remove_s (const CapeDatetime* self, const CapeString delta, CapeDatetime* result)
 {
-#if defined __WINDOWS_OS
-
-
-#else
-
-  struct timeval time_timeval;
-  struct tm* time_tm;
-
-  // convert cape datetime into c time struct
-  time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
-
-  // substract delta from time_timeval
-  cape_datetime__intern_sub_delta (&time_timeval, delta);
-
-  // convert into time struct
-  time_tm = gmtime (&(time_timeval.tv_sec));
-
-  // convert into result
-  cape_datetime__convert_int_cape (result, &time_timeval, time_tm);
-
-#endif
+  cape_datetime__sub_s (self, delta, result);
 }
 
 //-----------------------------------------------------------------------------
@@ -646,7 +629,7 @@ void cape_datetime__add_s (const CapeDatetime* input, const CapeString delta, Ca
 
 //-----------------------------------------------------------------------------
 
-void cape_datetime__sub_s (const CapeDatetime* input, const CapeString delta, CapeDatetime* result)
+void cape_datetime__sub_s (const CapeDatetime* self, const CapeString delta, CapeDatetime* result)
 {
 #if defined __WINDOWS_OS
 
@@ -657,8 +640,8 @@ void cape_datetime__sub_s (const CapeDatetime* input, const CapeString delta, Ca
   struct tm* time_tm;
 
   // convert cape datetime into c time struct
-  time_timeval.tv_sec = cape_datetime_n__unix (input);
-  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+  time_timeval.tv_sec = cape_datetime_n__unix (self);
+  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
 
   // accumulate delta to time_timeval
   cape_datetime__intern_sub_delta (&time_timeval, delta);
@@ -1029,13 +1012,13 @@ CapeString cape_datetime_s__DOY (const CapeDatetime* dt)
       {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
       {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
   };
-  
+
   // Calculate if year is leap one
   int leap = ((dt->year % 4 == 0 && dt->year %100 != 0) || (dt->year % 400 == 0));
-  
+
   // Get doy
   int doy = days[leap][dt->month] + dt->day;
-    
+
   return cape_str_fmt ("%04i%03i%02i%02i%02i", dt->year, doy, dt->hour, dt->minute, dt->sec);
 }
 
@@ -1087,6 +1070,19 @@ int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text
   dt->usec = 0;
 
   return cape_sscanf (datetime_in_text, "%u-%u-%u", &(dt->year), &(dt->month), &(dt->day)) == 3;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__date_sce (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  dt->hour = 0;
+  dt->minute = 0;
+  dt->sec = 0;
+  dt->msec = 0;
+  dt->usec = 0;
+
+  return cape_sscanf (datetime_in_text, "%u/%u/%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
 }
 
 //-----------------------------------------------------------------------------

@@ -281,23 +281,36 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
+CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen, const CapeString prefix)
 {
 #ifdef __WINDOWS_OS
 
 
 #else
 
+  number_t off = 0;
   number_t len = ((buflen + 2) / 3 * 4) + 1;
-  CapeString ret = CAPE_ALLOC (len);
+  CapeString ret = NULL;
   
+  if (prefix)
+  {
+    off = cape_str_size (prefix);
+    
+    ret = CAPE_ALLOC (len + off);
+    memcpy (ret, prefix, off);
+  }
+  else
+  {
+    ret = CAPE_ALLOC (len);
+  }
+    
   // openssl function
-  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret, (const unsigned char*)bufdat, buflen);
+  int decodedSize = EVP_EncodeBlock ((unsigned char*)ret + off, (const unsigned char*)bufdat, (int)buflen);
   
   // everything worked fine
   if ((decodedSize > 0) && (decodedSize < len))
   {
-    ret[decodedSize] = 0;
+    ret[decodedSize + off] = 0;
     return ret;
   }
 
@@ -311,7 +324,7 @@ CapeString qcrypt__encode_base64_o (const char* bufdat, number_t buflen)
 
 CapeString qcrypt__encode_base64_m (const CapeStream source)
 {
-  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source));
+  return qcrypt__encode_base64_o (cape_stream_data (source), cape_stream_size (source), NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -330,7 +343,7 @@ CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
   cape_stream_cap (ret, len);
   
   // openssl function
-  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, buflen);
+  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, (int)buflen);
   
   // everything worked fine
   if ((decodedSize > 0) && (decodedSize < len))
@@ -357,6 +370,199 @@ CapeStream qcrypt__decode_base64_s (const CapeString source)
 {
   return qcrypt__decode_base64_o (source, cape_str_size (source));
 }
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_sha512__hex_m (const CapeStream source, CapeErr err)
+{
+  return qcrypt__hash_sha512__hex_o (cape_stream_data (source), cape_stream_size (source), err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__hash_sha512__hex_o (const char* bufdat, number_t buflen, CapeErr err)
+{
+  CapeString ret = NULL;
+  
+  // local objects
+  CapeStream s = qcrypt__hash_sha512__bin_o (bufdat, buflen, err);
+  
+  if (NULL == s)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  ret = cape_str_hex ((const unsigned char*)cape_stream_data (s), cape_stream_size (s));
+  
+exit_and_cleanup:
+  
+  cape_stream_del (&s);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream qcrypt__hash_sha512__bin_m (const CapeStream source, CapeErr err)
+{
+  return qcrypt__hash_sha512__bin_o (cape_stream_data (source), cape_stream_size (source), err);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream qcrypt__hash_sha512__bin_o (const char* bufdat, number_t buflen, CapeErr err)
+{
+#if defined __WINDOWS_OS
+
+  int res;
+  CapeStream ret = NULL;
+  
+  HCRYPTPROV provHandle = (HCRYPTPROV)NULL;
+  HCRYPTHASH hashHandle = (HCRYPTHASH)NULL;
+  
+  if (!CryptAcquireContext (&provHandle, NULL, NULL, PROV_RSA_AES, 0))
+  {
+    DWORD errCode = GetLastError();
+
+    if (errCode == NTE_BAD_KEYSET)
+    {
+      if (!CryptAcquireContext(&provHandle, NULL, NULL, PROV_RSA_AES, CRYPT_NEWKEYSET))
+      {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+      }
+    }
+  }
+
+  // create a handle for CryptHashData
+  if (!CryptCreateHash (provHandle, CALG_SHA_512, 0, 0, &hashHandle))
+  {
+    cape_err_lastOSError (err);
+    CryptReleaseContext(provHandle, 0);
+
+    goto exit_and_cleanup;
+  }
+
+  if (CryptHashData (hashHandle, bufdat, buflen, 0) == 0)
+  {
+    cape_err_lastOSError(err);
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeStream stream = cape_stream_new ();
+
+
+  }
+  
+exit_and_cleanup:
+
+  if (hashHandle)
+  {
+    CryptDestroyHash (hashHandle);
+  }
+
+  if (provHandle)
+  {
+    CryptReleaseContext (provHandle, 0);
+  }
+
+  return ret;
+
+#elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+  
+  CapeStream ret = NULL;
+  
+  // local objects
+  CapeStream buffer = cape_stream_new ();
+  EVP_MD_CTX* mdctx = NULL;
+  unsigned int digest_len = 0;
+  
+  if ((mdctx = EVP_MD_CTX_new ()) == NULL)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  if (1 != EVP_DigestInit_ex (mdctx, EVP_sha512(), NULL))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize digest");
+    goto exit_and_cleanup;
+  }
+  
+  if (1 != EVP_DigestUpdate (mdctx, bufdat, buflen))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't update SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  // reserve bytes
+  cape_stream_cap (buffer, EVP_MD_size(EVP_sha512()));
+
+  if (1 != EVP_DigestFinal_ex (mdctx, (unsigned char*)cape_stream_pos (buffer), &digest_len))
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  // correct the length of the stream
+  cape_stream_set (buffer, digest_len);
+  
+  ret = buffer;
+  buffer = NULL;
+  
+exit_and_cleanup:
+  
+  if (mdctx) EVP_MD_CTX_free (mdctx);
+
+  cape_stream_del (&buffer);
+  return ret;
+
+#else
+
+  CapeStream ret = NULL;
+  
+  // local objects
+  CapeStream buffer = cape_stream_new ();
+  SHA512_CTX sha512;
+
+  // reserve bytes
+  cape_stream_cap (buffer, SHA512_DIGEST_LENGTH);
+
+  // initialization
+  if (SHA512_Init (&sha512) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't initialize SHA512");
+    goto exit_and_cleanup;
+  }
+  
+  // collect all data
+  if (SHA512_Update (&sha512, bufdat, buflen) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't update SHA512");
+    goto exit_and_cleanup;
+  }
+  
+  // create the SHA512 hash value and store it into the buffer stream
+  if (SHA512_Final((unsigned char*)cape_stream_pos (buffer), &sha512) == 0)
+  {
+    cape_err_set (err, CAPE_ERR_RUNTIME, "can't finalize SHA256");
+    goto exit_and_cleanup;
+  }
+  
+  // correct the length of the stream
+  cape_stream_set (buffer, SHA512_DIGEST_LENGTH);
+
+  ret = buffer;
+  buffer = NULL;
+  
+exit_and_cleanup:
+  
+  cape_stream_del (&buffer);
+  return ret;
+
+#endif
+}
+
 
 //-----------------------------------------------------------------------------
 

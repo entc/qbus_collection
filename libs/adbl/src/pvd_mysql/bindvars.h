@@ -26,7 +26,7 @@ struct AdblBindVars_s; typedef struct AdblBindVars_s* AdblBindVars;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AdblBindVars    adbl_bindvars_new             (int size);
+__CAPE_LIBEX   AdblBindVars    adbl_bindvars_new             (number_t size);
 
 __CAPE_LIBEX   void            adbl_bindvars_del             (AdblBindVars*);
 

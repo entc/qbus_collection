@@ -678,7 +678,7 @@ void qwebs_response_sp (CapeStream s, QWebs webs, const CapeString name, CapeMap
   cape_stream_append_str (s, name);
   cape_stream_append_str (s, "\r\n");
 
-  cape_stream_append_str (s, "Connection: Upgrade\r\n");
+  cape_stream_append_str (s, "Connection: keep-alive, Upgrade\r\n");
   
   while (cape_map_cursor_next (cursor))
   {

@@ -335,7 +335,7 @@ unsigned int cape_parser_json_decode_unicode_point (const char** pc)
 void cape_parser_json_decode_unicode_hex (CapeParserJson self, CapeStream dest)
 {
   // convert from HEX into wide char
-  wchar_t wc = strtol ((const char*)self->unicode_data, NULL, 16);
+  wchar_t wc = (wchar_t)strtol ((const char*)self->unicode_data, NULL, 16);
 
   //printf ("HEX: %s -> %u\n", self->unicode_data, wc);
 
@@ -399,18 +399,7 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
         {
           CapeDatetime dt;
 
-          if (cape_datetime__std (&dt, buf))
-          {
-            if (self->onItem)
-            {
-              // void* ptr, void* obj, int type, const char* key, void* val
-              self->onItem (self->ptr, self->keyElement->obj, CAPE_JPARSER_OBJECT_DATETIME, (void*)&dt, key, index);
-            }
-
-            cape_stream_clr (self->valElement->stream);
-            break;
-          }
-          else if (cape_datetime__std_msec (&dt, buf))
+          if (cape_datetime__std_msec (&dt, buf) || cape_datetime__std (&dt, buf))
           {
             if (self->onItem)
             {
