@@ -3,9 +3,19 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_parser_line.h>
 #include <fmt/cape_tokenizer.h>
+#include <stc/cape_map.h>
 
 // qcrypt includes
 #include <qcrypt_file.h>
+
+//-----------------------------------------------------------------------------
+
+struct ClddCtx_s
+{
+  const CapeString image_path;
+  CapeMap paths;
+
+}; typedef struct ClddCtx_s* ClddCtx;
 
 //-----------------------------------------------------------------------------
 
@@ -59,16 +69,18 @@ int has_default_library_path (const CapeString path)
 
 //-----------------------------------------------------------------------------
 
-int cp_library (const CapeString file, const CapeString image_path, CapeErr err)
+int cp_library (const CapeString file, ClddCtx ctx, CapeErr err)
 {
   int res;
   CapeString path2 = NULL;
 
   const CapeString filename = cape_fs_split (file, &path2);
 
+  printf ("split: %s\n", path2);
+
   if (has_default_library_path (path2))
   {
-    CapeString dest_path = cape_fs_path_merge (image_path, path2);
+    CapeString dest_path = cape_fs_path_merge (ctx->image_path, path2);
     CapeString dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
@@ -78,7 +90,7 @@ int cp_library (const CapeString file, const CapeString image_path, CapeErr err)
   }
   else
   {
-    CapeString dest_path = cape_fs_path_merge (image_path, "lib64");
+    CapeString dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
     CapeString dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
@@ -167,10 +179,20 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL cldd__paths__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res;
   const CapeString output;
+  struct ClddCtx_s ctx;
 
   // local objects
   CapeErr err = cape_err_new ();
@@ -185,6 +207,10 @@ int main (int argc, char *argv[])
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too few params");
     goto exit_and_cleanup;
   }
+
+  // set the context
+  ctx.image_path = argv[2];
+  ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
 
   // create the distination folder
   res = cape_fs_path_create_x (argv[2], err);
@@ -217,7 +243,7 @@ int main (int argc, char *argv[])
   output = cape_exec_get_stdout (exec);
 
   // create a new line parser for the output
-  lparser = cape_parser_line_new (argv[2], on_newline);
+  lparser = cape_parser_line_new (&ctx, on_newline);
 
   // run the parser
   res = cape_parser_line_process (lparser, output, cape_str_size (output), err);
@@ -234,6 +260,8 @@ exit_and_cleanup:
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "error", "%s", cape_err_text (err));
   }
+
+  cape_map_del (&(ctx.paths));
 
   cape_parser_line_del (&lparser);
   cape_exec_del (&exec);
