@@ -64,7 +64,9 @@ exit_and_cleanup:
 
 int has_default_library_path (const CapeString path)
 {
-  return cape_str_begins (path, "/usr") || cape_str_begins (path, "/lib") || cape_str_begins (path, "/lib64");
+  return cape_str_equal (path, "/lib64") || cape_str_equal (path, "/usr/lib64") || cape_str_equal (path, "/lib") || cape_str_equal (path, "/usr/lib");
+
+ // return cape_str_begins (path, "/usr") || cape_str_begins (path, "/lib") || cape_str_begins (path, "/lib64");
 }
 
 //-----------------------------------------------------------------------------
@@ -75,8 +77,6 @@ int cp_library (const CapeString file, ClddCtx ctx, CapeErr err)
   CapeString path2 = NULL;
 
   const CapeString filename = cape_fs_split (file, &path2);
-
-  printf ("split: %s\n", path2);
 
   if (has_default_library_path (path2))
   {
