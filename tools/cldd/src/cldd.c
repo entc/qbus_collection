@@ -71,33 +71,64 @@ int has_default_library_path (const CapeString path)
 
 //-----------------------------------------------------------------------------
 
-int cp_library (const CapeString file, ClddCtx ctx, CapeErr err)
+int cp_library (const CapeString file, const CapeString expected_filename, ClddCtx ctx, CapeErr err)
 {
   int res;
-  CapeString path2 = NULL;
 
+  // local objects
+  CapeString path2 = NULL;
+  CapeString dest_path = NULL;
+  CapeString dest_file = NULL;
+
+  // extract the filename and the path
   const CapeString filename = cape_fs_split (file, &path2);
 
   if (has_default_library_path (path2))
   {
-    CapeString dest_path = cape_fs_path_merge (ctx->image_path, path2);
-    CapeString dest_file = cape_fs_path_merge (dest_path, filename);
+    // create the destination directory
+    dest_path = cape_fs_path_merge (ctx->image_path, path2);
+
+    // create the destination file
+    dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
-
-    cape_str_del (&dest_file);
-    cape_str_del (&dest_path);
   }
   else
   {
-    CapeString dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
-    CapeString dest_file = cape_fs_path_merge (dest_path, filename);
+    // create the destination directory
+    dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
+
+    // create the destination file
+    dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
-
-    cape_str_del (&dest_file);
-    cape_str_del (&dest_path);
   }
+
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // check if the filename is equal to expected_file
+  if (expected_filename)
+  {
+    if (FALSE == cape_str_equal (expected_filename, filename))
+    {
+      CapeString dest_link = cape_fs_path_merge (dest_path, expected_filename);
+
+      printf ("link %s -> %s\n", dest_file, dest_link);
+
+      // we need to create an additional symlink
+      res = cape_fs_path_ln (dest_file, dest_link, err);
+
+      cape_str_del (&dest_link);
+    }
+  }
+
+exit_and_cleanup:
+
+  cape_str_del (&dest_path);
+  cape_str_del (&dest_file);
 
   cape_str_del (&path2);
   return res;
@@ -131,24 +162,27 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
   if (cape_tokenizer_split (line, '>', &s1, &s2))
   {
+    // clean the expected library which was found by LDD
+    CapeString s1_cleaned = cape_str_trim_lrstrict (s1);
+
+    CapeString s3 = NULL;
+    CapeString s4 = NULL;
+
+    if (cape_tokenizer_split (s2, '(', &s3, &s4))
     {
-      CapeString s3 = NULL;
-      CapeString s4 = NULL;
+      CapeString path = cape_str_trim_utf8 (s3);
+      CapeErr err = cape_err_new ();
 
-      if (cape_tokenizer_split (s2, '(', &s3, &s4))
-      {
-        CapeString path = cape_str_trim_utf8 (s3);
-        CapeErr err = cape_err_new ();
+      cp_library (path, s1_cleaned, ptr, err);
 
-        cp_library (path, ptr, err);
-
-        cape_err_del (&err);
-        cape_str_del (&path);
-      }
-
-      cape_str_del (&s3);
-      cape_str_del (&s4);
+      cape_err_del (&err);
+      cape_str_del (&path);
     }
+
+    cape_str_del (&s3);
+    cape_str_del (&s4);
+
+    cape_str_del (&s1_cleaned);
   }
   else
   {
@@ -162,7 +196,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
       if (path[0] == '/')
       {
-        cp_library (path, ptr, err);
+        cp_library (path, NULL, ptr, err);
       }
 
       cape_err_del (&err);
