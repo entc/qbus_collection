@@ -119,7 +119,7 @@ int cp_library (const CapeString file, const CapeString expected_filename, ClddC
       printf ("link %s -> %s\n", dest_file, dest_link);
 
       // we need to create an additional symlink
-      res = cape_fs_path_ln (dest_file, dest_link, err);
+      res = cape_fs_path_ln (filename, dest_link, dest_path, err);
 
       cape_str_del (&dest_link);
     }

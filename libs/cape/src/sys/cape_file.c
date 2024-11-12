@@ -23,6 +23,7 @@
 #include <dirent.h>
 #include <fts.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #elif defined __BSD_OS
 
@@ -938,7 +939,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_path_ln (const char* source, const char* destination, CapeErr err)
+int cape_fs_path_ln (const char* source, const char* destination, const char* path, CapeErr err)
 {
 #ifdef __WINDOWS_OS
 
@@ -946,10 +947,44 @@ int cape_fs_path_ln (const char* source, const char* destination, CapeErr err)
 
 #elif defined __LINUX_OS || defined __BSD_OS
 
-  if (-1 == symlink (source, destination))
+  int res;
+  int fd;
+
+  if (path)
   {
-    return cape_err_lastOSError (err);
+    // try to open the path
+    fd = open (path, O_RDONLY | O_DIRECTORY);
+
+    if (-1 == fd)
+    {
+      // some error occoured
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
   }
+  else
+  {
+    fd = AT_FDCWD;    // current directory
+  }
+
+  // try to create the symlink
+  if (-1 == symlinkat (source, fd, destination))
+  {
+    res = cape_err_lastOSError (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+
+exit_and_cleanup:
+
+  if (path)
+  {
+    close (fd);
+  }
+
+  return res;
 
 #endif
 }
