@@ -1379,7 +1379,7 @@ void cape_fh_del (CapeFileHandle* p_self)
 
     if (self->fd >= 0)
     {
-      close (self->fd);
+      close ((int)self->fd);
     }
 
     CAPE_DEL (p_self, struct CapeFileHandle_s);
@@ -1488,20 +1488,20 @@ void* cape_fh_fd (CapeFileHandle self)
 
 number_t cape_fh_read_buf (CapeFileHandle self, char* bufdat, number_t buflen)
 {
-  int res = read (self->fd, bufdat, buflen);
-  if (res < 0)
+  number_t ret = read ((int)self->fd, bufdat, buflen);
+  if (ret < 0)
   {
     return 0;
   }
 
-  return res;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 number_t cape_fh_write_buf (CapeFileHandle self, const char* bufdat, number_t buflen)
 {
-  return write (self->fd, bufdat, buflen);
+  return write ((int)self->fd, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------
@@ -1670,7 +1670,7 @@ void cape_fs_write_msg (const void* handle, const char* buf, number_t len)
 {
   if (handle)
   {
-    write ((number_t)handle, buf, len);
+    write ((int)((number_t)handle), buf, len);
   }
 }
 
@@ -1680,8 +1680,8 @@ void cape_fs_writeln_msg (const void* handle, const char* buf, number_t len)
 {
   if (handle)
   {
-    write ((number_t)handle, buf, len);
-    write ((number_t)handle, "\n", 1);
+    write ((int)((number_t)handle), buf, len);
+    write ((int)((number_t)handle), "\n", 1);
   }
 }
 
