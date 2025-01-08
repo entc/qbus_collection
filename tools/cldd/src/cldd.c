@@ -3,9 +3,19 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_parser_line.h>
 #include <fmt/cape_tokenizer.h>
+#include <stc/cape_map.h>
 
 // qcrypt includes
 #include <qcrypt_file.h>
+
+//-----------------------------------------------------------------------------
+
+struct ClddCtx_s
+{
+  const CapeString image_path;
+  CapeMap paths;
+
+}; typedef struct ClddCtx_s* ClddCtx;
 
 //-----------------------------------------------------------------------------
 
@@ -54,38 +64,71 @@ exit_and_cleanup:
 
 int has_default_library_path (const CapeString path)
 {
-  return cape_str_begins (path, "/usr") || cape_str_begins (path, "/lib") || cape_str_begins (path, "/lib64");
+  return cape_str_equal (path, "/lib64") || cape_str_equal (path, "/usr/lib64") || cape_str_equal (path, "/lib") || cape_str_equal (path, "/usr/lib");
+
+ // return cape_str_begins (path, "/usr") || cape_str_begins (path, "/lib") || cape_str_begins (path, "/lib64");
 }
 
 //-----------------------------------------------------------------------------
 
-int cp_library (const CapeString file, const CapeString image_path, CapeErr err)
+int cp_library (const CapeString file, const CapeString expected_filename, ClddCtx ctx, CapeErr err)
 {
   int res;
-  CapeString path2 = NULL;
 
+  // local objects
+  CapeString path2 = NULL;
+  CapeString dest_path = NULL;
+  CapeString dest_file = NULL;
+
+  // extract the filename and the path
   const CapeString filename = cape_fs_split (file, &path2);
 
   if (has_default_library_path (path2))
   {
-    CapeString dest_path = cape_fs_path_merge (image_path, path2);
-    CapeString dest_file = cape_fs_path_merge (dest_path, filename);
+    // create the destination directory
+    dest_path = cape_fs_path_merge (ctx->image_path, path2);
+
+    // create the destination file
+    dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
-
-    cape_str_del (&dest_file);
-    cape_str_del (&dest_path);
   }
   else
   {
-    CapeString dest_path = cape_fs_path_merge (image_path, "lib64");
-    CapeString dest_file = cape_fs_path_merge (dest_path, filename);
+    // create the destination directory
+    dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
+
+    // create the destination file
+    dest_file = cape_fs_path_merge (dest_path, filename);
 
     res = cp_file (file, dest_path, dest_file, err);
-
-    cape_str_del (&dest_file);
-    cape_str_del (&dest_path);
   }
+
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // check if the filename is equal to expected_file
+  if (expected_filename)
+  {
+    if (FALSE == cape_str_equal (expected_filename, filename))
+    {
+      CapeString dest_link = cape_fs_path_merge (dest_path, expected_filename);
+
+      printf ("link %s -> %s\n", dest_file, dest_link);
+
+      // we need to create an additional symlink
+      res = cape_fs_path_ln (filename, dest_link, dest_path, err);
+
+      cape_str_del (&dest_link);
+    }
+  }
+
+exit_and_cleanup:
+
+  cape_str_del (&dest_path);
+  cape_str_del (&dest_file);
 
   cape_str_del (&path2);
   return res;
@@ -119,24 +162,27 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
   if (cape_tokenizer_split (line, '>', &s1, &s2))
   {
+    // clean the expected library which was found by LDD
+    CapeString s1_cleaned = cape_str_trim_lrstrict (s1);
+
+    CapeString s3 = NULL;
+    CapeString s4 = NULL;
+
+    if (cape_tokenizer_split (s2, '(', &s3, &s4))
     {
-      CapeString s3 = NULL;
-      CapeString s4 = NULL;
+      CapeString path = cape_str_trim_utf8 (s3);
+      CapeErr err = cape_err_new ();
 
-      if (cape_tokenizer_split (s2, '(', &s3, &s4))
-      {
-        CapeString path = cape_str_trim_utf8 (s3);
-        CapeErr err = cape_err_new ();
+      cp_library (path, s1_cleaned, ptr, err);
 
-        cp_library (path, ptr, err);
-
-        cape_err_del (&err);
-        cape_str_del (&path);
-      }
-
-      cape_str_del (&s3);
-      cape_str_del (&s4);
+      cape_err_del (&err);
+      cape_str_del (&path);
     }
+
+    cape_str_del (&s3);
+    cape_str_del (&s4);
+
+    cape_str_del (&s1_cleaned);
   }
   else
   {
@@ -150,7 +196,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
       if (path[0] == '/')
       {
-        cp_library (path, ptr, err);
+        cp_library (path, NULL, ptr, err);
       }
 
       cape_err_del (&err);
@@ -167,10 +213,20 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL cldd__paths__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res;
   const CapeString output;
+  struct ClddCtx_s ctx;
 
   // local objects
   CapeErr err = cape_err_new ();
@@ -185,6 +241,10 @@ int main (int argc, char *argv[])
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too few params");
     goto exit_and_cleanup;
   }
+
+  // set the context
+  ctx.image_path = argv[2];
+  ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
 
   // create the distination folder
   res = cape_fs_path_create_x (argv[2], err);
@@ -217,7 +277,7 @@ int main (int argc, char *argv[])
   output = cape_exec_get_stdout (exec);
 
   // create a new line parser for the output
-  lparser = cape_parser_line_new (argv[2], on_newline);
+  lparser = cape_parser_line_new (&ctx, on_newline);
 
   // run the parser
   res = cape_parser_line_process (lparser, output, cape_str_size (output), err);
@@ -234,6 +294,8 @@ exit_and_cleanup:
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "error", "%s", cape_err_text (err));
   }
+
+  cape_map_del (&(ctx.paths));
 
   cape_parser_line_del (&lparser);
   cape_exec_del (&exec);

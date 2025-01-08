@@ -74,6 +74,8 @@ __CAPE_LIBEX   int                cape_fs_path_rm        (const char* path, int 
 
 __CAPE_LIBEX   int                cape_fs_path_cp        (const char* source, const char* destination, CapeErr);
 
+__CAPE_LIBEX   int                cape_fs_path_ln        (const char* source, const char* destination, const char* path, CapeErr);
+
 //-----------------------------------------------------------------------------
 
                                   /*
