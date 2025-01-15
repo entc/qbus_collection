@@ -2447,21 +2447,44 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
     CapeUdc params = *p_params;
     if (params)
     {
-      CapeUdcCursor* cursor = cape_udc_cursor_new (self->tdata, CAPE_DIRECTION_FORW);
-
-      while (cape_udc_cursor_next (cursor))
       {
-        CapeUdc h2 = cape_udc_get (params, cape_udc_name (cursor->item));
-        if (h2 == NULL)
-        {
-          CapeUdc h1 = cape_udc_cursor_ext (self->tdata, cursor);
-          cape_udc_add (params, &h1);
-        }
+        CapeString h = cape_json_to_s (params);
+        
+        printf ("PARAMS: %s\n", h);
+        
+      }
+      {
+        CapeString h = cape_json_to_s (self->tdata);
+        
+        printf ("TDATA: %s\n", h);
+        
       }
 
-      cape_udc_cursor_del (&cursor);
+      {
+        CapeUdcCursor* cursor = cape_udc_cursor_new (self->tdata, CAPE_DIRECTION_FORW);
+
+        while (cape_udc_cursor_next (cursor))
+        {
+          CapeUdc h2 = cape_udc_get (params, cape_udc_name (cursor->item));
+          if (h2 == NULL)
+          {
+            CapeUdc h1 = cape_udc_cursor_ext (self->tdata, cursor);
+            cape_udc_add (params, &h1);
+          }
+        }
+
+        cape_udc_cursor_del (&cursor);
+      }
 
       cape_udc_replace_mv (&(self->tdata), p_params);
+      
+      {
+        CapeString h = cape_json_to_s (self->tdata);
+        
+        printf ("TDATA RES: %s\n", h);
+        
+      }
+
     }
   }
   else
@@ -2838,7 +2861,8 @@ int flow_run_dbw_wait__init (FlowRunDbw self, CapeErr err)
 
   if (waitlist_node == NULL)
   {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't find the list defined by 'waitlist_node'");
+    // if don't find a wait_list the step is fine
+    res = CAPE_ERR_NONE;
     goto exit_and_cleanup;
   }
 
