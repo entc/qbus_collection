@@ -30,8 +30,10 @@ __CAPE_LIBEX const char*     cape_cursor_data       (CapeCursor);
 
 __CAPE_LIBEX int             cape_cursor__has_data  (CapeCursor, number_t len);
 
+                             /* returns the bytes not scanned yet */
 __CAPE_LIBEX number_t        cape_cursor_tail       (CapeCursor);
 
+                             /* returns the pointer to the current position as char* */
 __CAPE_LIBEX const char*     cape_cursor_dpos       (CapeCursor);
 
                              /* get the absolute number of the position, if = 0 -> no traversal was made */

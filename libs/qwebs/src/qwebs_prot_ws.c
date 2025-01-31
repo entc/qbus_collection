@@ -371,19 +371,22 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
 
 void qwebs_prot_websocket__adjust_buffer (QWebsProtWebsocketConnection self, CapeCursor cursor)
 {
+  number_t bytes_left_to_scan = cape_cursor_tail (cursor);
+  
   if (NULL == self->buffer)   // the cursor is running on the local buffer
   {
     self->buffer = cape_stream_new ();
     
     // copy the rest of the local buffer into the out buffer
-    cape_stream_append_buf (self->buffer, cape_cursor_dpos (cursor), cape_cursor_tail (cursor));
+    // travers further in the cursor
+    cape_stream_append_buf (self->buffer, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
   }
   else if (cape_cursor_apos (cursor) > 0)  // the cursor is running on self->buffer
   {
     CapeStream h = cape_stream_new ();
     
     // shift the buffer
-    cape_stream_append_buf (h, cape_cursor_dpos (cursor), cape_cursor_tail (cursor));
+    cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
     
     // replace our buffer with the shifted buffer
     cape_stream_del (&(self->buffer));
@@ -402,7 +405,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
 
   if (self->buffer)
   {
@@ -417,92 +420,105 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     cape_cursor_set (cursor, bufdat, buflen);
   }
   
-  if (self->state == QWEBS_PROT_WEBSOCKET_RECV__NONE)
+  while (cape_cursor_tail (cursor) > 0)
   {
-    if (cape_cursor__has_data (cursor, 2))
+    switch (self->state)
     {
-      qwebs_prot_websocket__decode_header1 (self, cursor);
-      
-      self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
-    }
-    else
-    {
-      qwebs_prot_websocket__adjust_buffer (self, cursor);
-    }
-  }
-  
-  if (self->state == QWEBS_PROT_WEBSOCKET_RECV__HEADER1)
-  {
-    if (self->data_size == 126)
-    {
-      if (cape_cursor__has_data (cursor, 2))
+      case QWEBS_PROT_WEBSOCKET_RECV__NONE:
       {
-        self->data_size = cape_cursor_scan_16 (cursor, TRUE);
-
-        self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
-      }
-      else
-      {
-        qwebs_prot_websocket__adjust_buffer (self, cursor);
-      }
-    }
-    else if (self->data_size == 127)
-    {
-      if (cape_cursor__has_data (cursor, 6))
-      {
-        self->data_size = cape_cursor_scan_32 (cursor, TRUE);
-
-        self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
-      }
-      else
-      {
-        qwebs_prot_websocket__adjust_buffer (self, cursor);
-      }
-    }
-    else
-    {
-      self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
-    }
-  }
-  
-  if (self->state == QWEBS_PROT_WEBSOCKET_RECV__LENGTH)
-  {
-    if (self->mask)
-    {
-      if (cape_cursor__has_data (cursor, 4))
-      {
-        cape_str_del (&(self->masking_key));
-        self->masking_key = cape_cursor_scan_s (cursor, 4);
+        if (cape_cursor__has_data (cursor, 2))
+        {
+          qwebs_prot_websocket__decode_header1 (self, cursor);
+          
+          self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
+        }
+        else
+        {
+          qwebs_prot_websocket__adjust_buffer (self, cursor);
+        }
         
-        self->state = QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD;
+        break;
       }
-      else
+      case QWEBS_PROT_WEBSOCKET_RECV__HEADER1:
       {
-        qwebs_prot_websocket__adjust_buffer (self, cursor);
+        if (self->data_size == 126)
+        {
+          if (cape_cursor__has_data (cursor, 2))
+          {
+            self->data_size = cape_cursor_scan_16 (cursor, TRUE);
+            
+            self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
+          }
+          else
+          {
+            qwebs_prot_websocket__adjust_buffer (self, cursor);
+          }
+        }
+        else if (self->data_size == 127)
+        {
+          if (cape_cursor__has_data (cursor, 6))
+          {
+            self->data_size = cape_cursor_scan_32 (cursor, TRUE);
+            
+            self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
+          }
+          else
+          {
+            qwebs_prot_websocket__adjust_buffer (self, cursor);
+          }
+        }
+        else
+        {
+          self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
+        }
+       
+        break;
+      }
+      case QWEBS_PROT_WEBSOCKET_RECV__LENGTH:
+      {
+        if (self->mask)
+        {
+          if (cape_cursor__has_data (cursor, 4))
+          {
+            cape_str_del (&(self->masking_key));
+            self->masking_key = cape_cursor_scan_s (cursor, 4);
+            
+            self->state = QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD;
+          }
+          else
+          {
+            qwebs_prot_websocket__adjust_buffer (self, cursor);
+          }
+        }
+        else
+        {
+          self->state = QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD;
+        }
+        
+        break;
+      }
+      case QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD:
+      {
+        if (cape_cursor__has_data (cursor, self->data_size))
+        {
+          qwebs_prot_websocket__decode_payload (self, cursor);
+          
+          cape_stream_del (&(self->buffer));
+          
+          self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
+        }
+        else
+        {
+          qwebs_prot_websocket__adjust_buffer (self, cursor);
+        }
+        
+        break;
       }
     }
-    else
-    {
-      self->state = QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD;
-    }
   }
   
-  if (self->state == QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD)
-  {
-    if (cape_cursor__has_data (cursor, self->data_size))
-    {
-      qwebs_prot_websocket__decode_payload (self, cursor);
-
-      cape_stream_del (&(self->buffer));
-      
-      self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
-    }
-    else
-    {
-      qwebs_prot_websocket__adjust_buffer (self, cursor);
-    }
-  }
-  
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
+    
   cape_cursor_del (&cursor);
 }
 
