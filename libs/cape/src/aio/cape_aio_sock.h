@@ -163,7 +163,12 @@ __CAPE_LIBEX  int                 cape_aio_socket_cache_send_s  (CapeAioSocketCa
 __CAPE_LIBEX  void                cape_aio_socket_cache_retry   (CapeAioSocketCache, int auto_reconnect);
 
 __CAPE_LIBEX  int                 cape_aio_socket_cache_active  (CapeAioSocketCache);                                       ///< returns true if connection is active
-  
+
+//-----------------------------------------------------------------------------
+
+                                  /* send the stream as smaller packets -> use this to simulate real TCP connections */
+__CAPE_LIBEX  int                 cape_aio_socket_cache_simp    (CapeAioSocketCache, CapeStream* p_stream, number_t block_size, number_t delay, CapeErr err);
+
 //=============================================================================
 
 #endif

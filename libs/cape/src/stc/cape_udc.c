@@ -441,6 +441,25 @@ void cape_udc_merge_cp (CapeUdc self, const CapeUdc udc)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_clr (CapeUdc self)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_NODE:
+    {
+      cape_map_clr (self->data);      
+      break;
+    }
+    case CAPE_UDC_LIST:
+    {
+      cape_list_clr (self->data);
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 const CapeString  cape_udc_name (const CapeUdc self)
 {
   return self->name;

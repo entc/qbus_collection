@@ -2696,6 +2696,42 @@ int cape_aio_socket_cache_send_s (CapeAioSocketCache self, CapeStream* p_stream,
 
 //-----------------------------------------------------------------------------
 
+int cape_aio_socket_cache_simp (CapeAioSocketCache self, CapeStream* p_stream, number_t block_size, number_t delay, CapeErr err)
+{
+  int res;
+  
+  if (*p_stream)
+  {
+    CapeStream source = *p_stream;    
+    CapeStream s;
+    
+    for (number_t pos = 0; NULL != (s = cape_stream_sub (source, pos, block_size, TRUE)); pos += block_size)
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "cache send", "size = %lu", cape_stream_size (s));
+      
+      res = cape_aio_socket_cache_send_s (self, &s, err);
+      if (res)
+      {
+        break;
+      }
+      
+      if (delay)
+      {
+        cape_thread_sleep (delay);
+      }
+    }
+    
+    cape_stream_del (p_stream);
+    return CAPE_ERR_NONE;
+  }
+  else
+  {
+    return cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.NO_STREAM");
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_aio_socket_cache_active (CapeAioSocketCache self)
 {
   int active = FALSE;

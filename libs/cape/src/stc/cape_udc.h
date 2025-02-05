@@ -42,17 +42,26 @@ __CAPE_LIBEX   number_t             cape_udc_size             (const CapeUdc);
 
 //-----------------------------------------------------------------------------
 
+                                    /* returns a copy of the UDC container */
 __CAPE_LIBEX   CapeUdc              cape_udc_cp               (const CapeUdc);
 
+                                    /* moves the UDC container */
 __CAPE_LIBEX   CapeUdc              cape_udc_mv               (CapeUdc*);
 
+                                    /* replaces the content with a copy */
 __CAPE_LIBEX   void                 cape_udc_replace_cp       (CapeUdc*, const CapeUdc replace_with_copy);
 
+                                    /* replaces the content by moving */
 __CAPE_LIBEX   void                 cape_udc_replace_mv       (CapeUdc*, CapeUdc* replace_with);
 
+                                    /* merges the content of 2 UDC container, delete one */
 __CAPE_LIBEX   void                 cape_udc_merge_mv         (CapeUdc, CapeUdc*);
 
+                                    /* merges the content of 2 UDC container, keep one untouched */
 __CAPE_LIBEX   void                 cape_udc_merge_cp         (CapeUdc, const CapeUdc);
+
+                                    /* clear the content of a container */
+__CAPE_LIBEX   void                 cape_udc_clr              (CapeUdc);
 
 //-----------------------------------------------------------------------------
 
