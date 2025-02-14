@@ -29,6 +29,10 @@
 #define CAPE_JPARSER_OBJECT_NULL     7
 #define CAPE_JPARSER_OBJECT_DATETIME 8
 
+// special objects
+#define CAPE_JPARSER_OBJECT_NAN     20
+#define CAPE_JPARSER_OBJECT_INF     21
+
 //-----------------------------------------------------------------------------
 
 struct CapeParserJson_s; typedef struct CapeParserJson_s* CapeParserJson;

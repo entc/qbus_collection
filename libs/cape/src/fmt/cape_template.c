@@ -1560,7 +1560,7 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, int size, CapeErr err)
+int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, number_t size, CapeErr err)
 {
   int res;
   

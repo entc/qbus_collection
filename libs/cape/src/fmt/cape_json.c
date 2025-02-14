@@ -72,7 +72,7 @@ static void __STDCALL cape_json_onItem (void* ptr, void* obj, int type, void* va
       CapeUdc h = cape_udc_new (CAPE_UDC_BOOL, key);
       
       long dat = (long)val;
-      cape_udc_set_b (h, dat);
+      cape_udc_set_b (h, (int)dat);
       
       cape_udc_add (obj, &h);
       break;

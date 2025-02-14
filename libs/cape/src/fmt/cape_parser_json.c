@@ -26,6 +26,10 @@
 #define JPARSER_STATE_STR_UNICODE   12
 #define JPARSER_STATE_KEY_ESCAPE    13
 #define JPARSER_STATE_KEY_UNICODE   14
+#define JPARSER_STATE_NUMSCI_EXP    15     // the state after the scientific number's e/E char
+#define JPARSER_STATE_NUMBER_BEG    16     // a number might follow after +/-
+#define JPARSER_STATE_NUMINF_RUN    17     // infinite number
+#define JPARSER_STATE_NUMNAN_RUN    18     // not a number
 
 //=============================================================================
 
@@ -474,6 +478,39 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
       cape_stream_clr (self->valElement->stream);
       break;
     }
+    case CAPE_JPARSER_OBJECT_NAN:
+    {
+      if (self->onItem)
+      {
+        double dat = CAPE_MATH_NAN;
+        self->onItem (self->ptr, self->keyElement->obj, CAPE_JPARSER_OBJECT_FLOAT, (void*)&dat, key, index);
+      }
+      
+      cape_stream_clr (self->valElement->stream);
+      break;
+    }
+    case CAPE_JPARSER_OBJECT_INF:
+    {
+      if (self->onItem)
+      {
+        const char* val = cape_stream_get (self->valElement->stream);
+        double dat;
+        
+        if (val[0] == '-')
+        {
+          dat = -CAPE_MATH_INFINITY;
+        }
+        else
+        {
+          dat = CAPE_MATH_INFINITY;
+        }
+        
+        self->onItem (self->ptr, self->keyElement->obj, CAPE_JPARSER_OBJECT_FLOAT, (void*)&dat, key, index);
+      }
+      
+      cape_stream_clr (self->valElement->stream);
+      break;
+    }
     case CAPE_JPARSER_UNDEFINED:
     {
       switch (self->valElement->type)
@@ -777,6 +814,57 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
 
             break;
           }
+          case JPARSER_STATE_NUMSCI_EXP:
+          {
+            state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT);
+
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
+            if (self->keyElement)
+            {
+              state = JPARSER_STATE_VAL_BEG;
+            }
+
+            break;
+          }
+          case JPARSER_STATE_NUMNAN_RUN:
+          {
+            state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NAN);
+
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
+            if (self->keyElement)
+            {
+              state = JPARSER_STATE_VAL_BEG;
+            }
+
+            break;
+          }
+          case JPARSER_STATE_NUMINF_RUN:
+          {
+            state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_INF);
+
+            res = cape_parser_json_pop (self, err);
+            if (res)
+            {
+              return res;
+            }
+
+            if (self->keyElement)
+            {
+              state = JPARSER_STATE_VAL_BEG;
+            }
+
+            break;
+          }
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
@@ -1002,26 +1090,32 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           }
           case JPARSER_STATE_VAL_BEG:
           {
-            state = cape_parser_json_item (self, CAPE_JPARSER_UNDEFINED);
-
-            state = cape_parser_json_leave_value (self, state);
-
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_UNDEFINED));
             break;
           }
           case JPARSER_STATE_NUMBER_RUN:
           {
-            state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NUMBER);
-
-            state = cape_parser_json_leave_value (self, state);
-
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NUMBER));
             break;
           }
           case JPARSER_STATE_FLOAT_RUN:
           {
-            state = cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT);
-
-            state = cape_parser_json_leave_value (self, state);
-
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT));
+            break;
+          }
+          case JPARSER_STATE_NUMSCI_EXP:
+          {
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_OBJECT_FLOAT));
+            break;
+          }
+          case JPARSER_STATE_NUMNAN_RUN:
+          {
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_OBJECT_NAN));
+            break;
+          }
+          case JPARSER_STATE_NUMINF_RUN:
+          {
+            state = cape_parser_json_leave_value (self, cape_parser_json_item (self, CAPE_JPARSER_OBJECT_INF));
             break;
           }
           case JPARSER_STATE_STR_RUN:
@@ -1141,12 +1235,24 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
             cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
+          case JPARSER_STATE_NUMBER_BEG:
+          {
+            state = JPARSER_STATE_NUMBER_RUN;
+
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
           case JPARSER_STATE_NUMBER_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
           case JPARSER_STATE_FLOAT_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_NUMSCI_EXP:
           {
             cape_stream_append_c (self->valElement->stream, *c);
             break;
@@ -1209,12 +1315,13 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
         break;
       }
       case '-':
+      case '+':
       {
         switch (state)
         {
           case JPARSER_STATE_VAL_BEG:
           {
-            state = JPARSER_STATE_NUMBER_RUN;
+            state = JPARSER_STATE_NUMBER_BEG;
 
             cape_stream_append_c (self->valElement->stream, *c);
             break;
@@ -1233,7 +1340,11 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
-
+            break;
+          }
+          case JPARSER_STATE_NUMSCI_EXP:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
           default:
@@ -1287,11 +1398,21 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
         break;
       }
       case 'E':
+      case 'e':
       {
         switch (state)
         {
+          case JPARSER_STATE_NUMBER_RUN:
+          {
+            state = JPARSER_STATE_NUMSCI_EXP;
+            
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
           case JPARSER_STATE_FLOAT_RUN:
           {
+            state = JPARSER_STATE_NUMSCI_EXP;
+
             cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
@@ -1309,21 +1430,197 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
           case JPARSER_STATE_STR_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_KEY_UNICODE:
+          {
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+
+            if (self->unicode_pos == 4)
+            {
+              CapeParserJsonItem element = self->keyElement;
+
+              if (element)
+              {
+                cape_parser_json_decode_unicode_hex (self, element->stream);
+              }
+
+              state = JPARSER_STATE_KEY_RUN;
+            }
 
             break;
           }
-          case JPARSER_STATE_VAL_BEG:
+          case JPARSER_STATE_STR_UNICODE:
           {
-            cape_stream_append_c (self->valElement->stream, *c);
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+
+            if (self->unicode_pos == 4)
+            {
+              cape_parser_json_decode_unicode_hex (self, self->valElement->stream);
+              state = JPARSER_STATE_STR_RUN;
+            }
 
             break;
           }
           default:
           {
-            return cape_err_set (err, CAPE_ERR_PARSER, "unexpected state in 'E'");
+            return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state [%i] in 'E'", state);
           }
         }
 
+        break;
+      }
+      case 'n':
+      {
+        switch (state)
+        {
+          case JPARSER_STATE_VAL_BEG:
+          {
+            state = JPARSER_STATE_NUMNAN_RUN;
+            
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_NUMNAN_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_NUMINF_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
+            
+            break;
+          }
+          case JPARSER_STATE_STR_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_KEY_UNICODE:
+          {
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+            
+            if (self->unicode_pos == 4)
+            {
+              CapeParserJsonItem element = self->keyElement;
+              
+              if (element)
+              {
+                cape_parser_json_decode_unicode_hex (self, element->stream);
+              }
+              
+              state = JPARSER_STATE_KEY_RUN;
+            }
+            
+            break;
+          }
+          case JPARSER_STATE_STR_UNICODE:
+          {
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+            
+            if (self->unicode_pos == 4)
+            {
+              cape_parser_json_decode_unicode_hex (self, self->valElement->stream);
+              state = JPARSER_STATE_STR_RUN;
+            }
+            
+            break;
+          }
+          default:
+          {
+            return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state [%i] in 'n'", state);
+          }
+        }
+        
+        break;
+      }
+      case 'i':
+      {
+        switch (state)
+        {
+          case JPARSER_STATE_VAL_BEG:
+          {
+            state = JPARSER_STATE_NUMINF_RUN;
+            
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_NUMBER_BEG:
+          {
+            state = JPARSER_STATE_NUMINF_RUN;
+            
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_KEY_RUN:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            
+            if (element)
+            {
+              cape_stream_append_c (element->stream, *c);
+            }
+            
+            break;
+          }
+          case JPARSER_STATE_STR_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
+          case JPARSER_STATE_KEY_UNICODE:
+          {
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+            
+            if (self->unicode_pos == 4)
+            {
+              CapeParserJsonItem element = self->keyElement;
+              
+              if (element)
+              {
+                cape_parser_json_decode_unicode_hex (self, element->stream);
+              }
+              
+              state = JPARSER_STATE_KEY_RUN;
+            }
+            
+            break;
+          }
+          case JPARSER_STATE_STR_UNICODE:
+          {
+            self->unicode_data [self->unicode_pos + 2] = *c;
+            self->unicode_pos++;
+            
+            if (self->unicode_pos == 4)
+            {
+              cape_parser_json_decode_unicode_hex (self, self->valElement->stream);
+              state = JPARSER_STATE_STR_RUN;
+            }
+            
+            break;
+          }
+          default:
+          {
+            return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state [%i] in 'n'", state);
+          }
+        }
+        
         break;
       }
       default:
@@ -1515,10 +1812,14 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
 
             break;
           }
-          case JPARSER_STATE_VAL_BEG:
+          case JPARSER_STATE_NUMNAN_RUN:
           {
             cape_stream_append_c (self->valElement->stream, *c);
-
+            break;
+          }
+          case JPARSER_STATE_NUMINF_RUN:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
           default:
