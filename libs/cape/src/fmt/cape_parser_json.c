@@ -1822,6 +1822,11 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
             cape_stream_append_c (self->valElement->stream, *c);
             break;
           }
+          case JPARSER_STATE_VAL_BEG:
+          {
+            cape_stream_append_c (self->valElement->stream, *c);
+            break;
+          }
           default:
           {
             return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state [%i] in default '%c' <- [%i]", state, *c, *c);
