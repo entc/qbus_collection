@@ -431,6 +431,8 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           qwebs_prot_websocket__decode_header1 (self, cursor);
           
           self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
+          
+          cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
         }
         else
         {
@@ -456,7 +458,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
         }
         else if (self->data_size == 127)
         {
-          if (cape_cursor__has_data (cursor, 6))
+          if (cape_cursor__has_data (cursor, 4))
           {
             self->data_size = cape_cursor_scan_32 (cursor, TRUE);
             
@@ -499,6 +501,8 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
       }
       case QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD:
       {
+        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
+        
         if (cape_cursor__has_data (cursor, self->data_size))
         {
           qwebs_prot_websocket__decode_payload (self, cursor);
@@ -517,7 +521,6 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     }
   }
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
     
   cape_cursor_del (&cursor);
 }
