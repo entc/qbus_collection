@@ -629,6 +629,8 @@ void __STDCALL qwebs_prot_http__on_recv (void* user_ptr, QWebsConnection conn, c
 
   if (NULL == self->parser.data)
   {
+    // creates a new request instance
+    // increases the connection counter
     self->parser.data = qwebs_connection_factory (conn);
   }
 

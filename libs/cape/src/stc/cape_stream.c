@@ -229,6 +229,20 @@ CapeStream cape_stream_sub (CapeStream self, number_t start, number_t length, in
 
 //-----------------------------------------------------------------------------
 
+void cape_stream_replace_mv (CapeStream* p_self, CapeStream* p_source)
+{
+  // free the old stream
+  cape_stream_del (p_self);
+  
+  // transfer ownership
+  *p_self = *p_source;
+  
+  // release ownership
+  *p_source = NULL;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_mime_set (CapeStream self, const CapeString mime)
 {
   cape_str_replace_cp (&(self->mime_type), mime);

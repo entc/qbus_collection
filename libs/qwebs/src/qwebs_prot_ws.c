@@ -191,8 +191,6 @@ void qwebs_prot_websocket_send_buf (QWebsProtWebsocketConnection self, const cha
 
 struct QWebsProtWebsocket_s
 {
-  QWebs qwebs;
-  
   void* user_ptr;
   fct_qwebs_prot_websocket__on_conn on_conn;
   fct_qwebs_prot_websocket__on_init on_init;
@@ -202,11 +200,9 @@ struct QWebsProtWebsocket_s
 
 //-----------------------------------------------------------------------------
 
-QWebsProtWebsocket qwebs_prot_websocket_new (QWebs qwebs)
+QWebsProtWebsocket qwebs_prot_websocket_new ()
 {
   QWebsProtWebsocket self = CAPE_NEW (struct QWebsProtWebsocket_s);
-  
-  self->qwebs = qwebs;
   
   self->user_ptr = NULL;
   
@@ -216,6 +212,17 @@ QWebsProtWebsocket qwebs_prot_websocket_new (QWebs qwebs)
   self->on_done = NULL;
   
   return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_websocket_del (QWebsProtWebsocket* p_self)
+{
+  if (*p_self)
+  {
+    
+    CAPE_DEL (p_self, struct QWebsProtWebsocket_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -371,29 +378,26 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
 
 void qwebs_prot_websocket__adjust_buffer (QWebsProtWebsocketConnection self, CapeCursor cursor)
 {
-  number_t bytes_left_to_scan = cape_cursor_tail (cursor);
+  // local objects
+  CapeStream h = NULL;
   
-  if (NULL == self->buffer)   // the cursor is running on the local buffer
   {
-    self->buffer = cape_stream_new ();
+    // returns the bytes which had not been used for parsing
+    number_t bytes_left_to_scan = cape_cursor_tail (cursor);
     
-    // copy the rest of the local buffer into the out buffer
-    // travers further in the cursor
-    cape_stream_append_buf (self->buffer, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+    if (bytes_left_to_scan > 0)
+    {
+      h = cape_stream_new ();
+      
+      // shift the buffer
+      // travers the cursor (to the end)
+      cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+      
+    }
   }
-  else if (cape_cursor_apos (cursor) > 0)  // the cursor is running on self->buffer
-  {
-    CapeStream h = cape_stream_new ();
-    
-    // shift the buffer
-    cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
-    
-    // replace our buffer with the shifted buffer
-    cape_stream_del (&(self->buffer));
-    
-    self->buffer = h;
-    h = NULL;
-  }
+  
+  // replace the buffer
+  cape_stream_replace_mv (&(self->buffer), &h);
 }
 
 //-----------------------------------------------------------------------------
@@ -401,7 +405,8 @@ void qwebs_prot_websocket__adjust_buffer (QWebsProtWebsocketConnection self, Cap
 void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection conn, const char* bufdat, number_t buflen)
 {
   QWebsProtWebsocketConnection self = user_ptr;
-
+  int has_enogh_bytes_for_parsing = TRUE;
+  
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
@@ -420,7 +425,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     cape_cursor_set (cursor, bufdat, buflen);
   }
   
-  while (cape_cursor_tail (cursor) > 0)
+  while (has_enogh_bytes_for_parsing)
   {
     switch (self->state)
     {
@@ -436,7 +441,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
         }
         else
         {
-          qwebs_prot_websocket__adjust_buffer (self, cursor);
+          has_enogh_bytes_for_parsing = FALSE;
         }
         
         break;
@@ -453,7 +458,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else if (self->data_size == 127)
@@ -466,7 +471,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else
@@ -489,7 +494,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else
@@ -505,15 +510,14 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
         
         if (cape_cursor__has_data (cursor, self->data_size))
         {
+          // travers the cursor by self->data_size
           qwebs_prot_websocket__decode_payload (self, cursor);
-          
-          cape_stream_del (&(self->buffer));
-          
+                    
           self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
         }
         else
         {
-          qwebs_prot_websocket__adjust_buffer (self, cursor);
+          has_enogh_bytes_for_parsing = FALSE;
         }
         
         break;
@@ -521,7 +525,8 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     }
   }
   
-    
+  qwebs_prot_websocket__adjust_buffer (self, cursor);
+  
   cape_cursor_del (&cursor);
 }
 
@@ -549,10 +554,10 @@ void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr)
 
 //-----------------------------------------------------------------------------
 
-int qwebs_prot_websocket_init (QWebsProtWebsocket self, CapeErr err)
+int qwebs_prot_websocket_reg (QWebsProtWebsocket self, QWebs qwebs, CapeErr err)
 {
   // register a handling for websockets
-  return qwebs_on_upgrade (self->qwebs, "websocket", self, qwebs_prot_websocket__on_upgrade, qwebs_prot_websocket__on_switched, qwebs_prot_websocket__on_recv, qwebs_prot_websocket__on_del, err);
+  return qwebs_on_upgrade (qwebs, "websocket", self, qwebs_prot_websocket__on_upgrade, qwebs_prot_websocket__on_switched, qwebs_prot_websocket__on_recv, qwebs_prot_websocket__on_del, err);
 }
 
 //-----------------------------------------------------------------------------
