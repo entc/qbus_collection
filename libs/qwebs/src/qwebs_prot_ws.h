@@ -25,6 +25,8 @@ __CAPE_LIBEX   void                 qwebs_prot_websocket_del        (QWebsProtWe
                                     /* register this websockets implementation as http upgrade */
 __CAPE_LIBEX   int                  qwebs_prot_websocket_reg        (QWebsProtWebsocket, QWebs, CapeErr err);
 
+__CAPE_LIBEX   void                 qwebs_prot_websocket_dec        (QWebsProtWebsocket*, void** p_user_ptr);
+
 //-----------------------------------------------------------------------------
 
                /* called if a new connection was established, return void* as conn_ptr */
