@@ -25,7 +25,7 @@
 
 struct QWebsProtWebsocketConnection_s
 {
-  QWebsProtWebsocket ws;     // reference
+  QWebsProtWebsocket ws;     // owned
   QWebsConnection conn;      // reference
   
   void* conn_ptr;
@@ -59,7 +59,7 @@ QWebsProtWebsocketConnection qwebs_prot_websocket_connection_new (QWebsProtWebso
 {
   QWebsProtWebsocketConnection self = CAPE_NEW (struct QWebsProtWebsocketConnection_s);
 
-  self->ws = ws;
+  self->ws = qwebs_prot_websocket_inc (ws);
   self->conn = conn;
   
   self->conn_ptr = NULL;
@@ -211,6 +211,8 @@ struct QWebsProtWebsocket_s
   fct_qwebs_prot_websocket__on_init on_init;
   fct_qwebs_prot_websocket__on_msg on_msg;
   fct_qwebs_prot_websocket__on_done on_done;
+  
+  int refcnt;
 };
 
 //-----------------------------------------------------------------------------
@@ -226,6 +228,9 @@ QWebsProtWebsocket qwebs_prot_websocket_new ()
   self->on_msg = NULL;
   self->on_done = NULL;
   
+  // always start with one
+  self->refcnt = 1;
+  
   return self;
 }
 
@@ -235,11 +240,57 @@ void qwebs_prot_websocket_del (QWebsProtWebsocket* p_self)
 {
   if (*p_self)
   {
+    QWebsProtWebsocket self = *p_self;
     
-    CAPE_DEL (p_self, struct QWebsProtWebsocket_s);
+#if defined __BSD_OS || defined __LINUX_OS
+    
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16
+    
+    int val = (__sync_sub_and_fetch (&(self->refcnt), 1));
+    
+#else
+    
+    int val = --(self->refcnt);
+    
+#endif
+
+#elif defined __WINDOWS_OS
+    
+    int var = InterlockedDecrement (&(self->refcnt));
+    
+#endif
+    
+    if (val == 0)
+    {
+      
+      CAPE_DEL (p_self, struct QWebsProtWebsocket_s);
+    }    
   }
 }
 
+//-----------------------------------------------------------------------------
+
+QWebsProtWebsocket qwebs_prot_websocket_inc (QWebsProtWebsocket self)
+{
+#if defined __BSD_OS || defined __LINUX_OS
+  
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16
+  
+  __sync_add_and_fetch (&(self->refcnt), 1);
+  
+#else
+  
+  (self->refcnt)++;
+  
+#endif
+  
+#elif defined __WINDOWS_OS
+  
+  InterlockedIncrement (&(self->refcnt));
+  
+#endif
+  return self;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -581,6 +632,7 @@ void qwebs_prot_websocket_dec (QWebsProtWebsocket* p_self, void** p_user_ptr)
       *p_user_ptr = NULL;
     }
     
+    qwebs_prot_websocket_del (p_self);
   }
 }
 
