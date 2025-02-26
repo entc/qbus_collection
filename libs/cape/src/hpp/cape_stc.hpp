@@ -15,6 +15,8 @@
 #include <sstream>
 #include <type_traits>
 
+#include <hpp/cape_sys.hpp>
+
 namespace cape
 {
   // forward declaration
@@ -549,7 +551,7 @@ namespace cape
 
     //------------------------ CONSTRUCTOR -----------------------
 
-    Udc () : m_owned (false), m_obj (NULL)  // empty
+    Udc (bool owned = false) : m_owned (owned), m_obj (NULL)  // empty
     {
     }
 
@@ -1186,25 +1188,50 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    bool from_string (const char* json_as_text)
+    void from_string (const char* json_as_text)
     {
       if (false == m_owned)
       {
         throw cape::Exception (CAPE_ERR_WRONG_STATE, "UDC object is not owned");
       }
 
-      // parse into a new CapeUdc
-      CapeUdc h = cape_json_from_s (json_as_text);
-
-      if (h == NULL)
       {
-        return false;
+        // parse into a new CapeUdc
+        CapeUdc h = cape_json_from_s (json_as_text);
+
+        if (h == NULL)
+        {
+          throw cape::Exception (CAPE_ERR_PARSER, "Can't parse json string");
+        }
+
+        // replace the object with the outcome of the JSON parser
+        cape_udc_replace_mv (&m_obj, &h);
+      }
+    }
+
+    //-----------------------------------------------------------------------------
+
+    void from_file (const char* json_file)
+    {
+      if (false == m_owned)
+      {
+        throw cape::Exception (CAPE_ERR_WRONG_STATE, "UDC object is not owned");
       }
 
-      // replace the object with the outcome of the JSON parser
-      cape_udc_replace_mv (&m_obj, &h);
+      {
+        ErrHolder errh;
 
-      return true;
+        // try to read the json structure from the file
+        CapeUdc h = cape_json_from_file (json_file, errh.err);
+
+        if (NULL == h)
+        {
+          throw cape::Exception (errh.code(), errh.text());
+        }
+
+        // replace the object with the outcome of the JSON parser
+        cape_udc_replace_mv (&m_obj, &h);
+      }
     }
 
     //-----------------------------------------------------------------------------
@@ -1525,7 +1552,7 @@ namespace cape
 
   public:
 
-    UdcCursorConst (const CapeUdc udc)
+    UdcCursorConst (const CapeUdc& udc)
     : m_cursor (cape_udc_cursor_new (udc, CAPE_DIRECTION_FORW))
     {
     }
