@@ -2,8 +2,7 @@ import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { inject, Injectable, NgModule, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule, provideTransloco } from '@ngneat/transloco';
-import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff, TrloPipeFilesize, TrloPipeTime, TranslocoDatepicker } from '@qbus/trlo_service/service';
-import { NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
+import { TrloService, TrloServiceComponent, TrloPipeLocale, TrloPipeTimediff, TrloPipeFilesize, TrloPipeTime, /*TranslocoDatepicker*/ } from '@qbus/trlo_service/service';
 
 import { registerLocaleData } from '@angular/common';
 import localeFr from '@angular/common/locales/fr';

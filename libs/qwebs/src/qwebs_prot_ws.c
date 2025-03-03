@@ -25,7 +25,7 @@
 
 struct QWebsProtWebsocketConnection_s
 {
-  QWebsProtWebsocket ws;     // reference
+  QWebsProtWebsocket ws;     // owned
   QWebsConnection conn;      // reference
   
   void* conn_ptr;
@@ -59,7 +59,7 @@ QWebsProtWebsocketConnection qwebs_prot_websocket_connection_new (QWebsProtWebso
 {
   QWebsProtWebsocketConnection self = CAPE_NEW (struct QWebsProtWebsocketConnection_s);
 
-  self->ws = ws;
+  self->ws = qwebs_prot_websocket_inc (ws);
   self->conn = conn;
   
   self->conn_ptr = NULL;
@@ -88,10 +88,25 @@ void qwebs_prot_websocket_connection_del (QWebsProtWebsocketConnection* p_self)
   {
     QWebsProtWebsocketConnection self = *p_self;
     
+    // decrease the reference counter for this websocket addon
+    qwebs_prot_websocket_dec (&(self->ws), &(self->conn_ptr));
+        
     cape_str_del (&(self->masking_key));
+    cape_stream_del (&(self->buffer));
     
     CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_prot_websocket_connection__on_del (void** p_user_ptr)
+{
+  QWebsProtWebsocketConnection* p_self = (QWebsProtWebsocketConnection*)p_user_ptr;
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "websocket", "websocket connection dropped");
+  
+  qwebs_prot_websocket_connection_del (p_self);
 }
 
 //-----------------------------------------------------------------------------
@@ -191,22 +206,20 @@ void qwebs_prot_websocket_send_buf (QWebsProtWebsocketConnection self, const cha
 
 struct QWebsProtWebsocket_s
 {
-  QWebs qwebs;
-  
   void* user_ptr;
   fct_qwebs_prot_websocket__on_conn on_conn;
   fct_qwebs_prot_websocket__on_init on_init;
   fct_qwebs_prot_websocket__on_msg on_msg;
   fct_qwebs_prot_websocket__on_done on_done;
+  
+  int refcnt;
 };
 
 //-----------------------------------------------------------------------------
 
-QWebsProtWebsocket qwebs_prot_websocket_new (QWebs qwebs)
+QWebsProtWebsocket qwebs_prot_websocket_new ()
 {
   QWebsProtWebsocket self = CAPE_NEW (struct QWebsProtWebsocket_s);
-  
-  self->qwebs = qwebs;
   
   self->user_ptr = NULL;
   
@@ -215,75 +228,73 @@ QWebsProtWebsocket qwebs_prot_websocket_new (QWebs qwebs)
   self->on_msg = NULL;
   self->on_done = NULL;
   
+  // always start with one
+  self->refcnt = 1;
+  
   return self;
 }
 
 //-----------------------------------------------------------------------------
 
-void* __STDCALL qwebs_prot_websocket__on_upgrade (void* user_ptr, QWebsRequest request, CapeMap return_header, CapeErr err)
+void qwebs_prot_websocket_del (QWebsProtWebsocket* p_self)
 {
-  QWebsProtWebsocket self = user_ptr;
-  QWebsProtWebsocketConnection ret = NULL;
-  
-  const CapeString key;
-  CapeMapNode n;
-  
-  // local objects
-  CapeString accept_key__text = NULL;
-  CapeStream accept_key__hash = NULL;
-  
-  cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "on upgrade", "websocket connection seen");
-  
-  // try to find the appropriate header entry
-  n = cape_map_find (qwebs_request_headers (request), (void*)"Sec-WebSocket-Key");
-  if (NULL == n)
+  if (*p_self)
   {
-    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "request has no 'Sec-WebSocket-Key'");
-    goto exit_and_cleanup;
+    QWebsProtWebsocket self = *p_self;
+    
+#if defined __BSD_OS || defined __LINUX_OS
+    
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16
+    
+    int val = (__sync_sub_and_fetch (&(self->refcnt), 1));
+    
+#else
+    
+    int val = --(self->refcnt);
+    
+#endif
+
+#elif defined __WINDOWS_OS
+    
+    int var = InterlockedDecrement (&(self->refcnt));
+    
+#endif
+    
+    if (val == 0)
+    {
+      
+      CAPE_DEL (p_self, struct QWebsProtWebsocket_s);
+    }    
   }
-  
-  key = cape_map_node_value (n);
-  if (NULL == key)
-  {
-    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "header entry 'Sec-WebSocket-Key' is invalid");
-    goto exit_and_cleanup;
-  }
-  
-  // see RFC, concat the defined UUID as accept key
-  accept_key__text = cape_str_catenate_2 (key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-  
-  // hash the accept key
-  accept_key__hash = qcrypt__hash_sha__bin_o  (accept_key__text, cape_str_size (accept_key__text), err);
-  if (NULL == accept_key__hash)
-  {
-    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "can't create hash for the accept-key");
-    goto exit_and_cleanup;
-  }
-  
-  // add accept key as base64 as return header
-  {
-    CapeString accept_key = qcrypt__encode_base64_m (accept_key__hash);
-    cape_map_insert (return_header, cape_str_cp ("Sec-WebSocket-Accept"), accept_key);
-  }
-  
-  ret = qwebs_prot_websocket_connection_new (self, qwebs_request_conn (request));
-  
-  if (self->on_conn)
-  {
-    ret->conn_ptr = self->on_conn (self->user_ptr, ret, qwebs_request_query (request));
-  }
-  
-exit_and_cleanup:
-  
-  cape_str_del (&accept_key__text);
-  cape_stream_del (&accept_key__hash);
-  
-  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_websocket__on_switched (void* conn_ptr)
+QWebsProtWebsocket qwebs_prot_websocket_inc (QWebsProtWebsocket self)
+{
+#if defined __BSD_OS || defined __LINUX_OS
+  
+#ifdef __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16
+  
+  __sync_add_and_fetch (&(self->refcnt), 1);
+  
+#else
+  
+  (self->refcnt)++;
+  
+#endif
+  
+#elif defined __WINDOWS_OS
+  
+  InterlockedIncrement (&(self->refcnt));
+  
+#endif
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwebs_prot_websocket_connection__on_switched (void* conn_ptr)
 {
   QWebsProtWebsocketConnection self = conn_ptr;
 
@@ -369,43 +380,41 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
 
 //-----------------------------------------------------------------------------
 
-void qwebs_prot_websocket__adjust_buffer (QWebsProtWebsocketConnection self, CapeCursor cursor)
+void qwebs_prot_websocket_connection__adjust_buffer (QWebsProtWebsocketConnection self, CapeCursor cursor)
 {
-  number_t bytes_left_to_scan = cape_cursor_tail (cursor);
+  // local objects
+  CapeStream h = NULL;
   
-  if (NULL == self->buffer)   // the cursor is running on the local buffer
   {
-    self->buffer = cape_stream_new ();
+    // returns the bytes which had not been used for parsing
+    number_t bytes_left_to_scan = cape_cursor_tail (cursor);
     
-    // copy the rest of the local buffer into the out buffer
-    // travers further in the cursor
-    cape_stream_append_buf (self->buffer, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+    if (bytes_left_to_scan > 0)
+    {
+      h = cape_stream_new ();
+      
+      // shift the buffer
+      // travers the cursor (to the end)
+      cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+      
+    }
   }
-  else if (cape_cursor_apos (cursor) > 0)  // the cursor is running on self->buffer
-  {
-    CapeStream h = cape_stream_new ();
-    
-    // shift the buffer
-    cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
-    
-    // replace our buffer with the shifted buffer
-    cape_stream_del (&(self->buffer));
-    
-    self->buffer = h;
-    h = NULL;
-  }
+  
+  // replace the buffer
+  cape_stream_replace_mv (&(self->buffer), &h);
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection conn, const char* bufdat, number_t buflen)
+void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsConnection conn, const char* bufdat, number_t buflen)
 {
   QWebsProtWebsocketConnection self = user_ptr;
-
+  int has_enogh_bytes_for_parsing = TRUE;
+  
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
+  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
 
   if (self->buffer)
   {
@@ -420,7 +429,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     cape_cursor_set (cursor, bufdat, buflen);
   }
   
-  while (cape_cursor_tail (cursor) > 0)
+  while (has_enogh_bytes_for_parsing)
   {
     switch (self->state)
     {
@@ -431,10 +440,12 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           qwebs_prot_websocket__decode_header1 (self, cursor);
           
           self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
+          
+          //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
         }
         else
         {
-          qwebs_prot_websocket__adjust_buffer (self, cursor);
+          has_enogh_bytes_for_parsing = FALSE;
         }
         
         break;
@@ -451,12 +462,12 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else if (self->data_size == 127)
         {
-          if (cape_cursor__has_data (cursor, 6))
+          if (cape_cursor__has_data (cursor, 4))
           {
             self->data_size = cape_cursor_scan_32 (cursor, TRUE);
             
@@ -464,7 +475,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else
@@ -487,7 +498,7 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
           }
           else
           {
-            qwebs_prot_websocket__adjust_buffer (self, cursor);
+            has_enogh_bytes_for_parsing = FALSE;
           }
         }
         else
@@ -499,17 +510,18 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
       }
       case QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD:
       {
+        //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
+        
         if (cape_cursor__has_data (cursor, self->data_size))
         {
+          // travers the cursor by self->data_size
           qwebs_prot_websocket__decode_payload (self, cursor);
-          
-          cape_stream_del (&(self->buffer));
-          
+                    
           self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
         }
         else
         {
-          qwebs_prot_websocket__adjust_buffer (self, cursor);
+          has_enogh_bytes_for_parsing = FALSE;
         }
         
         break;
@@ -517,39 +529,81 @@ void __STDCALL qwebs_prot_websocket__on_recv (void* user_ptr, QWebsConnection co
     }
   }
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
-    
+  qwebs_prot_websocket_connection__adjust_buffer (self, cursor);
+  
   cape_cursor_del (&cursor);
 }
 
+
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwebs_prot_websocket__on_del (void** p_user_ptr)
+void* __STDCALL qwebs_prot_websocket__on_upgrade (void* user_ptr, QWebsRequest request, CapeMap return_header, CapeErr err)
 {
-  QWebsProtWebsocketConnection* p_self = (QWebsProtWebsocketConnection*)p_user_ptr;
-
-  cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "websocket", "websocket connection dropped");
-
-  if (*p_self)
+  QWebsProtWebsocket self = user_ptr;
+  QWebsProtWebsocketConnection ret = NULL;
+  
+  const CapeString key;
+  CapeMapNode n;
+  
+  // local objects
+  CapeString accept_key__text = NULL;
+  CapeStream accept_key__hash = NULL;
+  
+  cape_log_fmt (CAPE_LL_DEBUG, "QWEBS", "on upgrade", "websocket connection seen");
+  
+  // try to find the appropriate header entry
+  n = cape_map_find (qwebs_request_headers (request), (void*)"Sec-WebSocket-Key");
+  if (NULL == n)
   {
-    QWebsProtWebsocketConnection self = *p_self;
-    
-    if (self->ws->on_done)
-    {
-      self->ws->on_done (self->conn_ptr);
-      self->conn_ptr = NULL;
-    }
-    
-    CAPE_DEL (p_self, struct QWebsProtWebsocketConnection_s);
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "request has no 'Sec-WebSocket-Key'");
+    goto exit_and_cleanup;
   }
+  
+  key = cape_map_node_value (n);
+  if (NULL == key)
+  {
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "header entry 'Sec-WebSocket-Key' is invalid");
+    goto exit_and_cleanup;
+  }
+  
+  // see RFC, concat the defined UUID as accept key
+  accept_key__text = cape_str_catenate_2 (key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+  
+  // hash the accept key
+  accept_key__hash = qcrypt__hash_sha__bin_o  (accept_key__text, cape_str_size (accept_key__text), err);
+  if (NULL == accept_key__hash)
+  {
+    cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "can't create hash for the accept-key");
+    goto exit_and_cleanup;
+  }
+  
+  // add accept key as base64 as return header
+  {
+    CapeString accept_key = qcrypt__encode_base64_m (accept_key__hash);
+    cape_map_insert (return_header, cape_str_cp ("Sec-WebSocket-Accept"), accept_key);
+  }
+  
+  ret = qwebs_prot_websocket_connection_new (self, qwebs_request_conn (request));
+  
+  if (self->on_conn)
+  {
+    ret->conn_ptr = self->on_conn (self->user_ptr, ret, qwebs_request_query (request));
+  }
+  
+  exit_and_cleanup:
+  
+  cape_str_del (&accept_key__text);
+  cape_stream_del (&accept_key__hash);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-int qwebs_prot_websocket_init (QWebsProtWebsocket self, CapeErr err)
+int qwebs_prot_websocket_reg (QWebsProtWebsocket self, QWebs qwebs, CapeErr err)
 {
   // register a handling for websockets
-  return qwebs_on_upgrade (self->qwebs, "websocket", self, qwebs_prot_websocket__on_upgrade, qwebs_prot_websocket__on_switched, qwebs_prot_websocket__on_recv, qwebs_prot_websocket__on_del, err);
+  return qwebs_on_upgrade (qwebs, "websocket", self, qwebs_prot_websocket__on_upgrade, qwebs_prot_websocket_connection__on_switched, qwebs_prot_websocket_connection__on_recv, qwebs_prot_websocket_connection__on_del, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -562,6 +616,24 @@ void qwebs_prot_websocket_cb (QWebsProtWebsocket self, void* user_ptr, fct_qwebs
   self->on_init = on_init;
   self->on_msg = on_msg;
   self->on_done = on_done;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwebs_prot_websocket_dec (QWebsProtWebsocket* p_self, void** p_user_ptr)
+{
+  if (*p_self)
+  {
+    QWebsProtWebsocket self = *p_self;
+    
+    if (self->on_done)
+    {
+      self->on_done (*p_user_ptr);
+      *p_user_ptr = NULL;
+    }
+    
+    qwebs_prot_websocket_del (p_self);
+  }
 }
 
 //-----------------------------------------------------------------------------

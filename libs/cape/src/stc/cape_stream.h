@@ -38,6 +38,9 @@ __CAPE_LIBEX const char*       cape_stream_data (CapeStream);
                                 */
 __CAPE_LIBEX CapeStream        cape_stream_sub (CapeStream, number_t start, number_t length, int overflow);
 
+                               /* replace the stream object with a new one */
+__CAPE_LIBEX void              cape_stream_replace_mv (CapeStream*, CapeStream*);
+
 //-----------------------------------------------------------------------------
 
                                /* define the mime type of the content */

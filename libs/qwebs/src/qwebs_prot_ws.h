@@ -18,9 +18,18 @@ struct QWebsProtWebsocketConnection_s; typedef struct QWebsProtWebsocketConnecti
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QWebsProtWebsocket   qwebs_prot_websocket_new        (QWebs webs);
+__CAPE_LIBEX   QWebsProtWebsocket   qwebs_prot_websocket_new        ();
 
-__CAPE_LIBEX   int                  qwebs_prot_websocket_init       (QWebsProtWebsocket, CapeErr err);
+__CAPE_LIBEX   void                 qwebs_prot_websocket_del        (QWebsProtWebsocket*);
+
+                                    /* register this websockets implementation as http upgrade */
+__CAPE_LIBEX   int                  qwebs_prot_websocket_reg        (QWebsProtWebsocket, QWebs, CapeErr err);
+
+                                    /* increase the ref counter of the instance */
+__CAPE_LIBEX   QWebsProtWebsocket   qwebs_prot_websocket_inc        (QWebsProtWebsocket);
+
+                                    /* decrease the ref counter and call the on_done callback */
+__CAPE_LIBEX   void                 qwebs_prot_websocket_dec        (QWebsProtWebsocket*, void** p_user_ptr);
 
 //-----------------------------------------------------------------------------
 

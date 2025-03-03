@@ -14,79 +14,83 @@ namespace cape
     {
       err = cape_err_new ();
     }
-    
+
     ~ErrHolder ()
     {
       cape_err_del (&err);
     }
-    
+
     const char* text ()
     {
       return cape_err_text (err);
     }
-    
+
+    int code ()
+    {
+      return cape_err_code (err);
+    }
+
     CapeErr err;
-    
+
   };
   
   //======================================================================
-  
+
   class Mutex
   {
-    
+
   public:
-    
+
     Mutex ()
     {
       m_mutex = cape_mutex_new ();
     }
-    
+
     ~Mutex ()
     {
       cape_mutex_del (&m_mutex);
     }
-    
+
     void lock ()
     {
       cape_mutex_lock (m_mutex);
     }
-    
+
     void unlock ()
     {
       cape_mutex_unlock (m_mutex);
     }
-    
+
   private:
-    
+
     CapeMutex m_mutex;
-    
+
   };
 
   //======================================================================
-  
+
   class ScopeMutex
   {
-    
+
   public:
-    
+
     ScopeMutex (Mutex& mutex) : m_mutex (mutex)
     {
       m_mutex.lock ();
     }
-    
+
     ~ScopeMutex ()
     {
       m_mutex.unlock();
     }
-    
+
   private:
-    
+
     Mutex& m_mutex;
-    
+
   };
-  
+
   //======================================================================
 }
 
 #endif
-
