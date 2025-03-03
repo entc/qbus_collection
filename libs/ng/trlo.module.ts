@@ -10,6 +10,11 @@ import localeFr from '@angular/common/locales/fr';
 import localeDe from '@angular/common/locales/de';
 import localePa from '@angular/common/locales/pa';
 import localeRo from '@angular/common/locales/ro';
+import localeAr from '@angular/common/locales/ar';
+import localeFa from '@angular/common/locales/fa';
+import localeHu from '@angular/common/locales/hu';
+import localeSl from '@angular/common/locales/sl';
+import localePl from '@angular/common/locales/pl';
 
 //-----------------------------------------------------------------------------
 
@@ -18,6 +23,11 @@ registerLocaleData(localeDe, 'de-DE');
 registerLocaleData(localePa, 'hi-IN');
 registerLocaleData(localePa, 'ta-IN');
 registerLocaleData(localeRo, 'ro-RO');
+registerLocaleData(localeAr, 'ar-AR');
+registerLocaleData(localeFa, 'fa-FA');
+registerLocaleData(localeHu, 'hu-HU');
+registerLocaleData(localeSl, 'sl-SL');
+registerLocaleData(localePl, 'pl-PL');
 
 //-----------------------------------------------------------------------------
 
@@ -70,7 +80,7 @@ export class TrloModule {}
     providers: [
         provideTransloco({
             config: {
-                availableLangs: ['de', 'en', 'fr', 'hi', 'ta', 'ro'],
+                availableLangs: ['de', 'en', 'fr', 'hi', 'ta', 'ro', 'ar', 'fa', 'hu', 'sl', 'pl'],
                 defaultLang: 'en',
                 // Remove this option if your application doesn't support changing language in runtime.
                 reRenderOnLangChange: true,

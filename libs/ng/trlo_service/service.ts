@@ -46,6 +46,26 @@ export class TrloService
 
   //---------------------------------------------------------------------------
 
+  public update_from_browser ()
+  {
+    let user_lang: string = navigator.language || navigator['userLanguage'];
+
+console.log(user_lang);
+
+    let found: number = user_lang.indexOf('-');
+
+    if (found == -1)
+    {
+      this.updateLocale (user_lang + '-' + user_lang.toUpperCase());
+    }
+    else
+    {
+      this.updateLocale (user_lang);
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
   public set (locales): void
   {
     this.locales = locales;
