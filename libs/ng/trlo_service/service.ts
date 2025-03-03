@@ -2,7 +2,7 @@ import { Component, Injectable, Injector, Pipe, PipeTransform, Input } from '@an
 import { formatDate } from '@angular/common';
 import { TranslocoService } from '@ngneat/transloco';
 import { Observable, BehaviorSubject } from 'rxjs';
-import { NgbDatepickerI18n, NgbCalendar, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
+//import { NgbDatepickerI18n, NgbCalendar, NgbDateStruct } from '@ng-bootstrap/ng-bootstrap';
 
 //-----------------------------------------------------------------------------
 
@@ -292,6 +292,7 @@ export class TrloPipeFilesize implements PipeTransform {
 
 //=============================================================================
 
+/*
 @Injectable()
 export class TranslocoDatepicker extends NgbDatepickerI18n
 {
@@ -330,3 +331,4 @@ export class TranslocoDatepicker extends NgbDatepickerI18n
     return `${date.day}-${date.month}-${date.year}`;
   }
 }
+*/

@@ -414,7 +414,7 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
+  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
 
   if (self->buffer)
   {
@@ -441,7 +441,7 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
           
           self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
           
-          cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
+          //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
         }
         else
         {
@@ -510,7 +510,7 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
       }
       case QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD:
       {
-        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
+        //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
         
         if (cape_cursor__has_data (cursor, self->data_size))
         {
