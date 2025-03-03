@@ -7,6 +7,7 @@
 #include "sys/cape_log.h"
 #include "sys/cape_mutex.h"
 #include "stc/cape_list.h"
+#include "sys/cape_thread.h"
 
 #if defined __BSD_OS || defined __LINUX_OS
 
