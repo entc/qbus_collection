@@ -19,6 +19,7 @@
 #define cape_sscanf sscanf
 
 #include <sys/time.h>
+#include <arpa/inet.h>
 
 #elif defined __WINDOWS_OS
 
@@ -1138,6 +1139,45 @@ int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
   {
     return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
   }
+}
+
+//-----------------------------------------------------------------------------
+
+static inline number_t bcd_to_number (unsigned char c)
+{ 
+  return c / 16 * 10 + c % 16;
+} 
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__date_bcd (CapeDatetime* self, cape_uint32 date, cape_uint32 time)
+{
+  {
+    // correct endianess to local
+    cape_uint32 correct_endianess = htonl (date);
+
+    // convert uint32 into array of char
+    const char* bytes_date = ((const char*)(&correct_endianess));
+    
+    self->year = bcd_to_number (*bytes_date) * 100 + bcd_to_number (*(bytes_date + 1));
+    self->month = bcd_to_number (*(bytes_date + 2));
+    self->day = bcd_to_number (*(bytes_date + 3));
+  }
+  {
+    // correct endianess to local
+    cape_uint32 correct_endianess = htonl (time);
+    
+    // convert uint32 into array of char
+    const char* bytes_date = ((const char*)(&correct_endianess));
+    
+    self->hour = bcd_to_number (*bytes_date);
+    self->minute = bcd_to_number (*(bytes_date + 1));
+    self->sec = bcd_to_number (*(bytes_date + 2));
+  }
+  
+  self->msec = 0;
+  
+  return TRUE;
 }
 
 //-----------------------------------------------------------------------------

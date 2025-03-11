@@ -155,5 +155,20 @@ int main (int argc, char *argv[])
     }
   }
   
+  // BCD test
+  {
+    CapeDatetime dt;
+    
+    cape_datetime__date_bcd (&dt, 0x20240311, 0x19052400);
+    
+    {
+      CapeString s = cape_datetime_s__str (&dt);
+      
+      printf ("-> BCD     : '%s'\n", s);
+      
+      cape_str_del (&s);
+    }
+  }
+  
  return 0;
 }

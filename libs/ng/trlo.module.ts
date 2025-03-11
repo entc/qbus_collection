@@ -1,4 +1,4 @@
-import { HttpClient, provideHttpClient } from '@angular/common/http';
+import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { inject, Injectable, NgModule, isDevMode } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TRANSLOCO_LOADER, Translation, TranslocoLoader, TRANSLOCO_CONFIG, translocoConfig, TranslocoModule, provideTransloco } from '@ngneat/transloco';
@@ -54,7 +54,8 @@ export class TranslocoHttpLoader implements TranslocoLoader {
   ],
   imports:
   [
-    CommonModule
+    CommonModule,
+    HttpClientModule    // needed otherwise there is an inject error
   ],
   exports:
   [

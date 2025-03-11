@@ -181,6 +181,9 @@ __CAPE_LIBEX   int             cape_datetime__date_iso    (CapeDatetime*, const 
                                /* yyyy/mm/dd hh:mm:ss.sss */
 __CAPE_LIBEX   int             cape_datetime__date_sce    (CapeDatetime*, const CapeString datetime_in_text);
 
+                               /* BCD format: 0xYYYYMMDD and 0xHHMMSS00 */
+__CAPE_LIBEX   int             cape_datetime__date_bcd    (CapeDatetime*, cape_uint32 date, cape_uint32 time);
+
 //-----------------------------------------------------------------------------
 
 struct CapeStopTimer_s; typedef struct CapeStopTimer_s* CapeStopTimer;
