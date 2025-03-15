@@ -163,6 +163,11 @@ __CAPE_LIBEX   CapeUdc              cape_udc_get_last         (CapeUdc);
 
 //-----------------------------------------------------------------------------
 
+                                    /* iterates through (node | list) searching for an entry with the name and value */
+__CAPE_LIBEX   CapeUdc              cape_udc_find_n           (CapeUdc, const CapeString name, number_t value);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX   CapeString           cape_udc_ext_s            (CapeUdc, const CapeString name);
 
 __CAPE_LIBEX   CapeDatetime*        cape_udc_ext_d            (CapeUdc, const CapeString name);
