@@ -1800,6 +1800,39 @@ CapeUdc cape_udc_get_last (CapeUdc self)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc cape_udc_find_n (CapeUdc self, const CapeString name, number_t value)
+{
+  CapeUdc ret = NULL;
+  
+  switch (self->type)
+  {
+    case CAPE_UDC_LIST:
+    case CAPE_UDC_NODE:
+    {
+      CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+      
+      while (cape_udc_cursor_next (cursor))
+      {
+        CapeUdc seek_node = cape_udc_get (cursor->item, name);
+        if (seek_node)
+        {
+          if ((seek_node->type == CAPE_UDC_NUMBER) && ((number_t)(seek_node->data) == value))
+          {
+            ret = cursor->item;
+          }
+        }
+      }
+      
+      cape_udc_cursor_del (&cursor);
+      break;
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_udc_ext_s (CapeUdc self, const CapeString name)
 {
   switch (self->type)
