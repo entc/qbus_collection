@@ -349,12 +349,13 @@ int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QB
     py_qin = py_transform_to_pyo (qin->cdata);
   }
   
-  arglist = Py_BuildValue ("(O)", py_qin);
+  arglist = Py_BuildValue ("(OOO)", pcd->qbus, py_qin, Py_None);
   
   // depricated
   //result = PyEval_CallObject (pcd->fct, arglist);
   
   result = PyObject_Call (pcd->fct, arglist, NULL);
+  /*
   if (result)
   {
     qout->cdata = py_transform_to_udc (result);
@@ -370,12 +371,13 @@ int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QB
     // we need to clean, otherwise it will crash at some point
     PyErr_Clear();
   }
+  */
   
   // cleanup
   Py_XDECREF (py_qin);
   Py_DECREF (arglist);
   
-  Py_DECREF (pcd->fct);
+  //Py_DECREF (pcd->fct);
   CAPE_DEL(&pcd, PythonCallbackData);
   
   return CAPE_ERR_NONE;
@@ -442,6 +444,7 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
     PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
     
     pcd->fct = cbfct;
+    pcd->qbus = self;
     
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "send message to %s", PYOBJECT_AS_STRING (module));
     
@@ -501,7 +504,6 @@ int __STDCALL py_object_qbus_timer__on_timer (void* ptr)
   if (FALSE == ret)
   {
     // in case of the last event cleanup
-    Py_DECREF (pcd->fct);    
     Py_DECREF (pcd->qbus);
     
     CAPE_DEL(&pcd, PythonCallbackData);
