@@ -376,7 +376,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    void append (const char* bufdat, number_t buflen)
+    number_t append (const char* bufdat, number_t buflen)
     {
       if (m_obj == NULL)
       {
@@ -384,6 +384,8 @@ namespace cape
       }
 
       cape_stream_append_buf (m_obj, bufdat, buflen);
+      
+      return buflen;
     }
 
     //-----------------------------------------------------------------------------

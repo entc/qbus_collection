@@ -449,6 +449,10 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "send message to %s", PYOBJECT_AS_STRING (module));
     
     int res = qbus_send (self->qbus, PYOBJECT_AS_STRING (module), PYOBJECT_AS_STRING (method), qin, pcd, py_object_qbus_send__on_event, err);
+    if (res && res != CAPE_ERR_CONTINUE)
+    {
+      
+    }
   }
   
 exit_and_error:
