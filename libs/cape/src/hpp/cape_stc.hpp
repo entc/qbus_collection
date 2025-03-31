@@ -10,7 +10,6 @@
 // STL includes
 #include <limits>
 #include <string>
-#include <exception>
 #include <iostream>
 #include <sstream>
 #include <type_traits>
@@ -60,59 +59,6 @@ namespace cape
     //static void add_cp (CapeUdc, const char*, const T&) {  }
     //static void add_mv (CapeUdc, const char*, T&) {  }
     //static T as (CapeUdc) {}
-  };
-
-  //-----------------------------------------------------------------------------------------------------
-
-  class Exception : public std::exception
-  {
-
-  public:
-
-    Exception (number_t err_code, const char* err_text) : m_err_text (cape_str_cp (err_text)), m_err_code (err_code), m_udc (NULL)
-    {
-      if (err_text)
-      {
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "EXCEPTION", "THROW: %s", err_text);
-      }
-    }
-
-    Exception (number_t err_code, const char* err_text, CapeUdc obj) : m_err_text (cape_str_cp (err_text)), m_err_code (err_code), m_udc (obj)
-    {
-      if (err_text)
-      {
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "EXCEPTION", "THROW: %s", err_text);
-      }
-    }
-
-    ~Exception () throw()
-    {
-      cape_str_del (&m_err_text);
-      cape_udc_del (&m_udc);
-    }
-
-    const char * what () const throw()
-    {
-      return m_err_text;
-    }
-
-    CapeUdc release_udc ()
-    {
-      return cape_udc_mv (&m_udc);
-    }
-
-    number_t code ()
-    {
-      return m_err_code;
-    }
-
-  private:
-
-    CapeString m_err_text;
-
-    number_t m_err_code;
-
-    CapeUdc m_udc;
   };
 
   //-----------------------------------------------------------------------------------------------------
