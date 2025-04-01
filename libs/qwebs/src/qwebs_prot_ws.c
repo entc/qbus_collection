@@ -327,12 +327,12 @@ void qwebs_prot_websocket__decode_header1 (QWebsProtWebsocketConnection self, Ca
     self->data_size = bits02 & ~0B10000000;
   }
   
-  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->fin, self->rsv1, self->rsv2, self->rsv3, self->opcode);
 }
 
 //-----------------------------------------------------------------------------
 
-void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, CapeCursor cursor)
+void qwebs_prot_websocket_connection__decode_payload (QWebsProtWebsocketConnection self, CapeCursor cursor)
 {
   number_t i;
   
@@ -352,6 +352,7 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
         }
       }
       
+      // TODO: run this in a queue
       if (self->ws->on_msg)
       {
         self->ws->on_msg (self->conn_ptr, h);
@@ -361,13 +362,14 @@ void qwebs_prot_websocket__decode_payload (QWebsProtWebsocketConnection self, Ca
     }
     case RFC_WEBSOCKET_FRAME__CLOSED:   // connection close frame
     {
+      cape_log_msg (CAPE_LL_DEBUG, "QWEBS", "payload", "retrieved connection closed");
       // TODO: close connection
       
       break;
     }
     case RFC_WEBSOCKET_FRAME__PING:   // ping
     {
-      //cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
+      cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
 
       qwebs_prot_websocket_send__frame (self, RFC_WEBSOCKET_FRAME__PONG, h, self->data_size);
       
@@ -388,6 +390,8 @@ void qwebs_prot_websocket_connection__adjust_buffer (QWebsProtWebsocketConnectio
   {
     // returns the bytes which had not been used for parsing
     number_t bytes_left_to_scan = cape_cursor_tail (cursor);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "adjust buffer = %lu", bytes_left_to_scan);
     
     if (bytes_left_to_scan > 0)
     {
@@ -414,7 +418,7 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
+  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "received buffer with len = %i", buflen);
 
   if (self->buffer)
   {
@@ -441,7 +445,7 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
           
           self->state = QWEBS_PROT_WEBSOCKET_RECV__HEADER1;
           
-          //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
+          cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->data_size);
         }
         else
         {
@@ -509,18 +513,20 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
         break;
       }
       case QWEBS_PROT_WEBSOCKET_RECV__PAYLOAD:
-      {
-        //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu", self->data_size);
-        
+      {        
         if (cape_cursor__has_data (cursor, self->data_size))
         {
+          cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> decode payload", self->data_size);
+          
           // travers the cursor by self->data_size
-          qwebs_prot_websocket__decode_payload (self, cursor);
+          qwebs_prot_websocket_connection__decode_payload (self, cursor);
                     
           self->state = QWEBS_PROT_WEBSOCKET_RECV__NONE;
         }
         else
         {
+          cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> continue", self->data_size);
+
           has_enogh_bytes_for_parsing = FALSE;
         }
         
