@@ -74,17 +74,10 @@
       </div>
 
       <hr>
-
+<!--
       <auth-session-lang></auth-session-lang>
-
-      <div class="row mb-2">
-          <div class="col">
-            {{ 'AUTH.LASTHOST' | transloco }}
-          </div>
-          <div class="col text-right width_10em text-end">
-            {{sitem.remote}}
-          </div>
-      </div>
+-->
+      <auth-last [sitem]="sitem"></auth-last>
 
     </ng-container>
 

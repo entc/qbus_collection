@@ -200,6 +200,41 @@ class AuthWpInfo
   templateUrl: './modal_settings.html'
 }) export class AuthUsersSettingsModalComponent {
 
+  public mode: number = 1;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public auth_active_changed (val: boolean)
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_set', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, userid: this.ctx.userid, active: val}).subscribe (() => {
+
+      this.modal_service.open (QbngSpinnerOkModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'sm'});
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public open_change_password ()
+  {
+    this.modal_service.open (AuthUsersPasswdModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthUserContext, useValue: this.ctx}])});
+  }
+
+}
+
+//=============================================================================
+
+@Component({
+  selector: 'auth-passwd-modal',
+  templateUrl: './modal_passwd.html'
+}) export class AuthUsersPasswdModalComponent {
+
   public input_pass: string;
   public input_user: string;
 
@@ -211,22 +246,13 @@ class AuthWpInfo
 
   //---------------------------------------------------------------------------
 
-  public change_password ()
+  public apply()
   {
     this.auth_session.json_rpc ('AUTH', 'ui_set', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, userid: this.ctx.userid, user: this.input_user, pass: this.input_pass}).subscribe (() => {
 
       this.modal_service.open (QbngSpinnerOkModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'sm'});
 
-    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
-  }
-
-  //---------------------------------------------------------------------------
-
-  public auth_active_changed (val: boolean)
-  {
-    this.auth_session.json_rpc ('AUTH', 'ui_set', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, userid: this.ctx.userid, active: val}).subscribe (() => {
-
-      this.modal_service.open (QbngSpinnerOkModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'sm'});
+      this.modal.close();
 
     }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }

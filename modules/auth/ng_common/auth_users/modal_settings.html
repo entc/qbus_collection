@@ -1,33 +1,72 @@
-<div class="modal-header">
-  <div class="modal-title mr-auto">
-    <strong><i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'MISC.SETTINGS' | transloco }}</strong>
+<div class="card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs">
+      <li class="nav-item">
+        <a (click)="mode = 1" class="nav-link" [ngClass]="{'active': mode == 1}">
+          <i class="fa fa-user"></i>&nbsp;&nbsp;{{ 'AUTH.PROFILE' | transloco }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a (click)="mode = 2" class="nav-link" [ngClass]="{'active': mode == 2}">
+          <i class="fa fa-cogs"></i>&nbsp;&nbsp;{{ 'MISC.SETTINGS' | transloco }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a (click)="mode = 3" class="nav-link" [ngClass]="{'active': mode == 3}">
+          <i class="fa fa-archive"></i>&nbsp;&nbsp;{{ 'AUTH.LOGS' | transloco }}
+        </a>
+      </li>
+    </ul>
   </div>
-</div>
+
+  <div class="card-body" [ngSwitch]="mode">
+
+    <!--  ---------------------------------------------------------------------  -->
+
+    <ng-container *ngSwitchCase="1">
+
+      <div class="text-right text-end">
+        <button type="button" class="btn btn-link" (click)="open_change_password ()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
+      </div>
+
+      <hr>
+
+      <qbng-switch [val]="ctx.active" (onVal)="auth_active_changed ($event)">{{ 'AUTH.DEACTIVATE' | transloco }}</qbng-switch>
+
+<!--
+      <ng-container *authSessionRole="['admin','auth_wacc']">
+
+        <div class="input-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+          </div>
+          <input type="text" class="form-control" [(ngModel)]="input_user">
+        </div>
+
+        <div class="input-group mt-2">
+          <div class="input-group-prepend">
+            <span class="input-group-text width_10em"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+          </div>
+          <input type="text" class="form-control" [(ngModel)]="input_pass">
+        </div>
+
+        <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
+
+        <hr>
+
+
+      </ng-container>
+-->
+    </ng-container>
+    <ng-container *ngSwitchCase="2">
+      <auth-msgs [user_ctx]="ctx"></auth-msgs>
+    </ng-container>
+  </div>
+
 <div class="modal-body">
 
-  <auth-msgs [user_ctx]="ctx"></auth-msgs>
-
-  <hr>
-
-  <div class="input-group">
-    <div class="input-group-prepend">
-      <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+    <div class="col-6-md col-12">
     </div>
-    <input type="text" class="form-control" [(ngModel)]="input_user">
-  </div>
-
-  <div class="input-group mt-2">
-    <div class="input-group-prepend">
-      <span class="input-group-text width_10em"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
-    </div>
-    <input type="text" class="form-control" [(ngModel)]="input_pass">
-  </div>
-
-  <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
-
-  <hr>
-
-  <qbng-switch [val]="ctx.active" (onVal)="auth_active_changed ($event)">{{ 'AUTH.DEACTIVATE' | transloco }}</qbng-switch>
 
 </div>
 <div class="modal-footer">

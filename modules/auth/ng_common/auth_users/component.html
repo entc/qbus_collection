@@ -22,8 +22,14 @@
 
               <div class="row">
                 <div class="col-2">
-                  <span class="badge badge-secondary bg-secondary width_5em">{{item.userid}}</span>&nbsp;
-                  <span class="badge badge-primary bg-primary width_5em">{{item.gpid}}</span>
+                  <ng-container *ngIf="item.active == 0">
+                    <span class="badge badge-danger bg-danger width_5em">{{item.userid}}</span>&nbsp;
+                    <span class="badge badge-danger bg-danger width_5em">{{item.gpid}}</span>
+                  </ng-container>
+                  <ng-container *ngIf="item.active == 1">
+                    <span class="badge badge-secondary bg-secondary width_5em">{{item.userid}}</span>&nbsp;
+                    <span class="badge badge-primary bg-primary width_5em">{{item.gpid}}</span>
+                  </ng-container>
                 </div>
                 <div class="col-4">
                   <ng-container *ngIf="item.state == 1">

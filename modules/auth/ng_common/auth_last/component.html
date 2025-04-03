@@ -1,0 +1,32 @@
+<div class="row mb-2">
+    <div class="col text-left">
+      {{ 'AUTH.LASTLOGIN' | transloco }}
+    </div>
+    <div class="col text-right">
+      {{sitem.lt | trlo_locale}}
+    </div>
+  </div>
+  <div class="row mb-2">
+    <div class="col text-left">
+    </div>
+    <div class="col text-right">
+      {{sitem.lt | trlo_timediff}}
+    </div>
+</div>
+<div class="row mb-2">
+    <div class="col text-left">
+      {{ 'AUTH.LASTHOST' | transloco }}
+    </div>
+    <div class="col text-right">
+      {{sitem.remote}}
+    </div>
+</div>
+<hr>
+<div class="row mb-2">
+    <div class="col text-left">
+      {{ 'AUTH.IDLETIME' | transloco }}
+    </div>
+    <div class="col text-right">
+      {{sitem.vp}}s
+    </div>
+</div>

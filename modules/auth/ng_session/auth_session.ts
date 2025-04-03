@@ -1,13 +1,11 @@
-import { Component, Injectable, Directive, TemplateRef, OnInit, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
+import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Observable, BehaviorSubject, Subject } from 'rxjs';
+import { Observable, Subscriber, BehaviorSubject, Subject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
 import * as CryptoJS from 'crypto-js';
-import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
-import { QbngErrorModalComponent } from '@qbus/qbng_modals/component';
 
 //-----------------------------------------------------------------------------
 
@@ -31,9 +29,6 @@ export class AuthSession
   private interval_obj;
   private timer_idle_countdown;
 
-  private login_component: Type<any> | null = null
-  private login_modal: boolean = true;
-
   private user: string = null;
   private pass: string = null;
   private wpid: string = null;
@@ -46,7 +41,7 @@ export class AuthSession
 
   //-----------------------------------------------------------------------------
 
-  constructor (private http: HttpClient, private modal_service: NgbModal)
+  constructor (private http: HttpClient)
   {
     this.roles = new BehaviorSubject(null);
 
@@ -78,35 +73,124 @@ export class AuthSession
     }
   }
 
-  //-----------------------------------------------------------------------------
+  //---------------------------------------------------------------------------
 
-  public set_content_type (type: any, modal: boolean = false)
+  private enable__handle_error<T> (http_request: Observable<T>, subscriber: Subscriber<AuthLoginItem>): Observable<T>
   {
-    this.login_component = type;
-    this.login_modal = modal;
-  }
+    return http_request.pipe (catchError ((error) => {
 
-  //-----------------------------------------------------------------------------
+      if (error.status == 428)
+      {
+        const headers: HttpHeaders = error.headers;
+        const warning = headers.get('warning');
 
-  public get_content_type (): Type<any>
-  {
-    return this.login_component;
+        // the warning returns the error message
+        if (warning)
+        {
+          // split the error message into code and text
+          var i = warning.indexOf(',');
+
+          // retrieve code and text
+          var text = warning.substring(i + 1).trim();
+          var code = Number(warning.substring(0, i));
+
+          if (text == 'vault')
+          {
+            if (this.vault == false)
+            {
+              this.vault = true;
+              this.enable__fetch (subscriber, null);
+            }
+            else
+            {
+              this.vault = false;
+              return throwError (error);
+            }
+          }
+          else if (text == '2f_code')
+          {
+            subscriber.next (new AuthLoginItem (2, null, error.error['recipients'], error.error['token']));
+          }
+          else
+          {
+            subscriber.next (new AuthLoginItem (1, null));
+          }
+
+          return new Observable<T>();
+        }
+        else
+        {
+          return throwError (error);
+        }
+      }
+      else
+      {
+        return throwError (error);
+      }
+    }));
   }
 
   //---------------------------------------------------------------------------
 
-  public enable (user: string, pass: string): EventEmitter<AuthSessionItem>
+  private enable__fetch (subscriber: Subscriber<AuthLoginItem>, code: string = null)
   {
-    var response: EventEmitter<AuthSessionItem> = new EventEmitter<AuthSessionItem>();
+    const navigator = window.navigator;
+    const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
+    var header: object;
+
+    if (this.user && this.pass)
+    {
+      // use the old crypt4 authentication mechanism
+      // to create a session handle in backend
+      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)}), observe: 'events', reportProgress: true};
+    }
+    else
+    {
+      header = {observe: 'events', reportProgress: true};
+    }
+
+    this.enable__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: browser_info}), header), subscriber).subscribe ((event: HttpEvent<AuthSessionItem>) => {
+
+      switch (event.type)
+      {
+        case HttpEventType.Response:  // final event
+        {
+          console.log('final response');
+
+          let data: AuthSessionItem = event.body;
+
+          if (data)
+          {
+            // set the user
+            data.user = this.user;
+
+            this.roles.next (data['roles']);
+            this.storage_set (data);
+
+            subscriber.next (new AuthLoginItem (0, data));
+          }
+          else
+          {
+            subscriber.next (new AuthLoginItem (0, null));
+          }
+
+          break;
+        }
+      }
+
+    }, (error) => subscriber.next (new AuthLoginItem (0, null)));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public enable (user: string, pass: string, code: string = null): Observable<AuthLoginItem>
+  {
     // set the credentials
     this.user = user;
     this.pass = pass;
 
-    // try to get a session
-    this.fetch_session (response, null);
-
-    return response;
+    return new Observable ((subscriber) => this.enable__fetch (subscriber, code));
   }
 
   //---------------------------------------------------------------------------
@@ -115,8 +199,6 @@ export class AuthSession
   {
     this.storage_clear ();
     this.roles.next (null);
-
-    this.modal_service.dismissAll();
   }
 
   //---------------------------------------------------------------------------
@@ -417,100 +499,61 @@ alert ('we run out of coffee, so it is not implemented');
 
   //---------------------------------------------------------------------------
 
-  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Subject<T>
+  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
   {
-    const response: Subject<T> = new Subject<T>();
+    return new Observable((subscriber) => {
 
-    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
-    if (enjs)
-    {
-      let subscriber = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+      var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
+      if (enjs)
+      {
+        let obj = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
 
-        switch (event.type)
-        {
-          case HttpEventType.Response:  // final event
+          switch (event.type)
           {
-            if (event.body)
+            case HttpEventType.Response:  // final event
             {
-              response.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
-              response.complete();
-            }
-            else
-            {
-              response.next ({} as T);
-              response.complete();
-            }
+              if (event.body)
+              {
+                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+              }
+              else
+              {
+                subscriber.next ({} as T);
+              }
 
-            break;
+              subscriber.complete();
+              obj.unsubscribe();
+              break;
+            }
           }
-        }
-      }, (err: QbngErrorHolder) => response.error (err));
-    }
-    else
-    {
-      let subscriber = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+        }, (err: QbngErrorHolder) => subscriber.error (err));
+      }
+      else
+      {
+        let obj = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
 
-        switch (event.type)
-        {
-          case HttpEventType.Response:  // final event
+          switch (event.type)
           {
-            if (event.body)
+            case HttpEventType.Response:  // final event
             {
-              response.next (JSON.parse(event.body) as T);
-              response.complete();
+              if (event.body)
+              {
+                subscriber.next (JSON.parse(event.body) as T);
+              }
+              else
+              {
+                subscriber.next ({} as T);
+              }
+
+              subscriber.complete();
+              obj.unsubscribe();
+              break;
             }
-            else
-            {
-              response.next ({} as T);
-              response.complete();
-            }
-
-            break;
           }
-        }
-      }, (err: QbngErrorHolder) => response.error (err));
-    }
+        }, (err: QbngErrorHolder) => subscriber.error (err));
+      }
 
-/*
-
-      var req = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'response'}));
-
-      // decrypt the content
-      return req.pipe (map ((resp: HttpResponse<string>) => {
-
-        if (resp.status == 200)
-        {
-          if (resp.body)
-          {
-            return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (resp.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T;
-          }
-          else
-          {
-            return {} as T;
-            //return new Observable<T>();
-          }
-        }
-        else
-        {
-          throw this.handle_http_headers (resp.headers);
-        }
-
-      }));
-
-    }
-    else
-    {
-      // construct url
-      var url: string = this.session_url (qbus_module, qbus_method);
-
-      // construct other values
-      var params: string = JSON.stringify (qbus_params);
-
-      return this.handle_error_session<T> (this.http.post<T>(url, params, {}));
-    }
-    */
-
-    return response;
+    });
   }
 
   //---------------------------------------------------------------------------
@@ -584,7 +627,7 @@ alert ('we run out of coffee, so it is not implemented');
 
   //---------------------------------------------------------------------------
 
-  rest_PATCH<T> (path: string, params: object): Observable<T>
+  public rest_PATCH<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
@@ -699,52 +742,13 @@ alert ('we run out of coffee, so it is not implemented');
           // set the user
           data.user = this.user;
 
-          switch (data.state)
-          {
-            case 1:
-            {
-              // activate to use the session already
-              this.roles.next (data['roles']);
-              this.storage_set (data);
+          this.roles.next (data['roles']);
+          this.storage_set (data);
 
-              // to disable the login background
-              this.session.next (data);
-
-              this.modal_service.open (AuthFirstuseModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthSessionItem, useValue: data}])}).result.then(() => {
-
-                this.storage_set (data);
-                this.session.next (data);
-
-                response.emit (data);
-
-              }, () => {
-
-              });
-
-              break;
-            }
-            case 2:
-            {
-              this.roles.next (data['roles']);
-              this.storage_set (data);
-
-              response.emit (data);
-
-              break;
-            }
-          }
+          response.emit (data);
         }
         else
         {
-          /*
-          var err: QbngErrorHolder = new QbngErrorHolder;
-
-          err.text = 'ERR.SESSION_EMPTY';
-          err.code = 401;
-
-          this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
-          */
-
           response.emit (null);
         }
 
@@ -765,47 +769,13 @@ alert ('we run out of coffee, so it is not implemented');
       this.fetch_session__handle_event (event, response);
 
     }, (err: QbngErrorHolder) => response.emit (null));
-
-    setTimeout(() => {
-
-      if (request.closed)
-      {
-
-      }
-      else
-      {
-        var err: QbngErrorHolder = new QbngErrorHolder;
-
-        err.text = 'ERR.BROWSER_ISSUE';
-        err.code = 100;
-
-        this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])});
-
-        response.emit (null);
-        request.unsubscribe();
-      }
-
-    }, 10000);
-  }
-
-  //---------------------------------------------------------------------------
-
-  public show_login ()
-  {
-    if (this.login_modal)
-    {
-      this.modal_service.open (AuthLoginModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static"}).result.then(() => {
-
-      }, () => {
-
-      });
-    }
   }
 
   //---------------------------------------------------------------------------
 
   private show_workspace_selector (error: HttpErrorResponse, response: EventEmitter<AuthSessionItem>)
   {
+    /*
     this.modal_service.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])}).result.then((result) => {
 
       this.vault = false;
@@ -817,12 +787,14 @@ alert ('we run out of coffee, so it is not implemented');
       this.storage_clear ();
 
     });
+    */
   }
 
   //---------------------------------------------------------------------------
 
   private show_2factor_selector (error: HttpErrorResponse, response: EventEmitter<AuthSessionItem>)
   {
+    /*
     this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: HttpErrorResponse, useValue: error}])}).result.then((result) => {
 
       this.vault = false;
@@ -833,6 +805,7 @@ alert ('we run out of coffee, so it is not implemented');
       this.storage_clear ();
 
     });
+    */
   }
 
   //---------------------------------------------------------------------------
@@ -841,25 +814,6 @@ alert ('we run out of coffee, so it is not implemented');
   {
     this.vault = true;
     this.fetch_session (response, null);
-  }
-
-  //---------------------------------------------------------------------------
-
-  private show_session_expired ()
-  {
-    /*
-    var err: QbngErrorHolder = new QbngErrorHolder;
-
-    err.text = 'ERR.SESSION_EXPIRED';
-    err.code = 401;
-
-    this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngErrorHolder, useValue: err}])}).result.then(() => {
-
-
-    });
-    */
-
-    this.show_login ();
   }
 
   //---------------------------------------------------------------------------
@@ -960,7 +914,6 @@ alert ('we run out of coffee, so it is not implemented');
         var h = this.handle_http_headers (error.headers);
 
         this.disable ();
-        this.show_session_expired ();
 
         return h;
       }
@@ -1010,6 +963,21 @@ export class AuthSessionItem
   remote: string;
 }
 
+export class AuthRecipient
+{
+  id: number;
+  email: string;
+  type: number;
+
+  // fill be used from the component
+  used: boolean;
+}
+
+export class AuthLoginItem
+{
+  constructor (public state: number, public sitem: AuthSessionItem, public recipients: AuthRecipient[] = null, public token: string = null) {}
+}
+
 //=============================================================================
 
 export abstract class AuthSessionLoginWidget
@@ -1018,6 +986,8 @@ export abstract class AuthSessionLoginWidget
 }
 
 //=============================================================================
+
+/*
 
 @Directive({
   selector: 'auth-session-component'
@@ -1067,9 +1037,10 @@ export class AuthSessionComponentDirective {
     }
   }
 }
+*/
 
 //=============================================================================
-
+/*
 @Component({
   selector: 'auth-wpace-modal-component',
   templateUrl: './modal_workspaces.html'
@@ -1091,9 +1062,10 @@ export class AuthSessionComponentDirective {
     this.modal.close (wpid);
   }
 }
-
+*/
 //=============================================================================
 
+/*
 @Component({
   selector: 'auth-2factor-modal-component',
   templateUrl: './modal_2factor.html'
@@ -1174,7 +1146,8 @@ class AuthRecipients
 }
 
 //=============================================================================
-
+*/
+/*
 @Component({
   selector: 'auth-firstuse-modal-component',
   templateUrl: './modal_firstuse.html'
@@ -1198,9 +1171,10 @@ class AuthRecipients
     this.mode_next = true;
   }
 }
-
+*/
 //=============================================================================
 
+/*
 @Component({
   selector: 'auth-login-modal-component',
   templateUrl: './modal_login.html'
@@ -1217,5 +1191,71 @@ class AuthRecipients
     });
   }
 }
+*/
 
-//=============================================================================
+//-----------------------------------------------------------------------------
+
+@Directive({
+  selector: '[authSessionRole]'
+})
+export class AuthSessionRoleDirective {
+
+  private permissions: Array<string>;
+  private roles: object;
+  private enabled: boolean = false;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_session: AuthSession, private element: ElementRef, private templateRef: TemplateRef<any>, private viewContainer: ViewContainerRef)
+  {
+    this.enabled = false;
+    this.roles = null;
+
+    this.auth_session.roles.subscribe ((roles: object) => {
+
+      this.roles = roles;
+      this.updateView ();
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  @Input () set authSessionRole (val: Array<string>)
+  {
+    this.permissions = val;
+    this.enabled = true;
+    this.updateView ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private updateView ()
+  {
+    if (this.enabled && this.roles)
+    {
+      if (this.permissions)
+      {
+        if (this.auth_session.contains_role__or (this.roles, this.permissions))
+        {
+          this.viewContainer.clear();
+          this.viewContainer.createEmbeddedView(this.templateRef);
+        }
+        else
+        {
+          this.viewContainer.clear();
+        }
+      }
+      else
+      {
+        this.viewContainer.clear();
+        this.viewContainer.createEmbeddedView(this.templateRef);
+      }
+    }
+    else
+    {
+      this.viewContainer.clear();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------

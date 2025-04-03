@@ -70,40 +70,14 @@
   <ng-container *ngIf="sitem">
 
     <div class="alert alert-success text-center" role="alert">
-      <h2>{{ 'AUTH.ACCESSGRANTED' | transloco }}</h2>
+      <h3>{{ 'AUTH.WELCOME' | transloco }} {{sitem.firstname}} {{sitem.lastname}}</h3>
     </div>
-    <p>
-      {{ 'AUTH.WELCOME' | transloco }} {{sitem.firstname}} {{sitem.lastname}}
-    </p>
-    <hr>
-    <div class="row mb-2">
-        <div class="col">
-          {{ 'AUTH.LASTLOGIN' | transloco }}
-        </div>
-        <div class="col text-right width_10em">
-          {{sitem.lt | trlo_locale}}
-        </div>
-    </div>
-    <div class="row mb-2">
-        <div class="col">
-          {{ 'AUTH.LASTHOST' | transloco }}
-        </div>
-        <div class="col text-right width_10em">
-          {{sitem.remote}}
-        </div>
-    </div>
-    <hr>
-    <div class="row mb-2">
-        <div class="col">
-          {{ 'AUTH.IDLETIME' | transloco }}
-        </div>
-        <div class="col text-right width_10em">
-          {{sitem.vp}}s
-        </div>
-    </div>
+
+    <auth-last [sitem]="sitem"></auth-last>
+
     <hr>
     <div class="text-right mt-2">
-      <button (click)="close ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'MISC.CLOSE' | transloco }}</button>
+      <button (click)="close ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'MISC.CONTINUE' | transloco }}</button>
     </div>
 
   </ng-container>

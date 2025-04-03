@@ -2,6 +2,7 @@ export class QbngErrorHolder
 {
   code: number;
   text: string;
+  data: object;
 }
 
 export class QbngOptionHolder
