@@ -267,8 +267,6 @@ PyMODINIT_FUNC initqbus (void)
   }
 
   m = Py_InitModule ("qbus", module_methods);
-
-  PyModule_AddObject(m, "QBus", (PyObject*)&PyTypeObject_QBus);
 }
 
 //-----------------------------------------------------------------------------

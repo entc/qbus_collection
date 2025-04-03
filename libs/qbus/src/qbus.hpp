@@ -64,6 +64,14 @@ namespace qbus
       }
     }
 
+    void set_response (std::string& sender, std::string& chainkey)
+    {
+      m_ret = CAPE_ERR_CONTINUE;
+
+      sender.assign (m_qin->sender);
+      chainkey.assign (m_qin->chain_key);
+    }
+    
     void set_continue (cape::Udc& content)
     {
       m_ret = CAPE_ERR_CONTINUE;
@@ -75,7 +83,7 @@ namespace qbus
         m_qin->cdata = content.release();
       }
     }
-
+    
     cape::Udc& rinfo_valid (int type)
     {
       if (m_rinfo_in.empty())
@@ -148,7 +156,7 @@ namespace qbus
     {
       cape_udc_replace_mv (&(m_qout->cdata), &(m_qin->cdata));
     }
-
+    
     QBus qbus () { return m_qbus; }
 
     QBusM qin () { return m_qin; }

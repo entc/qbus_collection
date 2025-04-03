@@ -671,8 +671,12 @@ void __STDCALL qbus_route_on_msg_response__worker (void* ptr, number_t pos, numb
     }
     else
     {
-      
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "msg response", "can't find chainkey for = %s", chain_key);
     }
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "QBUS", "msg response", "no chainkey");
   }
 
   // cleanup context
