@@ -1,9 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { TrloModule } from '@qbus/trlo.module';
 import { HttpClientModule } from '@angular/common/http';
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { AuthSession, AuthSessionRoleDirective } from '@qbus/auth_session';
 
 //=============================================================================
@@ -17,9 +14,6 @@ import { AuthSession, AuthSessionRoleDirective } from '@qbus/auth_session';
     ],
     imports: [
         CommonModule,
-        FormsModule,
-        TrloModule,
-        NgbModule,
         HttpClientModule
     ],
     exports: [
