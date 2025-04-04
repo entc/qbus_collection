@@ -6,6 +6,7 @@ import { throwError, of, timer } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
 import * as CryptoJS from 'crypto-js';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
+import { ConnService } from '@conn/conn_service';
 
 //-----------------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ export class AuthSession
 
   //-----------------------------------------------------------------------------
 
-  constructor (private http: HttpClient)
+  constructor (private http: HttpClient, private conn: ConnService)
   {
     this.roles = new BehaviorSubject(null);
 
