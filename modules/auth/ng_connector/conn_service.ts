@@ -134,25 +134,7 @@ import * as CryptoJS from 'crypto-js';
       {
         case HttpEventType.Response:  // final event
         {
-          console.log('final response');
-
-          let data: AuthSessionItem = event.body;
-
-          if (data)
-          {
-            // set the user
-            data.user = creds.user;
-
-            this.roles.next (data['roles']);
-            this.storage_set (data);
-
-            subscriber.next (new AuthLoginItem (0, data));
-          }
-          else
-          {
-            subscriber.next (new AuthLoginItem (0, null));
-          }
-
+          subscriber.next (new AuthLoginItem (0, event.body));
           break;
         }
       }

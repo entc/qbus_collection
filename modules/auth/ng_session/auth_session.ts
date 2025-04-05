@@ -87,7 +87,22 @@ export class AuthSession
 
     let creds: AuthLoginCreds = new AuthLoginCreds (0, this.user, this.pass, this.vault, code, browser_info);
 
-    return new Observable ((subscriber) => this.conn.login (subscriber, creds));
+    return new Observable ((subscriber) => this.conn.login (subscriber, creds)).pipe (map ((slogin: AuthLoginItem) => {
+
+      let sitem: AuthSessionItem = slogin.sitem;
+      if (sitem)
+      {
+        // set the user
+        sitem.user = this.user;
+
+        this.roles.next (sitem['roles']);
+
+        this.storage_set (sitem);
+      }
+
+      return slogin;
+
+    }));
   }
 
   //---------------------------------------------------------------------------
