@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, Ht
 import { Observable, Subscriber, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthLoginItem, AuthSessionItem, AuthLoginCreds } from '@qbus/auth_session';
+import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import * as CryptoJS from 'crypto-js';
 
 //---------------------------------------------------------------------------
@@ -141,6 +142,140 @@ import * as CryptoJS from 'crypto-js';
 
     }, (error) => subscriber.next (new AuthLoginItem (0, null)));
   }
+
+  //---------------------------------------------------------------------------
+
+  private construct_header (sitem: AuthSessionItem): HttpHeaders
+  {
+    // get the linux time since 1970 in milliseconds
+    var iv: string = this.padding ((new Date).getTime().toString(), 16);
+    var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
+
+    var bearer: string = btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
+
+    return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
+  }
+
+  //---------------------------------------------------------------------------
+
+  private construct_params (sitem: AuthSessionItem, params: object): string
+  {
+    var h = JSON.stringify (params);
+
+    return CryptoJS.AES.encrypt (h, sitem.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private construct_enjs (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_params: object): AuthEnjs
+  {
+    if (sitem)
+    {
+      var enjs: AuthEnjs = new AuthEnjs;
+
+      enjs.url = 'enjs/' + qbus_module + '/' + qbus_method;
+      enjs.header = this.construct_header (sitem);
+      enjs.params = this.construct_params (sitem, qbus_params);
+      enjs.vsec = sitem.vsec;
+
+      return enjs;
+    }
+    else if (stoken)
+    {
+      var enjs: AuthEnjs = new AuthEnjs;
+
+      enjs.url = 'json/' + qbus_module + '/' + qbus_method + '/__P/' + stoken;
+      enjs.header = new HttpHeaders ({'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
+      enjs.params = JSON.stringify (qbus_params);
+      enjs.vsec = null;
+
+      return enjs;
+    }
+    else
+    {
+      enjs.url = 'json/' + qbus_module + '/' + qbus_method;
+      enjs.header = new HttpHeaders ({'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
+      enjs.params = JSON.stringify (qbus_params);
+      enjs.vsec = null;
+
+      return enjs;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public json_rpc<T> (subscriber: Subscriber<T>, qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string)
+  {
+    var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+  //  if (enjs)
+    {
+      let obj = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.Response:  // final event
+          {
+            if (event.body)
+            {
+              if (enjs.vsec)
+              {
+                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+              }
+              else
+              {
+                subscriber.next (JSON.parse(event.body) as T);
+              }
+            }
+            else
+            {
+              subscriber.next ({} as T);
+            }
+
+            subscriber.complete();
+            obj.unsubscribe();
+            break;
+          }
+        }
+      }, (err: QbngErrorHolder) => subscriber.error (err));
+    }
+    /*
+    else
+    {
+      let obj = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.Response:  // final event
+          {
+            if (event.body)
+            {
+              subscriber.next (JSON.parse(event.body) as T);
+            }
+            else
+            {
+              subscriber.next ({} as T);
+            }
+
+            subscriber.complete();
+            obj.unsubscribe();
+            break;
+          }
+        }
+      }, (err: QbngErrorHolder) => subscriber.error (err));
+    }
+    */
+  }
+
 }
+
+//---------------------------------------------------------------------------
+
+class AuthEnjs
+{
+  url: string;
+  params: string;
+  header: HttpHeaders;
+  vsec: string;
+};
 
 //---------------------------------------------------------------------------

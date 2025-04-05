@@ -413,59 +413,7 @@ alert ('we run out of coffee, so it is not implemented');
 
   public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
   {
-    return new Observable((subscriber) => {
-
-      var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
-      if (enjs)
-      {
-        let obj = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
-
-          switch (event.type)
-          {
-            case HttpEventType.Response:  // final event
-            {
-              if (event.body)
-              {
-                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
-              }
-              else
-              {
-                subscriber.next ({} as T);
-              }
-
-              subscriber.complete();
-              obj.unsubscribe();
-              break;
-            }
-          }
-        }, (err: QbngErrorHolder) => subscriber.error (err));
-      }
-      else
-      {
-        let obj = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
-
-          switch (event.type)
-          {
-            case HttpEventType.Response:  // final event
-            {
-              if (event.body)
-              {
-                subscriber.next (JSON.parse(event.body) as T);
-              }
-              else
-              {
-                subscriber.next ({} as T);
-              }
-
-              subscriber.complete();
-              obj.unsubscribe();
-              break;
-            }
-          }
-        }, (err: QbngErrorHolder) => subscriber.error (err));
-      }
-
-    });
+    return new Observable((subscriber) => this.conn.json_rpc<T> (subscriber, qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token));
   }
 
   //---------------------------------------------------------------------------
