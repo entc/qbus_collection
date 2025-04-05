@@ -76,122 +76,18 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private enable__handle_error<T> (http_request: Observable<T>, subscriber: Subscriber<AuthLoginItem>): Observable<T>
-  {
-    return http_request.pipe (catchError ((error) => {
-
-      if (error.status == 428)
-      {
-        const headers: HttpHeaders = error.headers;
-        const warning = headers.get('warning');
-
-        // the warning returns the error message
-        if (warning)
-        {
-          // split the error message into code and text
-          var i = warning.indexOf(',');
-
-          // retrieve code and text
-          var text = warning.substring(i + 1).trim();
-          var code = Number(warning.substring(0, i));
-
-          if (text == 'vault')
-          {
-            if (this.vault == false)
-            {
-              this.vault = true;
-              this.enable__fetch (subscriber, null);
-            }
-            else
-            {
-              this.vault = false;
-              return throwError (error);
-            }
-          }
-          else if (text == '2f_code')
-          {
-            subscriber.next (new AuthLoginItem (2, null, error.error['recipients'], error.error['token']));
-          }
-          else
-          {
-            subscriber.next (new AuthLoginItem (1, null));
-          }
-
-          return new Observable<T>();
-        }
-        else
-        {
-          return throwError (error);
-        }
-      }
-      else
-      {
-        return throwError (error);
-      }
-    }));
-  }
-
-  //---------------------------------------------------------------------------
-
-  private enable__fetch (subscriber: Subscriber<AuthLoginItem>, code: string = null)
+  public enable (user: string, pass: string, code: string = null): Observable<AuthLoginItem>
   {
     const navigator = window.navigator;
     const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
-    var header: object;
-
-    if (this.user && this.pass)
-    {
-      // use the old crypt4 authentication mechanism
-      // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)}), observe: 'events', reportProgress: true};
-    }
-    else
-    {
-      header = {observe: 'events', reportProgress: true};
-    }
-
-    this.enable__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: browser_info}), header), subscriber).subscribe ((event: HttpEvent<AuthSessionItem>) => {
-
-      switch (event.type)
-      {
-        case HttpEventType.Response:  // final event
-        {
-          console.log('final response');
-
-          let data: AuthSessionItem = event.body;
-
-          if (data)
-          {
-            // set the user
-            data.user = this.user;
-
-            this.roles.next (data['roles']);
-            this.storage_set (data);
-
-            subscriber.next (new AuthLoginItem (0, data));
-          }
-          else
-          {
-            subscriber.next (new AuthLoginItem (0, null));
-          }
-
-          break;
-        }
-      }
-
-    }, (error) => subscriber.next (new AuthLoginItem (0, null)));
-  }
-
-  //---------------------------------------------------------------------------
-
-  public enable (user: string, pass: string, code: string = null): Observable<AuthLoginItem>
-  {
     // set the credentials
     this.user = user;
     this.pass = pass;
 
-    return new Observable ((subscriber) => this.enable__fetch (subscriber, code));
+    let creds: AuthLoginCreds = new AuthLoginCreds (0, this.user, this.pass, this.vault, code, browser_info);
+
+    return new Observable ((subscriber) => this.conn.login (subscriber, creds));
   }
 
   //---------------------------------------------------------------------------
@@ -977,6 +873,11 @@ export class AuthRecipient
 export class AuthLoginItem
 {
   constructor (public state: number, public sitem: AuthSessionItem, public recipients: AuthRecipient[] = null, public token: string = null) {}
+}
+
+export class AuthLoginCreds
+{
+  constructor (public wpid: number, public user: string, public pass: string, public vault: boolean, public code: string, public browser_info: object) {}
 }
 
 //=============================================================================
