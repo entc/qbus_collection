@@ -1,17 +1,12 @@
 export class QbngErrorHolder
 {
-  code: number;
-  text: string;
-  data: object;
+  constructor (public code: number, public text: string, public data: object = null)
+  {
+  }
 }
 
 export class QbngOptionHolder
 {
-  /*
-  header_text: string;
-  body_text: string;
-  button_text: string;
-*/
   constructor (public header_text: string, public body_text: string, public button_text: string)
   {
   }

@@ -28,4 +28,5 @@ auth_logins_cnt_view \
 rbac_users_logins_view \
 auth_roles_wp_view \
 auth_roles_ui_view \
+auth_users_email_view \
 | sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' > ../../../../var/auth.sql

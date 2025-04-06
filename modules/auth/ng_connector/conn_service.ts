@@ -204,68 +204,60 @@ import * as CryptoJS from 'crypto-js';
 
   //---------------------------------------------------------------------------
 
-  public json_rpc<T> (subscriber: Subscriber<T>, qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string)
+  private session__handle_error<T> (http_request: Observable<T>): Observable<T>
+  {
+    return http_request.pipe (catchError ((error) => {
+
+      const headers: HttpHeaders = error.headers;
+      const warning = headers.get('warning');
+
+      if (warning)
+      {
+        var i = warning.indexOf(',');
+        return throwError (new QbngErrorHolder (Number(warning.substring (0, i)), warning.substring (i + 1).trim()));
+      }
+      else
+      {
+        return throwError (new QbngErrorHolder (0, 'ERR.UNKNOWN'));
+      }
+
+    }));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public session__json_rpc<T> (subscriber: Subscriber<T>, qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string)
   {
     var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
-  //  if (enjs)
-    {
-      let obj = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+    let obj = this.session__handle_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
 
-        switch (event.type)
+      switch (event.type)
+      {
+        case HttpEventType.Response:  // final event
         {
-          case HttpEventType.Response:  // final event
+          if (event.body)
           {
-            if (event.body)
+            if (enjs.vsec)
             {
-              if (enjs.vsec)
-              {
-                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
-              }
-              else
-              {
-                subscriber.next (JSON.parse(event.body) as T);
-              }
+              subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
             }
             else
-            {
-              subscriber.next ({} as T);
-            }
-
-            subscriber.complete();
-            obj.unsubscribe();
-            break;
-          }
-        }
-      }, (err: QbngErrorHolder) => subscriber.error (err));
-    }
-    /*
-    else
-    {
-      let obj = this.handle_error_session (this.http.post(this.session_url (qbus_module, qbus_method), JSON.stringify (qbus_params), {responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
-
-        switch (event.type)
-        {
-          case HttpEventType.Response:  // final event
-          {
-            if (event.body)
             {
               subscriber.next (JSON.parse(event.body) as T);
             }
-            else
-            {
-              subscriber.next ({} as T);
-            }
-
-            subscriber.complete();
-            obj.unsubscribe();
-            break;
           }
-        }
-      }, (err: QbngErrorHolder) => subscriber.error (err));
-    }
-    */
-  }
+          else
+          {
+            subscriber.next ({} as T);
+          }
 
+          subscriber.complete();
+          obj.unsubscribe();
+          break;
+        }
+      }
+    }, (err: QbngErrorHolder) => subscriber.error (err));
+  }
 }
 
 //---------------------------------------------------------------------------

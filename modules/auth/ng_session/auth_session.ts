@@ -413,7 +413,20 @@ alert ('we run out of coffee, so it is not implemented');
 
   public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
   {
-    return new Observable((subscriber) => this.conn.json_rpc<T> (subscriber, qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token));
+    return new Observable((subscriber) => this.conn.session__json_rpc<T> (subscriber, qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token)).pipe(map((res: T) => {
+
+      this.timer_update ();
+      return res;
+
+    }), catchError ((err: QbngErrorHolder) => {
+
+      if (err.code == 11)   // no authentication
+      {
+        this.disable();
+      }
+
+      return throwError (err);
+    }));
   }
 
   //---------------------------------------------------------------------------
@@ -685,22 +698,11 @@ alert ('we run out of coffee, so it is not implemented');
     if (warning)
     {
       var i = warning.indexOf(',');
-
-      var eh: QbngErrorHolder = new QbngErrorHolder;
-
-      eh.text = warning.substring(i + 1).trim();
-      eh.code = Number(warning.substring(0, i));
-
-      return throwError (eh);
+      return throwError (new QbngErrorHolder (Number(warning.substring(0, i)), warning.substring(i + 1).trim()));
     }
     else
     {
-      var eh: QbngErrorHolder = new QbngErrorHolder;
-
-      eh.text = 'ERR.UNKNOWN';
-      eh.code = 0;
-
-      return throwError (eh);
+      return throwError (new QbngErrorHolder (0, 'ERR.UNKNOWN'));
     }
   }
 

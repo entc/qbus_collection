@@ -2702,6 +2702,8 @@ int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   number_t wpid;
   CapeUdc opt_msgs_node;
   CapeUdc opt_2factor_node;
+  CapeUdc opt_ttl_node;
+  int is_admin = FALSE;
 
   // local objects
   AdblTrx adbl_trx = NULL;
@@ -2716,6 +2718,8 @@ int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     
     wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
     gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+    
+    is_admin = TRUE;
   }
   else
   {
@@ -2749,20 +2753,15 @@ int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
+  // optional
   opt_msgs_node = cape_udc_get (qin->cdata, "opt_msgs");
-  if (NULL == opt_msgs_node)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_OPT_MSGS");
-    goto exit_and_cleanup;
-  }
 
+  // optional
   opt_2factor_node = cape_udc_get (qin->cdata, "opt_2factor");
-  if (NULL == opt_2factor_node)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_OPT_2F");
-    goto exit_and_cleanup;
-  }
 
+  // optional
+  opt_ttl_node = cape_udc_get (qin->cdata, "opt_tll");
+  
   // start transaction
   adbl_trx = adbl_trx_new (self->adbl_session, err);
   if (adbl_trx == NULL)
@@ -2779,9 +2778,21 @@ int auth_ui_config_set (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n     (params, "wpid"        , wpid);
     cape_udc_add_n     (params, "gpid"        , gpid);
 
-    cape_udc_add_n     (values, "opt_msgs"    , cape_udc_n (opt_msgs_node, 0));
-    cape_udc_add_n     (values, "opt_2factor" , cape_udc_n (opt_2factor_node, 0));
+    if (opt_msgs_node)
+    {
+      cape_udc_add_n     (values, "opt_msgs"    , cape_udc_n (opt_msgs_node, 0));
+    }
+    
+    if (opt_2factor_node)
+    {
+      cape_udc_add_n     (values, "opt_2factor" , cape_udc_n (opt_2factor_node, 0));
+    }
 
+    if (opt_ttl_node && is_admin)
+    {
+      cape_udc_add_n     (values, "opt_ttl"    , cape_udc_n (opt_ttl_node, 0));
+    }
+    
     // execute query
     res = adbl_trx_update (adbl_trx, "rbac_users", &params, &values, err);
     if (res)
