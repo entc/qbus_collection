@@ -193,6 +193,8 @@ import * as CryptoJS from 'crypto-js';
     }
     else
     {
+      var enjs: AuthEnjs = new AuthEnjs;
+
       enjs.url = 'json/' + qbus_module + '/' + qbus_method;
       enjs.header = new HttpHeaders ({'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
       enjs.params = JSON.stringify (qbus_params);
