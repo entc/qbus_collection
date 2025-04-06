@@ -114,33 +114,37 @@ import * as CryptoJS from 'crypto-js';
 
   //---------------------------------------------------------------------------
 
-  public login (subscriber: Subscriber<AuthLoginItem>, creds: AuthLoginCreds)
+  public session__login (creds: AuthLoginCreds): Observable<AuthLoginItem>
   {
-    var header: object;
+    return new Observable ((subscriber) => {
 
-    if (creds.user && creds.pass)
-    {
-      // use the old crypt4 authentication mechanism
-      // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (creds)}), observe: 'events', reportProgress: true};
-    }
-    else
-    {
-      header = {observe: 'events', reportProgress: true};
-    }
+      var header: object;
 
-    this.login__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: creds.browser_info}), header), subscriber, creds).subscribe ((event: HttpEvent<AuthSessionItem>) => {
-
-      switch (event.type)
+      if (creds.user && creds.pass)
       {
-        case HttpEventType.Response:  // final event
-        {
-          subscriber.next (new AuthLoginItem (0, event.body));
-          break;
-        }
+        // use the old crypt4 authentication mechanism
+        // to create a session handle in backend
+        header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (creds)}), observe: 'events', reportProgress: true};
+      }
+      else
+      {
+        header = {observe: 'events', reportProgress: true};
       }
 
-    }, (error) => subscriber.next (new AuthLoginItem (0, null)));
+      this.login__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: creds.browser_info}), header), subscriber, creds).subscribe ((event: HttpEvent<AuthSessionItem>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.Response:  // final event
+          {
+            subscriber.next (new AuthLoginItem (0, event.body));
+            break;
+          }
+        }
+
+      }, (error) => subscriber.next (new AuthLoginItem (0, null)));
+
+    });
   }
 
   //---------------------------------------------------------------------------
@@ -228,37 +232,57 @@ import * as CryptoJS from 'crypto-js';
 
   //---------------------------------------------------------------------------
 
-  public session__json_rpc<T> (subscriber: Subscriber<T>, qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string)
+  public session__json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<T>
   {
-    var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
-    let obj = this.session__handle_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+    return new Observable<T>((subscriber) => {
 
-      switch (event.type)
-      {
-        case HttpEventType.Response:  // final event
+      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+      let obj = this.session__handle_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
         {
-          if (event.body)
+          case HttpEventType.Response:  // final event
           {
-            if (enjs.vsec)
+            if (event.body)
             {
-              subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+              if (enjs.vsec)
+              {
+                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+              }
+              else
+              {
+                subscriber.next (JSON.parse(event.body) as T);
+              }
             }
             else
             {
-              subscriber.next (JSON.parse(event.body) as T);
+              subscriber.next ({} as T);
             }
-          }
-          else
-          {
-            subscriber.next ({} as T);
-          }
 
-          subscriber.complete();
-          obj.unsubscribe();
-          break;
+            subscriber.complete();
+            obj.unsubscribe();
+            break;
+          }
         }
-      }
-    }, (err: QbngErrorHolder) => subscriber.error (err));
+      }, (err: QbngErrorHolder) => subscriber.error (err));
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  public session__json_rpc_blob (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<Blob>
+  {
+    return new Observable<T>((subscriber) => {
+
+      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+      let obj = this.session__handle_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob'})).subscribe ((data: Blob) => {
+
+        subscriber.next (data);
+
+      });
+
+    });
   }
 }
 

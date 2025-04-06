@@ -85,9 +85,7 @@ export class AuthSession
     this.user = user;
     this.pass = pass;
 
-    let creds: AuthLoginCreds = new AuthLoginCreds (0, this.user, this.pass, this.vault, code, browser_info);
-
-    return new Observable ((subscriber) => this.conn.login (subscriber, creds)).pipe (map ((slogin: AuthLoginItem) => {
+    return this.conn.session__login (new AuthLoginCreds (0, this.user, this.pass, this.vault, code, browser_info)).pipe (map ((slogin: AuthLoginItem) => {
 
       let sitem: AuthSessionItem = slogin.sitem;
       if (sitem)
@@ -413,7 +411,7 @@ alert ('we run out of coffee, so it is not implemented');
 
   public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
   {
-    return new Observable((subscriber) => this.conn.session__json_rpc<T> (subscriber, qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token)).pipe(map((res: T) => {
+    return this.conn.session__json_rpc<T> (qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token).pipe(map((res: T) => {
 
       this.timer_update ();
       return res;
@@ -457,24 +455,20 @@ alert ('we run out of coffee, so it is not implemented');
 
   public json_rpc_blob (qbus_module: string, qbus_method: string, qbus_params: object): Observable<Blob>
   {
-    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
-    if (enjs)
-    {
-      var req = this.handle_error_session<Blob> (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob'}));
+    return this.conn.session__json_rpc_blob (qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token).pipe(map((res: Blob) => {
 
-      // decrypt the content
-      return req;
-    }
-    else
-    {
-      // construct url
-      var url: string = this.session_url (qbus_module, qbus_method);
+      this.timer_update ();
+      return res;
 
-      // construct other values
-      var params: string = JSON.stringify (qbus_params);
+    }), catchError ((err: QbngErrorHolder) => {
 
-      return this.handle_error_session<Blob> (this.http.post(url, params, {responseType: 'blob'}));
-    }
+      if (err.code == 11)   // no authentication
+      {
+        this.disable();
+      }
+
+      return throwError (err);
+    }));
   }
 
   //---------------------------------------------------------------------------
