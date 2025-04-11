@@ -431,24 +431,20 @@ alert ('we run out of coffee, so it is not implemented');
 
   public blob_rpc_resp (qbus_module: string, qbus_method: string, qbus_params: object): Observable<HttpResponse<Blob>>
   {
-    var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
-    if (enjs)
-    {
-      var req = this.handle_error_session (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob', observe: 'response'}));
+    return this.conn.session__json_rpc_resp (qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token).pipe(map((res: HttpResponse<Blob>) => {
 
-      // decrypt the content
-      return req;
-    }
-    else
-    {
-      // construct url
-      var url: string = this.session_url (qbus_module, qbus_method);
+      this.timer_update ();
+      return res;
 
-      // construct other values
-      var params: string = JSON.stringify (qbus_params);
+    }), catchError ((err: QbngErrorHolder) => {
 
-      return this.handle_error_session (this.http.post(url, params, {responseType: 'blob', observe: 'response'}));
-    }
+      if (err.code == 11)   // no authentication
+      {
+        this.disable();
+      }
+
+      return throwError (err);
+    }));
   }
 
   //---------------------------------------------------------------------------
@@ -473,6 +469,7 @@ alert ('we run out of coffee, so it is not implemented');
 
   //---------------------------------------------------------------------------
 
+/*
   public rest_GET<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.get<T>('rest/' + path, this.session_options()));
@@ -498,7 +495,7 @@ alert ('we run out of coffee, so it is not implemented');
   {
     return this.handle_error_session<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
-
+  */
   //---------------------------------------------------------------------------
 
 /*
@@ -540,104 +537,6 @@ alert ('we run out of coffee, so it is not implemented');
   	return str.length < max ? this.padding ("0" + str, max) : str;
   }
 
-  //-----------------------------------------------------------------------------
-
-  private crypt4 (user: string, pass: string, code: string): string
-  {
-    // get the linux time since 1970 in milliseconds
-    var iv: string = this.padding ((new Date).getTime().toString(), 16);
-
-    var hash1: string = CryptoJS.SHA256 (user + ":" + pass).toString();
-    var hash2: string = CryptoJS.SHA256 (iv + ":" + hash1).toString();
-
-    // default parameters
-    var params = {"ha":iv, "id":CryptoJS.SHA256 (user).toString(), "da":hash2};
-
-    if (this.wpid)
-    {
-      params['wpid'] = this.wpid;
-    }
-
-    if (this.vault)
-    {
-      // ecrypt password with hash1
-      // hash1 is known to the auth module
-      params['vault'] = CryptoJS.AES.encrypt (pass, hash1, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
-    }
-
-    if (code)
-    {
-      params['code'] = CryptoJS.SHA256 (code).toString();
-    }
-
-    // create a Object object as text
-    return JSON.stringify (params);
-  }
-
-  //---------------------------------------------------------------------------
-
-  public json_crypt4_rpc<T> (qbus_module: string, qbus_method: string, params: object, response: EventEmitter<AuthSessionItem>, code: string): Observable<T>
-  {
-    var header: object;
-
-    if (this.user && this.pass)
-    {
-      // use the old crypt4 authentication mechanism
-      // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (this.user, this.pass, code)}), observe: 'events', reportProgress: true};
-    }
-    else
-    {
-      header = {observe: 'events', reportProgress: true};
-    }
-
-    return this.handle_error_login<T> (this.http.post<T>('json/' + qbus_module + '/' + qbus_method, JSON.stringify (params), header), response);
-  }
-
-  //---------------------------------------------------------------------------
-
-  private fetch_session__handle_event (event: HttpEvent<AuthSessionItem>, response: EventEmitter<AuthSessionItem>)
-  {
-    switch (event.type)
-    {
-      case HttpEventType.Response:  // final event
-      {
-        let data: AuthSessionItem = event.body;
-
-        if (data)
-        {
-          // set the user
-          data.user = this.user;
-
-          this.roles.next (data['roles']);
-          this.storage_set (data);
-
-          response.emit (data);
-        }
-        else
-        {
-          response.emit (null);
-        }
-
-        break;
-      }
-    }
-  }
-
-  //---------------------------------------------------------------------------
-
-  private fetch_session (response: EventEmitter<AuthSessionItem>, code: string)
-  {
-    const navigator = window.navigator;
-    const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
-
-    let request = this.json_crypt4_rpc ('AUTH', 'session_add', {type: 1, info: browser_info}, response, code).subscribe((event: HttpEvent<AuthSessionItem>) => {
-
-      this.fetch_session__handle_event (event, response);
-
-    }, (err: QbngErrorHolder) => response.emit (null));
-  }
-
   //---------------------------------------------------------------------------
 
   private show_workspace_selector (error: HttpErrorResponse, response: EventEmitter<AuthSessionItem>)
@@ -677,14 +576,6 @@ alert ('we run out of coffee, so it is not implemented');
 
   //---------------------------------------------------------------------------
 
-  private apply_vault (response: EventEmitter<AuthSessionItem>)
-  {
-    this.vault = true;
-    this.fetch_session (response, null);
-  }
-
-  //---------------------------------------------------------------------------
-
   private handle_http_headers (headers: HttpHeaders)
   {
     const warning = headers.get('warning');
@@ -698,65 +589,6 @@ alert ('we run out of coffee, so it is not implemented');
     {
       return throwError (new QbngErrorHolder (0, 'ERR.UNKNOWN'));
     }
-  }
-
-  //---------------------------------------------------------------------------
-
-  private handle_error_login<T> (http_request: Observable<T>, response: EventEmitter<AuthSessionItem>): Observable<T>
-  {
-    return http_request.pipe (catchError ((error) => {
-
-      if (error.status == 428)
-      {
-        const headers: HttpHeaders = error.headers;
-        const warning = headers.get('warning');
-
-        // the warning returns the error message
-        if (warning)
-        {
-          // split the error message into code and text
-          var i = warning.indexOf(',');
-
-          // retrieve code and text
-          var text = warning.substring(i + 1).trim();
-          var code = Number(warning.substring(0, i));
-
-          if (text == 'vault')
-          {
-            if (this.vault == false)
-            {
-              // this will create a new vault entry in the auth module
-              this.apply_vault (response);
-            }
-            else
-            {
-              this.vault = false;
-              return throwError (error);
-            }
-          }
-          else if (text == '2f_code')
-          {
-            // this will display the selection of the recipients
-            // user can enter the code of the 2factor authentication
-            this.show_2factor_selector (error, response);
-          }
-          else
-          {
-            this.show_workspace_selector (error, response);
-          }
-
-          return new Observable<T>();
-        }
-        else
-        {
-          return throwError (error);
-        }
-      }
-      else
-      {
-        return throwError (error);
-      }
-    }));
   }
 
   //---------------------------------------------------------------------------
