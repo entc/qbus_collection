@@ -202,6 +202,21 @@ int auth_ui__intern__get_recipients (AuthUI self, number_t wpid, number_t gpid, 
     {
       goto exit_and_cleanup;
     }
+    
+    // cross out the content
+    {
+      CapeUdc email_node = cape_udc_get (cursor->item, "email");
+      if (email_node)
+      {
+        CapeString h = cape_udc_s_mv (email_node, NULL);
+        if (h)
+        {
+          cape_str_override (h, 5, 4, 'X');
+          cape_udc_set_s_mv (email_node, &h);
+        }
+      }
+    }
+    
   }
   
   res = CAPE_ERR_NONE;
@@ -237,7 +252,8 @@ int auth_ui_crypt4__2f_token (AuthUI self, number_t wpid, number_t gpid, number_
   ap_qin->pdata = cape_udc_new (CAPE_UDC_NODE, NULL);
 
   cape_udc_add_n (ap_qin->pdata, "rfid", gpid);
-  
+  cape_udc_add_n (ap_qin->pdata, "ttl", 300000);
+
   {
     CapeUdc roles = cape_udc_new (CAPE_UDC_NODE, "roles");
     
@@ -449,6 +465,88 @@ exit_and_cleanup:
 
 //---------------------------------------------------------------------------
 
+int auth_ui__2factor (AuthUI self, number_t userid, number_t wpid, number_t gpid, const CapeString vsec, CapeUdc sec_item, CapeUdc auth_crypt_credentials, QBusM qout, CapeErr err)
+{
+  int res;
+  CapeUdc opt_2factor_node;
+  const CapeString code_2f_from_db;
+
+  opt_2factor_node = cape_udc_get (sec_item, "opt_2factor");
+  if (NULL == opt_2factor_node)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no 2factor");
+    goto exit_and_cleanup;
+  }
+  
+  // check the status of the 2factor authentication
+  if (1 != cape_udc_n (opt_2factor_node, 0))
+  {
+    res = CAPE_ERR_NONE;
+    goto exit_and_cleanup;
+  }
+  
+  // check if the code was given by the user
+  const CapeString code_2f = cape_udc_get_s (auth_crypt_credentials, "code", NULL);
+  if (NULL == code_2f)
+  {
+    qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    // retrieve the recipients
+    {
+      CapeUdc recipients = NULL;
+      
+      res = auth_ui__intern__get_recipients (self, wpid, gpid, &recipients, vsec, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      cape_udc_add_name (qout->cdata, &recipients, "recipients");
+    }
+    
+    {
+      CapeString token = NULL;
+      
+      res = auth_ui_crypt4__2f_token (self, wpid, gpid, userid, &token, err);
+      if (res)
+      {
+        goto exit_and_cleanup;
+      }
+      
+      cape_udc_add_s_mv (qout->cdata, "token", &token);
+    }
+
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2f_code");
+    goto exit_and_cleanup;
+  }
+  
+  // get the code from the database
+  code_2f_from_db = cape_udc_get_s (sec_item, "code_2factor", NULL);
+  
+  // NULL is not a valid code
+  if (NULL == code_2f_from_db)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "2f_secret");
+    goto exit_and_cleanup;
+  }
+  
+  // check if both codes are identical
+  if (FALSE == cape_str_equal (code_2f_from_db, code_2f))
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code missmatch");
+    goto exit_and_cleanup;
+  }
+
+  // if the codes was used, remove it from the database
+  res = auth_ui_crypt4__code_remove (self, wpid, gpid, err);
+
+exit_and_cleanup:
+
+  return res;
+}
+
+//---------------------------------------------------------------------------
+
 int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -459,7 +557,6 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   const CapeString cda;
   const CapeString vsec;
   CapeUdc first_row;
-  CapeUdc opt_2factor_node;
   number_t wpid;
   number_t gpid;
   number_t userid;
@@ -655,73 +752,10 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     }
   }
   
-  opt_2factor_node = cape_udc_get (first_row, "opt_2factor");
-  if (opt_2factor_node == NULL)
+  res = auth_ui__2factor (self, userid, wpid, gpid, vsec, first_row, auth_crypt_credentials, qout, err);
+  if (res)
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no 2factor");
     goto exit_and_cleanup;
-  }
-  
-  // check the status of the 2factor authentication
-  if (cape_udc_n (opt_2factor_node, 0) == 1)
-  {
-    const CapeString code_2f_from_db = cape_udc_get_s (first_row, "code_2factor", NULL);
-    
-    if (code_2f_from_db)
-    {
-      // check if the code was given by the user
-      const CapeString code_2f = cape_udc_get_s (auth_crypt_credentials, "code", NULL);
-
-      res = auth_ui_crypt4__code_remove (self, wpid, gpid, err);
-      if (res)
-      {
-        goto exit_and_cleanup;
-      }
-
-      if (code_2f == NULL)
-      {
-        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "2f_secret");
-        goto exit_and_cleanup;
-      }
-      
-      if (!cape_str_equal (code_2f_from_db, code_2f))
-      {
-        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "code missmatch");
-        goto exit_and_cleanup;
-      }
-    }
-    else
-    {
-      qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-      
-      // retrieve the recipients
-      {
-        CapeUdc recipients = NULL;
-        
-        res = auth_ui__intern__get_recipients (self, wpid, gpid, &recipients, vsec, err);
-        if (res)
-        {
-          goto exit_and_cleanup;
-        }
-        
-        cape_udc_add_name (qout->cdata, &recipients, "recipients");
-      }
-      
-      {
-        CapeString token = NULL;
-        
-        res = auth_ui_crypt4__2f_token (self, wpid, gpid, userid, &token, err);
-        if (res)
-        {
-          goto exit_and_cleanup;
-        }
-        
-        cape_udc_add_s_mv (qout->cdata, "token", &token);
-      }
-
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2f_code");
-      goto exit_and_cleanup;
-    }
   }
   
   //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "password match");

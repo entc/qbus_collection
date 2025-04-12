@@ -702,6 +702,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString rinfo = NULL;
   CapeString token = NULL;
   AdblTrx trx = NULL;
+  number_t ttl = 0;
 
   // do some security checks
   res = auth_perm__intern__check_input (self, qin, err);
@@ -717,6 +718,9 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing rfid");
     goto exit_and_cleanup;
   }
+  
+  // optional
+  ttl = cape_udc_get_n (qin->pdata, "ttl", 0);
   
   // encrypt cdata and rinfo
   res = auth_perm__intern__encrypt (self, qin, &rinfo, &content, err);
@@ -759,7 +763,7 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (params, "id"           , self->apid);
     
     // add values
-    auth_perm__intern__values (self, values, token, 0, &rinfo, &content);
+    auth_perm__intern__values (self, values, token, ttl, &rinfo, &content);
     
     // execute query
     res = adbl_trx_update (trx, "auth_perm", &params, &values, err);
@@ -768,11 +772,11 @@ int auth_perm_set (AuthPerm* p_self, QBusM qin, QBusM qout, CapeErr err)
       goto exit_and_cleanup;
     }
     
-    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm add", "new token [%s] with rfid = %lu overitten with ttl = %lu", token, self->rfid, 0);
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "perm add", "new token [%s] with rfid = %lu overitten with ttl = %lu", token, self->rfid, ttl);
   }
   else   // insert
   {
-    res = auth_perm__internal__add (self, trx, 0, self->rfid, token, &rinfo, &content, err);
+    res = auth_perm__internal__add (self, trx, ttl, self->rfid, token, &rinfo, &content, err);
     if (res)
     {
       goto exit_and_cleanup;

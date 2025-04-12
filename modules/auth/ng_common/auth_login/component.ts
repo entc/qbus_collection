@@ -195,6 +195,7 @@ class AuthRecipientsInjector
   private token: string;
 
   public recipients: AuthRecipient[];
+  public params: number[] = [];
 
   //---------------------------------------------------------------------------
 
@@ -213,41 +214,57 @@ class AuthRecipientsInjector
 
       this.recipients[0].used = true;
     }
+
+    this.calculate_params ();
   }
 
   //---------------------------------------------------------------------------
 
-  toogle_used (item: AuthRecipient)
+  private calculate_params ()
   {
-    item.used = !item.used;
-  }
-
-  //---------------------------------------------------------------------------
-
-  send ()
-  {
-    var params = [];
+    this.params = [];
 
     if (this.recipients.length > 0)
     {
       for (var i in this.recipients)
       {
         var item: AuthRecipient = this.recipients[i];
-        if (item.used) params.push (item.id);
+        if (item.used)
+        {
+          this.params.push (item.id);
+        }
       }
     }
-
-    this.auth_session.json_token_rpc (this.token, 'AUTH', 'ui_2f_send', params).subscribe(() => {
-
-      this.mode = 1;
-      this.code = '';
-
-    });
   }
 
   //---------------------------------------------------------------------------
 
-  login ()
+  public toogle_used (item: AuthRecipient)
+  {
+    item.used = !item.used;
+    this.calculate_params ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public send ()
+  {
+    if (this.params.length > 0)
+    {
+      this.mode = 1;
+
+      this.auth_session.json_token_rpc (this.token, 'AUTH', 'ui_2f_send', this.params).subscribe(() => {
+
+        this.mode = 2;
+        this.code = '';
+
+      });
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public login ()
   {
     this.modal.close ({code: this.code});
   }
