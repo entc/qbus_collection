@@ -361,6 +361,27 @@ export class AuthSession
 
   public json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, cb_progress, cb_done, cb_error)
   {
+    this.conn.session__json_rpc_upload (qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token).subscribe ((uitem: AuthUploadItem) => {
+
+console.log(uitem.state);
+
+      switch (uitem.state)
+      {
+        case 0:
+        {
+          cb_progress (uitem.progress);
+          break;
+        }
+        case 1:
+        {
+          cb_done (uitem.data);
+          break;
+        }
+      }
+
+    }, (err: QbngErrorHolder) => cb_error (err));
+
+/*
     var enjs: AuthEnjs = this.construct_enjs (qbus_module, qbus_method, qbus_params);
     if (enjs)
     {
@@ -405,6 +426,7 @@ alert ('we run out of coffee, so it is not implemented');
 
       }, (err: QbngErrorHolder) => cb_error (err));
     }
+    */
   }
 
   //---------------------------------------------------------------------------
@@ -664,6 +686,11 @@ export class AuthRecipient
 export class AuthLoginItem
 {
   constructor (public state: number, public sitem: AuthSessionItem, public recipients: AuthRecipient[] = null, public token: string = null) {}
+}
+
+export class AuthUploadItem
+{
+  constructor (public state: number, public progress: number, public data: object = null) {}
 }
 
 export class AuthLoginCreds

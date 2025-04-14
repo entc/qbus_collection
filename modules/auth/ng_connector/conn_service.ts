@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Observable, Subscriber, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AuthLoginItem, AuthSessionItem, AuthLoginCreds } from '@qbus/auth_session';
+import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds } from '@qbus/auth_session';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import * as CryptoJS from 'crypto-js';
 
@@ -325,6 +325,43 @@ import * as CryptoJS from 'crypto-js';
 
     });
   }
+
+  //---------------------------------------------------------------------------
+
+  public session__json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<AuthUploadItem>
+  {
+    return new Observable ((subscriber) => {
+
+      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+      let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+
+        switch (event.type)
+        {
+          case HttpEventType.UploadProgress:  // update
+          {
+            subscriber.next (new AuthUploadItem (0, Math.round(100 * (event.loaded / event.total))));
+            break;
+          }
+          case HttpEventType.Response:  // final event
+          {
+            if (event.body)
+            {
+              subscriber.next (new AuthUploadItem (1, 0, JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 })))));
+            }
+            else
+            {
+              subscriber.next (new AuthUploadItem (1, 0));
+            }
+
+            subscriber.complete();
+            break;
+          }
+        }
+      }, (err: QbngErrorHolder) => subscriber.error (err));
+
+    });
+  }
+
 }
 
 //---------------------------------------------------------------------------
