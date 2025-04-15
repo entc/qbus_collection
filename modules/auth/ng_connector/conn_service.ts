@@ -350,10 +350,11 @@ import * as CryptoJS from 'crypto-js';
             }
             else
             {
-              subscriber.next (new AuthUploadItem (1, 0));
+              subscriber.next (new AuthUploadItem (1, 0, {}));
             }
 
             subscriber.complete();
+            obj.unsubscribe();
             break;
           }
         }
