@@ -1,5 +1,6 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
+import { CanActivate, RouterStateSnapshot, UrlTree, ActivatedRouteSnapshot } from '@angular/router';
 import { Observable, Subscriber, BehaviorSubject, Subject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
@@ -272,7 +273,7 @@ export class AuthSession
   }
 
   //---------------------------------------------------------------------------
-/*
+
   private construct_bearer (sitem: AuthSessionItem): string
   {
     // get the linux time since 1970 in milliseconds
@@ -281,16 +282,16 @@ export class AuthSession
 
     return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
   }
-*/
+
   //---------------------------------------------------------------------------
-/*
+
   private construct_header (bearer: string): HttpHeaders
   {
     return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
   }
-*/
+
   //---------------------------------------------------------------------------
-/*
+
   private session_get_bearer (): string
   {
     var sitem: AuthSessionItem = this.session_get_token ();
@@ -304,10 +305,9 @@ export class AuthSession
       return null;
     }
   }
-*/
+
   //---------------------------------------------------------------------------
 
-/*
   private session_options (): object
   {
     var options: object;
@@ -324,7 +324,7 @@ export class AuthSession
 
     return options;
   }
-*/
+
   //---------------------------------------------------------------------------
 
   public json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, cb_progress, cb_done, cb_error)
@@ -411,7 +411,6 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-/*
   public rest_GET<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.get<T>('rest/' + path, this.session_options()));
@@ -437,7 +436,7 @@ export class AuthSession
   {
     return this.handle_error_session<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
-  */
+
   //---------------------------------------------------------------------------
 
 /*
@@ -474,14 +473,14 @@ export class AuthSession
 
   //-----------------------------------------------------------------------------
 
-/*
+
   private padding (str: string, max: number): string
   {
   	return str.length < max ? this.padding ("0" + str, max) : str;
   }
-*/
+
   //---------------------------------------------------------------------------
-/*
+
   private handle_http_headers (headers: HttpHeaders)
   {
     const warning = headers.get('warning');
@@ -496,10 +495,9 @@ export class AuthSession
       return throwError (new QbngErrorHolder (0, 'ERR.UNKNOWN'));
     }
   }
-*/
+
   //---------------------------------------------------------------------------
 
-/*
   private handle_error_session<T> (http_request: Observable<T>): Observable<T>
   {
     return http_request.pipe (catchError ((error) => {
@@ -522,7 +520,7 @@ export class AuthSession
       this.timer_update ();
       return res;
     }));
-  }*/
+  }
 
   //---------------------------------------------------------------------------
 
@@ -860,6 +858,35 @@ export class AuthSessionRoleDirective {
     {
       this.viewContainer.clear();
     }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Injectable() export class AuthSessionGuard implements CanActivate {
+
+  private permissions: string[] = null;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_session: AuthSession)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  canActivate (route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean|UrlTree>|Promise<boolean|UrlTree>|boolean|UrlTree
+  {
+    // grab the permission array
+    this.permissions = route.data['permissions'] as string[];
+
+    return this.auth_session.roles.pipe(mergeMap ((data) => {
+
+      let new_status: boolean = this.auth_session.contains_role__or (data, this.permissions);
+
+      return of (new_status);
+
+    })) as Observable<boolean>;
   }
 }
 
