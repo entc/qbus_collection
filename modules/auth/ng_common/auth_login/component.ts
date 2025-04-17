@@ -269,3 +269,16 @@ class AuthRecipientsInjector
     this.modal.close ({code: this.code});
   }
 }
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-login-modal-component',
+  templateUrl: './modal_login.html'
+}) export class AuthLoginModalComponent {
+
+  constructor (public auth_session: AuthSession, public modal: NgbActiveModal)
+  {
+  }
+
+}
