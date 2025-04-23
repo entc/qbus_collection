@@ -131,7 +131,11 @@ __CAPE_LIBEX void              cape_stream_append_32  (CapeStream, cape_uint32, 
 
 __CAPE_LIBEX void              cape_stream_append_64  (CapeStream, cape_uint64, int network_byte_order);
 
+                               /* this assumes that double is 64bit long */
 __CAPE_LIBEX void              cape_stream_append_bd  (CapeStream, double, int network_byte_order);
+
+                               /* this assumes that float is 32bit long */
+__CAPE_LIBEX void              cape_stream_append_bf  (CapeStream, float, int network_byte_order);
 
 //-----------------------------------------------------------------------------
 

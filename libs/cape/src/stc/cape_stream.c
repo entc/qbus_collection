@@ -604,6 +604,28 @@ void cape_stream_append_bd (CapeStream self, double val, int network_byte_order)
 
 //-----------------------------------------------------------------------------
 
+void cape_stream_append_bf (CapeStream self, float val, int network_byte_order)
+{
+  cape_uint32 h;
+
+  cape_stream_reserve (self, 4);
+
+  memcpy (&h, &val, 4);
+
+  if (network_byte_order)
+  {
+    *((cape_uint32*)(self->pos)) = htonl (h);
+  }
+  else
+  {
+    *((cape_uint32*)(self->pos)) = h;
+  }
+
+  self->pos += 4;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_stream_to_file (CapeStream self, const CapeString file, CapeErr err)
 {
   int res;

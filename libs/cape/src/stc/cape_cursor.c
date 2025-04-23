@@ -261,3 +261,30 @@ double cape_cursor_scan_bd (CapeCursor self, int network_byte_order)
 }
 
 //-----------------------------------------------------------------------------
+
+float cape_cursor_scan_bf (CapeCursor self, int network_byte_order)
+{
+  float ret = 0;
+
+  if (cape_cursor__has_data (self, 4))
+  {
+    cape_uint32 h;
+
+    if (network_byte_order)
+    {
+      h = ntohl (*((cape_uint32*)(self->pos)));
+    }
+    else
+    {
+      h = *((cape_uint32*)(self->pos));
+    }
+
+    memcpy (&ret, &h, 4);
+
+    self->pos += 4;
+  }
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
