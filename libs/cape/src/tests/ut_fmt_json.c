@@ -78,7 +78,37 @@ int main (int argc, char *argv[])
     cape_udc_del (&n);
     cape_udc_del (&m);
   }
-  
+
+  // parser tests
+  {
+    const CapeString s1 = "{\"value\":3.5626345911594814E307}";
+    
+    CapeUdc h1 = cape_json_from_s (s1);
+    
+    CapeString s2 = cape_json_to_s (h1);
+
+    printf ("FE1: %s\n", s2);
+    
+    CapeUdc h2 = cape_json_from_s (s2);
+
+    CapeString s3 = cape_json_to_s (h2);
+
+    printf ("FE2: %s\n", s3);
+
+    CapeUdc h3 = cape_json_from_s (s3);
+
+    CapeString s4 = cape_json_to_s (h3);
+
+    printf ("FE3: %s\n", s4);
+
+    cape_str_del (&s4);
+    cape_str_del (&s3);
+    cape_str_del (&s2);
+    cape_udc_del (&h3);
+    cape_udc_del (&h2);
+    cape_udc_del (&h1);
+  }
+
   // parser tests
   {
     const CapeString text = "{\"self\":\"https:\\/\\/rest.spryngsms.com\\/v1\\/messages\\/9009f688-fe85-43cb-9233-759b8a066b5a\"}";

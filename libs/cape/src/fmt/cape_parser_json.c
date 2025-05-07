@@ -1546,6 +1546,24 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
             
             break;
           }
+          case JPARSER_STATE_STR_ESCAPE:
+          {
+            cape_stream_append_c (self->valElement->stream, '\n');
+
+            state = JPARSER_STATE_STR_RUN;
+            break;
+          }
+          case JPARSER_STATE_KEY_ESCAPE:
+          {
+            CapeParserJsonItem element = self->keyElement;
+            if (element)
+            {
+              cape_stream_append_c (element->stream, '\n');
+              state = JPARSER_STATE_KEY_RUN;
+            }
+
+            break;
+          }
           default:
           {
             return cape_err_set_fmt (err, CAPE_ERR_PARSER, "unexpected state [%i] in 'n'", state);
