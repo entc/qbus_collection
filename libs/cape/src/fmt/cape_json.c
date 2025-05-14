@@ -636,33 +636,54 @@ CapeString __STDCALL cape_json_to_s__encode_stream (const CapeStream s)
 
 CapeString cape_json_to_s (const CapeUdc source)
 {
-  CapeStream stream = cape_stream_new ();
-  
-  cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream, FALSE, 0);
-  
-  return cape_stream_to_str (&stream);
+  if (source)
+  {
+    CapeStream stream = cape_stream_new ();
+    
+    cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream, FALSE, 0);
+    
+    return cape_stream_to_str (&stream);
+  }
+  else
+  {
+    return cape_str_cp ("NULL");
+  }
 }
 
 //-----------------------------------------------------------------------------------------------------------
 
 CapeString cape_json_to_s__ex (const CapeUdc source, fct_cape_stream_base64_encode cb_encode)
 {
-  CapeStream stream = cape_stream_new ();
+  if (source)
+  {
+    CapeStream stream = cape_stream_new ();
   
-  cape_json_fill (stream, source, 0, cb_encode, FALSE, 0);
+    cape_json_fill (stream, source, 0, cb_encode, FALSE, 0);
   
-  return cape_stream_to_str (&stream);
+    return cape_stream_to_str (&stream);
+  }
+  else
+  {
+    return cape_str_cp ("NULL");
+  }
 }
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_json_to_s_max (const CapeUdc source, number_t max_item_size)
 {
-  CapeStream stream = cape_stream_new ();
+  if (source)
+  {
+    CapeStream stream = cape_stream_new ();
 
-  cape_json_fill (stream, source, max_item_size, NULL, FALSE, 0);
+    cape_json_fill (stream, source, max_item_size, NULL, FALSE, 0);
 
-  return cape_stream_to_str (&stream);
+    return cape_stream_to_str (&stream);
+  }
+  else
+  {
+    return cape_str_cp ("NULL");
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -670,9 +691,16 @@ CapeString cape_json_to_s_max (const CapeUdc source, number_t max_item_size)
 CapeStream cape_json_to_stream (const CapeUdc source)
 {
   CapeStream stream = cape_stream_new ();
-  
-  cape_json_fill (stream, source, 0, NULL, FALSE, 0);
 
+  if (source)
+  {
+    cape_json_fill (stream, source, 0, NULL, FALSE, 0);
+  }
+  else
+  {
+    cape_stream_append_str (stream, "NULL");
+  }
+    
   return stream;
 }
 

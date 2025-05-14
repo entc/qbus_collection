@@ -127,60 +127,65 @@ void qwebs_prot_websocket__encode_payload (char* bufdat, number_t buflen, const 
 
 void qwebs_prot_websocket_send__frame (QWebsProtWebsocketConnection self, number_t opcode, const char* bufdat, number_t buflen)
 {
-  // local objects
-  CapeStream s = cape_stream_new ();
-  number_t size_type = 0;
-  
-  /* the server is not allowed to send masked payload
-   * -> mask was set to 0
-   */
-
+  if (self->conn)
   {
-    cape_uint8 bits01 = opcode;  // opcode text
+    // local objects
+    CapeStream s = cape_stream_new ();
+    number_t size_type = 0;
     
-    bits01 |= 0B10000000;   // fin
+    /* the server is not allowed to send masked payload
+     * -> mask was set to 0
+     */
     
-    cape_stream_append_08 (s, bits01);
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "send frame", "buflen = %lu", buflen);
+    
+    {
+      cape_uint8 bits01 = opcode;  // opcode text
+      
+      bits01 |= 0B10000000;   // fin
+      
+      cape_stream_append_08 (s, bits01);
+    }
+    {
+      cape_uint8 bits02 = 0;
+      
+      if (buflen < 126)
+      {
+        bits02 = buflen;
+      }
+      else if (buflen < 65535)
+      {
+        bits02 = 126;
+        size_type = 1;
+      }
+      else
+      {
+        bits02 = 127;
+        size_type = 2;
+      }
+      
+      cape_stream_append_08 (s, bits02);
+    }
+    
+    switch (size_type)
+    {
+      case 1:
+      {
+        cape_stream_append_16 (s, buflen, TRUE);
+        break;
+      }
+      case 2:
+      {
+        cape_stream_append_64 (s, buflen, TRUE);
+        break;
+      }
+    }
+    
+    // add the message to the buffer
+    cape_stream_append_buf (s, bufdat, buflen);
+    
+    qwebs_connection_send (self->conn, &s);
   }
-  {
-    cape_uint8 bits02 = 0;
-    
-    if (buflen < 126)
-    {
-      bits02 = buflen;
-    }
-    else if (buflen < 65535)
-    {
-      bits02 = 126;
-      size_type = 1;
-    }
-    else
-    {
-      bits02 = 127;
-      size_type = 2;
-    }
-    
-    cape_stream_append_08 (s, bits02);
-  }
-  
-  switch (size_type)
-  {
-    case 1:
-    {
-      cape_stream_append_16 (s, buflen, TRUE);
-      break;
-    }
-    case 2:
-    {
-      cape_stream_append_32 (s, buflen, FALSE);
-      break;
-    }
-  }
-  
-  // add the message to the buffer
-  cape_stream_append_buf (s, bufdat, buflen);
-  
-  qwebs_connection_send (self->conn, &s);
 }
 
 //-----------------------------------------------------------------------------
@@ -471,9 +476,9 @@ void __STDCALL qwebs_prot_websocket_connection__on_recv (void* user_ptr, QWebsCo
         }
         else if (self->data_size == 127)
         {
-          if (cape_cursor__has_data (cursor, 4))
+          if (cape_cursor__has_data (cursor, 8))
           {
-            self->data_size = cape_cursor_scan_32 (cursor, TRUE);
+            self->data_size = cape_cursor_scan_64 (cursor, TRUE);
             
             self->state = QWEBS_PROT_WEBSOCKET_RECV__LENGTH;
           }
