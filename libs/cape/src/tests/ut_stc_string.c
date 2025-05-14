@@ -19,7 +19,15 @@ int main (int argc, char *argv[])
 
     cape_str_del (&s);
   }
-  
+
+  {
+    CapeString s = cape_str_password (12, 4, 4, 1, 1);
+
+    printf ("PASS = '%s'\n", s);
+
+    cape_str_del (&s);
+  }
+
   {
     CapeString s = cape_str_to_word ("…e…in…v…er…st…a…nd…e…n");
 

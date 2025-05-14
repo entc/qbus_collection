@@ -61,6 +61,8 @@ __CAPE_LIBEX   int     auth_ui_fp_send     (AuthUI*, QBusM qin, QBusM qout, Cape
 
 __CAPE_LIBEX   int     auth_ui_users       (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int     auth_ui_rm          (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

@@ -8,7 +8,7 @@
 __attribute__((constructor)) void library_constructor ()
 {
   // initialize random generator
-  srand (time (NULL));
+  srand ((unsigned int)time (NULL));
 }
 
 //-----------------------------------------------------------------------------

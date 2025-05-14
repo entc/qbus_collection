@@ -3,12 +3,12 @@
       <ng-content></ng-content>
     </div>
     <div class="col text-right text-end">
-      <button *ngIf="val" type="button" class="btn btn-outline-success width_10em" (click)="on_toggle()">
+      <button *ngIf="val" type="button" class="btn btn-outline-success width_10em" (click)="on_toggle()" [disabled]="disabled">
 
         <i class="fa fa-toggle-on"></i>&nbsp;&nbsp;{{ 'MISC.ON' | transloco }}
 
       </button>
-      <button *ngIf="!val" type="button" class="btn btn-outline-secondary width_10em" (click)="on_toggle()">
+      <button *ngIf="!val" type="button" class="btn btn-outline-secondary width_10em" (click)="on_toggle()" [disabled]="disabled">
 
         <i class="fa fa-toggle-off"></i>&nbsp;&nbsp;{{ 'MISC.OFF' | transloco }}
 

@@ -3592,3 +3592,94 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  number_t wpid;
+  number_t gpid;
+  number_t userid;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  // run security check
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+  }
+  else if (qbus_message_role_or2 (qin, "auth_wp_lu", "auth_wacc"))
+  {
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  }
+  
+  if (0 == wpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  userid = cape_udc_get_n (qin->cdata, "userid", 0);
+  if (0 == userid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USERID");
+    goto exit_and_cleanup;
+  }
+
+  gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+  if (0 == gpid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_GPID");
+    goto exit_and_cleanup;
+  }
+  
+  // check if account exists and userid and gpid belong together
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"         , wpid);
+    cape_udc_add_n      (params, "userid"       , userid);
+    cape_udc_add_n      (params, "gpid"         , gpid);
+
+    cape_udc_add_n      (values, "id"           , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+
+  
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------

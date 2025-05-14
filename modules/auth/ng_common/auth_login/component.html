@@ -1,6 +1,7 @@
-<ng-container *ngIf="mode == 0">
+<ng-container *ngIf="sitem == null" [ngSwitch]="mode">
 
-  <ng-container *ngIf="sitem == null">
+  <ng-container *ngSwitchCase="0">
+
     <ng-container *ngIf="err == true">
 
       <div class="alert alert-danger text-center" role="alert">
@@ -66,106 +67,93 @@
       </ng-container>
 
     </ng-container>
-  </ng-container>
-  <ng-container *ngIf="sitem">
-
-    <div class="alert alert-success text-center" role="alert">
-      <h3>{{ 'AUTH.WELCOME' | transloco }} {{sitem.firstname}} {{sitem.lastname}}</h3>
-    </div>
-
-    <auth-last [sitem]="sitem"></auth-last>
-
-    <hr>
-    <div class="text-right mt-2">
-      <button (click)="close ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'MISC.CONTINUE' | transloco }}</button>
-    </div>
 
   </ng-container>
+  <ng-container *ngSwitchCase="1">
 
-</ng-container>
-<ng-container *ngIf="mode == 1">
+    <ng-container *ngIf="err == true">
 
-  <ng-container *ngIf="err == true">
-
-    <div class="alert alert-danger text-center" role="alert">
-      {{ 'AUTH.SENDERROR' | transloco }}
-    </div>
-
-    <hr>
-
-    <div class="row">
-      <div class="col-6 d-grid">
+      <div class="alert alert-danger text-center" role="alert">
+        {{ 'AUTH.SENDERROR' | transloco }}
       </div>
-      <div class="col-6 d-grid">
-        <button (click)="login_again ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'AUTH.LOGINAGAIN' | transloco }}</button>
+
+      <hr>
+
+      <div class="row">
+        <div class="col-6 d-grid">
+        </div>
+        <div class="col-6 d-grid">
+          <button (click)="login_again ()" type="submit" class="btn btn-outline-primary btn-block">{{ 'AUTH.LOGINAGAIN' | transloco }}</button>
+        </div>
       </div>
-    </div>
+
+    </ng-container>
+    <ng-container *ngIf="err == false">
+
+      <div class="input-group mb-1">
+        <div class="input-group-prepend">
+          <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+        </div>
+        <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
+      </div>
+
+      <div class="alert alert-info text-center" role="alert">
+        {{ 'AUTH.INFOFORGOT' | transloco }}
+      </div>
+
+      <hr>
+
+      <div class="row">
+        <div class="col-6 d-grid">
+          <button (click)="cancel ()" type="button" class="btn btn-outline-secondary btn-block">{{ 'MISC.CANCEL' | transloco }}</button>
+        </div>
+        <div class="col-6 d-grid">
+          <button (click)="send_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.SENDFORGOT' | transloco }}</button>
+        </div>
+      </div>
+
+    </ng-container>
 
   </ng-container>
-  <ng-container *ngIf="err == false">
+  <ng-container *ngSwitchCase="2">
 
     <div class="input-group mb-1">
       <div class="input-group-prepend">
-        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+        <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.CODE' | transloco }}</small></span>
       </div>
-      <input type="email" class="form-control" id="InputEmail" aria-describedby="emailHelp" required autofocus [(ngModel)]="user">
-    </div>
-
-    <div class="alert alert-info text-center" role="alert">
-      {{ 'AUTH.INFOFORGOT' | transloco }}
+      <input type="text" class="form-control" required [(ngModel)]="code">
     </div>
 
     <hr>
 
+    <auth-password-checker (onChange)="on_check_password($event)"></auth-password-checker>
+
+    <hr>
+
     <div class="row">
-      <div class="col-6 d-grid">
+      <div class="col-6">
         <button (click)="cancel ()" type="button" class="btn btn-outline-secondary btn-block">{{ 'MISC.CANCEL' | transloco }}</button>
       </div>
-      <div class="col-6 d-grid">
-        <button (click)="send_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'AUTH.SENDFORGOT' | transloco }}</button>
+      <div class="col-6">
+        <button (click)="code_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.APPLY' | transloco }}</button>
       </div>
     </div>
 
   </ng-container>
+  <ng-container *ngSwitchCase="3">
 
-</ng-container>
-<ng-container *ngIf="mode == 2">
-
-  <div class="input-group mb-1">
-    <div class="input-group-prepend">
-      <span class="input-group-text width_10em" id="basic-addon1"><small>{{ 'AUTH.CODE' | transloco }}</small></span>
+    <div class="alert alert-success" role="alert">
+      {{ 'AUTH.PASSCHANGED' | transloco }}
     </div>
-    <input type="text" class="form-control" required [(ngModel)]="code">
-  </div>
 
-  <hr>
-
-  <auth-password-checker (onChange)="on_check_password($event)"></auth-password-checker>
-
-  <hr>
-
-  <div class="row">
-    <div class="col-6">
-      <button (click)="cancel ()" type="button" class="btn btn-outline-secondary btn-block">{{ 'MISC.CANCEL' | transloco }}</button>
+    <div class="row">
+      <div class="col-6">
+      </div>
+      <div class="col-6">
+        <button (click)="done_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.DONE' | transloco }}</button>
+      </div>
     </div>
-    <div class="col-6">
-      <button (click)="code_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.APPLY' | transloco }}</button>
-    </div>
-  </div>
 
-</ng-container>
-<ng-container *ngIf="mode == 3">
-
-  <div class="alert alert-success" role="alert">
-    {{ 'AUTH.PASSCHANGED' | transloco }}
-  </div>
-
-  <div class="row">
-    <div class="col-6">
-    </div>
-    <div class="col-6">
-      <button (click)="done_forgot_password ()" type="button" class="btn btn-primary btn-block">{{ 'MISC.DONE' | transloco }}</button>
-    </div>
-  </div>
+  </ng-container>
 
 </ng-container>

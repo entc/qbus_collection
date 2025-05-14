@@ -151,7 +151,7 @@ void cape_thread_join (CapeThread self)
 
 void cape_thread_sleep (unsigned long milliseconds)
 {
-  usleep (milliseconds * 1000);
+  usleep ((useconds_t)(milliseconds * 1000));
 }
 
 //-----------------------------------------------------------------------------

@@ -10,7 +10,9 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 @Component({
   selector: 'auth-login',
   templateUrl: './component.html'
-}) export class AuthLoginComponent {
+}) export class AuthLoginComponent implements OnInit {
+
+  public mode: number = 0;
 
   public user: string;
   public pass: string;
@@ -19,16 +21,38 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   public sitem: AuthSessionItem = null;
   public err: boolean = false;
 
-  // this will be set from the auth component directive
-  @Output() onClose: EventEmitter<boolean> = new EventEmitter();
-  public mode: number = 0;
-
   public running: boolean = false;
+  private session_obj;
 
   //---------------------------------------------------------------------------
 
   constructor (private auth_session: AuthSession, private modal_service: NgbModal)
   {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+    this.session_obj = this.auth_session.session.subscribe ((data: AuthSessionItem) => {
+
+      if (data)
+      {
+        this.sitem = data;
+      }
+      else
+      {
+        this.sitem = null;
+      }
+
+    });
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.session_obj.unsubscribe();
   }
 
   //---------------------------------------------------------------------------
@@ -104,13 +128,6 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   login_again ()
   {
     this.err = false;
-  }
-
-  //---------------------------------------------------------------------------
-
-  close ()
-  {
-    this.onClose.emit (true);
   }
 
   //---------------------------------------------------------------------------

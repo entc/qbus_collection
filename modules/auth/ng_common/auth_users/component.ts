@@ -226,6 +226,29 @@ class AuthWpInfo
     this.modal_service.open (AuthUsersPasswdModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: AuthUserContext, useValue: this.ctx}])});
   }
 
+  //---------------------------------------------------------------------------
+
+  public open_account_delete ()
+  {
+    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.ACCOUNT_DELETE', 'AUTH.ACCOUNT_DELETE_INFO', 'MISC.ACCOUNT_DELETE');
+
+    this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
+
+      this.account_delete ();
+
+    }, () => {});
+  }
+
+  //---------------------------------------------------------------------------
+
+  private account_delete ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_rm', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, userid: this.ctx.userid}).subscribe (() => {
+
+      this.modal.close();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
 }
 
 //=============================================================================

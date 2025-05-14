@@ -33,48 +33,27 @@
 
       <qbng-switch [val]="ctx.active" (onVal)="auth_active_changed ($event)">{{ 'AUTH.DEACTIVATE' | transloco }}</qbng-switch>
 
-<!--
-      <ng-container *authSessionRole="['admin','auth_wacc']">
+      <hr>
 
-        <div class="input-group">
-          <div class="input-group-prepend">
-            <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
-          </div>
-          <input type="text" class="form-control" [(ngModel)]="input_user">
-        </div>
+      <div class="text-right text-end">
+        <button type="button" class="btn btn-outline-danger" (click)="open_account_delete ()">{{ 'AUTH.ACCOUNT_DELETE' | transloco }}</button>
+      </div>
 
-        <div class="input-group mt-2">
-          <div class="input-group-prepend">
-            <span class="input-group-text width_10em"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
-          </div>
-          <input type="text" class="form-control" [(ngModel)]="input_pass">
-        </div>
-
-        <button class="btn btn-outline-secondary mt-2 mb-4" type="button" (click)="change_password()">{{ 'AUTH.CHANGEPASSWORD' | transloco }}</button>
-
-        <hr>
-
-
-      </ng-container>
--->
     </ng-container>
     <ng-container *ngSwitchCase="2">
+
       <auth-msgs [user_ctx]="ctx"></auth-msgs>
+
     </ng-container>
   </div>
-
-<div class="modal-body">
-
-    <div class="col-6-md col-12">
-    </div>
-
-</div>
-<div class="modal-footer">
-  <div class="row w-100">
-    <div class="col-6 pr-1 pl-0 d-grid">
-    </div>
-    <div class="col-6 pl-1 pr-0 d-grid">
-      <button type="button" class="btn btn-outline-secondary btn-block" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+  <div class="modal-footer">
+    <div class="row w-100">
+      <div class="col-6 pr-1 pl-0 d-grid">
+      </div>
+      <div class="col-6 pl-1 pr-0 d-grid">
+        <button type="button" class="btn btn-outline-secondary btn-block" (click)="modal.dismiss()">{{ 'MISC.CLOSE' | transloco }}</button>
+      </div>
     </div>
   </div>
+
 </div>
