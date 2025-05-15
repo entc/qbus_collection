@@ -1,5 +1,5 @@
-import { Directive, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Directive, OnInit, Injectable } from '@angular/core';
+import { ActivatedRoute, Router, EventType, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 import { TrloService } from '@qbus/trlo_service/service';
 
@@ -22,7 +22,10 @@ import { TrloService } from '@qbus/trlo_service/service';
   {
     this.route_subscription = this.router.events.subscribe(evt => {
 
-      if (evt['type'] == 1)
+      console.log ('event');
+      console.log (evt);
+
+      if (evt['type'] == EventType.NavigationStart)
       {
         // use regex to check if the url begins with /login
         const curl = /^\/login(\?.*)?$/.test (evt['url']);
@@ -56,6 +59,9 @@ import { TrloService } from '@qbus/trlo_service/service';
         }
         else
         {
+          // debug output
+          console.log('router: lang = ' + lang + ', already at login');
+
           this.session_subscription = this.auth_session.session.subscribe ((sitem: AuthSessionItem) => {
 
             if (null == sitem)
@@ -90,3 +96,20 @@ import { TrloService } from '@qbus/trlo_service/service';
 
   //---------------------------------------------------------------------------
 }
+
+//-----------------------------------------------------------------------------
+
+@Injectable({providedIn: 'root'}) export class AuthPermissionsService {
+
+  constructor(private router: Router, private auth_session: AuthSession)
+  {
+
+  }
+
+  canActivate (): boolean
+  {
+      return true;
+  }
+}
+
+//-----------------------------------------------------------------------------

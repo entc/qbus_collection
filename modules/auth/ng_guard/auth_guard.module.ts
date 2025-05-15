@@ -5,7 +5,7 @@ import { AuthSessionModule } from '@qbus/auth_session.module';
 
 //-----------------------------------------------------------------------------
 
-import { AuthSiteDirective } from './directives/component';
+import { AuthSiteDirective, AuthPermissionsService } from './auth_guards/component';
 
 //-----------------------------------------------------------------------------
 
@@ -20,6 +20,9 @@ import { AuthSiteDirective } from './directives/component';
     ],
     exports: [
       AuthSiteDirective
+    ],
+    providers: [
+      AuthPermissionsService
     ]
 })
 export class AuthGuardModule
