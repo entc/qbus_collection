@@ -77,7 +77,7 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  public enable (user: string, pass: string, code: string = null): Observable<AuthLoginItem>
+  public enable (user: string, pass: string, code: string = null, wpid: number = 0): Observable<AuthLoginItem>
   {
     const navigator = window.navigator;
     const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
@@ -86,7 +86,7 @@ export class AuthSession
     this.user = user;
     this.pass = pass;
 
-    return this.conn.session__login (new AuthLoginCreds (0, this.user, this.pass, this.vault, code, browser_info)).pipe (map ((slogin: AuthLoginItem) => {
+    return this.conn.session__login (new AuthLoginCreds (wpid, this.user, this.pass, this.vault, code, browser_info)).pipe (map ((slogin: AuthLoginItem) => {
 
       let sitem: AuthSessionItem = slogin.sitem;
       if (sitem)
@@ -566,9 +566,15 @@ export class AuthRecipient
   used: boolean;
 }
 
+export class AuthWorkspace
+{
+  workspace: string;
+  wpid: number;
+}
+
 export class AuthLoginItem
 {
-  constructor (public state: number, public sitem: AuthSessionItem, public recipients: AuthRecipient[] = null, public token: string = null) {}
+  constructor (public state: number, public sitem: AuthSessionItem, public list: AuthRecipient[] | AuthWorkspace[] = null, public token: string = null) {}
 }
 
 export class AuthUploadItem
@@ -641,103 +647,7 @@ export class AuthSessionComponentDirective {
   }
 }
 */
-
-//=============================================================================
 /*
-@Component({
-  selector: 'auth-wpace-modal-component',
-  templateUrl: './modal_workspaces.html'
-}) export class AuthWorkspacesModalComponent {
-
-  workspaces: any;
-
-  //---------------------------------------------------------------------------
-
-  constructor (public modal: NgbActiveModal, private response: HttpErrorResponse)
-  {
-    this.workspaces = response.error;
-  }
-
-  //---------------------------------------------------------------------------
-
-  select_workspace (wpid: number)
-  {
-    this.modal.close (wpid);
-  }
-}
-*/
-//=============================================================================
-
-/*
-@Component({
-  selector: 'auth-2factor-modal-component',
-  templateUrl: './modal_2factor.html'
-}) export class Auth2FactorModalComponent {
-
-  public mode: number = 0;
-  public recipients: AuthRecipients[];
-  public code: string;
-
-  private token: string;
-
-  //---------------------------------------------------------------------------
-
-  constructor (public auth_session: AuthSession, public modal: NgbActiveModal, private response: HttpErrorResponse)
-  {
-    this.recipients = response.error['recipients'];
-
-    if (this.recipients.length > 0)
-    {
-      for (var i in this.recipients)
-      {
-        var item: AuthRecipients = this.recipients[i];
-        item.used = false;
-      }
-
-      this.recipients[0].used = true;
-    }
-
-    this.token = response.error['token'];
-  }
-
-  //---------------------------------------------------------------------------
-
-  toogle_used (item: AuthRecipients)
-  {
-    item.used = !item.used;
-  }
-
-  //---------------------------------------------------------------------------
-
-  send ()
-  {
-    var params = [];
-
-    if (this.recipients.length > 0)
-    {
-      for (var i in this.recipients)
-      {
-        var item: AuthRecipients = this.recipients[i];
-        if (item.used) params.push (item.id);
-      }
-    }
-
-    this.auth_session.json_token_rpc (this.token, 'AUTH', 'ui_2f_send', params).subscribe(() => {
-
-      this.mode = 1;
-      this.code = '';
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  login ()
-  {
-    this.modal.close ({code: this.code});
-  }
-}
-
 class AuthRecipients
 {
   id: number;

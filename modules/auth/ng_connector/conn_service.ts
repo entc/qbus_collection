@@ -115,7 +115,7 @@ import * as CryptoJS from 'crypto-js';
           }
           else
           {
-            subscriber.next (new AuthLoginItem (1, null));
+            subscriber.next (new AuthLoginItem (1, null, error.error));
           }
 
           return new Observable<T>();

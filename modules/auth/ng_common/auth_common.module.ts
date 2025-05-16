@@ -17,7 +17,7 @@ import { AuthSessionInfoComponent, AuthSessionInfoModalComponent, AuthSessionInf
 import { AuthMsgsComponent } from './auth_msgs/component';
 import { AuthLogsComponent } from './auth_logs/component';
 import { AuthPermComponent } from './auth_perm/component';
-import { AuthLoginComponent, Auth2FactorModalComponent, AuthLoginModalComponent } from './auth_login/component';
+import { AuthLoginComponent, Auth2FactorModalComponent, AuthLoginModalComponent, AuthWorkspacesModalComponent } from './auth_login/component';
 import { AuthPasscheckComponent } from './auth_passcheck/component';
 import { AuthSessionPassResetComponent } from './auth_passreset/component';
 import { AuthLastComponent } from './auth_last/component';
@@ -41,6 +41,7 @@ import { AuthLastComponent } from './auth_last/component';
         AuthLogsComponent,
         AuthPermComponent,
         AuthLoginComponent,
+        AuthWorkspacesModalComponent,
         Auth2FactorModalComponent,
         AuthLoginModalComponent,
         AuthPasscheckComponent,

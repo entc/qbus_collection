@@ -1,5 +1,5 @@
 import { Component, Input, Output, OnInit, Injector, EventEmitter } from '@angular/core';
-import { AuthSession, AuthSessionItem, AuthLoginItem, AuthRecipient } from '@qbus/auth_session';
+import { AuthSession, AuthSessionItem, AuthLoginItem, AuthRecipient, AuthWorkspace } from '@qbus/auth_session';
 import { Observable, of } from 'rxjs';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
@@ -57,11 +57,11 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   //---------------------------------------------------------------------------
 
-  private login (user, pass, code)
+  private login (user, pass, code, wpid = 0)
   {
     this.running = true;
 
-    this.auth_session.enable (user, pass, code).subscribe ((litem: AuthLoginItem) => {
+    this.auth_session.enable (user, pass, code, wpid).subscribe ((litem: AuthLoginItem) => {
 
       switch (litem.state)
       {
@@ -81,12 +81,30 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
         }
         case 1:  // workspace
         {
+          const workspace_list: AuthWorkspace[] = litem.list as AuthWorkspace[];
+
+          if (workspace_list.length == 1)
+          {
+            this.login (user, pass, '', workspace_list[0].wpid);
+          }
+          else
+          {
+            let val = new AuthWorkspacesInjector (workspace_list);
+
+            this.modal_service.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthWorkspacesInjector, useValue: val}])}).result.then((wpid: number) => {
+
+              this.login (user, pass, '', wpid);
+
+            }, () => {
+
+            });
+          }
 
           break;
         }
         case 2:  // 2factor
         {
-          let val = new AuthRecipientsInjector (litem.recipients, litem.token);
+          let val = new AuthRecipientsInjector (litem.list as AuthRecipient[], litem.token);
 
           this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthRecipientsInjector, useValue: val}])}).result.then((result) => {
 
@@ -199,6 +217,11 @@ class AuthRecipientsInjector
   constructor (public recipients: AuthRecipient[], public token: string) {}
 }
 
+class AuthWorkspacesInjector
+{
+  constructor (public workspaces: AuthWorkspace[]) {}
+}
+
 //-----------------------------------------------------------------------------
 
 @Component({
@@ -284,6 +307,30 @@ class AuthRecipientsInjector
   public login ()
   {
     this.modal.close ({code: this.code});
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-wpace-modal-component',
+  templateUrl: './modal_workspaces.html'
+}) export class AuthWorkspacesModalComponent {
+
+  workspaces: any;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, workspaces_injector: AuthWorkspacesInjector)
+  {
+    this.workspaces = workspaces_injector.workspaces;
+  }
+
+  //---------------------------------------------------------------------------
+
+  select_workspace (wpid: number)
+  {
+    this.modal.close (wpid);
   }
 }
 
