@@ -14,6 +14,13 @@ import * as CryptoJS from 'crypto-js';
   {
   }
 
+  //-------------------------------------------------------------------------
+
+  public is_available ()
+  {
+    return true;
+  }
+
   //---------------------------------------------------------------------------
 
   private padding (str: string, max: number): string

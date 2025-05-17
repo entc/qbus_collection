@@ -2,6 +2,7 @@ import { Directive, OnInit, Injectable } from '@angular/core';
 import { ActivatedRoute, Router, EventType, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
 import { TrloService } from '@qbus/trlo_service/service';
+import { ConnService } from '@conn/conn_service';
 
 //-----------------------------------------------------------------------------
 
@@ -12,7 +13,7 @@ import { TrloService } from '@qbus/trlo_service/service';
 
   //---------------------------------------------------------------------------
 
-  constructor (private trlo_service: TrloService, private auth_session: AuthSession, public router: Router, private route: ActivatedRoute)
+  constructor (private conn_service: ConnService, private trlo_service: TrloService, private auth_session: AuthSession, public router: Router, private route: ActivatedRoute)
   {
   }
 
@@ -22,10 +23,9 @@ import { TrloService } from '@qbus/trlo_service/service';
   {
     this.route_subscription = this.router.events.subscribe(evt => {
 
-      console.log ('event');
-      console.log (evt);
-
-      if (evt['type'] == EventType.NavigationStart)
+      // only change routes if the connection service is available
+      // -> connection service guards might change routes as well
+      if ((evt['type'] == EventType.NavigationStart) && this.conn_service.is_available ())
       {
         // use regex to check if the url begins with /login
         const curl = /^\/login(\?.*)?$/.test (evt['url']);
