@@ -1,0 +1,38 @@
+<table class="table mt-2">
+  <tr>
+    <th>
+      {{ 'AUTH.SESSIONS_LT' | transloco }}
+    </th>
+    <th>
+      {{ 'AUTH.SESSIONS_LU' | transloco }}
+    </th>
+    <th>
+      {{ 'AUTH.SESSIONS_VP' | transloco }}
+    </th>
+    <th>
+      {{ 'AUTH.SESSIONS_TYPE' | transloco }}
+    </th>
+    <th>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="create_new_session ()"><i class="fa fa-plus"></i></button>
+    </th>
+  </tr>
+  <tr *ngFor="let item of session_list | async">
+    <td>
+      {{item.lt | trlo_locale}}<br>
+      <small>{{item.lt | trlo_timediff}}</small>
+    </td>
+    <td>
+      {{item.lu | trlo_locale}}<br>
+      <small>{{item.lu | trlo_timediff}}</small>
+    </td>
+    <td>
+      {{item.vp}}s
+    </td>
+    <td>
+      {{get_type_description (item.type)}}
+    </td>
+    <td>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="open_session_rm (item)"><i class="fa fa-trash"></i></button>
+    </td>
+  </tr>
+</table>

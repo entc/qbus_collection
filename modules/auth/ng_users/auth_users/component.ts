@@ -112,20 +112,7 @@ export class AuthUsersComponent implements OnInit {
 
   //-----------------------------------------------------------------------------
 
-  public open_roles (item: AuthUserItem)
-  {
-    var ctx: AuthUserContext = new AuthUserContext;
-
-    ctx.wpid = Number(this._wpid);
-    ctx.gpid = item.gpid;
-    ctx.userid = item.userid;
-    ctx.info = null;
-
-    this.modal_service.open (AuthUsersRolesModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
-  }
-
-  //-----------------------------------------------------------------------------
-
+/*
   public open_sessions (item: AuthUserItem, info: AuthWpInfo)
   {
     var ctx: AuthUserContext = new AuthUserContext;
@@ -137,6 +124,7 @@ export class AuthUsersComponent implements OnInit {
 
     this.modal_service.open (AuthUsersSessionsModalComponent, {ariaLabelledBy: 'modal-basic-title', 'size': 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])});
   }
+*/
 
   //-----------------------------------------------------------------------------
 
@@ -285,24 +273,6 @@ class AuthWpInfo
 //=============================================================================
 
 @Component({
-  selector: 'auth-users-roles-modal',
-  templateUrl: './modal_roles.html'
-}) export class AuthUsersRolesModalComponent {
-
-  public input_pass: string;
-  public input_user: string;
-
-  //---------------------------------------------------------------------------
-
-  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
-  {
-  }
-
-}
-
-//=============================================================================
-
-@Component({
   selector: 'auth-users-add-modal',
   templateUrl: './modal_add.html'
 }) export class AuthUsersAddModalComponent {
@@ -340,105 +310,4 @@ class AuthWpInfo
 
 }
 
-//=============================================================================
-
-@Component({
-  selector: 'auth-users-sessions-modal',
-  templateUrl: './modal_sessions.html'
-}) export class AuthUsersSessionsModalComponent implements OnInit {
-
-  public token: string = '';
-  public session_list: Observable<AuthUsersSessionItem[]>;
-
-  //---------------------------------------------------------------------------
-
-  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
-  {
-  }
-
-  //-----------------------------------------------------------------------------
-
-  ngOnInit()
-  {
-    this.fetch ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  private fetch ()
-  {
-    this.session_list = this.auth_session.json_rpc ('AUTH', 'session_wp_get', {wpid: this.ctx.wpid, gpid: this.ctx.gpid});
-  }
-
-  //---------------------------------------------------------------------------
-
-  private open_session_created (data: AuthUsersSessionItem)
-  {
-    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.SUCCESS', 'AUTH.SESSION_ADD_INFO', data.token);
-
-    this.modal_service.open(QbngSuccessModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])});
-
-    this.fetch ();
-  }
-
-  //---------------------------------------------------------------------------
-
-  public create_new_session ()
-  {
-    this.auth_session.json_rpc ('AUTH', 'session_add', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, type: 2, session_ttl: 0}).subscribe ((data: AuthUsersSessionItem) => {
-
-      this.open_session_created (data);
-
-    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
-  }
-
-  //---------------------------------------------------------------------------
-
-  private session_rm (item: AuthUsersSessionItem)
-  {
-    this.auth_session.json_rpc ('AUTH', 'session_rm', {wpid: this.ctx.wpid, gpid: this.ctx.gpid, seid: item.id}).subscribe (() => {
-
-      this.fetch();
-
-    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
-  }
-
-  //---------------------------------------------------------------------------
-
-  public open_session_rm (item: AuthUsersSessionItem)
-  {
-    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.DELETE', 'AUTH.SESSION_RM_INFO', 'MISC.DELETE');
-
-    this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
-
-      this.session_rm (item);
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  public get_type_description (type: number): string
-  {
-    switch (type)
-    {
-      case 1: return 'user session';
-      case 2: return 'api session';
-      default: return 'unknown';
-    }
-  }
-
-  //---------------------------------------------------------------------------
-}
-
 //-----------------------------------------------------------------------------
-
-class AuthUsersSessionItem
-{
-  id: number;
-  lt: string;
-  lu: string;
-  vp: number;
-  type: number;
-  token: string;
-}

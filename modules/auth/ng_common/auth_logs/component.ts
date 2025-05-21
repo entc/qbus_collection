@@ -16,6 +16,8 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
   public log_list: AuthLogsItem[];
   private session_obj;
 
+  @Input() user_ctx: AuthUserContext;
+
   //---------------------------------------------------------------------------
 
   constructor (public auth_session: AuthSession, private modal_service: NgbModal)
@@ -51,7 +53,14 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 
   private fetch ()
   {
-    this.auth_session.json_rpc ('AUTH', 'ui_login_logs', {}).subscribe ((data: AuthLogsItem[]) => {
+    var params = {};
+
+    if (this.user_ctx)
+    {
+      params = {wpid: this.user_ctx.wpid, gpid: this.user_ctx.gpid};
+    }
+
+    this.auth_session.json_rpc ('AUTH', 'ui_login_logs', params).subscribe ((data: AuthLogsItem[]) => {
 
       this.log_list = data;
 

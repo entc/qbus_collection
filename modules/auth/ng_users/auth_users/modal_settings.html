@@ -13,7 +13,17 @@
       </li>
       <li class="nav-item">
         <a (click)="mode = 3" class="nav-link" [ngClass]="{'active': mode == 3}">
+          <i class="fa fa-lock"></i>&nbsp;&nbsp;{{ 'AUTH.ROLES' | transloco }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a (click)="mode = 4" class="nav-link" [ngClass]="{'active': mode == 4}">
           <i class="fa fa-archive"></i>&nbsp;&nbsp;{{ 'AUTH.LOGS' | transloco }}
+        </a>
+      </li>
+      <li class="nav-item">
+        <a (click)="mode = 5" class="nav-link" [ngClass]="{'active': mode == 5}">
+          <i class="fa fa-clipboard-list"></i>&nbsp;&nbsp;{{ 'AUTH.SESSIONS' | transloco }}
         </a>
       </li>
     </ul>
@@ -43,6 +53,21 @@
     <ng-container *ngSwitchCase="2">
 
       <auth-msgs [user_ctx]="ctx"></auth-msgs>
+
+    </ng-container>
+    <ng-container *ngSwitchCase="3">
+
+      <auth-roles [user_ctx]="ctx"></auth-roles>
+
+    </ng-container>
+    <ng-container *ngSwitchCase="4">
+
+      <auth-logs [user_ctx]="ctx"></auth-logs>
+
+    </ng-container>
+    <ng-container *ngSwitchCase="5">
+
+      <auth-sessions [user_ctx]="ctx"></auth-sessions>
 
     </ng-container>
   </div>

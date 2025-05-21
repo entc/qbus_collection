@@ -83,6 +83,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
         {
           const workspace_list: AuthWorkspace[] = litem.list as AuthWorkspace[];
 
+          // consider special case
           if (workspace_list.length == 1)
           {
             this.login (user, pass, '', workspace_list[0].wpid);
@@ -90,14 +91,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
           else
           {
             let val = new AuthWorkspacesInjector (workspace_list);
-
-            this.modal_service.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthWorkspacesInjector, useValue: val}])}).result.then((wpid: number) => {
-
-              this.login (user, pass, '', wpid);
-
-            }, () => {
-
-            });
+            this.modal_service.open (AuthWorkspacesModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthWorkspacesInjector, useValue: val}])}).result.then((wpid: number) => this.login (user, pass, '', wpid), () => {});
           }
 
           break;
@@ -105,14 +99,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
         case 2:  // 2factor
         {
           let val = new AuthRecipientsInjector (litem.list as AuthRecipient[], litem.token);
-
-          this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthRecipientsInjector, useValue: val}])}).result.then((result) => {
-
-            this.login (user, pass, result['code']);
-
-          }, () => {
-
-          });
+          this.modal_service.open (Auth2FactorModalComponent, {ariaLabelledBy: 'modal-basic-title', backdrop: "static", injector: Injector.create([{provide: AuthRecipientsInjector, useValue: val}])}).result.then((result) => this.login (user, pass, result['code']), () => {});
 
           break;
         }
