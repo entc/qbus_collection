@@ -22,6 +22,7 @@ flow_last_prev_view \
 flow_proc_worksteps_view \
 flow_process_details_view \
 flow_process_get_view \
+flow_process_view \
 flow_process_prev_view \
 flow_process_sync_view \
 flow_workflows_view \
