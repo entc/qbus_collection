@@ -183,15 +183,11 @@ void adbl_prepare_del (AdblPrepare* p_self)
   {
     AdblPrepare self = *p_self;
     
-    if (self->params)
-    {
-      cape_udc_del (&(self->params));
-    }
+    cape_str_del (&(self->group_by));
+    cape_str_del (&(self->order_by));
     
-    if (self->values)
-    {
-      cape_udc_del (&(self->values));
-    }
+    cape_udc_del (&(self->params));
+    cape_udc_del (&(self->values));
     
     if (self->bindsParams)
     {
@@ -415,6 +411,7 @@ int adbl_prepare_execute (AdblPrepare self, AdblPvdSession session, CapeErr err)
 
 int adbl_prepare_prepare (AdblPrepare self, AdblPvdSession session, CapeStream stream, CapeErr err)
 {
+  // debug output
   //cape_log_msg (CAPE_LL_TRACE, "ADBL", "mysql **SQL**", cape_stream_get (stream));
 
   // execute
@@ -773,6 +770,18 @@ number_t adbl_prepare_append_constraints (CapeStream stream, int ansi, CapeUdc p
         case CAPE_UDC_NODE:
         {
           used += adbl_prepare_append_constraints__node (stream, ansi, param_name, table, cursor);
+          
+          break;
+        }
+        case CAPE_UDC_NULL:
+        {
+          if (cursor->position > 0)
+          {
+            cape_stream_append_str (stream, " AND ");
+          }
+          
+          adbl_prepare_append_constraints__param (stream, ansi, param_name, table);
+          cape_stream_append_str (stream, " IS NULL" );
           
           break;
         }

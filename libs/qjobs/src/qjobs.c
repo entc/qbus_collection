@@ -162,7 +162,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qjobs__intern__event_add (QJobs self, CapeDatetime* dt, CapeUdc* p_values, CapeErr err)
+int qjobs__intern__event_add (QJobs self, CapeUdc* p_values, CapeErr err)
 {
   int res;
   
@@ -481,7 +481,7 @@ int qjobs_init (QJobs self, CapeAioContext aio_ctx, number_t precision_in_ms, vo
 
 //-----------------------------------------------------------------------------
 
-int qjobs_add (QJobs self, CapeDatetime* dt, number_t period, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr err)
+int qjobs_add (QJobs self, const CapeDatetime* dt, number_t period, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr err)
 {
   int res;
   
@@ -559,7 +559,7 @@ int qjobs_add (QJobs self, CapeDatetime* dt, number_t period, CapeUdc* p_params,
   cape_mutex_lock (self->mutex);
 
   // finally add it to the database
-  res = qjobs__intern__event_add (self, dt, &values, err);
+  res = qjobs__intern__event_add (self, &values, err);
   if (res)
   {
     cape_mutex_unlock (self->mutex);

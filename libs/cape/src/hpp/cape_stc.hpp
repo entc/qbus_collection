@@ -833,7 +833,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    Udc first ()
+    Udc first () const
     {
       if (m_obj == NULL)
       {
@@ -860,6 +860,20 @@ namespace cape
       return Udc (&h);
     }
 
+    //-----------------------------------------------------------------------------
+    
+    Udc last () const
+    {
+      if (m_obj == NULL)
+      {
+        std::string error_message = "UDC object has no content: {last}";
+        
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+      }
+      
+      return Udc (cape_udc_get_last (m_obj));
+    }
+    
     //-----------------------------------------------------------------------------
 
     template <typename S> Udc get (const S& name)

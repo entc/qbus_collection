@@ -1176,6 +1176,7 @@ int cape_datetime__date_bcd (CapeDatetime* self, cape_uint32 date, cape_uint32 t
   }
   
   self->msec = 0;
+  self->usec = 0;
   
   return TRUE;
 }

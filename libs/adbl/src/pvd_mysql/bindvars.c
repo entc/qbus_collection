@@ -238,8 +238,6 @@ void adbl_bindvars_set (AdblBindVars self, CapeUdc item, int check_for_specials)
         const CapeDatetime* cape_dt = cape_udc_d (item, NULL);
         if (cape_dt)
         {
-          printf ("USEC: %u\n", cape_dt->usec);
-
           MYSQL_TIME* dt = CAPE_NEW (MYSQL_TIME);
 
           dt->year = cape_dt->year;

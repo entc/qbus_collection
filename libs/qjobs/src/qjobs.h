@@ -56,7 +56,7 @@ __CAPE_LIBEX     int      qjobs_init       (QJobs, CapeAioContext aio_ctx, numbe
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int      qjobs_add        (QJobs, CapeDatetime* dt, number_t period_in_s, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr);
+__CAPE_LIBEX     int      qjobs_add        (QJobs, const CapeDatetime* dt, number_t period_in_s, CapeUdc* p_params, CapeUdc rinfo, const CapeString ref_mod, const CapeString ref_umi, number_t ref_id1, number_t ref_id2, const CapeString vsec, CapeErr);
 
 __CAPE_LIBEX     int      qjobs_set        (QJobs, number_t rpid, CapeDatetime* dt, number_t period_in_s, CapeUdc* p_params, const CapeString vsec, CapeErr);
 
