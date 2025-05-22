@@ -39,6 +39,8 @@ int cp_file (const CapeString source_file, const CapeString dest_path, const Cap
     goto exit_and_cleanup;
   }
 
+  CapeFileAc ac = cape_fs_file_ac (source_file, err);
+
   CapeString hash1 = qcrypt__hash_md5_file (source_file, err);
   CapeString hash2 = qcrypt__hash_md5_file (dest_file, err);
 
