@@ -41,32 +41,47 @@ export class AuthSession
   public roles: BehaviorSubject<object>;
   public idle: EventEmitter<number> = new EventEmitter();
 
+  private conn_subscriber;
+
   //-----------------------------------------------------------------------------
 
   constructor (private http: HttpClient, private conn: ConnService)
   {
     this.roles = new BehaviorSubject(null);
+    this.session = new BehaviorSubject(null);
 
     // get the last update timestamp
     this.wpid = sessionStorage.getItem (SESSION_STORAGE_WPID);
     if (this.wpid)
     {
-      this.session = new BehaviorSubject({
-        vsec: sessionStorage.getItem (SESSION_STORAGE_VSEC),
-        token: sessionStorage.getItem (SESSION_STORAGE_TOKEN),
-        firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME),
-        lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME),
-        workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE),
-        lt: sessionStorage.getItem (SESSION_STORAGE_LT),
-        vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)),
-        wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)),
-        gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)),
-        state: 0,
-        user: null,
-        remote: ''
+      this.conn_subscriber = this.conn.status.subscribe ((status: ConnStatus) => {
+
+        if (status.connected)
+        {
+          this.session.next ({
+                vsec: sessionStorage.getItem (SESSION_STORAGE_VSEC),
+                token: sessionStorage.getItem (SESSION_STORAGE_TOKEN),
+                firstname: sessionStorage.getItem (SESSION_STORAGE_FIRSTNAME),
+                lastname: sessionStorage.getItem (SESSION_STORAGE_LASTNAME),
+                workspace: sessionStorage.getItem (SESSION_STORAGE_WORKSPACE),
+                lt: sessionStorage.getItem (SESSION_STORAGE_LT),
+                vp: Number(sessionStorage.getItem (SESSION_STORAGE_VP)),
+                wpid: Number(sessionStorage.getItem (SESSION_STORAGE_WPID)),
+                gpid: Number(sessionStorage.getItem (SESSION_STORAGE_GPID)),
+                state: 0,
+                user: null,
+                remote: ''
+          });
+          this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
+        }
+        else
+        {
+          this.roles.next (null);
+          this.session.next (null);
+        }
+
       });
 
-      this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
       this.timer_set (Number(sessionStorage.getItem (SESSION_STORAGE_VP)));
     }
     else
@@ -585,6 +600,15 @@ export class AuthUploadItem
 export class AuthLoginCreds
 {
   constructor (public wpid: number, public user: string, public pass: string, public vault: boolean, public code: string, public browser_info: object) {}
+}
+
+//-----------------------------------------------------------------------------
+
+export interface ConnStatus
+{
+  url: string;
+  state: number;
+  connected: boolean;
 }
 
 //=============================================================================
