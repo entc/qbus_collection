@@ -1,6 +1,5 @@
 import { Component, Input, OnInit, Injector } from '@angular/core';
-import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
-import { AuthUserContext } from '@qbus/auth_users/component';
+import { AuthSession, AuthSessionItem, AuthUserContext } from '@qbus/auth_session';
 import { Observable, of } from 'rxjs';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';

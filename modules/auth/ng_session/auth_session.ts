@@ -587,6 +587,22 @@ export class AuthLoginCreds
   constructor (public wpid: number, public user: string, public pass: string, public vault: boolean, public code: string, public browser_info: object) {}
 }
 
+export class AuthWpInfo
+{
+  domain: string;
+  active: number;
+  name: string;
+}
+
+export class AuthUserContext
+{
+  wpid: number;
+  gpid: number;
+  userid: number;
+  active: boolean;
+  info: AuthWpInfo;
+}
+
 //=============================================================================
 
 export abstract class AuthSessionLoginWidget

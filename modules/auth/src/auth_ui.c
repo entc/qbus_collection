@@ -2503,21 +2503,36 @@ int auth_ui_login_logs (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   // local objects
   CapeUdc query_results = NULL;
 
-  // do some security checks
-  if (qin->rinfo == NULL)
+  if (qbus_message_role_has (qin, "admin"))
   {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "{ui switch} missing rinfo");
-    goto exit_and_cleanup;
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
   }
-
-  wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+  else
+  {
+    // do some security checks
+    if (qin->rinfo == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+      goto exit_and_cleanup;
+    }
+    
+    wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  }
+  
   if (0 == wpid)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
     goto exit_and_cleanup;
   }
-
-  gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
+  
   if (0 == gpid)
   {
     res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");

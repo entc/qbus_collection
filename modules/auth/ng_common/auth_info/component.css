@@ -2,3 +2,8 @@
     -ms-flex: 0 0 10em;
     flex: 0 0 10em;
 }
+
+.mh-400 {
+  max-height: 400px;
+  overflow-y: auto;
+}

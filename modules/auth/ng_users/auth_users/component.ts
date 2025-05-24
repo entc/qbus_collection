@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, Injector } from '@angular/core';
-import { AuthSession, AuthSessionItem } from '@qbus/auth_session';
+import { AuthSession, AuthSessionItem, AuthUserContext, AuthWpInfo } from '@qbus/auth_session';
 import { Observable, of } from 'rxjs';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { QbngErrorHolder, QbngOptionHolder } from '@qbus/qbng_modals/header';
@@ -165,27 +165,12 @@ export class AuthUserItem
   logins: number;
 }
 
-export class AuthUserContext
-{
-  wpid: number;
-  gpid: number;
-  userid: number;
-  active: boolean;
-  info: AuthWpInfo;
-}
-
-class AuthWpInfo
-{
-  domain: string;
-  active: number;
-  name: string;
-}
-
 //=============================================================================
 
 @Component({
   selector: 'auth-users-settings-modal',
-  templateUrl: './modal_settings.html'
+  templateUrl: './modal_settings.html',
+  styleUrls: ['./modal_settings.css']
 }) export class AuthUsersSettingsModalComponent {
 
   public mode: number = 1;
