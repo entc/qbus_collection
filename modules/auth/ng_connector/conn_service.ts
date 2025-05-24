@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Observable, Subscriber, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds } from '@qbus/auth_session';
+import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds, ConnStatus } from '@qbus/auth_session';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import * as CryptoJS from 'crypto-js';
 
@@ -10,18 +10,14 @@ import * as CryptoJS from 'crypto-js';
 
 @Injectable() export class ConnService
 {
+  // the connection status is always available and connected
+  public status: Observable<ConnStatus> = new Observable ((subscriber) => subscriber.next({state: 0, url: null, connected: true}));
+
   constructor (private http: HttpClient)
   {
   }
 
   //-------------------------------------------------------------------------
-
-  public is_available ()
-  {
-    return true;
-  }
-
-  //---------------------------------------------------------------------------
 
   private padding (str: string, max: number): string
   {

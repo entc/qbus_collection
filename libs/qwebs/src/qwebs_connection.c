@@ -112,6 +112,8 @@ void qwebs_request_del (QWebsRequest* p_self)
     cape_str_del (&(self->url));
 
     cape_map_del (&(self->header_values));
+    cape_map_del (&(self->option_values));
+
     cape_list_del (&(self->url_values));
     cape_stream_del (&(self->body_value));
 
@@ -129,7 +131,7 @@ CapeMap qwebs_request__internal__convert_query (const CapeString query)
 
   CapeList values = cape_tokenizer_buf__noempty (query, cape_str_size (query), '&');
 
-  CapeListCursor* cursor = cape_list_cursor_create (values, CAPE_DIRECTION_FORW);
+  CapeListCursor* cursor = cape_list_cursor_new (values, CAPE_DIRECTION_FORW);
   while (cape_list_cursor_next (cursor))
   {
     const CapeString value = cape_list_node_data (cursor->node);
@@ -148,6 +150,8 @@ CapeMap qwebs_request__internal__convert_query (const CapeString query)
     }
   }
 
+  cape_list_cursor_del (&cursor);
+  
   cape_list_del (&values);
   return ret;
 }
