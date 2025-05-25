@@ -1,4 +1,5 @@
 import { Directive, OnInit, Injectable } from '@angular/core';
+import { HttpParams } from '@angular/common/http';
 import { ActivatedRoute, Router, EventType, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { AuthSession, AuthSessionItem, ConnStatus } from '@qbus/auth_session';
 import { TrloService } from '@qbus/trlo_service/service';
@@ -15,7 +16,7 @@ import { ConnService } from '@conn/conn_service';
   private conn_connected: boolean = false;
 
   private nurl: string;
-  private lang: string;
+  private lang_was_set: boolean = false;
 
   //---------------------------------------------------------------------------
 
@@ -28,9 +29,6 @@ import { ConnService } from '@conn/conn_service';
       if ((evt['type'] == EventType.NavigationStart))
       {
         console.log('route status changed = ' + evt['url']);
-
-        // extract the language query parameter
-        this.lang = this.route.snapshot.queryParams["lang"];
 
         // get the destination url
         this.nurl = evt['url'];
@@ -96,21 +94,11 @@ import { ConnService } from '@conn/conn_service';
 
   private handle_login_route ()
   {
-    // debug output
-    console.log('router: lang = ' + this.lang + ', already at login');
-
     this.session_subscription = this.auth_session.session.subscribe ((sitem: AuthSessionItem) => {
 
       if (null == sitem)
       {
-        if (this.lang)
-        {
-          this.trlo_service.updateLocale (this.lang);
-        }
-        else
-        {
-          this.trlo_service.update_from_browser ();
-        }
+        this.update_language ();
       }
       else   // fresh login
       {
@@ -124,9 +112,6 @@ import { ConnService } from '@conn/conn_service';
 
   private handle_default_route ()
   {
-    // debug output
-    console.log('router: lang = ' + this.lang);
-
     this.session_subscription = this.auth_session.session.subscribe ((sitem: AuthSessionItem) => {
 
       // if null there was no valid login
@@ -134,14 +119,12 @@ import { ConnService } from '@conn/conn_service';
       {
         console.log('forward to login');
 
-        this.router.navigate(['login'], {queryParams : {lang: this.lang}});
+        this.router.navigate(['login'], {});
       }
       else  // is logged in
       {
-        if (this.lang)
-        {
-          this.trlo_service.updateLocale (this.lang);
-        }
+        // TODO: consider language settings from session (sitem)
+        this.update_language ();
       }
 
     });
@@ -151,7 +134,9 @@ import { ConnService } from '@conn/conn_service';
 
   private handle_conn_route (url: string)
   {
-    this.router.navigate(['conn-not'], {queryParams : {lang: this.lang}});
+    this.update_language ();
+
+    this.router.navigate(['conn-not'], {});
 
     this.conn_subscriber = this.conn_service.status.subscribe ((status: ConnStatus) => {
 
@@ -167,7 +152,7 @@ import { ConnService } from '@conn/conn_service';
         }
         else
         {
-          this.router.navigate(['conn-not'], {queryParams : {lang: this.lang}});
+          this.router.navigate(['conn-not'], {});
         }
       }
       else
@@ -180,6 +165,36 @@ import { ConnService } from '@conn/conn_service';
 
   //---------------------------------------------------------------------------
 
+  private update_language ()
+  {
+    // guard to only set the language at the beginning
+    if (false == this.lang_was_set)
+    {
+      // set guard
+      this.lang_was_set = true;
+
+      const url: string = this.nurl;
+      let lang: string = null;
+
+      // extract the language query parameter
+      if (url.includes('?'))
+      {
+          const httpParams = new HttpParams({ fromString: url.split('?')[1] });
+          lang = httpParams.get('lang');
+      }
+
+      if (lang)
+      {
+        this.trlo_service.updateLocale (lang);
+      }
+      else
+      {
+        this.trlo_service.update_from_browser ();
+      }
+    }
+  }
+
+  //---------------------------------------------------------------------------
 }
 
 //-----------------------------------------------------------------------------
