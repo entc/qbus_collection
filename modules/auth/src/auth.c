@@ -803,7 +803,7 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // a fresh login
   //   args: wpid
-  qbus_register (qbus, "ui_login"             , ctx, qbus_auth_ui_login, NULL, err);
+//  qbus_register (qbus, "ui_login"             , ctx, qbus_auth_ui_login, NULL, err);
 
   // a fresh login
   //   args: wpid

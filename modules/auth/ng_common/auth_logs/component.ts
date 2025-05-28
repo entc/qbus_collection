@@ -76,6 +76,7 @@ import { QbngSpinnerModalComponent, QbngSpinnerOkModalComponent, QbngSuccessModa
 class AuthLogsItem
 {
   id: number;
+  status: number;
   ltime: string;
   ip: string;
   info: object;

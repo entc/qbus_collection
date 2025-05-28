@@ -65,4 +65,8 @@ __CAPE_LIBEX   int     auth_ui_rm          (AuthUI*, QBusM qin, QBusM qout, Cape
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LOCAL   int     auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, number_t usid, CapeUdc rinfo, CapeUdc cdata, number_t status, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 #endif

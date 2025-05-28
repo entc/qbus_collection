@@ -12,6 +12,11 @@
 
 //-----------------------------------------------------------------------------
 
+#define AUTH_LOGIN_STATUS__SUCCESS   1
+#define AUTH_LOGIN_STATUS__DENIED    2
+
+//-----------------------------------------------------------------------------
+
 struct AuthUI_s
 {
   QBus qbus;                       // reference
@@ -63,6 +68,105 @@ void auth_ui_del (AuthUI* p_self)
     
     CAPE_DEL (p_self, struct AuthUI_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, number_t usid, CapeUdc rinfo, CapeUdc cdata, number_t status, CapeErr err)
+{
+  number_t id;
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // parameters
+  cape_udc_add_n      (values, "wpid"         , wpid);
+  cape_udc_add_n      (values, "gpid"         , gpid);
+  cape_udc_add_n      (values, "userid"       , usid);
+  cape_udc_add_n      (values, "status"       , status);
+  
+  {
+    CapeDatetime dt;
+    cape_datetime_utc (&dt);
+    
+    cape_udc_add_d    (values, "ltime"        , &dt);
+  }
+  
+  {
+    const CapeString remote = cape_udc_get_s (rinfo, "remote", NULL);
+    if (remote)
+    {
+      cape_udc_add_s_cp (values, "ip", remote);
+    }
+  }
+  
+  if (cdata)
+  {
+    CapeUdc info = cape_udc_ext (cdata, "info");
+    if (info)
+    {
+      cape_udc_add (values, &info);
+    }
+  }
+  
+  return (0 == adbl_trx_insert (adbl_trx, "auth_logins", &values, err)) ? cape_err_code (err) : CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__internal__save_log_entry (AuthUI self, number_t wpid, number_t gpid, number_t usid, CapeUdc rinfo, CapeUdc cdata, number_t status, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  AdblTrx adbl_trx = NULL;
+  
+  // start transaction
+  adbl_trx = adbl_trx_new (self->adbl_session, err);
+  if (adbl_trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  res = auth_ui__save_log_entry (adbl_trx, wpid, gpid, usid, rinfo, cdata, status, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&adbl_trx, err);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__internal__save_denied (AuthUI self, number_t wpid, number_t gpid, number_t usid, CapeUdc rinfo, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc cdata = NULL;
+  
+  if (cape_err_code (err))
+  {
+    cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    {
+      CapeUdc info = cape_udc_add_node (cdata, "info");
+      
+      cape_udc_add_n    (info, "err_code", cape_err_code (err));
+      cape_udc_add_s_cp (info, "err_text", cape_err_text (err));
+    }
+  }
+  
+  res = auth_ui__internal__save_log_entry (self, wpid, gpid, usid, rinfo, cdata, AUTH_LOGIN_STATUS__DENIED, err);
+
+  cape_udc_del (&cdata);
+  return res;
 }
 
 //---------------------------------------------------------------------------
@@ -661,21 +765,6 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     goto exit_and_cleanup;
   }
   
-  // extract secret
-  self->secret = cape_udc_ext_s (first_row, "secret");
-  if (self->secret == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no secret defined");
-    goto exit_and_cleanup;
-  }
-  
-  // always check the password first
-  res = auth_ui_crypt4__compare_password (self, cha, cda, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
   if (cape_udc_size (query_results) > 1)
   {
     res = auth_ui__intern__get_workspaces (self, userid, &(qout->cdata), err);
@@ -699,6 +788,22 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   if (gpid == 0)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no gpid assigned");
+    goto exit_and_cleanup;
+  }
+  
+  // extract secret
+  self->secret = cape_udc_ext_s (first_row, "secret");
+  if (self->secret == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "no secret defined");
+    goto exit_and_cleanup;
+  }
+  
+  // always check the password first
+  res = auth_ui_crypt4__compare_password (self, cha, cda, err);
+  if (res)
+  {
+    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->rinfo, err);
     goto exit_and_cleanup;
   }
   
@@ -755,6 +860,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   res = auth_ui__2factor (self, userid, wpid, gpid, vsec, first_row, auth_crypt_credentials, qout, err);
   if (res)
   {
+    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->rinfo, err);
     goto exit_and_cleanup;
   }
   
@@ -1048,51 +1154,11 @@ int auth_ui_login (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   // extract the first row
   first_row = cape_udc_ext_first (query_results);
 
-  // insert into logins
+  res = auth_ui__save_log_entry (adbl_trx, self->wpid, gpid, usid, qin->rinfo, qin->cdata, AUTH_LOGIN_STATUS__SUCCESS, err);
+  if (res)
   {
-    number_t id;
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // parameters
-    cape_udc_add_n      (values, "wpid"         , self->wpid);
-    cape_udc_add_n      (values, "gpid"         , gpid);
-    cape_udc_add_n      (values, "userid"       , usid);
-
-    {
-      CapeDatetime dt;
-      cape_datetime_utc (&dt);
-      
-      cape_udc_add_d    (values, "ltime"        , &dt);
-    }
-    
-    {
-      const CapeString remote = cape_udc_get_s (qin->rinfo, "remote", NULL);
-      if (remote)
-      {
-        cape_udc_add_s_cp (values, "ip", remote);
-      }
-    }
-    
-    if (qin->cdata)
-    {
-      CapeUdc info = cape_udc_ext (qin->cdata, "info");
-      if (info)
-      {
-        cape_udc_add (values, &info);
-      }
-    }
-    
-    // execute query
-    id = adbl_trx_insert (adbl_trx, "auth_logins", &values, err);
-    if (id == 0)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
+    goto exit_and_cleanup;
   }
-  
-  adbl_trx_commit (&adbl_trx, err);
-  res = CAPE_ERR_NONE;
   
   // add first row
   cape_udc_replace_mv (&(qout->cdata), &first_row);
@@ -1107,6 +1173,9 @@ int auth_ui_login (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     qout->cdata = cape_udc_cp (qin->rinfo);
   }
   
+  adbl_trx_commit (&adbl_trx, err);
+  res = CAPE_ERR_NONE;
+
 exit_and_cleanup:
   
   adbl_trx_rollback (&adbl_trx, err);
@@ -2549,6 +2618,7 @@ int auth_ui_login_logs (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_d      (values, "ltime"          , NULL);
     cape_udc_add_s_cp   (values, "ip"             , NULL);
     cape_udc_add_node   (values, "info"           );
+    cape_udc_add_n      (values, "status"         , 0);
 
     // execute the query
     query_results = adbl_session_query_ex (self->adbl_session, "auth_logins", &params, &values, 20, 0, NULL, "-ltime", err);
