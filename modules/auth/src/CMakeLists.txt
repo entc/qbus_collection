@@ -31,6 +31,7 @@ ADD_EXECUTABLE (qbus_mod_auth ${QBUS_MODULES_AUTH_SOURCES} ${QBUS_MODULES_AUTH_H
 TARGET_LINK_LIBRARIES (qbus_mod_auth qbus adbl2 qcrypt qjobs)
 
 INSTALL (TARGETS qbus_mod_auth DESTINATION mods)
+add_custom_command (TARGET qbus_mod_auth POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/*.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 
 # set default symlinks
 
