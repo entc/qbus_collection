@@ -91,6 +91,13 @@ int auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, num
   }
   
   {
+    CapeString h = cape_json_to_s(rinfo);
+    
+    printf ("RINFO: %s\n", h);
+    
+  }
+  
+  {
     const CapeString remote = cape_udc_get_s (rinfo, "remote", NULL);
     if (remote)
     {
@@ -803,7 +810,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   res = auth_ui_crypt4__compare_password (self, cha, cda, err);
   if (res)
   {
-    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->rinfo, err);
+    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->cdata, err);
     goto exit_and_cleanup;
   }
   
@@ -860,7 +867,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   res = auth_ui__2factor (self, userid, wpid, gpid, vsec, first_row, auth_crypt_credentials, qout, err);
   if (res)
   {
-    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->rinfo, err);
+    auth_ui__internal__save_denied (self, wpid, gpid, userid, qin->cdata, err);
     goto exit_and_cleanup;
   }
   
