@@ -17,6 +17,7 @@ proc_current_workstep_view \
 proc_next_workstep_view \
 proc_task_logs_view \
 proc_task_view \
+flow_jobs \
 flow_chain_view \
 flow_last_prev_view \
 flow_proc_worksteps_view \

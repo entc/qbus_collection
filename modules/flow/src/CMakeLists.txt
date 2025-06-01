@@ -28,6 +28,7 @@ TARGET_LINK_LIBRARIES (qbus_mod_flow qbus qflow adbl2 qjobs)
 
 # for local install
 INSTALL (TARGETS qbus_mod_flow DESTINATION mods)
+add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/*.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
 
 if (ETC_LOCATION)
   add_custom_command (TARGET qbus_mod_flow POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink ${ETC_LOCATION} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/etc)
