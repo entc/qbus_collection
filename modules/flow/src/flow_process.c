@@ -2187,3 +2187,73 @@ exit_and_cleanup:
 }
 
 //-----------------------------------------------------------------------------
+
+int flow_process_stats (FlowProcess* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  FlowProcess self = *p_self;
+
+  // local objects
+  CapeUdc query_results = NULL;
+
+  // allow user role or admin role from workspace
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    if (qin->cdata == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_PDATA");
+      goto exit_and_cleanup;
+    }
+
+    self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+      goto exit_and_cleanup;
+    }
+  }
+  else if (qin->rinfo)
+  {
+    self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    if (self->wpid == 0)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
+    goto exit_and_cleanup;
+  }
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    cape_udc_add_n      (params, "wpid"          , self->wpid);
+    cape_udc_add_n      (values, "wfid"          , 0);
+    cape_udc_add_n      (values, "id"            , ADBL_AGGREGATE_COUNT);
+    cape_udc_add_s_cp   (values, "wf_name"       , NULL);
+
+    // execute the query
+    query_results = adbl_session_query_ex (self->adbl_session, "flow_process_get_view", &params, &values, 0, 0, "wfid", NULL, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = CAPE_ERR_NONE;
+  cape_udc_replace_mv (&(qout->cdata), &query_results);
+  
+exit_and_cleanup:
+
+  cape_udc_del (&query_results);
+
+  flow_process_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
