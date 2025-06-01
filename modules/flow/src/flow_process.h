@@ -63,6 +63,8 @@ __CAPE_LIBEX   int            flow_process_instance_rm (FlowProcess*, QBusM qin,
 
 __CAPE_LIBEX   int            flow_process_wait_get    (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int            flow_process_stats       (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int            flow_wspc_clr            (FlowProcess*, QBusM qin, QBusM qout, CapeErr err);
