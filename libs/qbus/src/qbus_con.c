@@ -113,7 +113,7 @@ exit_and_cleanup:
 
 void qbus_con_snd (QBusCon self, const CapeString cid, QBusM msg)
 {
-  QBusFrame frame = qbus_frame_new ();
+  QBusFrame frame = qbus_frame_new (msg);
   
   qbus_engine_con_snd (self->engine, self->con, cid, frame);
 

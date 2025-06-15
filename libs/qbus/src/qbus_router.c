@@ -187,3 +187,9 @@ const CapeString qbus_router_get (QBusRouter self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc qbus_router_list (QBusRouter self)
+{
+  
+}
+
+//-----------------------------------------------------------------------------

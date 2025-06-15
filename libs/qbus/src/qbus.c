@@ -19,6 +19,8 @@ struct QBus_s
   
   CapeString module;          // owned
   QBusCon con;                // owned
+  
+  CapeUdc config;             // config
 };
 
 //-----------------------------------------------------------------------------
@@ -36,6 +38,8 @@ QBus qbus_new (const char* module)
   self->module = cape_str_cp (module);
   self->con = qbus_con_new (self->router, module);
   
+  self->config = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
   return self;
 }
 
@@ -47,6 +51,8 @@ void qbus_del (QBus* p_self)
   {
     QBus self = *p_self;
    
+    cape_udc_del (&(self->config));
+    
     qbus_con_del (&(self->con));
     
     qbus_engines_del (&(self->engines));
@@ -147,6 +153,13 @@ void qbus__intern__no_route (QBus self, const char* module, const char* method, 
 
 //-----------------------------------------------------------------------------
 
+int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_send (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
   // correct chain key
@@ -203,9 +216,178 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
 
 //-----------------------------------------------------------------------------
 
+int qbus_continue (QBus self, const CapeString module, const CapeString method, QBusM qin, void** p_user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 CapeAioContext qbus_aio (QBus self)
 {
   return self->aio;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_modules (QBus self)
+{
+  return qbus_router_list (self->router);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_log_msg (QBus self, const CapeString remote, const CapeString message)
+{
+  // TODO
+  //qbus_logger_msg (self->logger, remote, message);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_log_fmt (QBus self, const CapeString remote, const char* format, ...)
+{
+  va_list ptr;
+  va_start(ptr, format);
+  
+  {
+    CapeString h = cape_str_flp (format, ptr);
+    
+    // TODO
+    //qbus_logger_msg (self->logger, remote, h);
+    
+    cape_str_del (&h);
+  }
+
+  va_end(ptr);
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qbus_config_s (QBus self, const char* name, const CapeString default_val)
+{
+  CapeUdc config_node;
+  
+  if (self->config == NULL)
+  {
+    return default_val;
+  }
+  
+  // search for UDC
+  config_node = cape_udc_get (self->config, name);
+  
+  if (config_node)
+  {
+    return cape_udc_s (config_node, default_val);
+  }
+  else
+  {
+    cape_udc_add_s_cp (self->config, name, default_val);
+
+    return default_val;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_config_node (QBus self, const char* name)
+{
+  CapeUdc config_node;
+
+  if (self->config == NULL)
+  {
+    return NULL;
+  }
+  
+  // search for UDC
+  config_node = cape_udc_get (self->config, name);
+  
+  if (config_node)
+  {
+    return config_node;
+  }
+  else
+  {
+    return cape_udc_add_node (self->config, name);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+number_t qbus_config_n (QBus self, const char* name, number_t default_val)
+{
+  CapeUdc config_node;
+  
+  if (self->config == NULL)
+  {
+    return default_val;
+  }
+  
+  // search for UDC
+  config_node = cape_udc_get (self->config, name);
+  
+  if (config_node)
+  {
+    return cape_udc_n (config_node, default_val);
+  }
+  else
+  {
+    cape_udc_add_n (self->config, name, default_val);
+
+    return default_val;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+double qbus_config_f (QBus self, const char* name, double default_val)
+{
+  CapeUdc config_node;
+  
+  if (self->config == NULL)
+  {
+    return default_val;
+  }
+  
+  // search for UDC
+  config_node = cape_udc_get (self->config, name);
+  
+  if (config_node)
+  {
+    return cape_udc_f (config_node, default_val);
+  }
+  else
+  {
+    cape_udc_add_f (self->config, name, default_val);
+    
+    return default_val;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_config_b (QBus self, const char* name, int default_val)
+{
+  CapeUdc config_node;
+  
+  if (self->config == NULL)
+  {
+    return default_val;
+  }
+  
+  // search for UDC
+  config_node = cape_udc_get (self->config, name);
+  
+  if (config_node)
+  {
+    return cape_udc_b (config_node, default_val);
+  }
+  else
+  {
+    cape_udc_add_b (self->config, name, default_val);
+    
+    return default_val;
+  }
 }
 
 //-----------------------------------------------------------------------------

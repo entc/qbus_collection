@@ -8,6 +8,12 @@
 
 //-----------------------------------------------------------------------------
 
+#define QBUS_MTYPE_NONE         0
+#define QBUS_MTYPE_JSON         1
+#define QBUS_MTYPE_FILE         2
+
+//-----------------------------------------------------------------------------
+
 struct QBusMessage_s
 {
   number_t mtype;
@@ -39,6 +45,10 @@ __CAPE_LIBEX   QBusM              qbus_message_new       (const CapeString key, 
 __CAPE_LIBEX   void               qbus_message_del       (QBusM*);
 
 __CAPE_LIBEX   void               qbus_message_clr       (QBusM, u_t cdata_udc_type);
+
+__CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeString role_name);
+
+__CAPE_LIBEX   int                qbus_message_role_or2  (QBusM, const CapeString role01, const CapeString role02);
 
 //-----------------------------------------------------------------------------
 

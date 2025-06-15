@@ -1,3 +1,8 @@
+SUBDIRS(src)
+
 # external libs
 SUBDIRS(paho.mqtt.c)
-SUBDIRS(src)
+
+# pvd engines
+SUBDIRS(pvd_common)
+SUBDIRS(pvd_mqtt)

@@ -1,10 +1,7 @@
 #include "qbus_message.h"
 
-//-----------------------------------------------------------------------------
-
-#define QBUS_MTYPE_NONE         0
-#define QBUS_MTYPE_JSON         1
-#define QBUS_MTYPE_FILE         2
+// cape includes
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -77,6 +74,65 @@ void qbus_message_del (QBusM* p_self)
     
     CAPE_DEL (p_self, struct QBusMessage_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_message_role_has (QBusM self, const CapeString role_name)
+{
+  CapeUdc roles;
+  CapeUdc role;
+
+  if (self->rinfo == NULL)
+  {
+    return FALSE;
+  }
+  
+  roles = cape_udc_get (self->rinfo, "roles");
+  if (roles == NULL)
+  {
+    return FALSE;
+  }
+
+  role = cape_udc_get (roles, role_name);
+  if (role == NULL)
+  {
+    return FALSE;
+  }
+  
+  return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_message_role_or2 (QBusM self, const CapeString role01, const CapeString role02)
+{
+  CapeUdc roles;
+  CapeUdc role;
+  
+  if (self->rinfo == NULL)
+  {
+    cape_log_msg (CAPE_LL_WARN, "QBUS", "role or2", "rinfo is NULL");
+    return FALSE;
+  }
+  
+  roles = cape_udc_get (self->rinfo, "roles");
+  if (roles == NULL)
+  {
+    return FALSE;
+  }
+
+  role = cape_udc_get (roles, role01);
+  if (role == NULL)
+  {
+    role = cape_udc_get (roles, role02);
+    if (role == NULL)
+    {
+      return FALSE;
+    }
+  }
+  
+  return TRUE;
 }
 
 //-----------------------------------------------------------------------------

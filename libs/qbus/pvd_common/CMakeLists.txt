@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES(../lib ${PROJECT_SOURCE_DIR}/qbus_collection/libs/cape/src ${PROJECT_SOURCE_DIR}/qbus_collection/libs/qcrypt/src)
+INCLUDE_DIRECTORIES("../src" "../../cape/src" "../../qcrypt/src")
 
 SET (PVD_COMMON_SOURCES
   qbus_frame.c

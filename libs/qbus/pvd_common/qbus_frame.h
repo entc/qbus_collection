@@ -7,7 +7,7 @@
 #include <stc/cape_stream.h>
 
 // qbus includes
-#include "qbus_message.h"
+#include "../src/qbus_message.h"
 
 //-----------------------------------------------------------------------------
 // object typedefs and definitions

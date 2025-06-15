@@ -3000,7 +3000,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui__intern__send_message (AuthUI* p_self, CapeUdc item, CapeUdc options, QBusM qin, QBusM qout, fct_qbus_onMessage fct, CapeErr err)
+int auth_ui__intern__send_message (AuthUI* p_self, CapeUdc item, CapeUdc options, QBusM qin, QBusM qout, fct_qbus_on_msg fct, CapeErr err)
 {
   int res;
   AuthUI self = *p_self;

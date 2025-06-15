@@ -27,6 +27,8 @@ __CAPE_LIBEX   void                 qbus_router_rm        (QBusRouter, const Cap
 
 __CAPE_LIBEX   const CapeString     qbus_router_get       (QBusRouter, const CapeString name);
 
+__CAPE_LIBEX   CapeUdc              qbus_router_list      (QBusRouter);
+
 //-----------------------------------------------------------------------------
 
 #endif
