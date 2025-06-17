@@ -59,17 +59,19 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
 {
   QBusCon self = user_ptr;
 
-  const CapeString module = frame->module;
-  const CapeString sender = frame->sender;
-
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s, method = '%s'", frame->module, frame->sender, frame->method);
 
   if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
   {
+    CapeErr err = cape_err_new ();
     
+    int res = qbus_methods_run (self->methods, frame->method, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "routing", "%s", cape_err_text (err));
+    }
     
-    
-    
+    cape_err_del (&err);
   }
   else
   {

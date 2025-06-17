@@ -142,10 +142,8 @@ void qbus_config_save (QBusConfig self)
 
 //-----------------------------------------------------------------------------
 
-int qbus_config_init (QBusConfig self, int argc, char *argv[], CapeErr err)
+void qbus_config_init (QBusConfig self, int argc, char *argv[])
 {
-  int res;
-  
   // local objects
   CapeUdc args = NULL;
 
@@ -224,8 +222,6 @@ int qbus_config_init (QBusConfig self, int argc, char *argv[], CapeErr err)
     
     cape_str_del (&h);
   }
-
-  return res;
 }
 
 //-----------------------------------------------------------------------------

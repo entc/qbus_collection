@@ -2,6 +2,7 @@
 #include "qbus_con.h"
 #include "qbus_engines.h"
 #include "qbus_router.h"
+#include "qbus_methods.h"
 
 // cape includes
 #include <stc/cape_str.h>
@@ -70,11 +71,7 @@ int qbus_init (QBus self, int argc, char *argv[], CapeErr err)
   int res;
   
   // parse arguments and load config
-  res = qbus_config_init (self->config, argc, argv, err);
-  if (res)
-  {
-    return res;
-  }
+  qbus_config_init (self->config, argc, argv);
   
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
@@ -161,7 +158,7 @@ void qbus__intern__no_route (QBus self, const char* module, const char* method, 
 
 int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
-  
+  return qbus_methods_add (self->methods, method, user_ptr, on_msg, on_rm, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -285,17 +282,23 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   CapeErr err = cape_err_new ();
   QBus qbus = qbus_new (argv[1]);
   
+  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
+  
   res = qbus_init (qbus, argc, argv, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  
+
+  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "run on_init");
+
   if (on_init)
   {
     on_init (qbus, ptr, &ptr, err);
   }
-    
+
+  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start main loop");
+
   res = qbus_wait__intern (qbus, err);
   if (res)
   {

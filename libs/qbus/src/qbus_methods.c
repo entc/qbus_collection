@@ -37,9 +37,17 @@ void qbus_methods_del (QBusMethods* p_self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods_add (QBusMethods self)
+int qbus_methods_add (QBusMethods self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
   
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_methods_run (QBusMethods self, const CapeString method, CapeErr err)
+{
+  return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "method [%s] not found", method);
 }
 
 //-----------------------------------------------------------------------------

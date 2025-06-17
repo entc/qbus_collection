@@ -4,6 +4,7 @@
 
 // cape includes
 #include <aio/cape_aio_timer.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -76,6 +77,11 @@ static int __STDCALL app_on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr er
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
+  
+  if (res)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "APP", "on init", cape_err_text (err));
+  }
   
   return res;
 }
