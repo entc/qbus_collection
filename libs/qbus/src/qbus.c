@@ -80,6 +80,12 @@ int qbus_init (QBus self, int argc, char *argv[], CapeErr err)
     return res;
   }
   
+  res = qbus_methods_init (self->methods, qbus_config_n (self->config, "threads", 4), err);
+  if (res)
+  {
+    return res;
+  }
+
   // create
   self->con = qbus_con_new (self->router, self->methods, qbus_config_name (self->config));
 
@@ -173,26 +179,7 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
     
-    /*
-    QbusRouteWorkerCtx ctx = CAPE_NEW (struct QbusRouteWorkerCtx_s);
-    
-    ctx->route = self;
-    ctx->qin = qbus_message_data_mv (msg);
-    
-    ctx->module = NULL;
-    ctx->method = cape_str_cp (method);
-    
-    ctx->ptr = ptr;
-    ctx->onMsg = onMsg;
-    
-    ctx->conn = NULL;
-    ctx->cont = FALSE;
-    
-    qbus_route_request__local_request__worker (ctx, 0, 0);
-    
-    //cape_queue_add (self->queue, NULL, qbus_route_request__local_request__worker, NULL, ctx, 0);
-    */
-    return CAPE_ERR_CONTINUE;
+    return qbus_methods_run (self->methods, method, err);
   }
   else
   {
@@ -213,8 +200,6 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
       return cape_err_set (err, CAPE_ERR_NOT_FOUND, "no route to module");
     }
   }
-
-  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

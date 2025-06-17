@@ -36,6 +36,14 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL app__on_reg_fct1 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL app__on_timer (void* user_ptr)
 {
   int res;
@@ -73,6 +81,8 @@ static int __STDCALL app_on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr er
     cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.TIMER_ADD");
     goto exit_and_cleanup;
   }
+  
+  qbus_register (qbus, "function1", qbus, app__on_reg_fct1, NULL, err);
 
   res = CAPE_ERR_NONE;
   

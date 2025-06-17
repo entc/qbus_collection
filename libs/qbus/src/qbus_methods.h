@@ -20,6 +20,8 @@ __CAPE_LIBEX   QBusMethods          qbus_methods_new          ();
 
 __CAPE_LIBEX   void                 qbus_methods_del          (QBusMethods*);
 
+__CAPE_LIBEX   int                  qbus_methods_init         (QBusMethods, number_t threads, CapeErr);
+
 __CAPE_LIBEX   int                  qbus_methods_add          (QBusMethods, const CapeString method, void* user_ptr, fct_qbus_on_msg, fct_qbus_on_rm, CapeErr err);
 
 __CAPE_LIBEX   int                  qbus_methods_run          (QBusMethods, const CapeString method, CapeErr err);
