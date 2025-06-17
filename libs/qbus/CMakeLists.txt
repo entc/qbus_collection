@@ -1,4 +1,5 @@
 SUBDIRS(src)
+SUBDIRS(app)
 
 # external libs
 SUBDIRS(paho.mqtt.c)

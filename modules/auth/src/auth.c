@@ -748,7 +748,7 @@ int auth_context_init (AuthContext self, QBus qbus, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  self->adbl_session = adbl_session_open_file (self->adbl_ctx, qbus_config_s(qbus, "adbl_config", "adbl_default.json"), err);
+  self->adbl_session = adbl_session_open_file (self->adbl_ctx, qbus_config_s(qbus_config (qbus), "adbl_config", "adbl_default.json"), err);
   if (self->adbl_session == NULL)
   {
     res = cape_err_code (err);
@@ -768,8 +768,8 @@ int auth_context_init (AuthContext self, QBus qbus, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  self->options_2factor = qbus_config_node (qbus, "options_2factor");
-  self->options_fp = qbus_config_node (qbus, "options_fp");
+  self->options_2factor = qbus_config_node (qbus_config (qbus), "options_2factor");
+  self->options_fp = qbus_config_node (qbus_config (qbus), "options_fp");
   
 exit_and_cleanup:
   

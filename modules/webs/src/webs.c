@@ -262,31 +262,32 @@ void qbus_webs__context_del (WebsContext* p_self)
 int qbus_webs__context_init (WebsContext self, QBus qbus, CapeErr err)
 {
   int res;
+  QBusConfig config = qbus_config (qbus);
   
   // local objects
-  CapeUdc sites = cape_udc_cp (qbus_config_node (qbus, "sites"));
+  CapeUdc sites = cape_udc_cp (qbus_config_node (config, "sites"));
   
   if (sites)
   {
-    const CapeString site = qbus_config_s (qbus, "site", "public");
+    const CapeString site = qbus_config_s (config, "site", "public");
     if (cape_str_not_empty (site))
     {
       cape_udc_add_s_cp (sites, "/", site);
     }
   }
   
-  const CapeString host = qbus_config_s (qbus, "host", "127.0.0.1");
+  const CapeString host = qbus_config_s (config, "host", "127.0.0.1");
   
   // this is the directory to find error pages
-  const CapeString pages = qbus_config_s (qbus, "pages", "pages");
+  const CapeString pages = qbus_config_s (config, "pages", "pages");
   
-  number_t port = qbus_config_n (qbus, "port", 8082);
-  number_t threads = qbus_config_n (qbus, "threads", 4);
+  number_t port = qbus_config_n (config, "port", 8082);
+  number_t threads = qbus_config_n (config, "threads", 4);
   
-  CapeUdc route_list = qbus_config_node (qbus, "route_list");
+  CapeUdc route_list = qbus_config_node (config, "route_list");
   
-  const CapeString identifier = qbus_config_s (qbus, "identifier", "QWebs");
-  const CapeString provider = qbus_config_s (qbus, "provider", "QBUS - Webs Module");
+  const CapeString identifier = qbus_config_s (config, "identifier", "QWebs");
+  const CapeString provider = qbus_config_s (config, "provider", "QBUS - Webs Module");
   
   // create a new QWEBS instance
   self->webs = qwebs_new (sites, host, port, threads, pages, route_list, identifier, provider);

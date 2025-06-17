@@ -1,14 +1,15 @@
 #ifndef __QBUS__H
 #define __QBUS__H 1
 
-#include "sys/cape_export.h"
-#include "sys/cape_err.h"
-#include "stc/cape_udc.h"
-#include "stc/cape_stream.h"
-#include "aio/cape_aio_ctx.h"
+#include <sys/cape_export.h>
+#include <sys/cape_err.h>
+#include <stc/cape_udc.h>
+#include <stc/cape_stream.h>
+#include <aio/cape_aio_ctx.h>
 
 // qbus includes
 #include "qbus_message.h"
+#include "qbus_config.h"
 
 //=============================================================================
 
@@ -16,7 +17,7 @@ struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBus               qbus_new               (const char* module);
+__CAPE_LIBEX   QBus               qbus_new               (const CapeString module);
 
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
@@ -39,23 +40,13 @@ __CAPE_LIBEX   CapeAioContext     qbus_aio               (QBus);
 
 __CAPE_LIBEX   CapeUdc            qbus_modules           (QBus);
 
+__CAPE_LIBEX   QBusConfig         qbus_config            (QBus);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX  void                qbus_log_msg           (QBus, const CapeString remote, const CapeString message);
 
 __CAPE_LIBEX  void                qbus_log_fmt           (QBus, const CapeString remote, const char* format, ...);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   const CapeString   qbus_config_s          (QBus, const char* name, const CapeString default_val);
-
-__CAPE_LIBEX   number_t           qbus_config_n          (QBus, const char* name, number_t default_val);
-
-__CAPE_LIBEX   double             qbus_config_f          (QBus, const char* name, double default_val);
-
-__CAPE_LIBEX   int                qbus_config_b          (QBus, const char* name, int default_val);
-
-__CAPE_LIBEX   CapeUdc            qbus_config_node       (QBus, const char* name);
 
 //-----------------------------------------------------------------------------
 

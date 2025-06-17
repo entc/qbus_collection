@@ -9,6 +9,8 @@ SET (QBUS_LIBRARY_SOURCES
   "qbus_con.c"
   "qbus_snd.c"
   "qbus_message.c"
+  "qbus_config.c"
+  "qbus_methods.c"
 )
 
 SET (QBUS_LIBRARY_HEADERS
@@ -18,6 +20,8 @@ SET (QBUS_LIBRARY_HEADERS
   "qbus_con.h"
   "qbus_snd.h"
   "qbus_message.h"
+  "qbus_config.h"
+  "qbus_methods.h"
 )
 
 add_library             (qbus SHARED ${QBUS_LIBRARY_SOURCES} ${QBUS_LIBRARY_HEADERS})

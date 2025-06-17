@@ -16,13 +16,14 @@ struct QBusCon_s
 
   QBusEngine engine;           // reference
   QBusRouter router;           // reference
+  QBusMethods methods;         // reference
   
   CapeString module;
 };
 
 //-----------------------------------------------------------------------------
 
-QBusCon qbus_con_new (QBusRouter router, const CapeString module_name)
+QBusCon qbus_con_new (QBusRouter router, QBusMethods methods, const CapeString module_name)
 {
   QBusCon self = CAPE_NEW (struct QBusCon_s);
   
@@ -31,6 +32,7 @@ QBusCon qbus_con_new (QBusRouter router, const CapeString module_name)
 
   self->engine = NULL;
   self->router = router;
+  self->methods = methods;
   
   self->module = cape_str_cp (module_name);
 
@@ -57,7 +59,24 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
 {
   QBusCon self = user_ptr;
 
-  printf ("got frame: %s\n", frame->sender);
+  const CapeString module = frame->module;
+  const CapeString sender = frame->sender;
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s", module, sender);
+
+  if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
+  {
+    
+    
+    
+    
+  }
+  else
+  {
+    
+    
+    
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -111,13 +130,21 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qbus_con_snd (QBusCon self, const CapeString cid, QBusM msg)
+void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, QBusM msg)
 {
-  QBusFrame frame = qbus_frame_new (msg);
+  const CapeString own_cid = qbus_engine_con_cid (self->engine, self->con);
   
-  qbus_engine_con_snd (self->engine, self->con, cid, frame);
+  if (own_cid)
+  {
+    QBusFrame frame = qbus_frame_new ();
+    
+    qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_REQ, msg->chain_key, cid, method, own_cid);
 
-  qbus_frame_del (&frame);
+    qbus_engine_con_snd (self->engine, self->con, cid, frame);
+
+    qbus_frame_del (&frame);
+  }
+
 }
 
 //-----------------------------------------------------------------------------

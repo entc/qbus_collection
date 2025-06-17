@@ -28,28 +28,20 @@
 
 //-----------------------------------------------------------------------------
 
-QBusFrame qbus_frame_new (QBusM msg)
+QBusFrame qbus_frame_new ()
 {
   QBusFrame self = CAPE_NEW (struct QBusFrame_s);
   
-  if (msg)
-  {
-    
-    
-  }
-  else
-  {
-    self->ftype = 0;
-    self->chain_key = NULL;
-    self->module = NULL;
-    self->method = NULL;
-    self->sender = NULL;
-    
-    self->msg_type = 0;
-    self->msg_size = 0;
-    self->msg_data = NULL;
-  }
+  self->ftype = 0;
+  self->chain_key = NULL;
+  self->module = NULL;
+  self->method = NULL;
+  self->sender = NULL;
   
+  self->msg_type = 0;
+  self->msg_size = 0;
+  self->msg_data = NULL;
+
   self->state = QBUS_PP_STATE__START;
   self->stream = cape_stream_new ();
 
@@ -76,6 +68,19 @@ void qbus_frame_del (QBusFrame* p_self)
 
     CAPE_DEL (p_self, struct QBusFrame_s);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_frame_set (QBusFrame self, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender)
+{
+  self->ftype = ftype;
+  
+  cape_str_replace_cp (&(self->chain_key), chain_key);
+
+  cape_str_replace_cp (&(self->module), module);
+  cape_str_replace_cp (&(self->method), method);
+  cape_str_replace_cp (&(self->sender), sender);
 }
 
 //-----------------------------------------------------------------------------

@@ -41,6 +41,7 @@ typedef void               (__STDCALL *fct_qbus_pvd_ctx_add)      (QbusPvdCtx, Q
 
 //-----------------------------------------------------------------------------
 // connection functions
+typedef const CapeString   (__STDCALL *fct_qbus_pvd_con_cid)      (QbusPvdConnection);
 
 typedef void               (__STDCALL *fct_qbus_pvd_con_snd)      (QbusPvdConnection, const CapeString cid, QBusFrame frame);
 
@@ -55,6 +56,7 @@ typedef struct
   fct_qbus_pvd_ctx_del         pvd_ctx_del;
   fct_qbus_pvd_ctx_add         pvd_ctx_add;
 
+  fct_qbus_pvd_con_cid         pvd_con_cid;
   fct_qbus_pvd_con_snd         pvd_con_snd;
   
 } QbusPvd;

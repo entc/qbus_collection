@@ -8,7 +8,7 @@
 #include <sys/cape_mutex.h>
 #include <fmt/cape_json.h>
 
-#include "MQTTClient.h"
+#include <MQTTClient.h>
 
 //------------------------------------------------------------------------------------------------------
 
@@ -101,6 +101,20 @@ void __attribute__ ((destructor)) library_fini (void)
 }
 
 #endif
+
+//------------------------------------------------------------------------------------------------------
+
+int __STDCALL qbus_pvd_init (CapeErr err)
+{
+  return CAPE_ERR_NONE;
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void __STDCALL qbus_pvd_done (void)
+{
+  
+}
 
 //------------------------------------------------------------------------------------------------------
 
@@ -496,6 +510,13 @@ void __STDCALL qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdConnection conn)
   if ((rc = MQTTClient_disconnect(client, 10000)) != MQTTCLIENT_SUCCESS)
     printf("Failed to disconnect, return code %d\n", rc);
 */
+}
+
+//------------------------------------------------------------------------------------------------------
+
+const CapeString __STDCALL qbus_pvd_con_cid (QbusPvdConnection self)
+{
+  return self->ctx->cid;
 }
 
 //------------------------------------------------------------------------------------------------------

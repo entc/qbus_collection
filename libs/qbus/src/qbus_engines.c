@@ -180,6 +180,12 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
     goto exit_and_cleanup;
   }
 
+  self->functions.pvd_con_cid = cape_dl_funct (self->hlib, "qbus_pvd_con_cid", err);
+  if (self->functions.pvd_con_cid == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
   self->functions.pvd_con_snd = cape_dl_funct (self->hlib, "qbus_pvd_con_snd", err);
   if (self->functions.pvd_con_snd == NULL)
   {
@@ -281,6 +287,22 @@ int qbus_engine__lib__ctx_del (QBusEngine self, QbusPvdCtx* p_ctx, CapeErr err)
   }
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qbus_engine_con_cid (QBusEngine self, QbusPvdConnection connection)
+{
+  if (self->functions.pvd_con_cid)
+  {
+    return self->functions.pvd_con_cid (connection);
+  }
+  else
+  {
+   // res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+    
+    return NULL;
+  }
 }
 
 //-----------------------------------------------------------------------------

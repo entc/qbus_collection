@@ -10,6 +10,18 @@
 #include "../src/qbus_message.h"
 
 //-----------------------------------------------------------------------------
+
+#define QBUS_FRAME_TYPE_NONE         0
+#define QBUS_FRAME_TYPE_ROUTE_REQ    1
+#define QBUS_FRAME_TYPE_ROUTE_RES    2
+#define QBUS_FRAME_TYPE_MSG_REQ      3
+#define QBUS_FRAME_TYPE_MSG_RES      4
+#define QBUS_FRAME_TYPE_ROUTE_UPD    5
+#define QBUS_FRAME_TYPE_METHODS      6
+#define QBUS_FRAME_TYPE_OBSVBL_REQ   7
+#define QBUS_FRAME_TYPE_OBSVBL_RES   8
+
+//-----------------------------------------------------------------------------
 // object typedefs and definitions
 
 struct QBusFrame_s
@@ -40,7 +52,7 @@ struct QBusFrame_s
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   QBusFrame        qbus_frame_new                  (QBusM);
+__CAPE_LIBEX   QBusFrame        qbus_frame_new                  ();
 
 __CAPE_LIBEX   void             qbus_frame_del                  (QBusFrame*);
 
@@ -51,6 +63,8 @@ __CAPE_LIBEX   void             qbus_frame_serialize            (QBusFrame, Cape
 __CAPE_LIBEX   int              qbus_frame_deserialize          (QBusFrame, const char* bufdat, number_t buflen, number_t* written);
 
 //-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   void             qbus_frame_set                  (QBusFrame, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender);
 
 __CAPE_LIBEX   CapeUdc          qbus_frame_set_udc              (QBusFrame, number_t msgType, CapeUdc* p_payload);
 

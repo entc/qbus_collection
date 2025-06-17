@@ -29,6 +29,8 @@ __CAPE_LIBEX   void                 qbus_engine_ctx_add   (QBusEngine, QbusPvdCt
 //-----------------------------------------------------------------------------
 // connection methods
 
+__STDCALL      const CapeString     qbus_engine_con_cid   (QBusEngine, QbusPvdConnection);
+
 __STDCALL      void                 qbus_engine_con_snd   (QBusEngine, QbusPvdConnection, const CapeString cid, QBusFrame frame);
 
 //-----------------------------------------------------------------------------

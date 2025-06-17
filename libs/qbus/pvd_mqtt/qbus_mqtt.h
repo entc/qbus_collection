@@ -9,6 +9,10 @@
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX  int            __STDCALL qbus_pvd_init          (CapeErr err);
+
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_done          ();
+
 __CAPE_LIBEX  QbusPvdCtx     __STDCALL qbus_pvd_ctx_new       (CapeAioContext, CapeUdc options, CapeErr);
 
 __CAPE_LIBEX  void           __STDCALL qbus_pvd_ctx_del       (QbusPvdCtx*);
