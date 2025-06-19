@@ -5,6 +5,7 @@
 // cape includes
 #include <aio/cape_aio_timer.h>
 #include <sys/cape_log.h>
+#include <fmt/cape_json.h>
 
 //-----------------------------------------------------------------------------
 
@@ -29,6 +30,10 @@ static int __STDCALL app__on_fct1 (QBus qbus, void* ptr, QBusM qin, QBusM qout, 
     goto exit_and_cleanup;
   }
   
+  CapeString ch = cape_json_to_s (qin->cdata);
+  
+  printf ("RESP FCT1: CDATA = %s\n", ch);
+  
 exit_and_cleanup:
   
   return res;
@@ -38,6 +43,10 @@ exit_and_cleanup:
 
 int __STDCALL app__on_reg_fct1 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  CapeString ch = cape_json_to_s (qin->cdata);
+  
+  printf ("CALL FCT1: CDATA = %s\n", ch);
+  
   
   return CAPE_ERR_NONE;
 }
@@ -53,6 +62,10 @@ int __STDCALL app__on_timer (void* user_ptr)
   CapeErr err = cape_err_new ();
   QBusM msg = qbus_message_new (NULL, NULL);
 
+  msg->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  cape_udc_add_s_cp (msg->cdata, "hello", "world");
+  
   res = qbus_send (qbus, "test2", "function1", msg, qbus, app__on_fct1, err);
 
   qbus_message_del (&msg);

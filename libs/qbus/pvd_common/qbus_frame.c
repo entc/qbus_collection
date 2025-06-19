@@ -2,6 +2,7 @@
 
 // cape includes
 #include <fmt/cape_json.h>
+#include <sys/cape_log.h>
 
 #include <qcrypt.h>
 
@@ -81,27 +82,6 @@ void qbus_frame_set (QBusFrame self, number_t ftype, const char* chain_key, cons
   cape_str_replace_cp (&(self->module), module);
   cape_str_replace_cp (&(self->method), method);
   cape_str_replace_cp (&(self->sender), sender);
-}
-
-//-----------------------------------------------------------------------------
-
-CapeUdc qbus_frame_set_udc (QBusFrame self, number_t msgType, CapeUdc* p_payload)
-{
-  CapeUdc payload = *p_payload;
-  
-  CapeString h = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
-  
-  CapeUdc rinfo = cape_udc_ext (payload, "I");
-  
-  // stringify
-  cape_str_replace_mv (&(self->msg_data), &h);
- 
-  self->msg_size = cape_str_size (self->msg_data);
-  self->msg_type = msgType;
-
-  cape_udc_del (p_payload);
-  
-  return rinfo;
 }
 
 //-----------------------------------------------------------------------------

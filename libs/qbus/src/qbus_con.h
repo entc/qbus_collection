@@ -26,7 +26,7 @@ __CAPE_LIBEX   void                 qbus_con_del          (QBusCon*);
 
 __CAPE_LIBEX   int                  qbus_con_init         (QBusCon, QBusEngines engines, CapeAioContext, CapeErr err);
 
-__CAPE_LIBEX   void                 qbus_con_snd          (QBusCon, const CapeString cid, const CapeString method, QBusM);
+__CAPE_LIBEX   void                 qbus_con_snd          (QBusCon, const CapeString cid, const CapeString method, const CapeString save_key, int ftype, QBusM);
 
 //-----------------------------------------------------------------------------
 

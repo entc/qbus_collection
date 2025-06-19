@@ -66,8 +66,6 @@ __CAPE_LIBEX   int              qbus_frame_deserialize          (QBusFrame, cons
 
 __CAPE_LIBEX   void             qbus_frame_set                  (QBusFrame, number_t ftype, const char* chain_key, const char* module, const char* method, const char* sender);
 
-__CAPE_LIBEX   CapeUdc          qbus_frame_set_udc              (QBusFrame, number_t msgType, CapeUdc* p_payload);
-
 //-----------------------------------------------------------------------------
 
 #endif

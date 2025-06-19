@@ -35,7 +35,7 @@ QBus qbus_new (const CapeString module)
   self->router = qbus_router_new ();
   self->engines = qbus_engines_new ("qbus");   // always use this path
   self->config = qbus_config_new (module);
-  self->methods = qbus_methods_new ();
+  self->methods = qbus_methods_new (self);
 
   self->con = NULL;
     
@@ -66,6 +66,36 @@ void qbus_del (QBus* p_self)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus_on_res (void* user_ptr, const CapeString saves_key, QBusM* p_msg)
+{
+  QBus self = user_ptr;
+  
+  QBusMethodItem mitem = qbus_methods_load (self->methods, saves_key);
+
+  if (NULL == mitem)
+  {
+    // this can't happen, but better to check this
+    
+  }
+  else
+  {
+    if (qbus_method_item_sender (mitem))
+    {
+      qbus_con_snd (self->con, qbus_method_item_sender (mitem), NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
+      
+      qbus_message_del (p_msg);
+    }
+    else
+    {
+      qbus_methods_queue (self->methods, mitem, p_msg, NULL);
+    }
+
+    qbus_method_item_del (&mitem);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_init (QBus self, int argc, char *argv[], CapeErr err)
 {
   int res;
@@ -80,7 +110,7 @@ int qbus_init (QBus self, int argc, char *argv[], CapeErr err)
     return res;
   }
   
-  res = qbus_methods_init (self->methods, qbus_config_n (self->config, "threads", 4), err);
+  res = qbus_methods_init (self->methods, qbus_config_n (self->config, "threads", 4), self, qbus_on_res, err);
   if (res)
   {
     return res;
@@ -179,7 +209,12 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
     
-    return qbus_methods_run (self->methods, method, err);
+    // need to clone the qin
+    QBusM qin = qbus_message_mv (msg);
+    
+    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, NULL, NULL);
+    
+    return qbus_methods_run (self->methods, method, saves_key, &qin, err);
   }
   else
   {
@@ -187,9 +222,11 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
     
     if (cid)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s", cid);
+      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, NULL, NULL);
 
-      qbus_con_snd (self->con, cid, method, msg);
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
+
+      qbus_con_snd (self->con, cid, method, saves_key, QBUS_FRAME_TYPE_MSG_REQ, msg);
       
       return CAPE_ERR_CONTINUE;
     }

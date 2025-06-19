@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES("../../cape/src" ../pvd_common)
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "../pvd_common")
 
 #----------------------------------------------------------------------------------------
 

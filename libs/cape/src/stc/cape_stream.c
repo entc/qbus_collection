@@ -160,6 +160,17 @@ void cape_stream_clr (CapeStream self)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_stream_mv (CapeStream* p_self)
+{
+  CapeStream self = *p_self;
+  
+  *p_self = NULL;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 const char* cape_stream_get (CapeStream self)
 {
   // set terminator

@@ -57,6 +57,29 @@ void qbus_message_clr (QBusM self, u_t cdata_udc_type)
 
 //-----------------------------------------------------------------------------
 
+QBusM qbus_message_mv (QBusM original)
+{
+  QBusM self = CAPE_NEW (struct QBusMessage_s);
+
+  self->mtype = original->mtype;
+  
+  self->chain_key = cape_str_mv (&(original->chain_key));
+  self->sender = cape_str_mv (&(original->sender));
+  
+  self->cdata = cape_udc_mv (&(original->cdata));
+  self->pdata = cape_udc_mv (&(original->pdata));
+  self->clist = cape_udc_mv (&(original->clist));
+  self->rinfo = cape_udc_mv (&(original->rinfo));
+  self->files = cape_udc_mv (&(original->files));
+  self->files = cape_udc_mv (&(original->files));
+
+  self->blob = cape_stream_mv (&(original->blob));
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_message_del (QBusM* p_self)
 {
   if (*p_self)

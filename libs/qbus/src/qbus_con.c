@@ -4,8 +4,10 @@
 #include <stc/cape_str.h>
 #include <stc/cape_map.h>
 #include <sys/cape_log.h>
-#include <sys/cape_file.h>
-#include <sys/cape_dl.h>
+#include <fmt/cape_json.h>
+
+// qcrypt includes
+#include <qcrypt.h>
 
 //-----------------------------------------------------------------------------
 
@@ -55,6 +57,121 @@ void qbus_con_del (QBusCon* p_self)
 
 //-----------------------------------------------------------------------------
 
+QBusFrame qbus_con__frame_from_qin (QBusM msg)
+{
+  QBusFrame frame = qbus_frame_new ();
+  
+  // local objects
+  CapeUdc payload = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  if (msg->clist)
+  {
+    cape_udc_add_name (payload, &(msg->clist), "L");
+  }
+  
+  if (msg->cdata)
+  {
+    cape_udc_add_name (payload, &(msg->cdata), "D");
+  }
+  
+  if (msg->pdata)
+  {
+    cape_udc_add_name (payload, &(msg->pdata), "P");
+  }
+  
+  if (msg->rinfo)
+  {
+    cape_udc_add_name (payload, &(msg->rinfo), "I");
+  }
+  
+  if (msg->files)
+  {
+    cape_udc_add_name (payload, &(msg->files), "F");
+  }
+  
+  /*
+  if (err)
+  {
+    number_t err_code = cape_err_code (err);
+    if (err_code)
+    {
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (err), cape_err_text (err));
+      
+      cape_udc_add_s_cp (payload, "err_text", cape_err_text (err));
+      cape_udc_add_n (payload, "err_code", cape_err_code (err));
+    }
+  }
+   */
+  
+  {
+    frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
+    frame->msg_size = cape_str_size (frame->msg_data);
+    frame->msg_type = QBUS_MTYPE_JSON;
+  }
+
+  cape_udc_del (&payload);
+
+  return frame;
+}
+
+//-----------------------------------------------------------------------------
+
+QBusM qbus_con__qin_from_frame (QBusFrame frame)
+{
+  QBusM qin = qbus_message_new (frame->chain_key, frame->sender);
+  
+  qin->mtype = frame->msg_type;
+  
+  switch (frame->msg_type)
+  {
+    case QBUS_MTYPE_JSON:
+    case QBUS_MTYPE_FILE:
+    {
+      if (frame->msg_size)
+      {
+        // convert from raw data into json data structure
+        CapeUdc payload = cape_json_from_buf (frame->msg_data, frame->msg_size, qcrypt__stream_base64_decode);
+        if (payload)
+        {
+          // extract all substructures from the payload
+          qin->clist = cape_udc_ext_list (payload, "L");
+          qin->cdata = cape_udc_ext (payload, "D");
+          qin->pdata = cape_udc_ext (payload, "P");
+          qin->rinfo = cape_udc_ext (payload, "I");
+          qin->files = cape_udc_ext (payload, "F");
+
+          // check for errors
+          {
+            number_t err_code = cape_udc_get_n (payload, "err_code", 0);
+            if (err_code)
+            {
+              // create a new error object
+              qin->err = cape_err_new ();
+              
+              // set the error
+              cape_err_set (qin->err, (int)err_code, cape_udc_get_s (payload, "err_text", "no error text"));
+            }
+          }
+        }
+        else
+        {
+          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "frame qin", "can't parse JSON [%lu]", frame->msg_size);
+
+          printf ("CAN'T PARSE JSON '%s'\n", frame->msg_data);
+        }
+        
+        cape_udc_del (&payload);
+      }
+      
+      break;
+    }
+  }
+  
+  return qin;
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
 {
   QBusCon self = user_ptr;
@@ -63,15 +180,51 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
 
   if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
   {
-    CapeErr err = cape_err_new ();
-    
-    int res = qbus_methods_run (self->methods, frame->method, err);
-    if (res)
+    switch (frame->ftype)
     {
-      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "routing", "%s", cape_err_text (err));
+      case QBUS_FRAME_TYPE_MSG_REQ:
+      {
+        CapeErr err = cape_err_new ();
+        
+        QBusM qin = qbus_con__qin_from_frame (frame);
+        
+        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender);
+
+        int res = qbus_methods_run (self->methods, frame->method, saves_key, &qin, err);
+        if (res)
+        {
+          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "routing", "%s", cape_err_text (err));
+        }
+        
+        cape_err_del (&err);
+
+        break;
+      }
+      case QBUS_FRAME_TYPE_MSG_RES:
+      {
+        CapeErr err = cape_err_new ();
+        
+        QBusM qin = qbus_con__qin_from_frame (frame);
+
+        QBusMethodItem mitem = qbus_methods_load (self->methods, frame->chain_key);
+
+        if (NULL == mitem)
+        {
+          // this can't happen, but better to check this
+          
+        }
+        else
+        {
+          qbus_methods_queue (self->methods, mitem, &qin, NULL);
+        }
+        
+        qbus_method_item_del (&mitem);
+
+        cape_err_del (&err);
+
+        break;
+      }
     }
-    
-    cape_err_del (&err);
   }
   else
   {
@@ -132,15 +285,16 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, QBusM msg)
+void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, const CapeString save_key, int ftype, QBusM msg)
 {
   const CapeString own_cid = qbus_engine_con_cid (self->engine, self->con);
   
   if (own_cid)
   {
-    QBusFrame frame = qbus_frame_new ();
+    QBusFrame frame = qbus_con__frame_from_qin (msg);
     
-    qbus_frame_set (frame, QBUS_FRAME_TYPE_MSG_REQ, msg->chain_key, cid, method, own_cid);
+    // set extra infos
+    qbus_frame_set (frame, ftype, save_key, cid, method, own_cid);
 
     qbus_engine_con_snd (self->engine, self->con, cid, frame);
 
