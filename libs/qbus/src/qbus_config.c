@@ -2,8 +2,8 @@
 
 // cape includes
 #include <sys/cape_log.h>
-#include <fmt/cape_args.h>
 #include <fmt/cape_json.h>
+#include <fmt/cape_args.h>
 
 //-----------------------------------------------------------------------------
 
@@ -142,22 +142,19 @@ void qbus_config_save (QBusConfig self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_config_init (QBusConfig self, int argc, char *argv[])
+void qbus_config_init (QBusConfig self, CapeUdc* p_args)
 {
-  // local objects
-  CapeUdc args = NULL;
-
-  // convert program arguments into a node with parameters
-  args = cape_args_from_args (argc, argv, NULL);
-
-  // replace name from the parameters
-  cape_str_replace_cp (&(self->module_name), cape_udc_get_s (args, "n", self->module_name));
-
-  if (args)
+  if (p_args)
   {
-    cape_udc_merge_mv (self->config_node, &args);
-  }
+    if (*p_args)
+    {
+      // replace name from the parameters
+      cape_str_replace_cp (&(self->module_name), cape_udc_get_s (*p_args, "n", self->module_name));
 
+      cape_udc_merge_mv (self->config_node, p_args);
+    }
+  }
+  
   {
     CapeString filename = cape_str_catenate_2 (self->module_name, ".json");
 

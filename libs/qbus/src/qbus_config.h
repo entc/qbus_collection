@@ -15,7 +15,7 @@ __CAPE_LIBEX   QBusConfig         qbus_config_new        (const CapeString name)
 
 __CAPE_LIBEX   void               qbus_config_del        (QBusConfig*);
 
-__CAPE_LIBEX   void               qbus_config_init       (QBusConfig, int argc, char *argv[]);
+__CAPE_LIBEX   void               qbus_config_init       (QBusConfig, CapeUdc* p_args);
 
 __CAPE_LIBEX   const CapeString   qbus_config_name       (QBusConfig);
 

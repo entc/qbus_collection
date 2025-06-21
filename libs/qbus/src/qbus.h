@@ -21,6 +21,10 @@ __CAPE_LIBEX   QBus               qbus_new               (const CapeString modul
 
 __CAPE_LIBEX   void               qbus_del               (QBus*);
 
+__CAPE_LIBEX   int                qbus_init              (QBus, CapeUdc* p_args, CapeErr err);
+
+__CAPE_LIBEX   int                qbus_wait              (QBus, CapeUdc* p_args, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 typedef int      (__STDCALL     *fct_qbus_on_init) (QBus, void* ptr, void** p_ptr, CapeErr);

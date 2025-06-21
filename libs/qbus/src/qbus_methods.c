@@ -81,6 +81,21 @@ struct QBusMethodCtx_s
 
 //-----------------------------------------------------------------------------
 
+void qbus_method_ctx_del (QBusMethodCtx* p_self)
+{
+  if (*p_self)
+  {
+    QBusMethodCtx self = *p_self;
+    
+    qbus_message_del (&(self->qin));
+    cape_str_del (&(self->saves_key));
+
+    CAPE_DEL (p_self, struct QBusMethodCtx_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusMethods_s
 {
   CapeQueue queue;
@@ -121,6 +136,8 @@ QBusMethods qbus_methods_new (QBus qbus)
     
   self->user_ptr = NULL;
   self->on_res = NULL;
+  
+  self->qbus = qbus;
 
   return self;
 }
@@ -257,12 +274,17 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     }
     else if (mctx->saves_key)
     {
-      mctx->on_res (mctx->on_res_user_ptr, mctx->saves_key, &qout);
+      if (mctx->on_res)
+      {
+        mctx->on_res (mctx->on_res_user_ptr, mctx->saves_key, &qout);
+      }
     }
     
     qbus_message_del (&qout);
     cape_err_del (&err);
   }
+  
+  qbus_method_ctx_del (&mctx);
 }
 
 //-----------------------------------------------------------------------------

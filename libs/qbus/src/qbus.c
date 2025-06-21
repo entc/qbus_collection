@@ -7,6 +7,7 @@
 // cape includes
 #include <stc/cape_str.h>
 #include <sys/cape_log.h>
+#include <fmt/cape_args.h>
 
 //-----------------------------------------------------------------------------
 
@@ -96,12 +97,12 @@ void __STDCALL qbus_on_res (void* user_ptr, const CapeString saves_key, QBusM* p
 
 //-----------------------------------------------------------------------------
 
-int qbus_init (QBus self, int argc, char *argv[], CapeErr err)
+int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
 {
   int res;
   
   // parse arguments and load config
-  qbus_config_init (self->config, argc, argv);
+  qbus_config_init (self->config, p_args);
   
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
@@ -199,12 +200,8 @@ int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_
 
 //-----------------------------------------------------------------------------
 
-int qbus_send (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
+int qbus_request (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
-  // correct chain key
-  // -> the key for the start must be NULL
-  cape_str_del (&(msg->chain_key));
-
   if (cape_str_compare (module, qbus_config_name (self->config)))
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
@@ -212,7 +209,7 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
     // need to clone the qin
     QBusM qin = qbus_message_mv (msg);
     
-    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, NULL, NULL);
+    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender);
     
     return qbus_methods_run (self->methods, method, saves_key, &qin, err);
   }
@@ -222,7 +219,7 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
     
     if (cid)
     {
-      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, NULL, NULL);
+      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender);
 
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
 
@@ -241,9 +238,33 @@ int qbus_send (QBus self, const CapeString module, const CapeString method, QBus
 
 //-----------------------------------------------------------------------------
 
+int qbus_send (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
+{
+  // correct save key and sender
+  // -> the key for the start must be NULL
+  cape_str_del (&(msg->chain_key));
+  cape_str_del (&(msg->sender));
+
+  return qbus_request (self, module, method, msg, user_ptr, on_msg, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_continue (QBus self, const CapeString module, const CapeString method, QBusM qin, void** p_user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
+  int res;
   
+  if (p_user_ptr)
+  {
+    res = qbus_request (self, module, method, qin, *p_user_ptr, on_msg, err);
+    *p_user_ptr = NULL;
+  }
+  else
+  {
+    res = qbus_request (self, module, method, qin, NULL, on_msg, err);
+  }
+
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -296,6 +317,21 @@ void qbus_log_fmt (QBus self, const CapeString remote, const char* format, ...)
 
 //-----------------------------------------------------------------------------
 
+int qbus_wait (QBus self, CapeUdc* p_args, CapeErr err)
+{
+  int res;
+  
+  res = qbus_init (self, p_args, err);
+  if (res)
+  {
+    return res;
+  }
+  
+  return qbus_wait__intern (self, err);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, int argc, char *argv[])
 {
   int res;
@@ -303,10 +339,14 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   // local objects
   CapeErr err = cape_err_new ();
   QBus qbus = qbus_new (argv[1]);
-  
+  CapeUdc args = NULL;
+
   cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
   
-  res = qbus_init (qbus, argc, argv, err);
+  // convert program arguments into a node with parameters
+  args = cape_args_from_args (argc, argv, NULL);
+
+  res = qbus_init (qbus, &args, err);
   if (res)
   {
     goto exit_and_cleanup;
