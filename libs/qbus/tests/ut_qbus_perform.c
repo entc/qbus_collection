@@ -6,7 +6,8 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 100000
+#define REQUESTS 1
+#define WAIT_AFTER_INIT 1000
 
 static number_t total_runs = REQUESTS;
 CapeMutex mutex = NULL;
@@ -27,6 +28,8 @@ int __STDCALL client02_create_thread (void* ptr)
 
   }
 
+  cape_thread_sleep (WAIT_AFTER_INIT);
+
   while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
   qbus_del (&qbus);
@@ -41,6 +44,8 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
 {
   number_t i;
   number_t loop_cnt = (number_t)(rand() % 100000);
+
+  printf ("client01_test01__on01\n");
 
   if (qin->err)
   {
@@ -66,13 +71,16 @@ static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qou
 {
   int res;
 
+  printf ("client01_test01\n");
+
   if (qin->rinfo == NULL)
   {
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
   }
 
-  number_t splitter = (number_t)(rand() % 5);
-
+//  number_t splitter = (number_t)(rand() % 5);
+  number_t splitter = 3;
+  
   switch (splitter)
   {
     case 1:
@@ -108,6 +116,8 @@ static int __STDCALL client01_test02 (QBus qbus, void* ptr, QBusM qin, QBusM qou
 {
   int res;
 
+  printf ("client01_test02\n");
+
   if (qin->rinfo == NULL)
   {
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
@@ -137,6 +147,8 @@ int __STDCALL client01_create_thread (void* ptr)
   {
 
   }
+  
+  cape_thread_sleep (WAIT_AFTER_INIT);
 
   while (cape_aio_context_next (qbus_aio (qbus), 200, err) == CAPE_ERR_NONE && total_runs > 0);
 
@@ -150,6 +162,8 @@ int __STDCALL client01_create_thread (void* ptr)
 
 static int __STDCALL server_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
+  printf ("server_test01\n");
+
   number_t wait_in_ms = (number_t)(rand() % 100);
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "server test01", "got call, wait -> %lims", wait_in_ms);
@@ -167,6 +181,8 @@ static int __STDCALL qbus_trigger_thread__on (QBus qbus, void* ptr, QBusM qin, Q
 {
   int res;
 
+  printf ("qbus_trigger_thread__on\n");
+  
   if (qin->err)
   {
     cape_log_msg (CAPE_LL_DEBUG, "TEST", "test01 on01", cape_err_text (qin->err));
@@ -249,7 +265,7 @@ int __STDCALL server_create_thread (void* ptr)
 
   }
 
-  cape_thread_sleep (500);
+  cape_thread_sleep (WAIT_AFTER_INIT);
 
   cape_thread_start (trigger_thread, qbus_trigger_thread, qbus);
 

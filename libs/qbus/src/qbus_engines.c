@@ -231,7 +231,7 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, const Cap
     {
       CapeString name_engine = cape_str_cp (name);
       
-      cape_str_to_lower (name_engine);
+      cape_str_to_upper (name_engine);
       
       // always send the name in the options
       cape_udc_add_s_mv (options, "name", &name_engine);

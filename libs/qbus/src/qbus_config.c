@@ -43,6 +43,8 @@ QBusConfig qbus_config_new (const CapeString module_name)
   QBusConfig self = CAPE_NEW (struct QBusConfig_s);
   
   self->module_name = cape_str_cp (module_name);
+  cape_str_to_upper (self->module_name);
+  
   self->config_node = cape_udc_new (CAPE_UDC_NODE, NULL);
   self->config_part = NULL;
   self->config_file = NULL;
@@ -150,7 +152,8 @@ void qbus_config_init (QBusConfig self, CapeUdc* p_args)
     {
       // replace name from the parameters
       cape_str_replace_cp (&(self->module_name), cape_udc_get_s (*p_args, "n", self->module_name));
-
+      cape_str_to_upper (self->module_name);
+      
       cape_udc_merge_mv (self->config_node, p_args);
     }
   }

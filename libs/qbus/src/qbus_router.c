@@ -99,7 +99,7 @@ void qbus_router_dump (QBusRouter self)
 
 void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString name)
 {
-  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on con", "connection change [ADD] detected, cid = %s, name = %s", cid, name);
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on con", "connection change [ADD] detected, cid = %s, name = %s", cid, name);
   
   CapeList cids;
   

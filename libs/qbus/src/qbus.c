@@ -224,7 +224,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
       cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
 
       qbus_con_snd (self->con, cid, method, saves_key, QBUS_FRAME_TYPE_MSG_REQ, msg);
-      
+
       return CAPE_ERR_CONTINUE;
     }
     else

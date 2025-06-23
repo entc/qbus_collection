@@ -38,6 +38,8 @@ QBusCon qbus_con_new (QBusRouter router, QBusMethods methods, const CapeString m
   
   self->module = cape_str_cp (module_name);
 
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con new", "create new connection hub as name = '%s'", self->module);
+  
   return self;
 }
 
@@ -119,6 +121,9 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
 QBusM qbus_con__qin_from_frame (QBusFrame frame)
 {
   QBusM qin = qbus_message_new (frame->chain_key, frame->sender);
+  
+  qin->chain_key = cape_str_cp (frame->chain_key);
+  qin->sender = cape_str_cp (frame->sender);
   
   qin->mtype = frame->msg_type;
   
@@ -215,7 +220,9 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         }
         else
         {
-          qbus_methods_queue (self->methods, mitem, &qin, NULL);
+          const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, qbus_method_item_skey (mitem), qbus_method_item_sender (mitem));
+
+          qbus_methods_queue (self->methods, mitem, &qin, saves_key);
         }
         
         qbus_method_item_del (&mitem);
@@ -288,6 +295,8 @@ exit_and_cleanup:
 void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, const CapeString save_key, int ftype, QBusM msg)
 {
   const CapeString own_cid = qbus_engine_con_cid (self->engine, self->con);
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con send", "send frame to another module, skey = '%s'", save_key);
   
   if (own_cid)
   {

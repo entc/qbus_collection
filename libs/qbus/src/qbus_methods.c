@@ -190,6 +190,8 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString save_key)
   
   cape_mutex_unlock (self->saves_mutex);
 
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", save_key);
+  
   return mitem;
 }
 
@@ -207,6 +209,8 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
   cape_mutex_unlock (self->saves_mutex);
   
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' | on_msg = %p | sender = %s", save_key, on_msg, sender);
+
   return save_key;
 }
 
@@ -243,7 +247,7 @@ void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, c
   mctx->self = self;
   
   mctx->saves_key = cape_str_cp (saves_key);
-  
+ 
   cape_queue_add (self->queue, NULL, qbus_methods__queue__on_event, NULL, NULL, mctx, 0);
 }
 
@@ -270,18 +274,38 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
 
     if (res == CAPE_ERR_CONTINUE)
     {
-      
-    }
-    else if (mctx->saves_key)
-    {
-      if (mctx->on_res)
+      if (mctx->saves_key)
       {
-        mctx->on_res (mctx->on_res_user_ptr, mctx->saves_key, &qout);
+        QBusMethodItem mitem = qbus_methods_load (mctx->self, mctx->saves_key);
+        
+        qbus_method_item_del (&mitem);
+      }
+    }
+    else
+    {
+      if (mctx->saves_key)
+      {
+        if (mctx->on_res)
+        {
+          mctx->on_res (mctx->on_res_user_ptr, mctx->saves_key, &qout);
+        }
+        else
+        {
+          printf ("no on res\n");
+        }
+      }
+      else
+      {
+        printf ("no saves key\n");
       }
     }
     
     qbus_message_del (&qout);
     cape_err_del (&err);
+  }
+  else
+  {
+    printf ("no on_msg\n");
   }
   
   qbus_method_ctx_del (&mctx);
@@ -299,6 +323,8 @@ int qbus_methods_run (QBusMethods self, const CapeString method_name, const Cape
   if (n)
   {
     qbus_methods_queue (self, cape_map_node_value (n), p_qin, saves_key);
+    
+    res = CAPE_ERR_NONE;
   }
   else
   {
