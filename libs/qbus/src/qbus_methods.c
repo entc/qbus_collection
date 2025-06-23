@@ -272,47 +272,39 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     
   }
   
-  if (mctx->on_msg)
   {
     CapeErr err = cape_err_new ();
     QBusM qout = qbus_message_new (NULL, NULL);
     
+    QBusMethodItem mitem = NULL;
+    
     int res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
 
+    if (mctx->saves_key)
+    {
+      mitem = qbus_methods_load (mctx->self, mctx->saves_key);
+    }
+    
     if (res == CAPE_ERR_CONTINUE)
     {
-      if (mctx->saves_key)
-      {
-        QBusMethodItem mitem = qbus_methods_load (mctx->self, mctx->saves_key);
-        
-        qbus_method_item_del (&mitem);
-      }
+      
     }
     else
     {
-      if (mctx->saves_key)
+      if (mctx->on_res && mitem)
       {
-        if (mctx->on_res)
-        {
-          mctx->on_res (mctx->on_res_user_ptr, mctx->saves_key, &qout);
-        }
-        else
-        {
-          printf ("no on res\n");
-        }
+        mctx->on_res (mctx->on_res_user_ptr, mitem, &qout);
       }
       else
       {
-        printf ("no saves key\n");
+        printf ("no on res\n");
       }
     }
     
+    qbus_method_item_del (&mitem);
+
     qbus_message_del (&qout);
     cape_err_del (&err);
-  }
-  else
-  {
-    printf ("no on_msg\n");
   }
   
   qbus_method_ctx_del (&mctx);

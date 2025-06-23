@@ -26,7 +26,7 @@ struct QBusMethods_s; typedef struct QBusMethods_s* QBusMethods;
 
 //-----------------------------------------------------------------------------
 
-typedef void           (__STDCALL *fct_qbus_methods__on_res) (void* user_ptr, const CapeString saves_key, QBusM* p_msg);
+typedef void           (__STDCALL *fct_qbus_methods__on_res) (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg);
 
 //-----------------------------------------------------------------------------
 

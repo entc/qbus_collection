@@ -67,31 +67,19 @@ void qbus_del (QBus* p_self)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_on_res (void* user_ptr, const CapeString saves_key, QBusM* p_msg)
+void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 {
   QBus self = user_ptr;
   
-  QBusMethodItem mitem = qbus_methods_load (self->methods, saves_key);
-
-  if (NULL == mitem)
+  if (qbus_method_item_sender (mitem))
   {
-    // this can't happen, but better to check this
+    qbus_con_snd (self->con, qbus_method_item_sender (mitem), NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
     
+    qbus_message_del (p_msg);
   }
   else
   {
-    if (qbus_method_item_sender (mitem))
-    {
-      qbus_con_snd (self->con, qbus_method_item_sender (mitem), NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
-      
-      qbus_message_del (p_msg);
-    }
-    else
-    {
-      qbus_methods_queue (self->methods, mitem, p_msg, NULL);
-    }
-
-    qbus_method_item_del (&mitem);
+    qbus_methods_queue (self->methods, mitem, p_msg, NULL);
   }
 }
 
