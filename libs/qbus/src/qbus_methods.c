@@ -229,26 +229,33 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString saves_key)
+void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
 {
-  // create chain object
-  QBusMethodCtx mctx = CAPE_NEW (struct QBusMethodCtx_s);
-  
-  mctx->on_msg_user_ptr = mitem->user_ptr;
-  mctx->on_msg = mitem->on_msg;
-  
-  mctx->on_res_user_ptr = self->user_ptr;
-  mctx->on_res = self->on_res;
-  
-  mctx->qin = *p_qin;
-  *p_qin = NULL;
+  if (mitem->on_msg)
+  {
+    // create chain object
+    QBusMethodCtx mctx = CAPE_NEW (struct QBusMethodCtx_s);
+    
+    mctx->on_msg_user_ptr = mitem->user_ptr;
+    mctx->on_msg = mitem->on_msg;
+    
+    mctx->on_res_user_ptr = self->user_ptr;
+    mctx->on_res = self->on_res;
+    
+    mctx->qin = *p_qin;
+    *p_qin = NULL;
 
-  mctx->qbus = self->qbus;
-  mctx->self = self;
-  
-  mctx->saves_key = cape_str_cp (saves_key);
- 
-  cape_queue_add (self->queue, NULL, qbus_methods__queue__on_event, NULL, NULL, mctx, 0);
+    mctx->qbus = self->qbus;
+    mctx->self = self;
+    
+    mctx->saves_key = cape_str_cp (skey);
+   
+    cape_queue_add (self->queue, NULL, qbus_methods__queue__on_event, NULL, NULL, mctx, 0);
+  }
+  else
+  {
+    qbus_message_del (p_qin);
+  }
 }
 
 //-----------------------------------------------------------------------------
