@@ -257,6 +257,13 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 
 //-----------------------------------------------------------------------------
 
+int qbus_response (QBus self, const CapeString module, QBusM msg, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 CapeAioContext qbus_aio (QBus self)
 {
   return self->aio;
@@ -326,7 +333,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
   // local objects
   CapeErr err = cape_err_new ();
-  QBus qbus = qbus_new (argv[1]);
+  QBus qbus = qbus_new (name);
   CapeUdc args = NULL;
 
   cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
@@ -361,6 +368,4 @@ exit_and_cleanup:
 
   qbus_del (&qbus);
   cape_err_del (&err);
-  
-  return res;
 }

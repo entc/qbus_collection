@@ -239,7 +239,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
         
         number_t written = 0;
         
-        if (qbus_frame_deserialize (frame, message->payload, message->payload, &written))
+        if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
         {
           self->on_snd (self->user_ptr, frame);
         }
