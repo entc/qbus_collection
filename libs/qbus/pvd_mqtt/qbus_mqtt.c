@@ -239,7 +239,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
         
         number_t written = 0;
         
-        if (qbus_frame_deserialize (frame, message->payload, message->payload, &written))
+        if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
         {
           self->on_snd (self->user_ptr, frame);
         }
@@ -423,6 +423,9 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
 {
   QbusPvdConnection self = user_ptr;
 
+  // try to disconnect first
+  MQTTClient_disconnect (self->client, 10000);
+  
   MQTTClient_destroy (&(self->client));
   
   CAPE_DEL (&self, struct QbusPvdConnection_s);
@@ -469,6 +472,7 @@ void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
     cape_list_del (&(self->reconnect_pool));
     cape_mutex_del (&(self->mutex));
     cape_str_del (&(self->cid));
+    cape_str_del (&(self->name));
     
     CAPE_DEL (p_self, struct QbusPvdCtx_s);
   }

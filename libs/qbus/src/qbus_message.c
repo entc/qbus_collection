@@ -9,17 +9,7 @@ QBusM qbus_message_new (const CapeString key, const CapeString sender)
 {
   QBusM self = CAPE_NEW (struct QBusMessage_s);
   
-  if (key)
-  {
-    // clone the key
-    self->chain_key = cape_str_cp (key);
-  }
-  else
-  {
-    // create a new key
-    self->chain_key = cape_str_uuid ();
-  }
-  
+  self->chain_key = cape_str_cp (key);
   self->sender = cape_str_cp (sender);
   
   // init the objects
