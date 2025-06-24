@@ -121,10 +121,7 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
 QBusM qbus_con__qin_from_frame (QBusFrame frame)
 {
   QBusM qin = qbus_message_new (frame->chain_key, frame->sender);
-  
-  qin->chain_key = cape_str_cp (frame->chain_key);
-  qin->sender = cape_str_cp (frame->sender);
-  
+    
   qin->mtype = frame->msg_type;
   
   switch (frame->msg_type)
@@ -208,7 +205,6 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
       case QBUS_FRAME_TYPE_MSG_RES:
       {
         CapeErr err = cape_err_new ();
-        
         QBusM qin = qbus_con__qin_from_frame (frame);
 
         QBusMethodItem mitem = qbus_methods_load (self->methods, frame->chain_key);
@@ -227,6 +223,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         
         qbus_method_item_del (&mitem);
 
+        qbus_message_del (&qin);
         cape_err_del (&err);
 
         break;
