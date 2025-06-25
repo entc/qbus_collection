@@ -9,6 +9,21 @@
 #include <sys/cape_log.h>
 #include <fmt/cape_args.h>
 
+// c includes
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifdef __WINDOWS_OS
+
+#include <windows.h>
+
+#else
+
+#include <termios.h>
+#include <unistd.h>
+
+#endif
+
 //-----------------------------------------------------------------------------
 
 struct QBus_s
@@ -99,6 +114,14 @@ int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
     return res;
   }
   
+  // activate signal handling strategy
+  // avoid that other threads got terminated by sigint
+  res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
+  if (res)
+  {
+    return res;
+  }
+  
   res = qbus_methods_init (self->methods, qbus_config_n (self->config, "threads", 4), self, qbus_on_res, err);
   if (res)
   {
@@ -122,19 +145,10 @@ int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
 int qbus_wait__intern (QBus self, CapeErr err)
 {
   int res;
-  
-  // activate signal handling strategy
-  res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
+    
   // wait infinite and let the AIO subsystem handle all events
   res = cape_aio_context_wait (self->aio, err);
-  
-exit_and_cleanup:
-  
+    
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "QBUS", "wait", "runtime error: %s", cape_err_text (err));
@@ -333,7 +347,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   
   // local objects
   CapeErr err = cape_err_new ();
-  QBus qbus = qbus_new (name);
+  QBus self = qbus_new (name);
   CapeUdc args = NULL;
 
   cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
@@ -341,7 +355,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   // convert program arguments into a node with parameters
   args = cape_args_from_args (argc, argv, NULL);
 
-  res = qbus_init (qbus, &args, err);
+  res = qbus_init (self, &args, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -351,21 +365,49 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
   if (on_init)
   {
-    on_init (qbus, ptr, &ptr, err);
+    on_init (self, ptr, &ptr, err);
   }
 
   cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start main loop");
 
-  res = qbus_wait__intern (qbus, err);
-  if (res)
+#if defined __WINDOWS_OS
+  
+  // TODO: nice to have
   {
-    goto exit_and_cleanup;
+    
+    
   }
+  
+#else
+  
+  // disable console echoing
+  {
+    struct termios saved;
+    struct termios attributes;
+    
+    tcgetattr(STDIN_FILENO, &saved);
+    tcgetattr(STDIN_FILENO, &attributes);
+    
+    attributes.c_lflag &= ~ ECHO;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);    
+    
+    // *** main loop ***
+    qbus_wait__intern (self, err);
+    
+    tcsetattr(STDIN_FILENO, TCSANOW, &saved);
+  }
+  
+#endif
 
+  if (on_done)
+  {
+    on_done (self, ptr, err);
+  }
+  
   res = CAPE_ERR_NONE;
 
 exit_and_cleanup:
 
-  qbus_del (&qbus);
+  qbus_del (&self);
   cape_err_del (&err);
 }
