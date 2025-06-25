@@ -6,7 +6,7 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
-#define REQUESTS 1
+#define REQUESTS 10000
 #define WAIT_AFTER_INIT 1000
 
 static number_t total_runs = REQUESTS;
@@ -78,8 +78,8 @@ static int __STDCALL client01_test01 (QBus qbus, void* ptr, QBusM qin, QBusM qou
     return cape_err_set (err, CAPE_ERR_RUNTIME, "rinfo is NULL");
   }
 
-//  number_t splitter = (number_t)(rand() % 5);
-  number_t splitter = 3;
+  number_t splitter = (number_t)(rand() % 5);
+//  number_t splitter = 3;
   
   switch (splitter)
   {

@@ -152,6 +152,12 @@ void qbus_methods_del (QBusMethods* p_self)
     
     cape_queue_del (&(self->queue));
     cape_map_del (&(self->methods));
+    
+    // for debug output
+    {
+      cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "methods del", "found saved mitems = %lu", cape_map_size (self->saves));
+    }
+    
     cape_map_del (&(self->saves));
     cape_mutex_del (&(self->saves_mutex));
     
