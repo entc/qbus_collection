@@ -381,6 +381,30 @@ namespace cape
 
       cape_stream_append_64 (m_obj, val, network_byte_order ? TRUE : FALSE);
     }
+    
+    //-----------------------------------------------------------------------------
+    
+    void append_bd (double val, bool network_byte_order)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+      
+      cape_stream_append_bd (m_obj, val, network_byte_order ? TRUE : FALSE);
+    }
+    
+    //-----------------------------------------------------------------------------
+    
+    void append_bf (float val, bool network_byte_order)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+      
+      cape_stream_append_bf (m_obj, val, network_byte_order ? TRUE : FALSE);
+    }
 
     //-----------------------------------------------------------------------------
 
