@@ -333,7 +333,19 @@ namespace cape
       
       return buflen;
     }
-
+    
+    //-----------------------------------------------------------------------------
+    
+    template <class ...Ts> void append_fmt (const CapeString format, Ts&&... args)
+    {
+      if (m_obj == NULL)
+      {
+        throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
+      }
+      
+      cape_stream_append_fmt (m_obj, format, args...);
+    }
+    
     //-----------------------------------------------------------------------------
 
     void append_u08 (cape_uint8 val)
