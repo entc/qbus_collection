@@ -1398,17 +1398,40 @@ void cape_udc_put_m_mv (CapeUdc self, const CapeString name, CapeStream* p_val)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc_put_node__replace (CapeMapNode n, CapeUdc new_value)
+{
+  // retrieve current value
+  CapeUdc node_to_del = cape_map_node_value (n);
+  
+  // delete current value
+  cape_udc_del (&node_to_del);
+  
+  // override the value in the map node
+  cape_map_node_set (n, new_value);
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_put_node_cp (CapeUdc self, const CapeString name, CapeUdc node)
 {
-  // remove previous entry
+  switch (self->type)
   {
-    CapeUdc h = cape_udc_ext (self, name);
-    cape_udc_del (&h);
-  }
-
-  {
-    CapeUdc h = cape_udc_cp (node);
-    cape_udc_add_name (self, &h, name);
+    case CAPE_UDC_NODE:
+    {
+      // create a copy of the node
+      CapeUdc h = cape_udc_cp (node);
+      
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      
+      if (n)
+      {
+        cape_udc_put_node__replace (n, h);
+      }
+      else
+      {
+        cape_udc_add_name (self, &h, name);
+      }
+    }
   }
 }
 
@@ -1416,13 +1439,22 @@ void cape_udc_put_node_cp (CapeUdc self, const CapeString name, CapeUdc node)
 
 void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
 {
-  // remove previous entry
+  switch (self->type)
   {
-    CapeUdc h = cape_udc_ext (self, name);
-    cape_udc_del (&h);
+    case CAPE_UDC_NODE:
+    {
+      CapeMapNode n = cape_map_find (self->data, (void*)name);
+      
+      if (n)
+      {
+        cape_udc_put_node__replace (n, cape_udc_mv (p_node));
+      }
+      else
+      {
+        cape_udc_add_name (self, p_node, name);
+      }
+    }
   }
-
-  cape_udc_add_name (self, p_node, name);
 }
 
 //-----------------------------------------------------------------------------
