@@ -287,8 +287,9 @@ int main (int argc, char *argv[])
     
     cape_udc_add_f (n, "val1", 30.2);
     cape_udc_add_s_cp (n, "val2", "5000");
+    cape_udc_add_f (n, "val3", 10.4);
 
-    CapeString h = cape_template_run ("{{$math{val1 / 100 * val2 / 12}|decimal:1%,%2}}", n, NULL, NULL, err);
+    CapeString h = cape_template_run ("{{$math{val1 / 100 * val2 / 12 + val3 / 12}|decimal:1%,%2}}", n, NULL, NULL, err);
 
     if (h)
     {

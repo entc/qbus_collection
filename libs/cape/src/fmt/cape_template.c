@@ -958,33 +958,7 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
   
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template math", "using the formular: '%s'", formular);
 
-  if (cape_tokenizer_split (formular, '*', &le, &re))
-  {
-    CapeString lh = cape_str_trim_utf8 (le);
-    CapeString rh = cape_str_trim_utf8 (re);
-
-    double lv = cape_template_math (lh, node_stack);
-    double rv = cape_template_math (rh, node_stack);
-
-    ret = lv * rv;
-    
-    cape_str_del (&lh);
-    cape_str_del (&rh);
-  }
-  else if (cape_tokenizer_split (formular, '/', &le, &re))
-  {
-    CapeString lh = cape_str_trim_utf8 (le);
-    CapeString rh = cape_str_trim_utf8 (re);
-
-    double lv = cape_template_math (lh, node_stack);
-    double rv = cape_template_math (rh, node_stack);
-
-    ret = lv / rv;
-    
-    cape_str_del (&lh);
-    cape_str_del (&rh);
-  }
-  else if (cape_tokenizer_split (formular, '+', &le, &re))
+  if (cape_tokenizer_split (formular, '+', &le, &re))
   {
     CapeString lh = cape_str_trim_utf8 (le);
     CapeString rh = cape_str_trim_utf8 (re);
@@ -1006,6 +980,32 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
     double rv = cape_template_math (rh, node_stack);
 
     ret = lv - rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else if (cape_tokenizer_split (formular, '*', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, node_stack);
+    double rv = cape_template_math (rh, node_stack);
+
+    ret = lv * rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else if (cape_tokenizer_split (formular, '/', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, node_stack);
+    double rv = cape_template_math (rh, node_stack);
+
+    ret = lv / rv;
     
     cape_str_del (&lh);
     cape_str_del (&rh);
