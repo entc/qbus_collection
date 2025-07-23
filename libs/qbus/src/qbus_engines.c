@@ -91,10 +91,14 @@ QBusEngine qbus_engine_new (const CapeString path, const CapeString engine_name,
   self->ctxs = cape_list_new (qbus_engine_ctxs__on_del);
 
   // try to load the library
-  if (qbus_engine_load (self, path, engine_name, err))
+  if (qbus_engine_load (self, ".", engine_name, err))
   {
-    // in case of an error return NULL
-    qbus_engine_del (&self);
+    // try to load the library
+    if (qbus_engine_load (self, path, engine_name, err))
+    {
+      // in case of an error return NULL
+      qbus_engine_del (&self);
+    }
   }
 
   return self;

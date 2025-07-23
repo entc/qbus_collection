@@ -261,9 +261,12 @@ void __STDCALL qbus_con__on_con (void* user_ptr, const CapeString cid, const Cap
 
 //-----------------------------------------------------------------------------
 
-int qbus_con_init (QBusCon self, QBusEngines engines, CapeAioContext aio, CapeErr err)
+int qbus_con_init (QBusCon self, QBusEngines engines, CapeAioContext aio, const CapeString host, CapeErr err)
 {
   int res;
+  
+  // local objects
+  CapeUdc options = cape_udc_new (CAPE_UDC_NODE, NULL);
   
   self->engine = qbus_engines_add (engines, "mqtt", err);
   if (self->engine == NULL)
@@ -279,11 +282,17 @@ int qbus_con_init (QBusCon self, QBusEngines engines, CapeAioContext aio, CapeEr
     goto exit_and_cleanup;
   }
 
-  qbus_engine_ctx_add (self->engine, self->engine_context, &(self->con), NULL, self, qbus_con__on_con, qbus_con__on_snd);
+  if (host)
+  {
+    cape_udc_add_s_cp (options, "host", host);
+  }
+  
+  qbus_engine_ctx_add (self->engine, self->engine_context, &(self->con), options, self, qbus_con__on_con, qbus_con__on_snd);
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
-  
+    
+  cape_udc_del (&options);
   return res;
 }
 
