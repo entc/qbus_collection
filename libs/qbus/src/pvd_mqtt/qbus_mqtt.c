@@ -441,9 +441,14 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
 {
   QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
 
-  // initialization of the random generator
-  srand(time(NULL));
-  
+  // create a seed and initialize with srand
+  {
+    number_t seed = time(NULL) * (number_t)self;
+    
+    // initialization of the random generator
+    srand (seed);
+  }
+    
   self->aio = aio;
   self->cid = cape_str_uuid ();
   self->name = cape_udc_ext_s (options, "name");

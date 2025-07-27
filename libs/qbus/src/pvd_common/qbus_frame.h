@@ -7,7 +7,7 @@
 #include <stc/cape_stream.h>
 
 // qbus includes
-#include "../src/qbus_message.h"
+#include "../qbus_message.h"
 
 //-----------------------------------------------------------------------------
 

@@ -2,13 +2,6 @@ SUBDIRS(src)
 SUBDIRS(app)
 SUBDIRS(tests)
 
-# external libs
-SUBDIRS(paho.mqtt.c)
-
-# pvd engines
-SUBDIRS(pvd_common)
-SUBDIRS(pvd_mqtt)
-
 # for docker install
 INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src DESTINATION ${CMAKE_BINARY_DIR}/docker/qbus_collection/libs/qbus)
 

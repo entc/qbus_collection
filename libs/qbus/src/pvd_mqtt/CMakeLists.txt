@@ -1,4 +1,7 @@
-INCLUDE_DIRECTORIES("../src" "../paho.mqtt.c/src" "../../cape/src" "../pvd_common")
+INCLUDE_DIRECTORIES(".." "paho.mqtt.c/src" "../../../cape/src" "../pvd_common")
+
+# external libs
+SUBDIRS(paho.mqtt.c)
 
 SET (PVD_MQTT_SOURCES
   qbus_mqtt.c
