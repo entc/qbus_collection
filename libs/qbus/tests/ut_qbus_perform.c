@@ -55,12 +55,11 @@ static int __STDCALL client01_test01__on01 (QBus qbus, void* ptr, QBusM qin, QBu
 
   cape_log_fmt (CAPE_LL_TRACE, "TEST", "client01 test01", "on 01 -> %liloops", loop_cnt);
 
-  /*
+  
   for (i = 0; i < loop_cnt; i++)
   {
 
   }
-  */
 
   return CAPE_ERR_NONE;
 }

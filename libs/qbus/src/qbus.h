@@ -11,6 +11,9 @@
 #include "qbus_message.h"
 #include "qbus_config.h"
 
+// for backward compatibility
+#define fct_qbus_onMessage fct_qbus_on_msg
+
 //=============================================================================
 
 struct QBus_s; typedef struct QBus_s* QBus; // use a simple version
@@ -39,6 +42,8 @@ __CAPE_LIBEX   int                qbus_register          (QBus, const CapeString
 __CAPE_LIBEX   int                qbus_send              (QBus, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg, CapeErr);
 
 __CAPE_LIBEX   int                qbus_continue          (QBus, const CapeString module, const CapeString method, QBusM qin, void** p_user_ptr, fct_qbus_on_msg, CapeErr);
+
+__CAPE_LIBEX   int                qbus_response          (QBus, const CapeString module, QBusM msg, CapeErr);
 
 __CAPE_LIBEX   CapeAioContext     qbus_aio               (QBus);
 
