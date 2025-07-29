@@ -201,9 +201,13 @@ int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_
 
 int qbus_request (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
-  if (cape_str_compare (module, qbus_config_name (self->config)))
+  // local objects
+  CapeString module_upper_case = cape_str_cp (module);
+  cape_str_to_upper (module_upper_case);
+  
+  if (cape_str_compare (module_upper_case, qbus_config_name (self->config)))
   {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module);
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
     
     // need to clone the qin
     QBusM qin = qbus_message_mv (msg);
@@ -214,7 +218,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
   }
   else
   {
-    const CapeString cid = qbus_router_get (self->router, module);
+    const CapeString cid = qbus_router_get (self->router, module_upper_case);
     
     if (cid)
     {
@@ -228,9 +232,9 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
     }
     else
     {
-      qbus__intern__no_route (self, module, method, msg, user_ptr, on_msg);
+      qbus__intern__no_route (self, module_upper_case, method, msg, user_ptr, on_msg);
       
-      return cape_err_set (err, CAPE_ERR_NOT_FOUND, "no route to module");
+      return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
     }
   }
 }

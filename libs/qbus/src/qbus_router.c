@@ -113,7 +113,14 @@ void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString na
   {
     cids = cape_list_new (qbus_router__route_item__on_del);
     
-    cape_map_insert (self->routes, (void*)cape_str_cp (name), cids);
+    // use uppercase module names only
+    {
+      CapeString module_name = cape_str_cp (name);
+      
+      cape_str_to_upper (module_name);
+      
+      cape_map_insert (self->routes, (void*)module_name, cids);
+    }
   }
 
   cape_list_push_back (cids, (void*)cape_str_cp (cid));

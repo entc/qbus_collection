@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
   libpcre3-dev \
   libcurl4-openssl-dev \
   libssl-dev \
-  uuid-dev
+  uuid-dev \
+  libxml2-dev
 
 ARG CACHEBUST=1

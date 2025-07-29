@@ -19,7 +19,7 @@ struct QBusEngineCtxItem_s
 {
   QBusEngine engine;
   QbusPvdCtx ctx;
-  
+
 }; typedef struct QBusEngineCtxItem_s* QBusEngineCtxItem;
 
 //-----------------------------------------------------------------------------
@@ -30,7 +30,7 @@ QBusEngineCtxItem qbus_engine_ctx_item_new (QBusEngine engine, QbusPvdCtx ctx)
 
   self->engine = engine;
   self->ctx = ctx;
-  
+
   return self;
 }
 
@@ -41,7 +41,7 @@ void qbus_engine_ctx_item_del (QBusEngineCtxItem* p_self)
   if (*p_self)
   {
     QBusEngineCtxItem self = *p_self;
-    
+
     {
       // local objects
       CapeErr err = cape_err_new();
@@ -50,7 +50,7 @@ void qbus_engine_ctx_item_del (QBusEngineCtxItem* p_self)
       {
         cape_log_fmt (CAPE_LL_ERROR, "QBUS", "engine", "error = %s", cape_err_text (err));
       }
-      
+
       cape_err_del (&err);
     }
 
@@ -80,7 +80,7 @@ void __STDCALL qbus_engine_ctxs__on_del (void* ptr)
 QBusEngine qbus_engine_new (const CapeString path, const CapeString engine_name, CapeErr err)
 {
   QBusEngine self = CAPE_NEW (struct QBusEngine_s);
-  
+
   // clean function pointers
   memset (&(self->functions), 0, sizeof(QbusPvd));
 
@@ -91,14 +91,10 @@ QBusEngine qbus_engine_new (const CapeString path, const CapeString engine_name,
   self->ctxs = cape_list_new (qbus_engine_ctxs__on_del);
 
   // try to load the library
-  if (qbus_engine_load (self, ".", engine_name, err))
+  if (qbus_engine_load (self, path, engine_name, err))
   {
-    // try to load the library
-    if (qbus_engine_load (self, path, engine_name, err))
-    {
-      // in case of an error return NULL
-      qbus_engine_del (&self);
-    }
+    // in case of an error return NULL
+    qbus_engine_del (&self);
   }
 
   return self;
@@ -111,7 +107,7 @@ void qbus_engine_del (QBusEngine* p_self)
   if (*p_self)
   {
     QBusEngine self = *p_self;
-    
+
     // end all contextes
     cape_list_del (&(self->ctxs));
 
@@ -119,7 +115,7 @@ void qbus_engine_del (QBusEngine* p_self)
     {
       self->functions.pvd_done ();
     }
-    
+
     // clean function pointers
     memset (&(self->functions), 0, sizeof(QbusPvd));
 
@@ -135,13 +131,13 @@ void qbus_engine_del (QBusEngine* p_self)
 int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString engine_name, CapeErr err)
 {
   int res;
-  
+
   CapeString path_current = NULL;
   CapeString path_resolved = NULL;
   CapeString pvd_name = NULL;
-  
+
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "engine", "try to load engine = %s", engine_name);
-  
+
   // fetch the current path
   path_current = cape_fs_path_current (path);
   if (path_current == NULL)
@@ -149,16 +145,16 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
     res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
     goto exit_and_cleanup;
   }
-  
+
   path_resolved = cape_fs_path_resolve (path_current, err);
   if (path_resolved == NULL)
   {
     res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "can't find path: %s", path_current);
     goto exit_and_cleanup;
   }
-  
+
   pvd_name = cape_str_catenate_2 ("qbus_pvd_", engine_name);
-  
+
   // try to load the module
   res = cape_dl_load (self->hlib, path_resolved, pvd_name, err);
   if (res)
@@ -171,13 +167,13 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
   {
     goto exit_and_cleanup;
   }
-  
+
   self->functions.pvd_ctx_del = cape_dl_funct (self->hlib, "qbus_pvd_ctx_del", err);
   if (self->functions.pvd_ctx_del == NULL)
   {
     goto exit_and_cleanup;
   }
-  
+
   self->functions.pvd_ctx_add = cape_dl_funct (self->hlib, "qbus_pvd_ctx_add", err);
   if (self->functions.pvd_ctx_add == NULL)
   {
@@ -211,13 +207,13 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
   {
     res = CAPE_ERR_NONE;
   }
-  
+
 exit_and_cleanup:
-  
+
   cape_str_del (&path_current);
   cape_str_del (&path_resolved);
   cape_str_del (&pvd_name);
-  
+
   return res;
 }
 
@@ -226,21 +222,21 @@ exit_and_cleanup:
 QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, const CapeString name, CapeErr err)
 {
   QbusPvdCtx self = NULL;
-  
+
   if (engine->functions.pvd_ctx_new)
   {
     CapeUdc options = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
+
     if (name)
     {
       CapeString name_engine = cape_str_cp (name);
-      
+
       cape_str_to_upper (name_engine);
-      
+
       // always send the name in the options
       cape_udc_add_s_mv (options, "name", &name_engine);
     }
-        
+
     // create a new engine context
     // -> might use the AIO for event handling
     // -> might use the options for config
@@ -252,14 +248,14 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, const Cap
       // can be destroyed later with the whole engine
       cape_list_push_back (engine->ctxs, qbus_engine_ctx_item_new (engine, self));
     }
-    
+
     cape_udc_del (&options);
   }
   else
   {
     cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
   }
-  
+
   return self;
 }
 
@@ -279,7 +275,7 @@ void qbus_engine_ctx_add (QBusEngine engine, QbusPvdCtx self, QbusPvdConnection*
 int qbus_engine__lib__ctx_del (QBusEngine self, QbusPvdCtx* p_ctx, CapeErr err)
 {
   int res;
-  
+
   if (self->functions.pvd_ctx_del)
   {
     self->functions.pvd_ctx_del (p_ctx);
@@ -289,7 +285,7 @@ int qbus_engine__lib__ctx_del (QBusEngine self, QbusPvdCtx* p_ctx, CapeErr err)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
   }
-  
+
   return res;
 }
 
@@ -304,7 +300,7 @@ const CapeString qbus_engine_con_cid (QBusEngine self, QbusPvdConnection connect
   else
   {
    // res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
-    
+
     return NULL;
   }
 }
@@ -328,7 +324,7 @@ void qbus_engine_con_snd (QBusEngine self, QbusPvdConnection connection, const C
 struct QBusEngines_s
 {
   CapeString path;
-  
+
   CapeMap engines;
 };
 
@@ -352,7 +348,7 @@ QBusEngines qbus_engines_new (const CapeString engines_path)
 
   self->path = cape_str_cp (engines_path);
   self->engines = cape_map_new (cape_map__compare__s, qbus_engines__engines__on_del, NULL);
-  
+
   return self;
 }
 
@@ -363,7 +359,7 @@ void qbus_engines_del (QBusEngines* p_self)
   if (*p_self)
   {
     QBusEngines self = *p_self;
-    
+
     cape_map_del (&(self->engines));
     cape_str_del (&(self->path));
 
@@ -376,9 +372,9 @@ void qbus_engines_del (QBusEngines* p_self)
 QBusEngine qbus_engines_add (QBusEngines self, const CapeString engine_name, CapeErr err)
 {
   QBusEngine ret = NULL;
-  
+
   CapeMapNode n = cape_map_find (self->engines, (void*)engine_name);
-  
+
   if (n)
   {
     ret = cape_map_node_value (n);
@@ -391,7 +387,7 @@ QBusEngine qbus_engines_add (QBusEngines self, const CapeString engine_name, Cap
       cape_map_insert (self->engines, (void*)cape_str_cp (engine_name), (void*)ret);
     }
   }
-  
+
   return ret;
 }
 
