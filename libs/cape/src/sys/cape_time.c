@@ -827,6 +827,27 @@ int cape_datetime_cross__is (const CapeDatetime* self)
 
 //-----------------------------------------------------------------------------
 
+int cape_datetime_year_isleap (const CapeDatetime* self)
+{
+  return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_datetime_year_day (const CapeDatetime* self)
+{
+  static const int days[2][13] = {
+    {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+    {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
+  };
+  
+  int leap = cape_datetime_year_isleap (self);
+  
+  return days[leap][self->month] + self->day;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime__internal__cross_out_format (CapeString* p_format)
 {
   // replace complex placeholders

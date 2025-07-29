@@ -88,6 +88,10 @@ extern "C" BOOL WINAPI DllMain (HINSTANCE const instance, DWORD const reason, LP
 
 #else
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 //------------------------------------------------------------------------------------------------------
 
 void __attribute__ ((constructor)) library_init (void)
@@ -437,6 +441,14 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
 {
   QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
 
+  // create a seed and initialize with srand
+  {
+    number_t seed = time(NULL) * (number_t)self;
+    
+    // initialization of the random generator
+    srand (seed);
+  }
+    
   self->aio = aio;
   self->cid = cape_str_uuid ();
   self->name = cape_udc_ext_s (options, "name");
@@ -492,8 +504,14 @@ void __STDCALL qbus_pvd_ctx_add (QbusPvdCtx self, QbusPvdConnection* p_con, Cape
   
   *p_con = ret;
   
+  // fetch host from options
+  const CapeString host = cape_udc_get_s (options, "host", "127.0.0.1");
+  
+  // do some debug output
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "ctx add", "using host = '%s' for client connection", host);
+  
   // creates a new client instance
-  MQTTClient_create (&(ret->client), "127.0.0.1", self->cid, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+  MQTTClient_create (&(ret->client), host, self->cid, MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
   // set callbacks
   MQTTClient_setCallbacks (ret->client, ret, on_connection_lost, on_message, NULL);

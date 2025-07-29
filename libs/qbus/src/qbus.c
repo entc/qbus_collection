@@ -28,7 +28,6 @@
 
 struct QBus_s
 {
-  CapeString qid;             // main ID of the module
   CapeAioContext aio;         // asyncronous IO context
 
   QBusRouter router;          // owned
@@ -44,8 +43,7 @@ struct QBus_s
 QBus qbus_new (const CapeString module)
 {
   QBus self = CAPE_NEW (struct QBus_s);
-  
-  self->qid = cape_str_uuid ();
+    
   self->aio = cape_aio_context_new ();
 
   self->router = qbus_router_new ();
@@ -74,7 +72,6 @@ void qbus_del (QBus* p_self)
     qbus_router_del (&(self->router));
     
     cape_aio_context_del (&(self->aio));
-    cape_str_del (&(self->qid));
     
     CAPE_DEL (p_self, struct QBus_s);
   }
@@ -131,7 +128,7 @@ int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
   // create
   self->con = qbus_con_new (self->router, self->methods, qbus_config_name (self->config));
 
-  res = qbus_con_init (self->con, self->engines, self->aio, err);
+  res = qbus_con_init (self->con, self->engines, self->aio, qbus_config_s (self->config, "h", "127.0.0.1"), err);
   if (res)
   {
     return res;

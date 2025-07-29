@@ -1,4 +1,8 @@
-INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "../pvd_common")
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "pvd_common")
+
+# pvd engines
+SUBDIRS(pvd_common)
+SUBDIRS(pvd_mqtt)
 
 #----------------------------------------------------------------------------------------
 

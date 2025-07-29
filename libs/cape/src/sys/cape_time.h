@@ -80,6 +80,14 @@ __CAPE_LIBEX   void            cape_datetime_cross__set   (CapeDatetime*);
 
 __CAPE_LIBEX   int             cape_datetime_cross__is    (const CapeDatetime*);
 
+                               /* returns if the year is a leap year */
+__CAPE_LIBEX   int             cape_datetime_year_isleap  (const CapeDatetime*);
+
+                               /* returns the day of the year */
+__CAPE_LIBEX   number_t        cape_datetime_year_day     (const CapeDatetime*);
+
+//-----------------------------------------------------------------------------
+
                                // append the datetime to the certain time period defined in delta string format
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime_add_s        (CapeDatetime*, const CapeString delta);

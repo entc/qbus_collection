@@ -1401,7 +1401,10 @@ void cape_udc_put_m_mv (CapeUdc self, const CapeString name, CapeStream* p_val)
 void cape_udc_put_node__replace (CapeMapNode n, CapeUdc new_value)
 {
   // retrieve current value
-  CapeUdc node_to_del = cape_map_node_value (n);
+  CapeUdc node_to_del = cape_map_node_mv (n);
+  
+  // replace the name
+  cape_str_replace_mv (&(new_value->name), &(node_to_del->name));
   
   // delete current value
   cape_udc_del (&node_to_del);
@@ -1429,7 +1432,7 @@ void cape_udc_put_node_cp (CapeUdc self, const CapeString name, CapeUdc node)
       }
       else
       {
-        cape_udc_add_name (self, &h, name);
+        cape_map_insert (self->data, h->name, h);
       }
     }
   }
@@ -1451,7 +1454,11 @@ void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
       }
       else
       {
-        cape_udc_add_name (self, p_node, name);
+        CapeUdc h = *p_node;
+        
+        cape_map_insert (self->data, h->name, h);
+        
+        *p_node = NULL;
       }
     }
   }
