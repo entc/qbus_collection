@@ -272,7 +272,28 @@ int main (int argc, char *argv[])
 
     if (h)
     {
-      printf ("MATH: %s\n", h);
+      printf ("MATH1: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+
+    cape_str_del (&h);
+    cape_udc_del (&n);
+  }
+  {
+    CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_f (n, "val1", 30.2);
+    cape_udc_add_s_cp (n, "val2", "5000");
+    cape_udc_add_f (n, "val3", 10.4);
+
+    CapeString h = cape_template_run ("{{$math{val1 / 100 * val2 / 12 + val3 / 12}|decimal:1%,%2}}", n, NULL, NULL, err);
+
+    if (h)
+    {
+      printf ("MATH2: %s\n", h);
     }
     else
     {

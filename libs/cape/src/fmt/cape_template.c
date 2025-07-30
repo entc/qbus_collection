@@ -590,6 +590,8 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTe
     cape_list_del (&tokens);
   }
   
+  //printf ("fraction = %f, devider = %s, decimal = %lu\n", fraction, devider, decimal);
+  
   // calculate value
   {
     double v = (double)value / fraction;
@@ -954,6 +956,8 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
   CapeString le = NULL;
   CapeString re = NULL;
   
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template math", "using the formular: '%s'", formular);
+
   if (cape_tokenizer_split (formular, '+', &le, &re))
   {
     CapeString lh = cape_str_trim_utf8 (le);
@@ -980,6 +984,32 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
     cape_str_del (&lh);
     cape_str_del (&rh);
   }
+  else if (cape_tokenizer_split (formular, '*', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, node_stack);
+    double rv = cape_template_math (rh, node_stack);
+
+    ret = lv * rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
+  else if (cape_tokenizer_split (formular, '/', &le, &re))
+  {
+    CapeString lh = cape_str_trim_utf8 (le);
+    CapeString rh = cape_str_trim_utf8 (re);
+
+    double lv = cape_template_math (lh, node_stack);
+    double rv = cape_template_math (rh, node_stack);
+
+    ret = lv / rv;
+    
+    cape_str_del (&lh);
+    cape_str_del (&rh);
+  }
   else
   {
     CapeUdc item = cape_template__seek_item (node_stack, formular);
@@ -993,6 +1023,12 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
           if (h)
           {
             ret = cape_str_to_f (h);
+            
+            cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template math", "found item %s = '%f'", formular, ret);
+          }
+          else
+          {
+            cape_log_fmt (CAPE_LL_WARN, "CAPE", "template math", "found item can't be formatted into a float: %s = '%s'", formular, h);
           }
 
           break;
@@ -1000,11 +1036,15 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
         case CAPE_UDC_NUMBER:
         {
           ret = cape_udc_n (item, 0);
+
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template math", "found item %s = '%f'", formular, ret);
           break;
         }
         case CAPE_UDC_FLOAT:
         {
           ret = cape_udc_f (item, .0);
+
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template math", "found item %s = '%f'", formular, ret);
           break;
         }
       }
@@ -1017,6 +1057,8 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
     
   cape_str_del (&le);
   cape_str_del (&re);
+  
+  //printf ("RET: %f\n", ret);
   
   return ret;
 }
