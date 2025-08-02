@@ -68,7 +68,7 @@ __CAPE_LIBEX   void*             cape_map_node_key          (CapeMapNode);
 
 __CAPE_LIBEX   void              cape_map_node_set          (CapeMapNode, void*);         // use with care
 
-__CAPE_LIBEX   void              cape_map_node_del          (CapeMapNode*);               // don't calls the onDestroy method, only releases the memory
+__CAPE_LIBEX   void              cape_map_node_del          (CapeMapNode*, fct_cape_map_destroy on_del);               // 
 
 __CAPE_LIBEX   void*             cape_map_node_mv           (CapeMapNode);                // returns the value and replace it with NULL
 

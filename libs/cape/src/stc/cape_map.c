@@ -15,6 +15,13 @@
 
 //-----------------------------------------------------------------------------
 
+inline number_t cape_max_n (number_t x, number_t y)
+{
+  return (x > y) ? x : y;
+}
+
+//-----------------------------------------------------------------------------
+
 int __STDCALL cape_map__compare__s (const void* a, const void* b, void* ptr)
 {
   const char* s1 = a;
@@ -49,35 +56,73 @@ struct CapeMapNode_s
   void* key;
   void* val;
   
-  CapeMapNode node_left;     // the left node as refernece
-  CapeMapNode node_right;    // the right node as reference
+  CapeMapNode left;          // the left node as refernece
+  CapeMapNode right;         // the right node as reference
   
   number_t height;
   
+  CapeMapNode parent;        // we need this for traversal
 };
 
 //-----------------------------------------------------------------------------
 
 CapeMapNode cape_map_node_new (void* key, void* val)
 {
-  CapeMapNode self = CAPE_NEW(struct CapeMapNode_s);
+  CapeMapNode self = CAPE_NEW (struct CapeMapNode_s);
   
   self->key = key;
   self->val = val;
 
-  self->node_left = NULL;
-  self->node_right = NULL;
+  self->left = NULL;
+  self->right = NULL;
   
   self->height = 0;
+  
+  self->parent = NULL;
   
   return self;
 }
 
 //-----------------------------------------------------------------------------
 
-void cape_map_node_del (CapeMapNode* pself)
+void cape_map_node_del (CapeMapNode* p_self, fct_cape_map_destroy on_del)
 {
-  CAPE_DEL(pself, struct CapeMapNode_s);
+  if (*p_self)
+  {
+    CapeMapNode self = *p_self;
+    
+    // delete all nodes from the left
+    if (self->left)
+    {
+      cape_map_node_del (&(self->left), on_del);
+    }
+
+    // delete all nodes from the right
+    if (self->right)
+    {
+      cape_map_node_del (&(self->right), on_del);
+    }
+
+    // correct parent assignments
+    if (self->parent)
+    {
+      if (self->parent->left == self)
+      {
+        self->parent->left = NULL;
+      }
+      else if (self->parent->right == self)
+      {
+        self->parent->right = NULL;
+      }
+    }
+
+    if (on_del)
+    {
+      on_del (self->key, self->val);
+    }
+        
+    CAPE_DEL(p_self, struct CapeMapNode_s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -89,32 +134,42 @@ inline number_t cape_map_node__height (CapeMapNode self)
 
 //-----------------------------------------------------------------------------
 
-void cape_map_node__update_height (CapeMapNode self)
+inline void cape_map_node__update_height (CapeMapNode self)
 {
-  number_t node_left_height = cape_map_node__height (self->node_left);
-  number_t node_right_height = cape_map_node__height (self->node_right);
-  
-  self->height = CAPE_MAX(node_left_height, node_right_height) + 1;
+  self->height = cape_max_n (cape_map_node__height (self->left), cape_map_node__height (self->right)) + 1;
 }
 
 //-----------------------------------------------------------------------------
 
-number_t cape_map_node__balance_factor (CapeMapNode self)
+inline number_t cape_map_node__balance_factor (CapeMapNode self)
 {
-  return cape_map_node__height (self->node_right) - cape_map_node__height (self->node_left);
+  return cape_map_node__height (self->right) - cape_map_node__height (self->left);
 }
 
 //-----------------------------------------------------------------------------
 
 CapeMapNode cape_map_node__rotate_right (CapeMapNode self)
 {
-  CapeMapNode child_left = self->node_left;
-  
-  self->node_left = child_left->node_right;
-  child_left->node_right = self;
+  CapeMapNode child_left = self->left;
 
-  cape_map_node__update_height (self);
-  cape_map_node__update_height (child_left);
+  if (child_left)
+  {
+    child_left->parent = self->parent;
+
+    self->left = child_left->right;
+
+    if (self->left)
+    {
+      self->left->parent = self;
+    }
+
+    child_left->right = self;
+    
+    self->parent = child_left;
+    
+    cape_map_node__update_height (self);
+    cape_map_node__update_height (child_left);
+  }
   
   return child_left;
 }
@@ -123,20 +178,61 @@ CapeMapNode cape_map_node__rotate_right (CapeMapNode self)
 
 CapeMapNode cape_map_node__rotate_left (CapeMapNode self)
 {
-  CapeMapNode child_right = self->node_right;
+  CapeMapNode child_right = self->right;
 
-  self->node_right = child_right->node_left;
-  child_right->node_left = self;  
-  
-  cape_map_node__update_height (self);
-  cape_map_node__update_height (child_right);
+  if (child_right)
+  {
+    child_right->parent = self->parent;
+
+    self->right = child_right->left;
+
+    if (self->right)
+    {
+      self->right->parent = self;
+    }
+    
+    child_right->left = self;
+    
+    self->parent = child_right;
+
+    cape_map_node__update_height (self);
+    cape_map_node__update_height (child_right);
+  }
   
   return child_right;  
 }
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node__rebalance (CapeMapNode self)
+CapeMapNode cape_map_node__most_left (CapeMapNode self)
+{
+  CapeMapNode ret = self;
+  
+  while (ret)
+  {
+    ret = ret->left;
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node__most_right (CapeMapNode self)
+{
+  CapeMapNode ret = self;
+  
+  while (ret)
+  {
+    ret = ret->right;
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node_rebalance (CapeMapNode self)
 {
   CapeMapNode ret = NULL;
   
@@ -145,37 +241,36 @@ CapeMapNode cape_map_node__rebalance (CapeMapNode self)
   // left heavy
   if (balance_factor < -1)
   {
-    if (cape_map_node__balance_factor (self->node_left) <= 0)
+    if (cape_map_node__balance_factor (self->left) <= 0)
     {
       ret = cape_map_node__rotate_right (self);
     }
     else
     {
-      self->node_left = cape_map_node__rotate_left (self->node_left);
+      self->left = cape_map_node__rotate_left (self->left);
       ret = cape_map_node__rotate_right (self);
     }    
   }
   // right heavy
   else if (balance_factor > 1)
   {
-    if (cape_map_node__balance_factor (self->node_right) >= 0)
+    if (cape_map_node__balance_factor (self->right) >= 0)
     {
       ret = cape_map_node__rotate_left (self);
     }
     else
     {
-      self->node_right = cape_map_node__rotate_right (self->node_right);
+      self->right = cape_map_node__rotate_right (self->right);
       ret = cape_map_node__rotate_left (self);
     }
   }
-  
   
   return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node__find (const CapeMapNode self, const void* key, fct_cape_map_cmp on_cmp, void* user_ptr)
+CapeMapNode cape_map_node_find (const CapeMapNode self, const void* key, fct_cape_map_cmp on_cmp, void* user_ptr)
 {
   CapeMapNode ret = self;
   int cmp;
@@ -190,11 +285,11 @@ CapeMapNode cape_map_node__find (const CapeMapNode self, const void* key, fct_ca
     }
     else if (cmp < 0)
     {
-      ret = ret->node_left;
+      ret = ret->left;
     }
     else
     {
-      ret = ret->node_right;
+      ret = ret->right;
     }
   }
   
@@ -234,21 +329,25 @@ void* cape_map_node_mv (CapeMapNode self)
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node_next (CapeMapNode n)
+CapeMapNode cape_map_node_next (CapeMapNode self)
 {
-  CapeMapNode ret = n;
+  CapeMapNode ret = NULL;
   
-  if (ret->tag[1] == CAPE_MAP_THREAD)
+  if (self->right)
   {
-    ret = ret->link[1];
+    ret = cape_map_node__most_left (self->right);
   }
   else
   {
-    ret = ret->link[1];
+    CapeMapNode last;
     
-    while (ret->tag[0] == CAPE_MAP_CHILD)
+    for (last = self; last->parent; last = last->parent)
     {
-      ret = ret->link[0];
+      if (last->parent->left == last)
+      {
+        ret = last->parent;
+        break;
+      }
     }
   }
   
@@ -257,21 +356,25 @@ CapeMapNode cape_map_node_next (CapeMapNode n)
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node_prev (CapeMapNode n)
+CapeMapNode cape_map_node_prev (CapeMapNode self)
 {
-  CapeMapNode ret = n;
+  CapeMapNode ret = NULL;
 
-  if (ret->tag[0] == CAPE_MAP_THREAD)
+  if (self->left)
   {
-    ret = ret->link[0];
+    ret = cape_map_node__most_right (self->left);
   }
   else
   {
-    ret = ret->link[0];
-
-    while (ret->tag[1] == CAPE_MAP_CHILD)
+    CapeMapNode last;
+    
+    for (last = self; last->parent; last = last->parent)
     {
-      ret = ret->link[1];
+      if (last->parent->right == last)
+      {
+        ret = last->parent;
+        break;
+      }
     }
   }
   
@@ -311,52 +414,6 @@ CapeMap cape_map_new (fct_cape_map_cmp on_cmp, fct_cape_map_destroy on_del, void
 
 //-----------------------------------------------------------------------------
 
-void cape_map_del_node (CapeMap self, CapeMapNode* pself)
-{
-  CapeMapNode n = *pself;
-  
-  if (self->del_fct && n)
-  {
-    self->del_fct (n->key, n->val);
-  }
-  
-  cape_map_node_del (pself);
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_map_clr (CapeMap self)
-{  
-  CapeMapNode p;    // current node
-  CapeMapNode n;    // next node
-  
-  p = self->root;
-  
-  if (p != NULL) while (p->tag[0] == CAPE_MAP_CHILD)
-  {
-    p = p->link[0];
-  }
-    
-  while (p != NULL)
-  {
-    n = p->link[1];
-    
-    if (p->tag[1] == CAPE_MAP_CHILD) while (n->tag[0] == CAPE_MAP_CHILD)
-    {
-      n = n->link[0];
-    }
-     
-    cape_map_del_node (self, &p);
-         
-    p = n;
-  }
-
-  self->root = NULL;
-  self->size = 0;
-}
-
-//-----------------------------------------------------------------------------
-
 void cape_map_del (CapeMap* p_self)
 {
   if (*p_self)
@@ -371,16 +428,33 @@ void cape_map_del (CapeMap* p_self)
 
 //-----------------------------------------------------------------------------
 
+void cape_map_del_node (CapeMap self, CapeMapNode* pself)
+{
+  CapeMapNode n = *pself;
+  
+  cape_map_node_del (pself, self->del_fct);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_map_clr (CapeMap self)
+{  
+  // this will clear all nodes
+  cape_map_node_del (&(self->root), self->del_fct);
+}
+
+//-----------------------------------------------------------------------------
+
 CapeMapNode cape_map_find (CapeMap self, const void* key)
 {
-  return  cape_map_node__find (self->root, key, self->cmp_fct, self->cmp_ptr);
+  return  cape_map_node_find (self->root, key, self->cmp_fct, self->cmp_ptr);
 }
 
 //-----------------------------------------------------------------------------
 
 CapeMapNode cape_map_find_cmd (CapeMap self, const void* key, fct_cape_map_cmp on_cmp)
 {
-  return  cape_map_node__find (self->root, key, on_cmp, self->cmp_ptr);
+  return  cape_map_node_find (self->root, key, on_cmp, self->cmp_ptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -1027,34 +1101,14 @@ unsigned long cape_map_size (CapeMap self)
 
 CapeMapNode cape_map_first (CapeMap self)
 {
-  CapeMapNode ret = self->root;
-
-  if (ret != NULL)
-  {
-    while (ret->tag[0] == CAPE_MAP_CHILD)
-    {
-      ret = ret->link[0];
-    }
-  }
-  
-  return ret;
+  return cape_map_node__most_left (self->root);
 }
 
 //-----------------------------------------------------------------------------
 
 CapeMapNode cape_map_last (CapeMap self)
 {
-  CapeMapNode ret = self->root;
-  
-  if (ret != NULL)
-  {
-    while (ret->tag[1] == CAPE_MAP_CHILD)
-    {
-      ret = ret->link[1];
-    }
-  }
-  
-  return ret;
+  return cape_map_node__most_right (self->root);
 }
 
 //-----------------------------------------------------------------------------
