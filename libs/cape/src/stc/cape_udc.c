@@ -653,9 +653,11 @@ CapeUdc cape_udc_ext (CapeUdc self, const CapeString name)
         CapeUdc h;
 
         n = cape_map_extract (self->data, n);
-        h = cape_map_node_value (n);
+        
+        // ransfer ownership of the value
+        h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return h;
       }
@@ -698,9 +700,9 @@ void cape_udc_rm (CapeUdc self, const CapeString name)
         CapeUdc h;
 
         n = cape_map_extract (self->data, n);
-        h = cape_map_node_value (n);
+        h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
         cape_udc_del (&h);
       }
 
@@ -1895,8 +1897,7 @@ CapeString cape_udc_ext_s (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -1936,8 +1937,7 @@ CapeDatetime* cape_udc_ext_d (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -1977,8 +1977,7 @@ CapeStream cape_udc_ext_m (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -2070,10 +2069,11 @@ CapeUdc cape_udc_ext_first (CapeUdc self)
       {
         CapeMapNode n = cape_map_cursor_extract (self->data, &cursor);
 
-        CapeUdc u = cape_map_node_value (n);
+        // transfer ownership
+        CapeUdc u = cape_map_node_mv (n);
 
         // releases the node memory
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return u;
       }
@@ -2257,9 +2257,9 @@ CapeUdc cape_udc_cursor_ext (CapeUdc self, CapeUdcCursor* cursor)
 
       if (n)
       {
-        CapeUdc h = cape_map_node_value (n);
+        CapeUdc h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return h;
       }

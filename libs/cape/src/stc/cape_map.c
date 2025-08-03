@@ -15,7 +15,7 @@
 
 //-----------------------------------------------------------------------------
 
-inline number_t cape_max_n (number_t x, number_t y)
+number_t cape_max_n (number_t x, number_t y)
 {
   return (x > y) ? x : y;
 }
@@ -126,21 +126,21 @@ void cape_map_node_del (CapeMapNode* p_self, fct_cape_map_destroy on_del)
 
 //-----------------------------------------------------------------------------
 
-inline number_t cape_map_node__height (CapeMapNode self)
+number_t cape_map_node__height (CapeMapNode self)
 {
   return (self != NULL) ? self->height : -1;
 }
 
 //-----------------------------------------------------------------------------
 
-inline void cape_map_node__update_height (CapeMapNode self)
+void cape_map_node__update_height (CapeMapNode self)
 {
   self->height = cape_max_n (cape_map_node__height (self->left), cape_map_node__height (self->right)) + 1;
 }
 
 //-----------------------------------------------------------------------------
 
-inline number_t cape_map_node__balance_factor (CapeMapNode self)
+number_t cape_map_node__balance_factor (CapeMapNode self)
 {
   return cape_map_node__height (self->right) - cape_map_node__height (self->left);
 }
@@ -205,12 +205,9 @@ CapeMapNode cape_map_node__rotate_left (CapeMapNode self)
 
 CapeMapNode cape_map_node__most_left (CapeMapNode self)
 {
-  CapeMapNode ret = self;
+  CapeMapNode ret;
   
-  while (ret)
-  {
-    ret = ret->left;
-  }
+  for (ret = self ; ret->left; ret = ret->left);
   
   return ret;
 }
@@ -219,12 +216,9 @@ CapeMapNode cape_map_node__most_left (CapeMapNode self)
 
 CapeMapNode cape_map_node__most_right (CapeMapNode self)
 {
-  CapeMapNode ret = self;
+  CapeMapNode ret;
   
-  while (ret)
-  {
-    ret = ret->right;
-  }
+  for (ret = self; ret->right; ret = ret->right);
   
   return ret;
 }
@@ -265,6 +259,15 @@ CapeMapNode cape_map_node_rebalance (CapeMapNode self)
   }
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node__update_height_and_rebalance (CapeMapNode self)
+{
+  cape_map_node__update_height (self);
+  
+  return cape_map_node_rebalance (self);
 }
 
 //-----------------------------------------------------------------------------
@@ -403,7 +406,7 @@ CapeMapNode cape_map_node_insert (CapeMapNode self, void* key, void* val, fct_ca
         // create a new node
         current_node->left = cape_map_node_new (key, val, current_node);
         
-        ret = current_node->left;
+        ret = cape_map_node__update_height_and_rebalance (current_node->left);
         break;
       }
     }
@@ -418,7 +421,7 @@ CapeMapNode cape_map_node_insert (CapeMapNode self, void* key, void* val, fct_ca
       {
         current_node->right = cape_map_node_new (key, val, current_node);
 
-        ret = current_node->right;
+        ret = cape_map_node__update_height_and_rebalance (current_node->right);
         break;
       }
     }
@@ -440,6 +443,52 @@ CapeMapNode cape_map_node_insert (CapeMapNode self, void* key, void* val, fct_ca
   }
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node__find_target (CapeMapNode self)
+{
+  CapeMapNode ret;
+  
+  if (self->left)
+  {
+    if (self->right)
+    {
+      ret = cape_map_node_next (self);
+      
+      // swap values
+      void* data = self->val;
+      self->val = ret->val;
+      ret->val = data;
+    }
+    else
+    {
+      ret = self->left;
+    }
+  }
+  else
+  {
+    if (self->right)
+    {
+      ret = self->right;
+    }
+    else
+    {
+      ret = NULL;
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node__delete (CapeMapNode self)
+{
+  CapeMapNode target = cape_map_node__find_target (self);
+
+  return target;
 }
 
 //=============================================================================
@@ -489,11 +538,9 @@ void cape_map_del (CapeMap* p_self)
 
 //-----------------------------------------------------------------------------
 
-void cape_map_del_node (CapeMap self, CapeMapNode* pself)
+void cape_map_del_node (CapeMap self, CapeMapNode* p_node)
 {
-  CapeMapNode n = *pself;
-  
-  cape_map_node_del (pself, self->del_fct);
+  cape_map_node_del (p_node, self->del_fct);
 }
 
 //-----------------------------------------------------------------------------
@@ -542,338 +589,7 @@ CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
 
 CapeMapNode cape_map_extract (CapeMap self, CapeMapNode node)
 {
-  CapeMapNode item;
-  CapeMapNode p;       /* Traverses tree to find node to delete. */
-  CapeMapNode q;       /* Parent of |p|. */
-  int dir;             /* Index into |q->tavl_link[]| to get |p|. */
-  int cmp;             /* Result of comparison between |item| and |p|. */
-  
-  if (self->root == NULL)
-  {
-    return NULL;
-  }
-  
-  q = (CapeMapNode) &self->root;
-  p = self->root;
-  dir = 0;
-
-  // search for the node
-  for (;;)
-  {
-    cmp = self->cmp_fct (node->key, p->key, self->cmp_ptr);
-    if (cmp == 0)
-    {
-      break;
-    }
-    
-    dir = cmp > 0;
-    
-    q = p;
-    
-    if (p->tag[dir] == CAPE_MAP_THREAD)
-    {
-      return NULL;
-    }
-    
-    p = p->link[dir];
-  }
-  
-  // set the return node
-  item = p;
-  
-  if (p->tag[1] == CAPE_MAP_THREAD)
-  {
-    if (p->tag[0] == CAPE_MAP_CHILD)
-    {
-      CapeMapNode t = p->link[0];
-      
-      // traverse to the last child on the right side
-      while (t->tag[1] == CAPE_MAP_CHILD)
-      {
-        t = t->link[1];
-      }
-      
-      t->link[1] = p->link[1];
-      q->link[dir] = p->link[0];
-    }
-    else
-    {
-      q->link[dir] = p->link[dir];
-      
-      if (q != (CapeMapNode) &self->root)
-      {
-        q->tag[dir] = CAPE_MAP_THREAD;
-      }
-    }
-  }
-  else
-  {
-    CapeMapNode r = p->link[1];
-    
-    if (r->tag[0] == CAPE_MAP_THREAD)
-    {
-      r->link[0] = p->link[0];
-      r->tag[0] = p->tag[0];
-      
-      if (r->tag[0] == CAPE_MAP_CHILD)
-      {
-        CapeMapNode t = r->link[0];
-        
-        // traverse to the last child on the right side
-        while (t->tag[1] == CAPE_MAP_CHILD)
-        {
-          t = t->link[1];
-        }
-        
-        t->link[1] = r;
-      }
-      
-      q->link[dir] = r;
-      r->balance = p->balance;
-      
-      q = r;
-      dir = 1;
-    }
-    else
-    {
-      CapeMapNode s;
-      
-      for (;;)
-      {
-        s = r->link[0];
-        
-        if (s->tag[0] == CAPE_MAP_THREAD)
-        {
-          break;
-        }
-        
-        r = s;
-      }
-      
-      if (s->tag[1] == CAPE_MAP_CHILD)
-      {
-        r->link[0] = s->link[1];
-      }
-      else
-      {
-        r->link[0] = s;
-        r->tag[0] = CAPE_MAP_THREAD;
-      }
-      
-      s->link[0] = p->link[0];
-      
-      if (p->tag[0] == CAPE_MAP_CHILD)
-      {
-        CapeMapNode t = p->link[0];
-        
-        // traverse to the last child on the right side
-        while (t->tag[1] == CAPE_MAP_CHILD)
-        {
-          t = t->link[1];
-        }
-        
-        t->link[1] = s;
-        s->tag[0] = CAPE_MAP_CHILD;
-      }
-      
-      s->link[1] = p->link[1];
-      s->tag[1] = CAPE_MAP_CHILD;
-      
-      q->link[dir] = s;
-      s->balance = p->balance;
-      q = r;
-      dir = 0;
-    }
-  }
-  
-  //tree->tavl_alloc->libavl_free (tree->tavl_alloc, p);
-  
-  while (q != (CapeMapNode) &self->root)
-  {
-    CapeMapNode y = q;
-    
-    q = cape_map_find_parent (self, y);
-    
-    if (dir == 0)
-    {
-      dir = q->link[0] != y;
-      y->balance++;
-      if (y->balance == +1)
-      {
-        break;
-      }
-      else if (y->balance == +2)
-      {
-        CapeMapNode x = y->link[1];
-        
-        assert (x != NULL);
-        
-        if (x->balance == -1)
-        {
-          CapeMapNode w;
-          
-          assert (x->balance == -1);
-          
-          w = x->link[0];
-          x->link[0] = w->link[1];
-          w->link[1] = x;
-          y->link[1] = w->link[0];
-          w->link[0] = y;
-          
-          if (w->balance == +1)
-          {
-            x->balance = 0, y->balance = -1;
-          }
-          else if (w->balance == 0)
-          {
-            x->balance = y->balance = 0;
-          }
-          else /* |w->tavl_balance == -1| */
-          {
-            x->balance = +1, y->balance = 0;
-          }
-
-          w->balance = 0;
-          
-          if (w->tag[0] == CAPE_MAP_THREAD)
-          {
-            y->tag[1] = CAPE_MAP_THREAD;
-            y->link[1] = w;
-            w->tag[0] = CAPE_MAP_CHILD;
-          }
-          
-          if (w->tag[1] == CAPE_MAP_THREAD)
-          {
-            x->tag[0] = CAPE_MAP_THREAD;
-            x->link[0] = w;
-            w->tag[1] = CAPE_MAP_CHILD;
-          }
-          
-          q->link[dir] = w;
-        }
-        else
-        {
-          q->link[dir] = x;
-          
-          if (x->balance == 0)
-          {
-            y->link[1] = x->link[0];
-            x->link[0] = y;
-            x->balance = -1;
-            y->balance = +1;
-            
-            break;
-          }
-          else /* |x->tavl_balance == +1| */
-          {
-            if (x->tag[0] == CAPE_MAP_CHILD)
-            {
-              y->link[1] = x->link[0];
-            }
-            else
-            {
-              y->tag[1] = CAPE_MAP_THREAD;
-              x->tag[0] = CAPE_MAP_CHILD;
-            }
-            
-            x->link[0] = y;
-            y->balance = x->balance = 0;
-          }
-        }
-      }
-    }
-    else
-    {
-      dir = q->link[0] != y;
-      y->balance--;
-      if (y->balance == -1)
-      {
-        break;
-      }
-      else if (y->balance == -2)
-      {
-        CapeMapNode x = y->link[0];
-        
-        assert (x != NULL);
-        
-        if (x->balance == +1)
-        {
-          CapeMapNode w;
-          
-          assert (x->balance == +1);
-          
-          w = x->link[1];
-          x->link[1] = w->link[0];
-          w->link[0] = x;
-          y->link[0] = w->link[1];
-          w->link[1] = y;
-          
-          if (w->balance == -1)
-          {
-            x->balance = 0, y->balance = +1;
-          }
-          else if (w->balance == 0)
-          {
-            x->balance = y->balance = 0;
-          }
-          else /* |w->tavl_balance == +1| */
-          {
-            x->balance = -1, y->balance = 0;
-          }
-          
-          w->balance = 0;
-          
-          if (w->tag[0] == CAPE_MAP_THREAD)
-          {
-            x->tag[1] = CAPE_MAP_THREAD;
-            x->link[1] = w;
-            w->tag[0] = CAPE_MAP_CHILD;
-          }
-          
-          if (w->tag[1] == CAPE_MAP_THREAD)
-          {
-            y->tag[0] = CAPE_MAP_THREAD;
-            y->link[0] = w;
-            w->tag[1] = CAPE_MAP_CHILD;
-          }
-          
-          q->link[dir] = w;
-        }
-        else
-        {
-          q->link[dir] = x;
-          
-          if (x->balance == 0)
-          {
-            y->link[0] = x->link[1];
-            x->link[1] = y;
-            x->balance = +1;
-            y->balance = -1;
-            
-            break;
-          }
-          else /* |x->tavl_balance == -1| */
-          {
-            if (x->tag[1] == CAPE_MAP_CHILD)
-            {
-              y->link[0] = x->link[1];
-            }
-            else
-            {
-              y->tag[0] = CAPE_MAP_THREAD;
-              x->tag[1] = CAPE_MAP_CHILD;
-            }
-            
-            x->link[1] = y;
-            y->balance = x->balance = 0;
-          }
-        }
-      }
-    }
-  }
-  
-  self->size--;
-  return item;
+  self->root = cape_map_node__delete (node);
 }
 
 //-----------------------------------------------------------------------------
