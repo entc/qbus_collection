@@ -66,7 +66,7 @@ struct CapeMapNode_s
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node_new (void* key, void* val)
+CapeMapNode cape_map_node_new (void* key, void* val, CapeMapNode parent)
 {
   CapeMapNode self = CAPE_NEW (struct CapeMapNode_s);
   
@@ -77,8 +77,7 @@ CapeMapNode cape_map_node_new (void* key, void* val)
   self->right = NULL;
   
   self->height = 0;
-  
-  self->parent = NULL;
+  self->parent = parent;
   
   return self;
 }
@@ -381,6 +380,68 @@ CapeMapNode cape_map_node_prev (CapeMapNode self)
   return ret;
 }
 
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node_insert (CapeMapNode self, void* key, void* val, fct_cape_map_cmp cmp_fct, void* user_ptr)
+{
+  CapeMapNode ret = NULL;
+  CapeMapNode current_node = self;
+  
+  while (TRUE)
+  {
+    int compare_result = cmp_fct (key, current_node->key, user_ptr);
+    
+    if (compare_result < 0)
+    {
+      if (current_node->left)
+      {
+        // follow left subtree
+        current_node = current_node->left;
+      }
+      else
+      {
+        // create a new node
+        current_node->left = cape_map_node_new (key, val, current_node);
+        
+        ret = current_node->left;
+        break;
+      }
+    }
+    else if (compare_result > 0)
+    {
+      if (current_node->right)
+      {
+        // follow right subtree
+        current_node = current_node->right;
+      }
+      else
+      {
+        current_node->right = cape_map_node_new (key, val, current_node);
+
+        ret = current_node->right;
+        break;
+      }
+    }
+    else
+    {
+      // is the compare function known as string
+      if (cmp_fct == cape_map__compare__s)
+      {
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "map insert", "key already exists '%s'", (char*)key);
+      }
+      else
+      {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "map insert", "key already exists");
+      }
+
+      // key already exists
+      break;
+    }
+  }
+  
+  return ret;
+}
+
 //=============================================================================
 
 struct CapeMap_s
@@ -461,280 +522,20 @@ CapeMapNode cape_map_find_cmd (CapeMap self, const void* key, fct_cape_map_cmp o
 
 CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
 {
-  CapeMapNode y;
-  CapeMapNode z;          /* Top node to update balance factor, and parent. */
-  CapeMapNode p;
-  CapeMapNode q;          /* Iterator, and parent. */
-  CapeMapNode n;          /* Newly inserted node. */
-  CapeMapNode w;          /* New root of rebalanced subtree. */
-  int dir;                /* Direction to descend. */
+  CapeMapNode ret;
   
-  unsigned char da[128];   /* Cached comparison results. */
-  int k = 0;              /* Number of cached results. */
-  
-  memset (da, 0, 128);
-  
-  z = (CapeMapNode)&self->root;
-  y = self->root;
-  
-  if (y != NULL)
+  if (self->root)
   {
-    for (q = z, p = y; ; q = p, p = p->link[dir])
-    {
-      int cmp = self->cmp_fct (key, p->key, self->cmp_ptr);      
-      if (cmp == 0)
-      {
-        if (self->cmp_fct == cape_map__compare__s)
-        {
-          cape_log_fmt (CAPE_LL_WARN, "CAPE", "map insert", "key already exists '%s'", (char*)p->key);
-        }
-        else
-        {
-          cape_log_msg (CAPE_LL_WARN, "CAPE", "map insert", "key already exists");
-        }
-        
-        return p;
-      }
-      
-      if (p->balance != 0)
-      {
-        z = q, y = p, k = 0;
-      }
-      
-      da[k++] = dir = cmp > 0;
-      
-      if (p->tag[dir] == CAPE_MAP_THREAD)
-      {
-        break;
-      }
-    }
+    ret = cape_map_node_insert (self->root, key, val, self->cmp_fct, self->cmp_ptr);
   }
   else
   {
-    p = z;
-    dir = 0;
-  }
-  
-  n = cape_map_node_new (key, val);
-  
-  self->size++;
-  
-  n->tag[0] = n->tag[1] = CAPE_MAP_THREAD;
-  n->link[dir] = p->link[dir];
-  
-  if (self->root != NULL)
-  {
-    p->tag[dir] = CAPE_MAP_CHILD;
-    n->link[!dir] = p;
-  }
-  else
-  {
-    n->link[1] = NULL;
-  }
-  
-  p->link[dir] = n;
-  n->balance = 0;
-
-  if (self->root == n)
-  {
-    return n;
-  }
-  
-  for (p = y, k = 0; p != n; p = p->link[da[k]], k++)
-  {
-    if (da[k] == 0)
-    {
-      p->balance--;
-    }
-    else
-    {
-      p->balance++;
-    }
-  }
+    self->root = cape_map_node_new (key, val, NULL);
     
-  if (y->balance == -2)
-  {
-    CapeMapNode x = y->link[0];
+    ret = self->root;
+  }
 
-    if (x->balance == -1)
-    {
-      w = x;
-
-      if (x->tag[1] == CAPE_MAP_THREAD)
-      {
-        x->tag[1] = CAPE_MAP_CHILD;
-        y->tag[0] = CAPE_MAP_THREAD;
-        y->link[0] = x;
-      }
-      else
-      {
-        y->link[0] = x->link[1];
-      }
-      
-      x->link[1] = y;
-      x->balance = y->balance = 0;
-    }
-    else
-    {
-      assert (x->balance == +1);
-      
-      w = x->link[1];
-      x->link[1] = w->link[0];
-      w->link[0] = x;
-      y->link[0] = w->link[1];
-      w->link[1] = y;
-      
-      if (w->balance == -1)
-      {
-        x->balance = 0, y->balance = +1;
-      }
-      else if (w->balance == 0)
-      {
-        x->balance = y->balance = 0;
-      }
-      else /* |w->tavl_balance == +1| */
-      {
-        x->balance = -1, y->balance = 0;
-      }
-      
-      w->balance = 0;
-      
-      if (w->tag[0] == CAPE_MAP_THREAD)
-      {
-        x->tag[1] = CAPE_MAP_THREAD;
-        x->link[1] = w;
-        w->tag[0] = CAPE_MAP_CHILD;
-      }
-      
-      if (w->tag[1] == CAPE_MAP_THREAD)
-      {
-        y->tag[0] = CAPE_MAP_THREAD;
-        y->link[0] = w;
-        w->tag[1] = CAPE_MAP_CHILD;
-      }
-    }
-  }
-  else if (y->balance == +2)
-  {
-    CapeMapNode x = y->link[1];
-    
-    if (x->balance == +1)
-    {
-      w = x;
-      if (x->tag[0] == CAPE_MAP_THREAD)
-      {
-        x->tag[0] = CAPE_MAP_CHILD;
-        y->tag[1] = CAPE_MAP_THREAD;
-        y->link[1] = x;
-      }
-      else
-      {
-        y->link[1] = x->link[0];
-      }
-      
-      x->link[0] = y;
-      x->balance = y->balance = 0;
-    }
-    else
-    {
-      assert (x->balance == -1);
-      
-      w = x->link[0];
-      
-      x->link[0] = w->link[1];
-      w->link[1] = x;
-      y->link[1] = w->link[0];
-      w->link[0] = y;
-      
-      if (w->balance == +1)
-      {
-        x->balance = 0, y->balance = -1;
-      }
-      else if (w->balance == 0)
-      {
-        x->balance = y->balance = 0;
-      }
-      else /* |w->tavl_balance == -1| */
-      {
-        x->balance = +1, y->balance = 0;
-      }
-      
-      w->balance = 0;
-      
-      if (w->tag[0] == CAPE_MAP_THREAD)
-      {
-        y->tag[1] = CAPE_MAP_THREAD;
-        y->link[1] = w;
-        w->tag[0] = CAPE_MAP_CHILD;
-      }
-      
-      if (w->tag[1] == CAPE_MAP_THREAD)
-      {
-        x->tag[0] = CAPE_MAP_THREAD;
-        x->link[0] = w;
-        w->tag[1] = CAPE_MAP_CHILD;
-      }
-    }
-  }
-  else
-  {
-    return n;
-  }
-    
-  z->link[y != z->link[0]] = w;
-    
-  return n;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeMapNode cape_map_find_parent (CapeMap self, CapeMapNode node)
-{
-  if (node != self->root)
-  {
-    CapeMapNode x;
-    CapeMapNode y;
-    
-    for (x = y = node; ; x = x->link[0], y = y->link[1])
-    {
-      if (y->tag[1] == CAPE_MAP_THREAD)
-      {
-        CapeMapNode p = y->link[1];
-        
-        if (p == NULL || p->link[0] != node)
-        {
-          while (x->tag[0] == CAPE_MAP_CHILD)
-          {
-            x = x->link[0];
-          }
-          
-          p = x->link[0];
-        }
-        
-        return p;
-      }
-      else if (x->tag[0] == CAPE_MAP_THREAD)
-      {
-        CapeMapNode p = x->link[0];
-        
-        if (p == NULL || p->link[1] != node)
-        {
-          while (y->tag[1] == CAPE_MAP_CHILD)
-          {
-            y = y->link[1];
-          }
-          
-          p = y->link[1];
-        }
-        
-        return p;
-      }
-    }
-  }
-  else
-  {
-    return (CapeMapNode) &self->root;
-  }
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
