@@ -2,6 +2,7 @@
 #define __CAPE_STC__MAP__H 1
 
 #include "sys/cape_export.h"
+#include "sys/cape_types.h"
 
 //=============================================================================
 
@@ -54,11 +55,13 @@ __CAPE_LIBEX   CapeMapNode       cape_map_extract           (CapeMap, CapeMapNod
 
 __CAPE_LIBEX   void              cape_map_del_node          (CapeMap, CapeMapNode*);      // calls the onDestroy callback and releases the node
 
-__CAPE_LIBEX   unsigned long     cape_map_size              (CapeMap);
+__CAPE_LIBEX   number_t          cape_map_size              (CapeMap);
 
 __CAPE_LIBEX   CapeMapNode       cape_map_first             (CapeMap);
 
 __CAPE_LIBEX   CapeMapNode       cape_map_last              (CapeMap);
+
+__CAPE_LIBEX   number_t          cape_map_max_height        (CapeMap);
 
 //-----------------------------------------------------------------------------
 
@@ -72,6 +75,8 @@ __CAPE_LIBEX   void              cape_map_node_del          (CapeMapNode*, fct_c
 
 __CAPE_LIBEX   void*             cape_map_node_mv           (CapeMapNode);                // returns the value and replace it with NULL
 
+__CAPE_LIBEX   CapeMapNode       cape_map_node_delete       (CapeMapNode);                // delets the node
+
 //-----------------------------------------------------------------------------
 
 typedef void (__STDCALL *fct_cape_map__on_clone) (void* key_original, void* val_original, void** key_clone, void** val_clone);
@@ -84,7 +89,7 @@ typedef struct
 {  
   CapeMapNode node;    // the tree node
   int direction;       // the direction of the cursor
-  int position;        // the current position
+  number_t position;        // the current position
   
 } CapeMapCursor;
 

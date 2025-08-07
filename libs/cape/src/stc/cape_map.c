@@ -60,6 +60,7 @@ struct CapeMapNode_s
   CapeMapNode right;         // the right node as reference
   
   number_t height;
+  char balance_factor;       // the balance factor to indicate height
   
   CapeMapNode parent;        // we need this for traversal
 };
@@ -77,6 +78,8 @@ CapeMapNode cape_map_node_new (void* key, void* val, CapeMapNode parent)
   self->right = NULL;
   
   self->height = 0;
+  self->balance_factor = 0;
+  
   self->parent = parent;
   
   return self;
@@ -100,19 +103,6 @@ void cape_map_node_del (CapeMapNode* p_self, fct_cape_map_destroy on_del)
     if (self->right)
     {
       cape_map_node_del (&(self->right), on_del);
-    }
-
-    // correct parent assignments
-    if (self->parent)
-    {
-      if (self->parent->left == self)
-      {
-        self->parent->left = NULL;
-      }
-      else if (self->parent->right == self)
-      {
-        self->parent->right = NULL;
-      }
     }
 
     if (on_del)
@@ -385,8 +375,105 @@ CapeMapNode cape_map_node_prev (CapeMapNode self)
 
 //-----------------------------------------------------------------------------
 
+void cape_map_node__insert__fix_left_inbalance (CapeMapNode self)
+{
+  CapeMapNode ret = self;
+  
+  if (self->left->balance_factor == self->balance_factor)  // -1, -1
+  {
+    ret = cape_map_node__rotate_right (self);
+    
+    ret->balance_factor = ret->right->balance_factor = 0;
+  }
+  else  // 1, -1
+  {
+    char old_balance_factor = self->left->right->balance_factor;
+      
+    cape_map_node__rotate_left (self->left);
+    
+    ret = cape_map_node__rotate_right (self);
+    
+    ret->balance_factor = 0;
+    
+    if (old_balance_factor == -1)
+    {
+      ret->left->balance_factor = 0;
+      ret->right->balance_factor = 1;
+    }
+    else if (old_balance_factor == 1)
+    {
+      ret->left->balance_factor = -1;
+      ret->right->balance_factor = 0;
+    }
+    else if (old_balance_factor == 0)
+    {
+      ret->left->balance_factor = 0;
+      ret->right->balance_factor = 0;
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeMapNode cape_map_node_insert (CapeMapNode self, void* key, void* val, fct_cape_map_cmp cmp_fct, void* user_ptr)
 {
+  /*
+  CapeMapNode current, parent;
+  CapeMapNode ret = NULL;
+  
+  current = self->left;
+  parent = self;
+  
+  while (current)
+  {
+    int compare_result = cmp_fct (key, current->key, user_ptr);
+
+    parent = current;
+    current = (compare_result < 0) ? current->left : current->right;
+  }
+  
+  current = ret = cape_map_node_new (key, val, parent);
+  
+  if (parent == self || cmp_fct (key, parent->key, user_ptr) < 0)
+  {
+    parent->left = current;
+  }
+  else
+  {
+    parent->right = current;
+  }
+  
+  while (current != self->left)
+  {
+    if (current == parent->left)
+    {
+      if (parent->balance_factor == 1)
+      {
+        parent->balance_factor = 0;  // leave with height unchanged
+        break;
+      }
+      else if (parent->balance_factor == 0)
+      {
+        parent->balance_factor = -1; // continue with height increased
+      }
+      else if (parent->balance_factor == -1)
+      {
+        cape_map_node__insert__fix_left_inbalance (parent);
+        break;
+      }
+    }
+    else
+    {
+      
+      
+    }
+  }
+  
+  return ret;
+   */
+   
   CapeMapNode ret = NULL;
   CapeMapNode current_node = self;
   
@@ -484,11 +571,158 @@ CapeMapNode cape_map_node__find_target (CapeMapNode self)
 
 //-----------------------------------------------------------------------------
 
-CapeMapNode cape_map_node__delete (CapeMapNode self)
+void cape_map_node__swap (CapeMapNode self, CapeMapNode repl)
 {
-  CapeMapNode target = cape_map_node__find_target (self);
+  CapeMapNode self_left = self->left;
+  CapeMapNode self_right = self->right;
+  CapeMapNode self_parent = self->parent;
 
-  return target;
+  CapeMapNode repl_left = self->left;
+  CapeMapNode repl_right = self->right;
+  CapeMapNode repl_parent = self->parent;
+
+  if (self_parent)
+  {
+    if (self_parent->left == self)
+    {
+      self_parent->left = repl;
+    }
+    else
+    {
+      self_parent->right = repl;
+    }
+  }
+
+  if (repl_parent)
+  {
+    if (repl_parent->left == repl)
+    {
+      repl_parent->left = self;
+    }
+    else
+    {
+      repl_parent->right = self;
+    }
+  }
+
+  if (self_left)
+  {
+    // parent must exists
+    self_left->parent = repl;
+  }
+  
+  if (repl_left)
+  {
+    // parent must exists
+    repl_left->parent = self;
+  }
+
+  if (self_right)
+  {
+    // parent must exists
+    self_right->parent = repl;
+  }
+
+  if (repl_right)
+  {
+    // parent must exists
+    repl_right->parent = self;
+  }
+
+  self->left = repl_left == self ? repl : repl_left;
+  self->right = repl_right == self ? repl : repl_right;
+
+  repl->left = self_left == repl ? self : self_left;
+  repl->right = self_right == repl ? self : self_right;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node_delete__one_child (CapeMapNode self, CapeMapNode child)
+{
+  CapeMapNode parent = self->parent;
+  
+  if (parent)
+  {
+    if (child)
+    {
+      child->parent = parent;
+    }
+
+    if (parent->left == self)
+    {
+      parent->left = child;
+    }
+    else
+    {
+      parent->right = child;
+    }
+    
+    return NULL;
+  }
+  else  // root node
+  {
+    if (child)
+    {
+      child->parent = NULL;
+    }
+    
+    return child;   // new root node
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node_delete__two_children (CapeMapNode self)
+{
+  CapeMapNode successor = cape_map_node__most_left (self->right);
+  
+  // swap nodes
+  cape_map_node__swap (self, successor);
+  
+  return cape_map_node_delete (successor);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMapNode cape_map_node_delete (CapeMapNode self)
+{
+  if (self->left)
+  {
+    if (self->right)
+    {
+      return cape_map_node_delete__two_children (self);
+    }
+    else
+    {
+      return cape_map_node_delete__one_child (self, self->left);
+    }
+  }
+  else
+  {
+    if (self->right)
+    {
+      return cape_map_node_delete__one_child (self, self->right);
+    }
+    else
+    {
+      return cape_map_node_delete__one_child (self, NULL);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_map_node__max_height (CapeMapNode self)
+{
+  if (self)
+  {
+    return 1 + cape_max_n (cape_map_node__max_height (self->left), cape_map_node__max_height (self->right));
+  }
+  else
+  {
+    return 0;
+  }
 }
 
 //=============================================================================
@@ -574,12 +808,16 @@ CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
   if (self->root)
   {
     ret = cape_map_node_insert (self->root, key, val, self->cmp_fct, self->cmp_ptr);
+    
+    self->size++;
   }
   else
   {
     self->root = cape_map_node_new (key, val, NULL);
-    
+
     ret = self->root;
+    
+    self->size = 1;
   }
 
   return ret;
@@ -589,7 +827,9 @@ CapeMapNode cape_map_insert (CapeMap self, void* key, void* val)
 
 CapeMapNode cape_map_extract (CapeMap self, CapeMapNode node)
 {
-  self->root = cape_map_node__delete (node);
+  cape_map_node_delete (node);
+  
+  return node;
 }
 
 //-----------------------------------------------------------------------------
@@ -609,7 +849,7 @@ void cape_map_erase (CapeMap self, CapeMapNode node)
 
 //-----------------------------------------------------------------------------
 
-unsigned long cape_map_size (CapeMap self)
+number_t cape_map_size (CapeMap self)
 {
   return self->size;
 }
@@ -626,6 +866,13 @@ CapeMapNode cape_map_first (CapeMap self)
 CapeMapNode cape_map_last (CapeMap self)
 {
   return cape_map_node__most_right (self->root);
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_map_max_height (CapeMap self)
+{
+  return cape_map_node__max_height (self->root);
 }
 
 //-----------------------------------------------------------------------------
