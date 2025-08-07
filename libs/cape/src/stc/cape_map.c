@@ -90,18 +90,6 @@ void cape_map_node_del (CapeMapNode* p_self, fct_cape_map_destroy on_del)
   {
     CapeMapNode self = *p_self;
     
-    // delete all nodes from the left
-    if (self->left)
-    {
-      cape_map_node_del (&(self->left), on_del);
-    }
-
-    // delete all nodes from the right
-    if (self->right)
-    {
-      cape_map_node_del (&(self->right), on_del);
-    }
-
     // correct parent assignments
     if (self->parent)
     {
@@ -113,6 +101,18 @@ void cape_map_node_del (CapeMapNode* p_self, fct_cape_map_destroy on_del)
       {
         self->parent->right = NULL;
       }
+    }
+    
+    // delete all nodes from the left
+    if (self->left)
+    {
+      cape_map_node_del (&(self->left), on_del);
+    }
+
+    // delete all nodes from the right
+    if (self->right)
+    {
+      cape_map_node_del (&(self->right), on_del);
     }
 
     if (on_del)
