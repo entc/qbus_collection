@@ -410,7 +410,7 @@ void qwebs_prot_websocket_connection__adjust_buffer (QWebsProtWebsocketConnectio
   }
   
   // replace the buffer
-  cape_stream_replace_mv (&(self->buffer), &h);f fdaa
+  cape_stream_replace_mv (&(self->buffer), &h);
 }
 
 //-----------------------------------------------------------------------------

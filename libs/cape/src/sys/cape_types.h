@@ -1,6 +1,8 @@
 #ifndef __CAPE_TYPES__H
 #define __CAPE_TYPES__H 1
 
+#include <sys/cape_export.h>
+
 #if defined __APPLE__
 
 #include <malloc/malloc.h>
@@ -75,6 +77,12 @@ static void cape_free (void* ptr)
 
 #define CAPE_NEW(type) (type*)cape_alloc(sizeof(type))
 #define CAPE_DEL(ptr, type) { memset(*ptr, 0, sizeof(type)); free(*ptr); *ptr = 0; }
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   number_t           cape_max_n (number_t x, number_t y);
+
+__CAPE_LIBEX   number_t           cape_rand_n (number_t min, number_t max);
 
 //-----------------------------------------------------------------------------
 

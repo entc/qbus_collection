@@ -1,14 +1,4 @@
-PROJECT(cape)
-
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
-
-IF (CMAKE_VERSION VERSION_LESS "3.1")
-  IF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-  ENDIF ()
-ELSE ()
-  SET (CMAKE_CXX_STANDARD 11)
-ENDIF ()
 
 find_package(DLL QUIET)
 find_package(PThread)
@@ -39,6 +29,7 @@ SET(CAPE_STC_HEADERS
 #----------------------------------------------------------------------------------
 
 SET(CAPE_SYS_SOURCES
+  sys/cape_types.c
   sys/cape_init.c
   sys/cape_err.c
   sys/cape_log.c
@@ -56,6 +47,7 @@ SET(CAPE_SYS_SOURCES
 )
 
 SET(CAPE_SYS_HEADERS
+  sys/cape_types.h
   sys/cape_err.h
   sys/cape_log.h
   sys/cape_file.h

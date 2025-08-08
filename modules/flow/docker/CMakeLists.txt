@@ -4,7 +4,7 @@ PROJECT(globeon)
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)                         # activates -fPic on linux
 SET(CMAKE_MACOSX_RPATH 0)                                       # strip away rpath
-SET(CMAKE_BUILD_TYPE Debug)                                     # build type
+SET(CMAKE_BUILD_TYPE Release)                                     # build type
 SET(CMAKE_ENABLE_EXPORTS ON)
 SET(CMAKE_VERBOSE_MAKEFILE OFF)
 
