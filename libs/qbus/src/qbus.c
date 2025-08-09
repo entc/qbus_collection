@@ -274,7 +274,13 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 
 int qbus_response (QBus self, const CapeString module, QBusM msg, CapeErr err)
 {
-  
+  if (module)
+  {
+    
+    
+    
+    
+  }
 }
 
 //-----------------------------------------------------------------------------

@@ -670,6 +670,9 @@ void cape_map_clr (CapeMap self)
 {  
   // this will clear all nodes
   cape_map_node_del (&(self->root), self->del_fct);
+  
+  // reset the size
+  self->size = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -716,7 +719,11 @@ CapeMapNode cape_map_extract (CapeMap self, CapeMapNode node)
 {
   CapeMapNode ret = node;
   
+  // this will remove the node from the tree
   cape_map_node_delete (&ret, &(self->root));
+
+  // reduce the size
+  self->size--;
   
   return ret;
 }
@@ -939,5 +946,3 @@ void cape_map_cursor_erase (CapeMap self, CapeMapCursor* cursor)
 }
 
 //-----------------------------------------------------------------------------
-
-

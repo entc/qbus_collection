@@ -303,7 +303,7 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
       }
       else
       {
-        printf ("no on res\n");
+        cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
       }
     }
     
