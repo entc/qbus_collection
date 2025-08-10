@@ -39,5 +39,12 @@ target_link_libraries   (qbus cape qbus_pvd_common)
 # for local install
 INSTALL (TARGETS qbus DESTINATION lib)
 
+#----------------------------------------------------------------------------------
+
 SET (PVD_QBUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/pvd_qbus CACHE PATH "library path to qbus engines")
 message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
+
+SET (ADM_QBUS_DIR ${CMAKE_CURRENT_BINARY_DIR}/adm_qbus CACHE PATH "library path to qbus adapters")
+message (STATUS "ADM_QBUS_DIR  = ${ADM_QBUS_DIR}/${CMAKE_CFG_INTDIR}")
+
+#----------------------------------------------------------------------------------
