@@ -44,6 +44,10 @@ void JNICALL Java_QBus_qbwait (JNIEnv* env, jobject o, jlong ptr, jstring bind, 
 
   CapeErr err = cape_err_new ();
   
+  // TODO: replace bind and remote
+
+  CapeUdc arguments = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
   const char* bind_text = (*env)->GetStringUTFChars(env, bind, 0);
   const char* remote_text = (*env)->GetStringUTFChars(env, remote, 0);
   
@@ -64,7 +68,7 @@ void JNICALL Java_QBus_qbwait (JNIEnv* env, jobject o, jlong ptr, jstring bind, 
   }
   
   // use 4 workers
-  qbus_wait (qbus, bind_udc, remote_udc, 4, err);
+  qbus_wait (qbus, &arguments, err);
   
   cape_udc_del (&bind_udc);
   cape_udc_del (&remote_udc);

@@ -64,55 +64,39 @@ PyObject* py_object_qbus_wait (PyObject_QBus* self, PyObject* args, PyObject* kw
 {
   PyObject* ret = Py_None;
   
-  CapeUdc cape_arg1 = NULL;
-  CapeUdc cape_arg2 = NULL;
+  CapeUdc cape_argument = NULL;
   
-  PyObject* arg1;
-  PyObject* arg2;
+  PyObject* argument;
   
   CapeErr err = cape_err_new ();
   
-  if (!PyArg_ParseTuple (args, "OO", &arg1, &arg2))
+  if (!PyArg_ParseTuple (args, "O", &argument))
   {
     return NULL;
   }
   
-  if (arg1)
+  if (argument)
   {
-    cape_arg1 = py_transform_to_udc (arg1);
+    cape_argument = py_transform_to_udc (argument);
   }
   
-  if (arg2)
-  {
-    cape_arg2 = py_transform_to_udc (arg2);
-  }
-  
-  if ((NULL == cape_arg1) && (NULL == cape_arg2))
+  if (NULL == cape_argument)
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid input parameters");
     goto exit_and_error;
   }
   
-  if (cape_arg1)
+  if (cape_argument)
   {
-    CapeString h = cape_json_to_s (cape_arg1);
+    CapeString h = cape_json_to_s (cape_argument);
     
     printf ("B: %s\n", h);
     
     cape_str_del (&h);
   }
-  
-  if (cape_arg2)
-  {
-    CapeString h = cape_json_to_s (cape_arg2);
     
-    printf ("R: %s\n", h);
-    
-    cape_str_del (&h);
-  }
-  
   {
-    int res = qbus_wait (self->qbus, cape_arg1, cape_arg2, 4, err);
+    int res = qbus_wait (self->qbus, &cape_argument, err);
     if (res)
     {
       printf ("ERROR: %s\n", cape_err_text (err));
@@ -131,8 +115,7 @@ exit_and_error:
     ret = NULL;
   }
   
-  cape_udc_del (&cape_arg1);
-  cape_udc_del (&cape_arg2);
+  cape_udc_del (&cape_argument);
   
   cape_err_del (&err);
   
@@ -289,25 +272,25 @@ PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* 
   
   if (PYOBJECT_IS_STRING (default_val))
   {
-    const CapeString h = qbus_config_s (self->qbus, PYOBJECT_AS_STRING (name), PYOBJECT_AS_STRING (default_val));
+    const CapeString h = qbus_config_s (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PYOBJECT_AS_STRING (default_val));
 
     ret = PYOBJECT_FROM_STRING (h);
   }
   else if (PyLong_Check (default_val))
   {
-    number_t h = qbus_config_n (self->qbus, PYOBJECT_AS_STRING (name), PyLong_AsLong (default_val));
+    number_t h = qbus_config_n (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PyLong_AsLong (default_val));
     
     ret = PyLong_FromLong (h);
   }
   else if (PyFloat_Check (default_val))
   {
-    double h = qbus_config_f (self->qbus, PYOBJECT_AS_STRING (name), PyFloat_AsDouble (default_val));
+    double h = qbus_config_f (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PyFloat_AsDouble (default_val));
     
     ret = PyFloat_FromDouble (h);
   }
   else if (PyBool_Check (default_val))
   {
-    int h = qbus_config_b (self->qbus, PYOBJECT_AS_STRING (name), default_val == Py_True);
+    int h = qbus_config_b (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), default_val == Py_True);
     
     ret = PyBool_FromLong (h);
   }

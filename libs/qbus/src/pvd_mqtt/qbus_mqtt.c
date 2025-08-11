@@ -339,6 +339,7 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
     
   conn_opts.username = "test";
   conn_opts.password = "1234";
+  conn_opts.keepAliveInterval = 120;     // give the server more time to respond
   
   conn_opts.will = &last_will;
 

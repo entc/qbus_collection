@@ -7,7 +7,7 @@ IF(JAVA_INCLUDE_PATH)
 message(STATUS "JNI_INCLUDE_DIRS = ${JNI_INCLUDE_DIRS}")
 
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("." "../../../cape/src" "../../src" ${JNI_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES("." "../../../cape/src" "../.." ${JNI_INCLUDE_DIRS})
 
 set(ADAPTER_JAVA_SOURCES
   java_adapter.c
