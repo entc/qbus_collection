@@ -664,11 +664,30 @@ export class Graph {
 
       if (box.synced == false)
       {
+        this.rm_box (box, i);
+
+/*
         this.box__dissable (box);
         this.rd.removeChild (dom_el, box.dom_box);
 
         this.boxes.splice(i, 1);
+        */
       }
+    }
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public rm_box (box: GraphBox, index: number = this.boxes.findIndex ((b: GraphBox) => b == box))
+  {
+    if (index >= 0)
+    {
+      const dom_el = this.el_dom.nativeElement;
+
+      this.box__dissable (box);
+      this.rd.removeChild (dom_el, box.dom_box);
+
+      this.boxes.splice(index, 1);
     }
   }
 

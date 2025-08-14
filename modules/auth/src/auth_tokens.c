@@ -363,7 +363,7 @@ int auth_tokens_fetch__database_q5 (AuthTokens self, const CapeString token, QBu
       AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
       
       // fetch all rinfo from database
-      res = auth_rinfo_get (&rinfo, qin, err);
+      res = auth_rinfo_get (&rinfo, &(qin->rinfo), &(qin->cdata), err);
       if (res)
       {
         goto exit_and_cleanup;

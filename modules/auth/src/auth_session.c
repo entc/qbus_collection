@@ -69,11 +69,15 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString session_token = cape_str_uuid ();
   CapeString session_token_hash = NULL;
   CapeString session_locale = NULL;
+  CapeString sec = NULL;
   
   CapeString h1 = NULL;
   CapeString h2 = NULL;
   CapeString h3 = NULL;
-
+  
+  CapeString serialized_output = NULL;
+  CapeString encrypted_output = NULL;
+  
   AdblTrx trx = NULL;
   CapeUdc query_results = NULL;
   CapeUdc first_row = NULL;
@@ -94,16 +98,23 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  if (qin->rinfo == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_RINFO");
+    goto exit_and_cleanup;
+  }
+
+  sec = cape_udc_ext_s (qin->rinfo, "sec");
+  if (NULL == sec)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_SEC");
+    goto exit_and_cleanup;
+  }
+  
   switch (type)
   {
     case 1:
     {
-      if (qin->rinfo == NULL)
-      {
-        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_RINFO");
-        goto exit_and_cleanup;
-      }
-      
       self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
       if (self->wpid == 0)
       {
@@ -220,7 +231,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->wpid, self->gpid);
     
     // fetch all rinfo from database
-    res = auth_rinfo_get (&rinfo, msg, err);
+    res = auth_rinfo_get (&rinfo, &(msg->rinfo), &(msg->cdata), err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -388,21 +399,40 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   // set the vp
   cape_udc_add_n (first_row, "vp", session_ttl);
   
-  res = CAPE_ERR_NONE;
-  adbl_trx_commit (&trx, err);
 
-  // create the output
-  qout->cdata = cape_udc_mv (&first_row);
-  
   // add token
-  cape_udc_add_s_mv (qout->cdata, "token", &session_token);
+  cape_udc_add_s_mv (first_row, "token", &session_token);
   
   // add roles
-  cape_udc_add (qout->cdata, &roles);
+  cape_udc_add (first_row, &roles);
+
+  serialized_output = cape_json_to_s (first_row);
+  if (NULL == serialized_output)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize roles");
+    goto exit_and_cleanup;
+  }
+  
+  encrypted_output = qcrypt__encrypt (sec, serialized_output, err);
+  if (NULL == encrypted_output)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // create the output
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_s_mv (qout->cdata, "aitem", &encrypted_output);
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
   
 exit_and_cleanup:
   
   adbl_trx_rollback (&trx, err);
+  
+  cape_str_del (&serialized_output);
+  cape_str_del (&encrypted_output);
   
   cape_udc_del (&query_results);
   cape_udc_del (&roles);

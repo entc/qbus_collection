@@ -12,6 +12,8 @@ import { startWith, catchError, map } from 'rxjs/operators'
 export class QbngSwitchComponent {
 
   @Input('val') val: boolean;
+  @Input() disabled: boolean = false;
+
   @Output('onVal') onChange = new EventEmitter ();
 
   //-----------------------------------------------------------------------------

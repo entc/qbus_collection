@@ -62,7 +62,7 @@ void cape_aio_freader_del (CapeAioFileReader* p_self)
 #if defined __BSD_OS || defined __LINUX_OS
 
   // close the file handle
-  close ((number_t)(self->handle));
+  close ((int)((number_t)(self->handle)));
  
 #elif defined __WINDOWS_OS
 
@@ -82,7 +82,7 @@ static int __STDCALL cape_aio_freader_onEvent (void* ptr, int hflags, unsigned l
   
 #if defined __BSD_OS || defined __LINUX_OS
 
-  number_t bytes_read = read ((number_t)self->handle, self->bufdat, self->buflen);
+  number_t bytes_read = read ((int)((number_t)self->handle), self->bufdat, self->buflen);
 
   if (bytes_read > 0)
   {

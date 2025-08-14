@@ -900,12 +900,15 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
     AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, wpid, gpid);
     
     // fetch all rinfo from database
-    res = auth_rinfo_get (&rinfo, qout, err);
+    res = auth_rinfo_get (&rinfo, &(qout->rinfo), &(qout->cdata), err);
     if (res)
     {
       goto exit_and_cleanup;
     }
   }
+  
+  // add the hash from the password
+  cape_udc_add_s_mv (qout->rinfo, "sec", &(self->secret));
 
   res = CAPE_ERR_NONE;
   
