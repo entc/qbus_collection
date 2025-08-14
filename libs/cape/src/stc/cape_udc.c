@@ -1677,13 +1677,20 @@ int cape_udc_cto_b (CapeUdc self)
     }
     case CAPE_UDC_FLOAT:
     {
-      double* h = self->data;
+      double* p_val = self->data;
 
       // change type and set value
       self->type = CAPE_UDC_BOOL;
-      self->data = (void*)((number_t)(h == 0 ? FALSE : TRUE));
 
-      CAPE_DEL (&h, double);
+      if (p_val)
+      {
+        self->data = (void*)((number_t)(*p_val == .0 ? FALSE : TRUE));
+        CAPE_DEL (&p_val, double);
+      }
+      else
+      {
+        self->data = FALSE;
+      }
 
       return TRUE;
     }

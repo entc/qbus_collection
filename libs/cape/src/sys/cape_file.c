@@ -1236,9 +1236,8 @@ void cape_fs_ac_del (CapeFileAc* p_self)
 {
   if (*p_self)
   {
-    CapeFileAc self = *p_self;
-
 #ifdef __WINDOWS_OS
+    CapeFileAc self = *p_self;
 
 		CAPE_FREE(self->sp);
 

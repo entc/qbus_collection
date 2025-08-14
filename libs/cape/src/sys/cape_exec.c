@@ -224,7 +224,7 @@ int cape_exec_run__recording (CapeExec self, pid_t pid, int fd_stdout, int fd_st
     FD_SET (fd_stdout, &fdsread);
     FD_SET (fd_stderr, &fdsread);
 
-    w = waitpid (pid, &status, WUNTRACED | WCONTINUED);
+    //w = waitpid (pid, &status, WUNTRACED | WCONTINUED);
 
     // run select
     {

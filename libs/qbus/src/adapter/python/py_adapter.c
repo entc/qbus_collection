@@ -72,31 +72,14 @@ static int __STDCALL py_qbus_instance__on_done (QBus qbus, void* ptr, CapeErr er
   // assign object
   qbus_pyobj->qbus = qbus;
   
-  PyObject* result;
-  
   {
     PyObject* arglist = Py_BuildValue ("(OO)", qbus_pyobj, ctx->obj);
   
     ctx->obj = PyObject_Call (ctx->on_done, arglist, NULL);
     
-    //result = PyEval_CallObject (ctx->on_done, arglist);
-    
     Py_DECREF (arglist);
   }
   
-  if (result)
-  {
-    Py_DECREF (result);
-  }
-  else
-  {
-    // some error happened, tell python
-    PyErr_Print();
-    
-    // we need to clean, otherwise it will crash at some point
-    PyErr_Clear();    
-  }
-
   Py_DECREF(qbus_pyobj);
   
   Py_DECREF (ctx->on_init);

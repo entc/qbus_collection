@@ -1078,7 +1078,7 @@ CapeString cape_str_trim_utf8 (const CapeString source)
   const unsigned char* c = (const unsigned char*)source;
 
   const unsigned char* pos_s = c;
-  const unsigned char* pos_e = c;
+  const unsigned char* pos_e;
 
   number_t diff;
 

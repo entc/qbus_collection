@@ -619,7 +619,7 @@ void qwebs_prot_http_del (QWebsProtHttp* p_self)
 {
   if (*p_self)
   {
-    QWebsProtHttp self = *p_self;
+    //QWebsProtHttp self = *p_self;
 
     CAPE_DEL (p_self, struct QWebsProtHttp_s);
   }
