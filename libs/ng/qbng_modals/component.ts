@@ -111,3 +111,18 @@ import { QbngErrorHolder, QbngOptionHolder } from './header';
   }
 
 }
+
+//=============================================================================
+
+@Component({
+  selector: 'qbng-info-option-modal-component',
+  templateUrl: './modal_info_option.html'
+}) export class QbngInfoOptionModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, public option: QbngOptionHolder)
+  {
+  }
+
+}

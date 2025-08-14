@@ -101,13 +101,15 @@ export class AuthSession
     this.user = user;
     this.pass = pass;
 
-    return this.conn.session__login (new AuthLoginCreds (wpid, this.user, this.pass, this.vault, code, browser_info)).pipe (map ((slogin: AuthLoginItem) => {
+    let creds: AuthLoginCreds = new AuthLoginCreds (wpid, user, pass, this.vault, code, browser_info, this.gen_vsec (user, pass));
+
+    return this.conn.session__login (creds).pipe (map ((slogin: AuthLoginItem) => {
 
       let sitem: AuthSessionItem = slogin.sitem;
       if (sitem)
       {
         // set the user
-        sitem.user = this.user;
+        sitem.user = user;
 
         this.roles.next (sitem['roles']);
 
@@ -214,10 +216,17 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  private gen_vsec (user: string, pass: string): string
+  {
+    return CryptoJS.SHA256 (this.user + ":" + this.pass).toString();
+  }
+
+  //---------------------------------------------------------------------------
+
   private storage_set (sitem: AuthSessionItem): void
   {
     // encode the vsec
-    sitem.vsec = CryptoJS.SHA256 (this.user + ":" + this.pass).toString();
+    sitem.vsec = this.gen_vsec (this.user, this.pass);
 
     sessionStorage.setItem (SESSION_STORAGE_VSEC, sitem.vsec);
     sessionStorage.setItem (SESSION_STORAGE_TOKEN, sitem.token);
@@ -599,7 +608,7 @@ export class AuthUploadItem
 
 export class AuthLoginCreds
 {
-  constructor (public wpid: number, public user: string, public pass: string, public vault: boolean, public code: string, public browser_info: object) {}
+  constructor (public wpid: number, public user: string, public pass: string, public vault: boolean, public code: string, public browser_info: object, public vsec: string) {}
 }
 
 export class AuthWpInfo

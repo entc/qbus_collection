@@ -367,7 +367,7 @@ int auth_rinfo__results (AuthRInfo self, CapeUdc results, CapeUdc rinfo, CapeUdc
 //---------------------------------------------------------------------------
 
 // TODO: replace this method by a similar as auth_rinfo_get_gpid
-int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
+int auth_rinfo_get (AuthRInfo* p_self, CapeUdc* p_rinfo, CapeUdc* p_cdata, CapeErr err)
 {
   int res;
   AuthRInfo self = *p_self;
@@ -403,23 +403,30 @@ int auth_rinfo_get (AuthRInfo* p_self, QBusM qout, CapeErr err)
   }
   
   // create the rinfo and cdata node
-  if (qout->rinfo == NULL)
+  if (p_rinfo && p_cdata)
   {
-    qout->rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+    if (NULL == *p_rinfo)
+    {
+      *p_rinfo = cape_udc_new (CAPE_UDC_NODE, NULL);
+    }
+
+    if (NULL == *p_cdata)
+    {
+      *p_cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    }
+
+    res = auth_rinfo__results (self, results, *p_rinfo, *p_cdata, err);
+    
+    if (cape_udc_size (*p_cdata) == 0)
+    {
+      cape_udc_del (p_cdata);
+    }
   }
-  
-  if (qout->cdata == NULL)
+  else
   {
-    qout->cdata = cape_udc_new (CAPE_UDC_LIST, NULL);
+    res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "ERR.NO_RINFO");
   }
-  
-  res = auth_rinfo__results (self, results, qout->rinfo, qout->cdata, err);
-  
-  if (cape_udc_size (qout->cdata) == 0)
-  {
-    cape_udc_del (&(qout->cdata));
-  }
-  
+    
 exit_and_cleanup:
   
   cape_udc_del (&results);

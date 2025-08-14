@@ -26,7 +26,7 @@ __CAPE_LIBEX   void       auth_rino_del         (AuthRInfo*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int        auth_rinfo_get        (AuthRInfo*, QBusM qout, CapeErr err);
+__CAPE_LIBEX   int        auth_rinfo_get        (AuthRInfo*, CapeUdc* p_rinfo, CapeUdc* p_cdata, CapeErr err);
 
 __CAPE_LIBEX   int        auth_rinfo_get_gpid   (AuthRInfo*, number_t gpid, CapeUdc* p_rinfo, CapeUdc* p_cdata, CapeErr err);
 

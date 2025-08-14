@@ -157,7 +157,7 @@ import { ConnService } from '@conn/conn_service';
       }
       else
       {
-        this.router.navigate([url], {});
+        this.router.navigateByUrl(url, {});
       }
 
     });
