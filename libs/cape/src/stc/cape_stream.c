@@ -8,7 +8,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <memory.h>
-#include <limits.h>
 #include <stdlib.h>
 
 #if defined __WINDOWS_OS
