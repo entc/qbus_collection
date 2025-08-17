@@ -27,10 +27,10 @@
 
 #else
 
-#include <malloc.h>
-#include <memory.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <malloc.h>
+#include <memory.h>
 
 #define u_t unsigned
 #define number_t long
@@ -44,16 +44,16 @@
 static void* cape_alloc (number_t size)
 {
   void* ptr = malloc (size);
-  
+
   if (ptr == NULL)
   {
     // write some last words
     printf ("*** FATAL *** CAN't ALLOCATE MEMORY *** FATAL ***\n");
-    
+
     // abort everything
     abort ();
   }
-  
+
   memset (ptr, 0, size);
 
   return ptr;
@@ -106,7 +106,7 @@ typedef float               cape_float32;
 #else
 
 #include <sys/types.h>
-#include <stdint.h> 
+#include <stdint.h>
 
 // have cape specific declaration
 typedef uint64_t    cape_uint64;
