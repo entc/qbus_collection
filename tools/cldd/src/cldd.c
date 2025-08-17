@@ -138,14 +138,26 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cp_binary (const CapeString file, const CapeString image_path, CapeErr err)
+int cp_binary (const CapeString file, const CapeString image_path, const CapeString subdir_path, CapeErr err)
 {
   int res;
 
   const CapeString filename = cape_fs_split (file, NULL);
 
-  CapeString dest_path = cape_fs_path_merge (image_path, "bin");
-  CapeString dest_file = cape_fs_path_merge (dest_path, filename);
+  // local objects
+  CapeString dest_path = NULL;
+  CapeString dest_file = NULL;
+  
+  if (subdir_path)
+  {
+    dest_path = cape_fs_path_merge_3 (image_path, "bin", subdir_path);
+  }
+  else
+  {
+    dest_path = cape_fs_path_merge (image_path, "bin");
+  }
+
+  dest_file = cape_fs_path_merge (dest_path, filename);
 
   res = cp_file (file, dest_path, dest_file, err);
 
@@ -237,6 +249,7 @@ int main (int argc, char *argv[])
 
   // adjust logger output
   cape_log_set_level (CAPE_LL_INFO);
+  cape_log_msg (CAPE_LL_INFO, "CLDD", "main", "start CLDD app");
 
   if (argc <= 2)
   {
@@ -256,7 +269,7 @@ int main (int argc, char *argv[])
   }
 
   // copy the binary file
-  res = cp_binary (argv[1], argv[2], err);
+  res = cp_binary (argv[1], argv[2], (argc >= 3) ? argv[3] : NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
