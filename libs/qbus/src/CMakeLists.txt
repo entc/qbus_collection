@@ -20,6 +20,7 @@ SET (QBUS_LIBRARY_SOURCES
   "qbus_message.c"
   "qbus_config.c"
   "qbus_methods.c"
+  "qbus_agent.c"
 )
 
 SET (QBUS_LIBRARY_HEADERS
@@ -31,6 +32,7 @@ SET (QBUS_LIBRARY_HEADERS
   "qbus_message.h"
   "qbus_config.h"
   "qbus_methods.h"
+  "qbus_agent.h"
 )
 
 add_library             (qbus SHARED ${QBUS_LIBRARY_SOURCES} ${QBUS_LIBRARY_HEADERS})

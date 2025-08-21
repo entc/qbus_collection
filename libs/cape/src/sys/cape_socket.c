@@ -28,8 +28,11 @@
 
 //-----------------------------------------------------------------------------
 
-void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
+int cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port, CapeErr err)
 {
+  int res;
+  const struct hostent* server;
+  
   memset (addr, 0, sizeof(struct sockaddr_in));
 
   addr->sin_family = AF_INET;      // set the network type
@@ -39,25 +42,30 @@ void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
   if (host == NULL)
   {
     addr->sin_addr.s_addr = INADDR_ANY;
+    
+    res = CAPE_ERR_NONE;
+    goto cleanup_and_exit;
   }
-  else
+
+  // try to resolve the DNS entry
+  server = gethostbyname (host);
+  
+  if (NULL == server)
   {
-    const struct hostent* server = gethostbyname(host);
-    if(server)
-    {
-      memcpy (&(addr->sin_addr.s_addr), server->h_addr, server->h_length);
-    }
-    else
-    {
-      CapeErr err = cape_err_new ();
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname ['%s']: %s", host, cape_err_text (err));
 
-      cape_err_lastOSError (err);
-
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname: %s", cape_err_text (err));
-
-      cape_err_del (&err);
-    }
+    res = cape_err_code (err);
+    goto cleanup_and_exit;
   }
+    
+  memcpy (&(addr->sin_addr.s_addr), server->h_addr, server->h_length);
+  res = CAPE_ERR_NONE;
+  
+cleanup_and_exit:
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -71,7 +79,10 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
   struct sockaddr_in addr;
   long sock;
 
-  cape_sock__set_host (&addr, host, port);
+  if (cape_sock__set_host (&addr, host, port, err))
+  {
+    goto exit;
+  }
 
   // create socket
   sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -122,7 +133,10 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   struct sockaddr_in addr;
   long sock = -1;
 
-  cape_sock__set_host (&addr, host, port);
+  if (cape_sock__set_host (&addr, host, port, err))
+  {
+    goto exit;
+  }
 
   // create socket
   sock = socket (AF_INET, SOCK_STREAM, 0);
@@ -171,7 +185,10 @@ void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
   struct sockaddr_in addr;
   long sock = -1;
 
-  cape_sock__set_host (&addr, host, port);
+  if (cape_sock__set_host (&addr, host, port, err))
+  {
+    goto exit_and_cleanup;
+  }
 
   // create socket as datagram
 #if defined __LINUX_OS
@@ -227,7 +244,10 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
   struct sockaddr_in addr;
   long sock = -1;
 
-  cape_sock__set_host (&addr, host, port);
+  if (cape_sock__set_host (&addr, host, port, err))
+  {
+    goto exit_and_cleanup;
+  }
 
   // create socket
 #if defined __LINUX_OS
