@@ -529,7 +529,7 @@ int flow_workflow_perm_set (FlowWorkflow* p_self, QBusM qin, QBusM qout, CapeErr
   {
     if (perm)
     {
-      int id;
+      number_t id;
       
       CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
       

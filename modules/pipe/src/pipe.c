@@ -159,9 +159,9 @@ static int __STDCALL qbus_pipe_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 {
   int res;
 
-  const CapeString path = qbus_config_s (qbus, "path", "/tmp");
-  const CapeString name = qbus_config_s (qbus, "name", "qmod_pipe");
-  const CapeString regex = qbus_config_s (qbus, "regex", ":(.*): to=(.*), relay");
+  const CapeString path = qbus_config_s (qbus_config (qbus), "path", "/tmp");
+  const CapeString name = qbus_config_s (qbus_config (qbus), "name", "qmod_pipe");
+  const CapeString regex = qbus_config_s (qbus_config (qbus), "regex", ":(.*): to=(.*), relay");
 
   const char* error;
   int erroffset;
