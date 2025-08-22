@@ -5,6 +5,7 @@
 #include <sys/cape_socket.h>
 #include <stc/cape_cursor.h>
 #include <stc/cape_map.h>
+#include <fmt/cape_json.h>
 
 //-----------------------------------------------------------------------------
 
@@ -119,8 +120,11 @@ number_t qbus_agent_context_parse (QBusAgentContext self, const char* bufdat, nu
 
 struct QBusAgent_s
 {
-  QBusRouter router;             // reference
-  CapeMap buffer_matrix;         // stores multiple buffers
+  QBusRouter router;                 // reference
+  CapeMap buffer_matrix;             // stores multiple buffers
+  
+  CapeAioSocketUdp aio_socket_udp;   // reference
+  CapeAioContext aio_ctx;            // reference
 };
 
 //-----------------------------------------------------------------------------
@@ -143,6 +147,9 @@ QBusAgent qbus_agent_new (QBusRouter router)
 
   self->router = router;
   self->buffer_matrix = cape_map_new (cape_map__compare__s, qbus_agent_map_on_del, NULL);
+  
+  self->aio_socket_udp = NULL;
+  self->aio_ctx = NULL;
 
   return self;
 }
@@ -165,9 +172,10 @@ void qbus_agent_del (QBusAgent* p_self)
 
 void __STDCALL qbus_agent__on_sent_ready (void* user_ptr, CapeAioSocketUdp sock, void* userdata)
 {
-  QBusAgent self = user_ptr;
-
-  
+  if (userdata)
+  {
+    CapeStream s = userdata; cape_stream_del (&s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -205,6 +213,21 @@ void __STDCALL qbus_agent__on_recv_from (void* user_ptr, CapeAioSocketUdp sock, 
     {
       CapeUdc known_modules = qbus_router_list (self->router);
       
+      // serialize it
+      CapeString h = cape_json_to_s (known_modules);
+      
+      CapeStream s = cape_stream_new ();
+      
+      cape_stream_append_32 (s, 101, TRUE);
+
+      cape_stream_append_64 (s, cape_str_size (h), TRUE);
+
+      cape_stream_append_str (s, h);
+
+      cape_aio_socket__udp__send (self->aio_socket_udp, self->aio_ctx, cape_stream_data (s), cape_stream_size (s), s, host, 10161); 
+      
+      cape_str_del (&h);
+      
       break;
     }    
   }
@@ -214,8 +237,10 @@ void __STDCALL qbus_agent__on_recv_from (void* user_ptr, CapeAioSocketUdp sock, 
 
 void __STDCALL qbus_agent__on_done (void* user_ptr, void* userdata)
 {
-  QBusAgent self = user_ptr;
-  
+  if (userdata)
+  {
+    CapeStream s = userdata; cape_stream_del (&s);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -240,8 +265,12 @@ int qbus_agent_init (QBusAgent self, CapeAioContext aio, number_t port, CapeErr 
   // set the callbacks
   cape_aio_socket__udp__cb (aio_socket, self, qbus_agent__on_sent_ready, qbus_agent__on_recv_from, qbus_agent__on_done);
   
+  // save for the sending
+  self->aio_socket_udp = aio_socket;
+  self->aio_ctx = aio;
+  
   // add to the AIO event broker
-  cape_aio_socket__udp__add (&aio_socket, aio, CAPE_AIO_WRITE | CAPE_AIO_READ | CAPE_AIO_ERROR);  
+  cape_aio_socket__udp__add (&aio_socket, aio, CAPE_AIO_READ | CAPE_AIO_ERROR);  
   
   res = CAPE_ERR_NONE;
   

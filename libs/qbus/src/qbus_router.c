@@ -196,7 +196,20 @@ const CapeString qbus_router_get (QBusRouter self, const CapeString name)
 
 CapeUdc qbus_router_list (QBusRouter self)
 {
+  CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
   
+  CapeMapCursor* cursor = cape_map_cursor_new (self->routes, CAPE_DIRECTION_FORW);
+  
+  while (cape_map_cursor_next (cursor))
+  {
+    CapeList cids = cape_map_node_value (cursor->node);
+    
+    
+  }
+  
+  cape_map_cursor_del (&cursor);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
