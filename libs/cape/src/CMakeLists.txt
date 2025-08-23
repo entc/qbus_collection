@@ -42,6 +42,7 @@ SET(CAPE_STC_HEADERS
 #----------------------------------------------------------------------------------
 
 SET(CAPE_SYS_SOURCES
+  sys/cape_types.c
   sys/cape_init.c
   sys/cape_err.c
   sys/cape_log.c
@@ -59,6 +60,7 @@ SET(CAPE_SYS_SOURCES
 )
 
 SET(CAPE_SYS_HEADERS
+  sys/cape_types.h
   sys/cape_err.h
   sys/cape_log.h
   sys/cape_file.h

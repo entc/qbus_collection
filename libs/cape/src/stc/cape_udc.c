@@ -653,9 +653,11 @@ CapeUdc cape_udc_ext (CapeUdc self, const CapeString name)
         CapeUdc h;
 
         n = cape_map_extract (self->data, n);
-        h = cape_map_node_value (n);
+        
+        // ransfer ownership of the value
+        h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return h;
       }
@@ -698,9 +700,9 @@ void cape_udc_rm (CapeUdc self, const CapeString name)
         CapeUdc h;
 
         n = cape_map_extract (self->data, n);
-        h = cape_map_node_value (n);
+        h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
         cape_udc_del (&h);
       }
 
@@ -1401,7 +1403,10 @@ void cape_udc_put_m_mv (CapeUdc self, const CapeString name, CapeStream* p_val)
 void cape_udc_put_node__replace (CapeMapNode n, CapeUdc new_value)
 {
   // retrieve current value
-  CapeUdc node_to_del = cape_map_node_value (n);
+  CapeUdc node_to_del = cape_map_node_mv (n);
+  
+  // replace the name
+  cape_str_replace_mv (&(new_value->name), &(node_to_del->name));
   
   // delete current value
   cape_udc_del (&node_to_del);
@@ -1429,7 +1434,7 @@ void cape_udc_put_node_cp (CapeUdc self, const CapeString name, CapeUdc node)
       }
       else
       {
-        cape_udc_add_name (self, &h, name);
+        cape_map_insert (self->data, h->name, h);
       }
     }
   }
@@ -1451,7 +1456,11 @@ void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
       }
       else
       {
-        cape_udc_add_name (self, p_node, name);
+        CapeUdc h = *p_node;
+        
+        cape_map_insert (self->data, h->name, h);
+        
+        *p_node = NULL;
       }
     }
   }
@@ -1668,13 +1677,20 @@ int cape_udc_cto_b (CapeUdc self)
     }
     case CAPE_UDC_FLOAT:
     {
-      double* h = self->data;
+      double* p_val = self->data;
 
       // change type and set value
       self->type = CAPE_UDC_BOOL;
-      self->data = (void*)((number_t)(h == 0 ? FALSE : TRUE));
 
-      CAPE_DEL (&h, double);
+      if (p_val)
+      {
+        self->data = (void*)((number_t)(*p_val == .0 ? FALSE : TRUE));
+        CAPE_DEL (&p_val, double);
+      }
+      else
+      {
+        self->data = FALSE;
+      }
 
       return TRUE;
     }
@@ -1888,8 +1904,7 @@ CapeString cape_udc_ext_s (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -1929,8 +1944,7 @@ CapeDatetime* cape_udc_ext_d (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -1970,8 +1984,7 @@ CapeStream cape_udc_ext_m (CapeUdc self, const CapeString name)
           h->data = NULL;
 
           // clean up
-          cape_udc_del (&h);
-          cape_map_node_del (&n);
+          cape_map_del_node (self->data, &n);
 
           return ret;
         }
@@ -2063,10 +2076,11 @@ CapeUdc cape_udc_ext_first (CapeUdc self)
       {
         CapeMapNode n = cape_map_cursor_extract (self->data, &cursor);
 
-        CapeUdc u = cape_map_node_value (n);
+        // transfer ownership
+        CapeUdc u = cape_map_node_mv (n);
 
         // releases the node memory
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return u;
       }
@@ -2250,9 +2264,9 @@ CapeUdc cape_udc_cursor_ext (CapeUdc self, CapeUdcCursor* cursor)
 
       if (n)
       {
-        CapeUdc h = cape_map_node_value (n);
+        CapeUdc h = cape_map_node_mv (n);
 
-        cape_map_node_del (&n);
+        cape_map_del_node (self->data, &n);
 
         return h;
       }
