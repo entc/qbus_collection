@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 2.9)
 
 PROJECT(qmod_auth)
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)                         # activates -fPic on linux
 SET(CMAKE_MACOSX_RPATH 0)                                       # strip away rpath
-SET(CMAKE_BUILD_TYPE Debug)                                     # build type
+SET(CMAKE_BUILD_TYPE Release)                                     # build type
 SET(CMAKE_ENABLE_EXPORTS ON)
 SET(CMAKE_VERBOSE_MAKEFILE OFF)
 
@@ -18,10 +18,22 @@ endif ()
 
 SET(CMAKE_INSTALL_PREFIX /opt/)
 
-SUBDIRS(../qbus_collection/libs/cape/src)
-SUBDIRS(../qbus_collection/libs/adbl/src)
-SUBDIRS(../qbus_collection/libs/qbus/src)
-SUBDIRS(../qbus_collection/libs/qcrypt/src)
-SUBDIRS(../qbus_collection/libs/qjobs/src)
+# basic libs
+ADD_SUBDIRECTORY(qbus_collection/libs/cape/src)
+ADD_SUBDIRECTORY(qbus_collection/libs/adbl/src)
+ADD_SUBDIRECTORY(qbus_collection/libs/qbus/src)
+ADD_SUBDIRECTORY(qbus_collection/libs/qcrypt/src)
+ADD_SUBDIRECTORY(qbus_collection/libs/qjobs/src)
 
-SUBDIRS(../qbus_collection/modules/auth/src)
+# tools
+ADD_SUBDIRECTORY(qbus_collection/tools/cldd/src)
+
+# module
+ADD_SUBDIRECTORY(qbus_collection/modules/auth/src)
+
+message (STATUS "TOOL_CLDD  = ${TOOL_CLDD}")
+message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}")
+
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BINARY_DIR}/qbus_collection/modules/auth/src/${CMAKE_CFG_INTDIR}/qbus_mod_auth ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_QBUS_DIR}/libqbus_pvd_mqtt.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen qbus\")")
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/libadbl2_mysql.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen adbl\")")
