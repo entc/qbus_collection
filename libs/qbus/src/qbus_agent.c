@@ -243,22 +243,25 @@ void __STDCALL qbus_agent__on_request (void* user_ptr, cape_uint32 opcode, const
   {
     case 101:
     {
-      CapeUdc known_modules = qbus_router_list (self->router);
-      
-      // serialize it
-      CapeString h = cape_json_to_s (known_modules);
-      
+      CapeUdc known_modules = qbus_router_list (self->router);      
+      CapeString h = cape_json_to_s (known_modules);      
+
       CapeStream s = cape_stream_new ();
       
+      // return the opcode
       cape_stream_append_32 (s, 101, TRUE);
-      
+
+      // encode the size of the json text
       cape_stream_append_64 (s, cape_str_size (h), TRUE);
-      
+
+      // add the json text
       cape_stream_append_str (s, h);
-      
+
+      // send it to the requester
       cape_aio_socket__udp__send (self->aio_socket_udp, self->aio_ctx, cape_stream_data (s), cape_stream_size (s), s, host, port); 
       
       cape_str_del (&h);
+      cape_udc_del (&known_modules);
       
       break;
     }    
