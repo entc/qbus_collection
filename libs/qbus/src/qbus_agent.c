@@ -9,10 +9,17 @@
 
 //-----------------------------------------------------------------------------
 
+typedef void        (__STDCALL *fct_qbus_agent__on_request)      (void* user_ptr, cape_uint32 opcode, const char* host, number_t port);   // should return TRUE or FALSE
+
+//-----------------------------------------------------------------------------
+
 struct QBusAgentContext_s
 {
   CapeStream buffer;
   int state;
+  
+  cape_uint32 opcode;
+  number_t port;
   
 }; typedef struct QBusAgentContext_s* QBusAgentContext;
 
@@ -22,8 +29,10 @@ QBusAgentContext qbus_agent_context_new ()
 {
   QBusAgentContext self = CAPE_NEW (struct QBusAgentContext_s);
 
-  self->buffer = cape_stream_new ();
+  self->buffer = NULL;
   self->state = 0;
+  
+  
   
   return self;
 }
@@ -69,21 +78,26 @@ void qbus_agent_context_adjust_buffer (QBusAgentContext self, CapeCursor cursor)
 
 //-----------------------------------------------------------------------------
 
-number_t qbus_agent_context_parse (QBusAgentContext self, const char* bufdat, number_t buflen)
+void qbus_agent_context_parse (QBusAgentContext self, const char* bufdat, number_t buflen, void* user_ptr, fct_qbus_agent__on_request user_fct, const char* host)
 {
-  number_t ret = 0;
-  
   // a boolean to signal that there is enough data received to continue
   int has_enogh_bytes_for_parsing = TRUE;
 
   // local objects
   CapeCursor cursor = cape_cursor_new ();
   
-  // extend the current buffer with the data we received
-  cape_stream_append_buf (self->buffer, bufdat, buflen);
-  
-  // use the current buffer for the cursor
-  cape_cursor_set (cursor, cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+  if (self->buffer)
+  {
+    // extend the current buffer with the data we received
+    cape_stream_append_buf (self->buffer, bufdat, buflen);
+    
+    // use the current buffer for the cursor
+    cape_cursor_set (cursor, cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+  }
+  else
+  {
+    cape_cursor_set (cursor, bufdat, buflen);
+  }
   
   while (has_enogh_bytes_for_parsing)
   {
@@ -94,10 +108,8 @@ number_t qbus_agent_context_parse (QBusAgentContext self, const char* bufdat, nu
         // check for 32bits = 4bytes
         if (cape_cursor__has_data (cursor, 4))
         {
-          cape_uint32 opcode = cape_cursor_scan_32 (cursor, TRUE);
-
-          // transform
-          ret = (number_t)opcode;
+          self->opcode = cape_cursor_scan_32 (cursor, TRUE);
+          self->state = 1;
         }
         else
         {
@@ -105,15 +117,32 @@ number_t qbus_agent_context_parse (QBusAgentContext self, const char* bufdat, nu
         }
        
         break;
-      }      
+      }
+      case 1:
+      {
+        // check for 64bits = 8bytes
+        if (cape_cursor__has_data (cursor, 8))
+        {
+          self->port = cape_cursor_scan_64 (cursor, TRUE);
+
+          // callback
+          user_fct (user_ptr, self->opcode, host, self->port);
+          
+          self->state = 0;
+        }
+        else
+        {
+          has_enogh_bytes_for_parsing = FALSE;
+        }
+        
+        break;
+      }
     }
   }
   
   qbus_agent_context_adjust_buffer (self, cursor);
   
   cape_cursor_del (&cursor);
-  
-  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -183,18 +212,22 @@ void __STDCALL qbus_agent__on_sent_ready (void* user_ptr, CapeAioSocketUdp sock,
 QBusAgentContext qbus_agent__get__context (QBusAgent self, const char* host)
 {
   QBusAgentContext ret;
+
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "agent", "request from '%s'", host);
   
-  CapeMapNode n = cape_map_find (self->buffer_matrix, (void*)host);
-  if (n)
   {
-    ret = cape_map_node_value (n);
-  }
-  else
-  {
-    ret = qbus_agent_context_new ();
-    
-    // insert into map, transfer ownership to map
-    cape_map_insert (self->buffer_matrix, (void*)cape_str_cp (host), (void*)ret);
+    CapeMapNode n = cape_map_find (self->buffer_matrix, (void*)host);
+    if (n)
+    {
+      ret = cape_map_node_value (n);
+    }
+    else
+    {
+      ret = qbus_agent_context_new ();
+      
+      // insert into map, transfer ownership to map
+      cape_map_insert (self->buffer_matrix, (void*)cape_str_cp (host), (void*)ret);
+    }
   }
   
   return ret;
@@ -202,12 +235,11 @@ QBusAgentContext qbus_agent__get__context (QBusAgent self, const char* host)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_agent__on_recv_from (void* user_ptr, CapeAioSocketUdp sock, const char* bufdat, number_t buflen, const char* host)
+void __STDCALL qbus_agent__on_request (void* user_ptr, cape_uint32 opcode, const char* host, number_t port)
 {
   QBusAgent self = user_ptr;
-
-  // fetch the context and parse the protocol
-  switch (qbus_agent_context_parse (qbus_agent__get__context (self, host), bufdat, buflen))
+  
+  switch (opcode)
   {
     case 101:
     {
@@ -219,18 +251,25 @@ void __STDCALL qbus_agent__on_recv_from (void* user_ptr, CapeAioSocketUdp sock, 
       CapeStream s = cape_stream_new ();
       
       cape_stream_append_32 (s, 101, TRUE);
-
+      
       cape_stream_append_64 (s, cape_str_size (h), TRUE);
-
+      
       cape_stream_append_str (s, h);
-
-      cape_aio_socket__udp__send (self->aio_socket_udp, self->aio_ctx, cape_stream_data (s), cape_stream_size (s), s, host, 10161); 
+      
+      cape_aio_socket__udp__send (self->aio_socket_udp, self->aio_ctx, cape_stream_data (s), cape_stream_size (s), s, host, port); 
       
       cape_str_del (&h);
       
       break;
     }    
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_agent__on_recv_from (void* user_ptr, CapeAioSocketUdp sock, const char* bufdat, number_t buflen, const char* host)
+{
+  qbus_agent_context_parse (qbus_agent__get__context (user_ptr, host), bufdat, buflen, user_ptr, qbus_agent__on_request, host);
 }
 
 //-----------------------------------------------------------------------------
