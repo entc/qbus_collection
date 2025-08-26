@@ -16,7 +16,7 @@ INSTALL(CODE "execute_process(COMMAND docker image rm qore/qbus:bookworm)")
 INSTALL(CODE "execute_process(COMMAND docker build -t qore/qbus:bookworm   -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_bookworm ${CMAKE_INSTALL_PREFIX}/ --build-arg CACHEBUST=0)")
 
 # remove none used ones (needs to fix)
-INSTALL(CODE "execute_process(COMMAND docker image rm mosquitto:bookworm)")
+#INSTALL(CODE "execute_process(COMMAND docker image rm mosquitto:bookworm)")
 
 # build the docker image
-INSTALL(CODE "execute_process(COMMAND docker build -t mosquitto:bookworm -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_mosquitto ${CMAKE_BINARY_DIR})")
+#INSTALL(CODE "execute_process(COMMAND docker build -t mosquitto:bookworm -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_mosquitto ${CMAKE_BINARY_DIR})")
