@@ -3,6 +3,7 @@ FROM debian:12-slim
 RUN apt-get update && apt-get install -y \
   cmake \
   llvm \
+  clang \
   default-libmysqlclient-dev \
   libsqlite3-dev \
   libpcre3-dev \
