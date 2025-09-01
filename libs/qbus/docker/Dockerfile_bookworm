@@ -9,7 +9,13 @@ RUN apt-get update && apt-get install -y \
   libpcre3-dev \
   libcurl4-openssl-dev \
   libssl-dev \
+  libnss3 \
+  locales \
+  libnss-files \
+  libnss-dns \
+  libglib2.0-0 \
   uuid-dev \
-  libxml2-dev
+  libxml2-dev \
+  && rm -rf /val/lib/apt/lists/*
 
 ARG CACHEBUST=1
