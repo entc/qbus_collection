@@ -11,8 +11,6 @@ RUN apt-get update && apt-get install -y \
   libssl-dev \
   libnss3 \
   locales \
-  libnss-files \
-  libnss-dns \
   libglib2.0-0 \
   uuid-dev \
   libxml2-dev \
