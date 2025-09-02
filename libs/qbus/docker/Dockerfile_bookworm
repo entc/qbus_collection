@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
   libglib2.0-0 \
   uuid-dev \
   libxml2-dev \
+  libpsl-dev \    # for curl build
   && rm -rf /val/lib/apt/lists/*
 
 # install libcurl from sources, see issue
