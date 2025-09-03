@@ -23,9 +23,9 @@ RUN git clone https://github.com/curl/curl.git /usr/src/curl
 
 # install libcurl from sources, see issue
 # https://github.com/curl/curl/issues/18448
-RUN mkdir /usr/src/curl/build \
- && cd /usr/src/curl/build \
- && cmake .. -DCURL_DISABLE_SOCKETPAIR=ON \
+RUN cd /usr/src/curl \
+ && ./configure --disable-socketpair \
+ && make
  && make install
 
 ARG CACHEBUST=1
