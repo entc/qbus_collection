@@ -13,5 +13,5 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=0 /opt .
 
-WORKDIR /bin
-ENTRYPOINT ["valgrind", "/bin/qbus_mod_auth"]
+WORKDIR /mods
+ENTRYPOINT ["valgrind", "/mods/qbus_mod_auth"]
