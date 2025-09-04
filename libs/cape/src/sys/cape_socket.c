@@ -46,24 +46,24 @@ void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
   else
   {
     CapeErr err = cape_err_new ();
-    
+
     // resolve the host
     struct addrinfo* addrinfo = cape_net__resolve_os (host, FALSE, err);
     if (addrinfo)
     {
-      addr->sin_family = AF_INET;      // set the network type
-      addr->sin_port = htons((u_short)port);    // set the port
-      
-      // copy the ip address
-      memcpy(addr->sin_addr.s_addr, addrinfo->ai_addr->sa_data, addrinfo->ai_addr->sa_len);
-      
+      // apply only for IPV4 addresses
+      if (addrinfo->ai_family == AF_INET)
+      {
+        memcpy (addr, addrinfo->ai_addr, sizeof(struct sockaddr_in));
+      }
+
       CAPE_FREE (addrinfo);
     }
     else
     {
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text (err));
     }
-    
+
     cape_err_del (&err);
   }
 }
