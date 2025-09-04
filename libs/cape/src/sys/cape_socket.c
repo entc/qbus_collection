@@ -26,37 +26,45 @@
 
 #endif
 
+struct addrinfo* cape_net__resolve_os (const CapeString host, int ipv6, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
 {
+  // null the struct
   memset (addr, 0, sizeof(struct sockaddr_in));
-
-  addr->sin_family = AF_INET;      // set the network type
-  addr->sin_port = htons((u_short)port);    // set the port
 
   // set the address
   if (host == NULL)
   {
+    addr->sin_family = AF_INET;      // set the network type
+    addr->sin_port = htons((u_short)port);    // set the port
+
     addr->sin_addr.s_addr = INADDR_ANY;
   }
   else
   {
-    const struct hostent* server = gethostbyname(host);
-    if(server)
+    CapeErr err = cape_err_new ();
+    
+    // resolve the host
+    struct addrinfo* addrinfo = cape_net__resolve_os (host, FALSE, err);
+    if (addrinfo)
     {
-      memcpy (&(addr->sin_addr.s_addr), server->h_addr, server->h_length);
+      addr->sin_family = AF_INET;      // set the network type
+      addr->sin_port = htons((u_short)port);    // set the port
+      
+      // copy the ip address
+      memcpy(addr->sin_addr.s_addr, addrinfo->ai_addr->sa_data, addrinfo->ai_addr->sa_len);
+      
+      CAPE_FREE (addrinfo);
     }
     else
     {
-      CapeErr err = cape_err_new ();
-
-      cape_err_lastOSError (err);
-
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text (err));
-
-      cape_err_del (&err);
     }
+    
+    cape_err_del (&err);
   }
 }
 
@@ -333,78 +341,6 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
-{
-  switch (sa->sa_family) 
-  {
-    case AF_INET:
-    {
-      inet_ntop (AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), bufdat, buflen);
-      break;
-    }
-    case AF_INET6:
-    {
-      inet_ntop (AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), bufdat, buflen);
-      break;
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
-{
-  CapeString ret = NULL;
-
-  int res;
-  struct addrinfo* addr_result;
-  
-  res = getaddrinfo (host, 0, 0, &addr_result);
-  
-  if (res != 0)
-  {
-    cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  else
-  {
-    /*
-    struct addrinfo *a;
-    char address[64];
-    
-    for (a = addr; a; a = a->ai_next)
-    {
-      cape_net__ntop (a->ai_addr, address, 64);
-      
-      cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
-    }
-    */
-  }
-  
-  {
-    struct addrinfo* addr_current = addr_result;
-    
-    while (addr_current && addr_current->ai_family != AF_INET)
-    {
-      addr_current = addr_current->ai_next;
-    }
-    
-    if (addr_current)
-    {
-      ret = CAPE_ALLOC (65);
-      
-      cape_net__ntop (addr_current->ai_addr, ret, 64);
-    }
-  }
-  
-exit_and_cleanup:
-  
-  freeaddrinfo (addr_result);
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
 void cape_sock__close (void* sock)
 {
   close ((long)sock);
@@ -670,88 +606,6 @@ void cape_sock__close (void* sock)
 int cape_sock__noneblocking (void* sock, CapeErr err)
 {
   return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_net__ntop (LPSOCKADDR sa, DWORD length, char* bufdat, number_t buflen)
-{
-	DWORD buflen_local = (DWORD)buflen;
-
-	switch (sa->sa_family)
-	{
-		case AF_INET:
-		{
-			WSAAddressToStringA (sa, length, NULL, (LPSTR)bufdat, &buflen_local);
-			break;
-		}
-		case AF_INET6:
-		{
-			WSAAddressToString (sa, length, NULL, (LPSTR)bufdat, &buflen_local);
-			break;
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-
-CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
-{
-	CapeString ret = NULL;
-
-	int res;
-
-	// local objects
-	ADDRINFOA* addr_result = NULL;
-
-	// in windows the WSA system must be initialized first
-	if (!init_wsa())
-	{
-		goto exit_and_cleanup;
-	}
-
-	res = GetAddrInfoA (host, 0, 0, &addr_result);
-
-	if (res != 0)
-	{
-		cape_err_lastOSError(err);
-		goto exit_and_cleanup;
-	}
-	else
-	{
-		/*
-		ADDRINFOA* a;
-		char address[64];
-
-		for (a = addr_result; a; a = a->ai_next)
-		{
-			cape_net__ntop ((LPSOCKADDR)a->ai_addr, (DWORD)a->ai_addrlen, address, 64);
-
-			cape_log_fmt(CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
-		}
-		*/
-	}
-
-	{
-		ADDRINFOA* addr_current = addr_result;
-
-		while (addr_current && addr_current->ai_family != AF_INET)
-		{
-			addr_current = addr_current->ai_next;
-		}
-
-		if (addr_current)
-		{
-			ret = CAPE_ALLOC(65);
-
-			cape_net__ntop ((LPSOCKADDR)addr_current->ai_addr, (DWORD)addr_current->ai_addrlen, ret, 64);
-		}
-	}
-
-exit_and_cleanup:
-
-	FreeAddrInfoA (addr_result);
-	return ret;
 }
 
 //-----------------------------------------------------------------------------
