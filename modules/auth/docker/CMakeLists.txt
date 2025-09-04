@@ -36,3 +36,6 @@ message (STATUS "PVD_QBUS_DIR  = ${PVD_QBUS_DIR}")
 
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BINARY_DIR}/qbus_collection/modules/auth/src/${CMAKE_CFG_INTDIR}/qbus_mod_auth ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/libadbl2_mysql.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen adbl\")")
+
+# for debuging
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} /usr/bin/valgrind ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")

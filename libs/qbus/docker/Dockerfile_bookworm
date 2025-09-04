@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
   uuid-dev \
   libxml2-dev \
   libpsl-dev \
+  valgrind \
   && rm -rf /val/lib/apt/lists/*
 
 # clone current libcurl
