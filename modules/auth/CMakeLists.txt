@@ -20,7 +20,7 @@ INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmo
 
 #----------------------------------------------------------------------------------
 
-INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_debug.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME CMakeLists.txt)
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_debug.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt)
 
 # remove none used ones (needs to fix)
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_debug)")
