@@ -15,7 +15,7 @@ INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_min.txt DESTINATION
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_min)")
 
 # build the docker image with buster
-INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:${VERSION_NUMBER}_min -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_min ${CMAKE_BINARY_DIR})")
+INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmod/auth:${VERSION_NUMBER}_min -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_min ${CMAKE_BINARY_DIR})")
 
 #----------------------------------------------------------------------------------
 
@@ -23,4 +23,4 @@ INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:${VERSION_NUMBER
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_debug)")
 
 # build the docker image with buster
-INSTALL(CODE "execute_process(COMMAND docker build -t qmod/auth:${VERSION_NUMBER}_debug -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_debug ${CMAKE_BINARY_DIR})")
+INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmod/auth:${VERSION_NUMBER}_debug -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_debug ${CMAKE_BINARY_DIR})")
