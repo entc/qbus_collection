@@ -38,4 +38,4 @@ INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BIN
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/libadbl2_mysql.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen adbl\")")
 
 # for debuging
-INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} /usr/bin/valgrind ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} /usr/bin/valgrind.bin ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
