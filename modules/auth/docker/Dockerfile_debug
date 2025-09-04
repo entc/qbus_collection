@@ -1,9 +1,9 @@
-FROM qore/qbus:bookworm
+FROM qore/qbus:bullseye
 
 COPY docker /qore
 RUN mkdir /qore/build && cd /qore/build && cmake .. && make install
 
-FROM --platform=linux/amd64 debian:bookworm-slim
+FROM --platform=linux/amd64 bitnami/minideb:bullseye
 
 RUN apt-get update && apt-get install -y \
   libmariadb-dev-compat \
