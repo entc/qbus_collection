@@ -631,20 +631,24 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
   cape_mutex_lock (self->chain_mutex);
   
   n = cape_map_find (self->chains, (void*)chain_key);
-  
   if (n)
   {
-    cape_map_extract (self->chains, n);
+    // removes the node from the map, returns the removed node
+    n = cape_map_extract (self->chains, n);
+  }
+    
+  cape_mutex_unlock (self->chain_mutex);
 
+  if (n)
+  {
     // removes the value from the map-node
     ret = cape_map_node_mv (n);
 
     // free memory and the node key
+    // self->chains is thread safe here
     cape_map_del_node (self->chains, &n);
   }
   
-  cape_mutex_unlock (self->chain_mutex);
-
   return ret;
 }
 
