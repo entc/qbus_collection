@@ -39,3 +39,4 @@ INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/lib
 
 # for debuging
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} /usr/bin/valgrind.bin ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
+INSTALL (DIRECTORY /usr/libexec/valgrind DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/image_gen/usr/libexec)
