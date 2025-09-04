@@ -53,7 +53,7 @@ void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
 
       cape_err_lastOSError (err);
 
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname: %s", cape_err_text (err));
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text (err));
 
       cape_err_del (&err);
     }
