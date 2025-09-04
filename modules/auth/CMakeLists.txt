@@ -10,7 +10,7 @@ INSTALL (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/ DESTINATION ${CMAKE_BINARY_D
 
 #----------------------------------------------------------------------------------
 
-INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_min.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME CMakeLists.txt)
+INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_min.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME ccd79834-4619-4f50-95b0-81fa314ab6be.txt)
 
 # remove none used ones (needs to fix)
 INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_min)")
