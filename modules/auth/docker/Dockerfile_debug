@@ -1,0 +1,17 @@
+FROM qore/qbus:bookworm
+
+COPY docker /qore
+RUN mkdir /qore/build && cd /qore/build && cmake .. && make install
+
+FROM bitnami/minideb:buster
+
+RUN apt-get update && apt-get install -y \
+  libmariadb-dev-compat \
+  libssl-dev \
+  valgrind \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=0 /opt .
+
+WORKDIR /bin
+ENTRYPOINT ["valgrind", "/bin/qbus_mod_auth"]
