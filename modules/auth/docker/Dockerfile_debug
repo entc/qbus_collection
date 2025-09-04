@@ -3,7 +3,7 @@ FROM qore/qbus:bookworm
 COPY docker /qore
 RUN mkdir /qore/build && cd /qore/build && cmake .. && make install
 
-FROM debian:bookworm-slim
+FROM --platform=linux/amd64 debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
   libmariadb-dev-compat \
