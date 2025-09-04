@@ -635,12 +635,7 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
   if (n)
   {
     cape_map_extract (self->chains, n);
-  }
-  
-  cape_mutex_unlock (self->chain_mutex);
 
-  if (n)
-  {
     // removes the value from the map-node
     ret = cape_map_node_mv (n);
 
@@ -648,6 +643,8 @@ QBusMethod qbus_route__find_chain (QBusRoute self, const CapeString chain_key)
     cape_map_del_node (self->chains, &n);
   }
   
+  cape_mutex_unlock (self->chain_mutex);
+
   return ret;
 }
 
