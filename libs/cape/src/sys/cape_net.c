@@ -48,27 +48,42 @@ void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
 
 //-----------------------------------------------------------------------------
 
-struct addrinfo* cape_net__resolve_os (const CapeString host, int ipv6, CapeErr err)
+struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, int ipv6, CapeErr err)
 {
-  struct addrinfo* ret = NULL;
+  struct sockaddr_in* ret = NULL;
   struct addrinfo* addr_result;
+
+  if (NULL == host)
+  {
+    ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
+
+    ret->sin_family = AF_INET;      // set the network type
+    ret->sin_port = htons(port);    // set the port
+
+    ret->sin_addr.s_addr = INADDR_ANY;
+
+    return ret;
+  }
 
   {
     int errcode = getaddrinfo (host, 0, 0, &addr_result);
     if (errcode)
     {
       cape_err_set (err, CAPE_ERR_OS, gai_strerror (errcode));
+
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text (err));
+
       goto exit_and_cleanup;
     }
     else
     {
       struct addrinfo *a;
       char address[64];
-      
+
       for (a = addr_result; a; a = a->ai_next)
       {
         cape_net__ntop (a->ai_addr, address, 64);
-        
+
         cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
       }
     }
@@ -77,21 +92,22 @@ struct addrinfo* cape_net__resolve_os (const CapeString host, int ipv6, CapeErr 
   // find the first ip address
   {
     struct addrinfo* addr_current = addr_result;
-    
+
     while (addr_current && addr_current->ai_family != AF_INET)
     {
       addr_current = addr_current->ai_next;
     }
-    
-    // alocate memory
-    ret = CAPE_ALLOC (sizeof(struct addrinfo));
-    
-    // copy the current address into the alocated memory
-    memcpy (ret, addr_current, sizeof(struct addrinfo));
+
+    if (addr_current)
+    {
+      ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
+
+      memcpy (ret, addr_current->ai_addr, sizeof(struct sockaddr_in));
+    }
   }
-  
+
 exit_and_cleanup:
-  
+
   freeaddrinfo (addr_result);
   return ret;
 }
@@ -104,9 +120,9 @@ CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
 
   int res;
   struct addrinfo* addr_result;
-  
+
   res = getaddrinfo (host, 0, 0, &addr_result);
-  
+
   if (res != 0)
   {
     cape_err_lastOSError (err);
@@ -117,34 +133,34 @@ CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
     /*
     struct addrinfo *a;
     char address[64];
-    
+
     for (a = addr; a; a = a->ai_next)
     {
       cape_net__ntop (a->ai_addr, address, 64);
-      
+
       cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
     }
     */
   }
-  
+
   {
     struct addrinfo* addr_current = addr_result;
-    
+
     while (addr_current && addr_current->ai_family != AF_INET)
     {
       addr_current = addr_current->ai_next;
     }
-    
+
     if (addr_current)
     {
       ret = CAPE_ALLOC (65);
-      
+
       cape_net__ntop (addr_current->ai_addr, ret, 64);
     }
   }
-  
+
 exit_and_cleanup:
-  
+
   freeaddrinfo (addr_result);
   return ret;
 }

@@ -26,66 +26,37 @@
 
 #endif
 
-struct addrinfo* cape_net__resolve_os (const CapeString host, int ipv6, CapeErr err);
-
-//-----------------------------------------------------------------------------
-
-void cape_sock__set_host (struct sockaddr_in* addr, const char* host, long port)
-{
-  // null the struct
-  memset (addr, 0, sizeof(struct sockaddr_in));
-
-  // set the address
-  if (host == NULL)
-  {
-    addr->sin_family = AF_INET;      // set the network type
-    addr->sin_port = htons((u_short)port);    // set the port
-
-    addr->sin_addr.s_addr = INADDR_ANY;
-  }
-  else
-  {
-    CapeErr err = cape_err_new ();
-
-    // resolve the host
-    struct addrinfo* addrinfo = cape_net__resolve_os (host, FALSE, err);
-    if (addrinfo)
-    {
-      // apply only for IPV4 addresses
-      if (addrinfo->ai_family == AF_INET)
-      {
-        memcpy (addr, addrinfo->ai_addr, sizeof(struct sockaddr_in));
-      }
-
-      CAPE_FREE (addrinfo);
-    }
-    else
-    {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text (err));
-    }
-
-    cape_err_del (&err);
-  }
-}
-
 //-----------------------------------------------------------------------------
 
 #if defined __LINUX_OS || defined __BSD_OS
 
 //-----------------------------------------------------------------------------
 
+struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, int ipv6, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 {
-  struct sockaddr_in addr;
+  void* ret = NULL;
+
+  // local objects
+  struct sockaddr_in* addr = cape_net__resolve_os (host, (u_short)port, FALSE, err);
   long sock;
 
-  cape_sock__set_host (&addr, host, port);
+  if (NULL == addr)
+  {
+    return NULL;
+  }
 
   // create socket
   sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
   {
-    goto exit;
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
+
+    goto cleanup_and_exit;
   }
 
   // make the socket none-blocking
@@ -94,62 +65,81 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 
     if (flags == -1)
     {
-      goto exit;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
 
     flags |= O_NONBLOCK;
 
     if (fcntl(sock, F_SETFL, flags) != 0)
     {
-      goto exit;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
   }
 
   // connect, don't check result because it is none-blocking
-  connect (sock, (const struct sockaddr*)&(addr), sizeof(addr));
+  connect (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in));
 
-  return (void*)sock;
+  ret = (void*)sock;
+  sock = 0;
 
-  exit:
+cleanup_and_exit:
 
-  // save the last system error into the error object
-  cape_err_lastOSError (err);
+  CAPE_FREE (addr);
 
   if (sock >= 0)
   {
     close(sock);
   }
 
-  return NULL;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 {
-  struct sockaddr_in addr;
-  long sock = -1;
+  void* ret = NULL;
 
-  cape_sock__set_host (&addr, host, port);
+  // local objects
+  struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
+  long sock = -1;
+  int opt = 1;
+
+  if (NULL == addr)
+  {
+    return NULL;
+  }
 
   // create socket
   sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
   {
-    goto exit;
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
+
+    goto cleanup_and_exit;
   }
 
+  if(setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
   {
-    int opt = 1;
-    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
-    {
-      goto exit;
-    }
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
 
-    if (bind(sock, (const struct sockaddr*)&(addr), sizeof(addr)) < 0)
-    {
-      goto exit;
-    }
+    goto cleanup_and_exit;
+  }
+
+  if (bind (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
+  {
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
+
+    goto cleanup_and_exit;
   }
 
   // cannot fail
@@ -157,29 +147,28 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host, port);
 
-  return (void*)sock;
+  ret = (void*)sock;
+  sock = 0;
 
-exit:
+cleanup_and_exit:
 
-  // save the last system error into the error object
-  cape_err_lastOSError (err);
+  CAPE_FREE (addr);
 
   if (sock >= 0)
   {
     close(sock);
   }
 
-  return NULL;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
 {
-  struct sockaddr_in addr;
-  long sock = -1;
+  void* ret = NULL;
 
-  cape_sock__set_host (&addr, host, port);
+  long sock = -1;
 
   // create socket as datagram
 #if defined __LINUX_OS
@@ -190,7 +179,10 @@ void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
 
   if (sock < 0)
   {
-    goto exit_and_cleanup;
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
+
+    goto cleanup_and_exit;
   }
 
   // make the socket none-blocking
@@ -199,43 +191,46 @@ void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
 
     if (flags == -1)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
 
     flags |= O_NONBLOCK;
 
     if (fcntl(sock, F_SETFL, flags) != 0)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
   }
 
   cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket clt UDP", "open socket on %s:%i", host, port);
 
-  // return the socket
-  return (void*)sock;
+  ret = (void*)sock;
+  sock = 0;
 
-exit_and_cleanup:
-
-  // save the last system error into the error object
-  cape_err_lastOSError (err);
+cleanup_and_exit:
 
   if (sock >= 0)
   {
     close(sock);
   }
 
-  return NULL;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 {
-  struct sockaddr_in addr;
-  long sock = -1;
+  void* ret = NULL;
 
-  cape_sock__set_host (&addr, host, port);
+  long sock = -1;
+  struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
 
   // create socket
 #if defined __LINUX_OS
@@ -246,7 +241,10 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 
   if (sock < 0)
   {
-    goto exit_and_cleanup;
+    // save the last system error into the error object
+    cape_err_lastOSError (err);
+
+    goto cleanup_and_exit;
   }
 
   {
@@ -255,13 +253,19 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
     // set the socket option to reuse the address
     if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
 
     // try to bind the socket to an address
-    if (bind (sock, (const struct sockaddr*)&(addr), sizeof(addr)) < 0)
+    if (bind (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
   }
 
@@ -272,7 +276,10 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 
     if (flags == -1)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
 
     // add noneblocking flag
@@ -281,26 +288,28 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
     // set flags
     if (fcntl (sock, F_SETFL, flags) != 0)
     {
-      goto exit_and_cleanup;
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
+
+      goto cleanup_and_exit;
     }
   }
 
   cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%i", host, port);
 
-  // return the socket
-  return (void*)sock;
+  ret = (void*)sock;
+  sock = 0;
 
-exit_and_cleanup:
+cleanup_and_exit:
 
-  // save the last system error into the error object
-  cape_err_lastOSError (err);
+  CAPE_FREE (addr);
 
   if (sock >= 0)
   {
     close(sock);
   }
 
-  return NULL;
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
