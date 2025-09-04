@@ -4,7 +4,7 @@ PROJECT(qmod_auth)
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)                         # activates -fPic on linux
 SET(CMAKE_MACOSX_RPATH 0)                                       # strip away rpath
-SET(CMAKE_BUILD_TYPE Release)                                     # build type
+SET(CMAKE_BUILD_TYPE Debug)                                     # build type
 SET(CMAKE_ENABLE_EXPORTS ON)
 SET(CMAKE_VERBOSE_MAKEFILE OFF)
 
@@ -25,11 +25,5 @@ ADD_SUBDIRECTORY(qbus_collection/libs/qbus/src)
 ADD_SUBDIRECTORY(qbus_collection/libs/qcrypt/src)
 ADD_SUBDIRECTORY(qbus_collection/libs/qjobs/src)
 
-# tools
-ADD_SUBDIRECTORY(qbus_collection/tools/cldd/src)
-
 # module
 ADD_SUBDIRECTORY(qbus_collection/modules/auth/src)
-
-INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BINARY_DIR}/qbus_collection/modules/auth/src/${CMAKE_CFG_INTDIR}/qbus_mod_auth ${CMAKE_CURRENT_BINARY_DIR}/image_gen\")")
-INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/libadbl2_mysql.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen adbl\")")
