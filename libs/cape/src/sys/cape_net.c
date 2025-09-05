@@ -77,6 +77,7 @@ struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, i
     }
     else
     {
+      /*
       struct addrinfo *a;
       char address[64];
 
@@ -86,6 +87,7 @@ struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, i
 
         cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "%s", address);
       }
+       */
     }
   }
 
@@ -102,7 +104,8 @@ struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, i
     {
       ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
 
-      memcpy (ret, addr_current->ai_addr, sizeof(struct sockaddr_in));
+      memcpy (ret, addr_current->ai_addr, sizeof(struct sockaddr_in));  // set the address
+      ret->sin_port = htons(port);    // set the port
     }
   }
 
