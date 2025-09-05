@@ -42,7 +42,7 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, (u_short)port, FALSE, err);
-  long sock;
+  int sock;
 
   if (NULL == addr)
   {
@@ -85,7 +85,9 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
   // connect, don't check result because it is none-blocking
   connect (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in));
 
-  ret = (void*)sock;
+  cape_log_msg (CAPE_LL_TRACE, "CAPE", "clt new", "connected");
+  
+  ret = (void*)(number_t)sock;
   sock = 0;
 
 cleanup_and_exit:
@@ -126,7 +128,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     goto cleanup_and_exit;
   }
 
-  if(setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
+  if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
