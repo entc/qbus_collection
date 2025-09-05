@@ -7,7 +7,7 @@ RUN mv /qore/e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt /qore/CMakeLists.txt \
  && cmake .. \
  && make install
 
-FROM --platform=linux/amd64 bitnami/minideb:bullseye
+FROM --platform=linux/amd64 debian:bullseye-slim
 
 RUN apt-get update && apt-get install -y \
   libmariadb-dev-compat \
