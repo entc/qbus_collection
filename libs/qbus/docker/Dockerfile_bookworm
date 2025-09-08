@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
   libxml2-dev \
   libpsl-dev \
   valgrind \
+  strace \
   && rm -rf /val/lib/apt/lists/*
 
 # clone current libcurl
