@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
   libssl-dev \
   uuid-dev \
   libxml2-dev \
+  libzip-dev \
   && rm -rf /var/lib/apt/lists/*
 
 ARG CACHEBUST=1
