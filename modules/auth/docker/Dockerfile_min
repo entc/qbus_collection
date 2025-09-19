@@ -1,7 +1,11 @@
 FROM qore/qbus:bookworm
 
 COPY docker /qore
-RUN mkdir /qore/build && cd /qore/build && cmake .. && make install
+RUN mv /qore/ccd79834-4619-4f50-95b0-81fa314ab6be.txt /qore/CMakeLists.txt \
+ && mkdir /qore/build \
+ && cd /qore/build \
+ && cmake .. \
+ && make install
 
 FROM scratch
 
@@ -11,6 +15,4 @@ ENV LD_LIBRARY_PATH="/lib64;/usr/lib/gcc/x86_64-pc-linux-gnu/12/"
 COPY --from=0 /qore/build/image_gen .
 
 WORKDIR /bin
-
-HEALTHCHECK CMD ["/bin/healthcheck"]
 ENTRYPOINT ["/bin/qbus_mod_auth"]

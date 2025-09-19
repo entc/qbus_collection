@@ -1,0 +1,21 @@
+FROM qore/qbus:bullseye
+
+COPY docker /qore
+RUN mv /qore/e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt /qore/CMakeLists.txt \
+ && mkdir /qore/build \
+ && cd /qore/build \
+ && cmake .. \
+ && make install
+
+FROM --platform=linux/amd64 debian:bullseye-slim
+
+RUN apt-get update && apt-get install -y \
+  libmariadb-dev-compat \
+  libssl-dev \
+  valgrind \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=0 /opt .
+
+WORKDIR /mods
+ENTRYPOINT ["valgrind", "/mods/qbus_mod_auth"]
