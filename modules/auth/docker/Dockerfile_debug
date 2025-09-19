@@ -1,4 +1,4 @@
-FROM qore/qbus:bullseye
+FROM qore/qbus2:bullseye
 
 COPY docker /qore
 RUN mv /qore/e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt /qore/CMakeLists.txt \
