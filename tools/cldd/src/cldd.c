@@ -143,28 +143,68 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cp_binary (const CapeString file, const CapeString image_path, const CapeString subdir_path, CapeErr err)
+int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
 {
   int res;
 
-  const CapeString filename = cape_fs_split (file, NULL);
+  const CapeString filename = cape_fs_split (ctx->binary_src, NULL);
 
   // local objects
   CapeString dest_path = NULL;
   CapeString dest_file = NULL;
+  CapeString filename_encrypted = NULL;
+  CapeString dest_encrypted_file = NULL;
   
   if (subdir_path)
   {
-    dest_path = cape_fs_path_merge_3 (image_path, "bin", subdir_path);
+    dest_path = cape_fs_path_merge_3 (ctx->image_path, "bin", subdir_path);
   }
   else
   {
-    dest_path = cape_fs_path_merge (image_path, "bin");
+    dest_path = cape_fs_path_merge (ctx->image_path, "bin");
   }
 
   dest_file = cape_fs_path_merge (dest_path, filename);
 
-  res = cp_file (file, dest_path, dest_file, err);
+  res = cp_file (ctx->binary_src, dest_path, dest_file, err);
+  if (res)
+  {
+    goto cleanup_and_exit;
+  }
+  
+  if (ctx->vsec)
+  {
+    // create a new filename with the extension '.sec'
+    filename_encrypted = cape_str_catenate_2 (filename, ".sec");
+    
+    // create a new destionation for the encrypted file
+    dest_encrypted_file = cape_fs_path_merge (dest_path, filename_encrypted);
+    
+    // encrypt the file
+    res = qcrypt__encrypt_file (dest_file, dest_encrypted_file, ctx->vsec, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "encrypt file", "%s: %s", dest_encrypted_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
+    // remove original
+    res = cape_fs_file_rm (dest_file, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "remove file", "%s: %s", dest_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "CLDD", "encrypt file", "replace %s -> %s", dest_file, dest_encrypted_file);
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+cleanup_and_exit:
+
+  cape_str_del (&filename_encrypted);
+  cape_str_del (&dest_encrypted_file);
 
   cape_str_del (&dest_file);
   cape_str_del (&dest_path);
@@ -281,6 +321,9 @@ int main (int argc, char *argv[])
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no destination");
     goto exit_and_cleanup;
   }
+  
+  // optional
+  ctx.vsec = cape_udc_get_s (params, "sec", NULL);
 
   // set the context
   ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
@@ -293,7 +336,7 @@ int main (int argc, char *argv[])
   }
 
   // copy the binary file
-  res = cp_binary (ctx.binary_src, ctx.image_path, cape_udc_get_s (params, "p", NULL), err);
+  res = cp_binary (&ctx, cape_udc_get_s (params, "p", NULL), err);
   if (res)
   {
     goto exit_and_cleanup;
