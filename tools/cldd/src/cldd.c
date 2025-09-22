@@ -196,7 +196,7 @@ int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
       goto cleanup_and_exit;
     }
     
-    cape_log_fmt (CAPE_LL_TRACE, "CLDD", "encrypt file", "replace %s -> %s", dest_file, dest_encrypted_file);
+    cape_log_fmt (CAPE_LL_INFO, "CLDD", "encrypt file", "replace %s -> %s", dest_file, dest_encrypted_file);
   }
   
   res = CAPE_ERR_NONE;
