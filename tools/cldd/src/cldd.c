@@ -4,6 +4,8 @@
 #include <fmt/cape_parser_line.h>
 #include <fmt/cape_tokenizer.h>
 #include <stc/cape_map.h>
+#include <fmt/cape_args.h>
+#include <fmt/cape_json.h>
 
 // qcrypt includes
 #include <qcrypt_file.h>
@@ -12,9 +14,12 @@
 
 struct ClddCtx_s
 {
+  const CapeString binary_src;
   const CapeString image_path;
-  CapeMap paths;
 
+  CapeMap paths;
+  const CapeString vsec;
+  
 }; typedef struct ClddCtx_s* ClddCtx;
 
 //-----------------------------------------------------------------------------
@@ -246,30 +251,49 @@ int main (int argc, char *argv[])
   CapeErr err = cape_err_new ();
   CapeExec exec = NULL;
   CapeParserLine lparser = NULL;
+  CapeUdc params = NULL;
 
   // adjust logger output
   cape_log_set_level (CAPE_LL_INFO);
   cape_log_msg (CAPE_LL_INFO, "CLDD", "main", "start CLDD app");
 
-  if (argc <= 2)
+  params = cape_args_from_args (argc, argv, NULL);
+  
   {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too few params");
+    CapeString s = cape_json_to_s (params);
+    
+    printf ("params = %s\n", s);
+    
+    cape_str_del (&s);
+  }
+  
+  // check the parameters
+  ctx.binary_src = cape_udc_get_s (params, "_1", NULL);
+  if (NULL == ctx.binary_src)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no source");
+    goto exit_and_cleanup;
+  }
+
+  ctx.image_path = cape_udc_get_s (params, "_2", NULL);
+  if (NULL == ctx.image_path)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no destination");
     goto exit_and_cleanup;
   }
 
   // set the context
-  ctx.image_path = argv[2];
   ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
 
-  // create the distination folder
-  res = cape_fs_path_create_x (argv[2], err);
+  // create the destination folder
+  res = cape_fs_path_create_x (ctx.image_path, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
   // copy the binary file
-  res = cp_binary (argv[1], argv[2], (argc >= 3) ? argv[3] : NULL, err);
+  res = cp_binary (ctx.binary_src, ctx.image_path, cape_udc_get_s (params, "p", NULL), err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -279,7 +303,7 @@ int main (int argc, char *argv[])
   exec = cape_exec_new ();
 
   // add the input file as first parameter
-  cape_exec_append_s (exec, argv[1]);
+  cape_exec_append_s (exec, ctx.binary_src);
 
   // run the external program
   res = cape_exec_run (exec, "ldd", err);
@@ -312,6 +336,7 @@ exit_and_cleanup:
 
   cape_map_del (&(ctx.paths));
 
+  cape_udc_del (&params);
   cape_parser_line_del (&lparser);
   cape_exec_del (&exec);
   cape_err_del (&err);

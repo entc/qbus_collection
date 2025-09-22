@@ -12,6 +12,7 @@ CapeUdc cape_args_from_args (int argc, char *argv[], const CapeString name)
   CapeUdc current_argument = NULL;
   
   int i;
+  number_t cnt = 0;
   
   for (i = 1; i < argc; i++)
   {
@@ -22,6 +23,7 @@ CapeUdc cape_args_from_args (int argc, char *argv[], const CapeString name)
       // do we have a current argument?
       if (current_argument)
       {
+        // add an empty argument
         cape_udc_add (params, &current_argument);
       }
 
@@ -32,6 +34,7 @@ CapeUdc cape_args_from_args (int argc, char *argv[], const CapeString name)
       // do we have a current argument?
       if (current_argument)
       {
+        // add an empty argument
         cape_udc_add (params, &current_argument);
       }
       
@@ -41,7 +44,23 @@ CapeUdc cape_args_from_args (int argc, char *argv[], const CapeString name)
     {
       if (current_argument)
       {
+        // set the content of the argument
         cape_udc_set_s_cp (current_argument, arg);
+        
+        // add the argumnt to the params
+        cape_udc_add (params, &current_argument);
+      }
+      else
+      {
+        cnt++; // increase the none specified argument
+
+        {
+          CapeString name = cape_str_fmt ("_%lu", cnt);
+          
+          cape_udc_put_s_cp (params, name, arg);
+          
+          cape_str_del (&name);
+        }
       }
     }
   }
