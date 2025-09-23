@@ -19,6 +19,8 @@ __CAPE_LIBEX   void              cape_exec_del          (CapeExec*);        // r
 
 __CAPE_LIBEX   int               cape_exec_run          (CapeExec, const char* executable, CapeErr);
 
+__CAPE_LIBEX   int               cape_exec_run_direct   (CapeExec, void* fd, const CapeString name, CapeErr);
+
 __CAPE_LIBEX   void              cape_exec_append_s     (CapeExec, const char* parameter);
 
 __CAPE_LIBEX   void              cape_exec_append_fmt   (CapeExec, const char* format, ...);

@@ -16,15 +16,16 @@
 
 #if defined __LINUX_OS
 
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/mman.h>
+
 
 //-----------------------------------------------------------------------------
 
-void* file_handle_get_in_memeory_filefd (CapeErr err)
+void* file_handle_get_in_memeory_filefd (const CapeString name, CapeErr err)
 {
-  CapeString name = cape_str_uuid ();
-  
-  int fd = memfd_create (name, MFD_CLOEXEC | MFD_HUGETLB | MFD_HUGE_2MB);
+  number_t fd = memfd_create (name, 0);
   if (-1 == fd)
   {
     cape_err_lastOSError (err);
@@ -53,7 +54,7 @@ void* file_handle_get_in_memeory_filefd (CapeErr err)
 
 #define BUFFER_SIZE  10000
 
-int decrypt_int_fd (const CapeString source, int fd_dest, const CapeString vsec, CapeErr err)
+int decrypt_int_fd (const CapeString source, number_t fd_dest, const CapeString vsec, CapeErr err)
 {
   int res;
   
@@ -74,7 +75,12 @@ int decrypt_int_fd (const CapeString source, int fd_dest, const CapeString vsec,
     number_t bytes_decrypted = qcrypt_decrypt_next (decrypt, buffer, BUFFER_SIZE);
     if (bytes_decrypted)
     {
-      write (fd_dest, buffer, bytes_decrypted);
+      number_t written_bytes = write (fd_dest, buffer, bytes_decrypted);
+      if (written_bytes == -1)
+      {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+      }
     }
     else
     {
@@ -103,9 +109,10 @@ int main (int argc, char *argv[])
   CapeExec exec = NULL;
   CapeUdc params = NULL;
   CapeString exec_source = NULL;
-
+  CapeString name = cape_str_uuid ();
+  
   const CapeString binary_src;
-  int mmfd;
+  number_t mmfd;
 
   // adjust logger output
   cape_log_set_level (CAPE_LL_INFO);
@@ -129,12 +136,14 @@ int main (int argc, char *argv[])
   }
   
   // create in memory file descriptor
-  mmfd = file_handle_get_in_memeory_filefd (err);
+  mmfd = (number_t)file_handle_get_in_memeory_filefd (name, err);
   if (0 == mmfd)
   {
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }
+  
+  printf ("memory fd = %lu\n", mmfd);
   
   res = decrypt_int_fd (binary_src, mmfd, cape_udc_get_s (params, "sec", NULL), err);
   if (res)
@@ -142,13 +151,13 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  exec_source = cape_str_fmt ("/proc/%jd/fd/%d", (intmax_t) getpid(), mmfd);
+//  exec_source = cape_str_fmt ("/proc/%jd/fd/%d", (intmax_t) getpid(), mmfd);
   
   // create a new execution environment
   exec = cape_exec_new ();
 
   // run the external program
-  res = cape_exec_run (exec, exec_source, err);
+  res = cape_exec_run_direct (exec, (void*)mmfd, name, err);
   if (res)
   {
     goto exit_and_cleanup;
