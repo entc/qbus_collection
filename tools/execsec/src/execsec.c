@@ -136,7 +136,7 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  res = decrypt_int_fd (binary_src, mmfd, "HelloWorld!", err);
+  res = decrypt_int_fd (binary_src, mmfd, cape_udc_get_s (params, "sec", NULL), err);
   if (res)
   {
     goto exit_and_cleanup;
