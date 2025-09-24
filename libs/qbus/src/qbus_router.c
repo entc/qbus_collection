@@ -125,7 +125,7 @@ void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString na
 
   cape_list_push_back (cids, (void*)cape_str_cp (cid));
   
-  qbus_router_dump (self);
+  //qbus_router_dump (self);
 }
 
 //-----------------------------------------------------------------------------
