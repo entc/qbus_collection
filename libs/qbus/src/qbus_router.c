@@ -156,7 +156,7 @@ void qbus_router_rm (QBusRouter self, const CapeString cid, const CapeString nam
     }
   }
 
-  qbus_router_dump (self);
+  //qbus_router_dump (self);
 }
 
 //-----------------------------------------------------------------------------

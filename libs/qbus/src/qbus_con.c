@@ -302,7 +302,7 @@ void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, 
 {
   const CapeString own_cid = qbus_engine_con_cid (self->engine, self->con);
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con send", "send frame to another module, skey = '%s'", save_key);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con send", "send frame to another module, skey = '%s'", save_key);
   
   if (own_cid)
   {

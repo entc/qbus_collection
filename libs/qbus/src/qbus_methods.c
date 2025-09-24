@@ -155,7 +155,7 @@ void qbus_methods_del (QBusMethods* p_self)
     
     // for debug output
     {
-      cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "methods del", "found saved mitems = %lu", cape_map_size (self->saves));
+//      cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "methods del", "found saved mitems = %lu", cape_map_size (self->saves));
     }
     
     cape_map_del (&(self->saves));
@@ -196,7 +196,7 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString save_key)
   
   cape_mutex_unlock (self->saves_mutex);
 
-  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", save_key);
+  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", save_key);
   
   return mitem;
 }
@@ -215,7 +215,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
   cape_mutex_unlock (self->saves_mutex);
   
-  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' | on_msg = %p | sender = %s", save_key, on_msg, sender);
+  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' | on_msg = %p | sender = %s", save_key, on_msg, sender);
 
   return save_key;
 }
@@ -270,7 +270,7 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
 {
   QBusMethodCtx mctx = user_ptr;
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
   
   if (queue_size > 20)
   {
