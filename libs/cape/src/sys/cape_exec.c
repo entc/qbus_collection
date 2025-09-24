@@ -441,6 +441,32 @@ void cape_exec_env_set (CapeExec self, const char* name, const char* parameter)
 
 //-----------------------------------------------------------------------------
 
+void cape_exec_append_node (CapeExec self, CapeUdc parameters)
+{
+  if (cape_udc_type (parameters) == CAPE_UDC_NODE)
+  {
+    CapeUdcCursor* cursor = cape_udc_cursor_new (parameters, CAPE_DIRECTION_FORW);
+    
+    while (cape_udc_cursor_next (cursor))
+    {
+      switch (cape_udc_type (cursor->item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          cape_exec_append_fmt (self, "-%s", cape_udc_name (cursor->item));
+          cape_exec_append_s (self, cape_udc_s (cursor->item, ""));
+                   
+          break;
+        }
+      }
+    }
+    
+    cape_udc_cursor_del (&cursor);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_exec_append_s (CapeExec self, const char* parameter)
 {
   CapeString h = cape_str_cp (parameter);

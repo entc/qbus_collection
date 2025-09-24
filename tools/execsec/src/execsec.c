@@ -62,7 +62,7 @@ int decrypt_int_fd (const CapeString source, number_t fd_dest, const CapeString 
   char* buffer = CAPE_ALLOC (BUFFER_SIZE);
   QCryptDecrypt decrypt = qcrypt_decrypt_new (NULL, source, vsec);
   
-  //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt file", "using file = '%s'", source);
+  //cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt file", "using file = '%s', pass = '%s'", source, vsec);
 
   res = qcrypt_decrypt_open (decrypt, err);
   if (res)
@@ -100,6 +100,57 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+CapeString fetch_sec (const CapeUdc params, CapeErr err)
+{
+  int res;
+  CapeString ret = NULL;
+  
+  // local objects
+  CapeFileHandle fh = NULL;
+  CapeStream s = NULL;
+  
+  ret = cape_udc_ext_s (params, "sec");
+  if (ret)
+  {
+    goto cleaup_and_exit;
+  }
+
+  fh = cape_fh_new ("etc", "sec");
+
+  res = cape_fh_open (fh, O_RDONLY, err);
+  if (res)
+  {
+    goto cleaup_and_exit;
+  }
+
+  s = cape_stream_new ();
+  
+  cape_stream_cap (s, 1024);
+  
+  {
+    number_t bytes_read = cape_fh_read_buf (fh, cape_stream_pos (s), 1024);
+    if (bytes_read < 1)
+    {
+      // some error happened
+      res = cape_err_lastOSError (err);
+      goto cleaup_and_exit;
+    }
+    
+    cape_stream_set (s, bytes_read);
+  }
+
+  // trim and copy the string
+  ret = cape_str_trim_utf8 (cape_stream_get (s));
+  
+cleaup_and_exit:
+  
+  cape_stream_del (&s);
+  cape_fh_del (&fh);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 int main (int argc, char *argv[])
 {
   int res;
@@ -110,8 +161,8 @@ int main (int argc, char *argv[])
   CapeUdc params = NULL;
   CapeString exec_source = NULL;
   CapeString name = cape_str_uuid ();
-  
-  const CapeString binary_src;
+  CapeString sec = NULL;
+  CapeString binary_src = NULL;
   number_t mmfd;
 
   // adjust logger output
@@ -120,6 +171,7 @@ int main (int argc, char *argv[])
 
   params = cape_args_from_args (argc, argv, NULL);
   
+  /*
   {
     CapeString s = cape_json_to_s (params);
     
@@ -127,8 +179,9 @@ int main (int argc, char *argv[])
     
     cape_str_del (&s);
   }
+  */
   
-  binary_src = cape_udc_get_s (params, "_1", NULL);
+  binary_src = cape_udc_ext_s (params, "_1");
   if (NULL == binary_src)
   {
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no source");
@@ -143,9 +196,15 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
   
-  printf ("memory fd = %lu\n", mmfd);
+  // try to get the sec 
+  sec = fetch_sec (params, err);
+  if (NULL == sec)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no sec");
+    goto exit_and_cleanup;
+  }
   
-  res = decrypt_int_fd (binary_src, mmfd, cape_udc_get_s (params, "sec", NULL), err);
+  res = decrypt_int_fd (binary_src, mmfd, sec, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -156,6 +215,13 @@ int main (int argc, char *argv[])
   // create a new execution environment
   exec = cape_exec_new ();
 
+  // set the path to find the libraries
+  cape_exec_env_set (exec, "PATH", "/bin;/lib;/lib64");
+  cape_exec_env_set (exec, "LD_LIBRARY_PATH", "/lib64;/usr/lib/gcc/x86_64-pc-linux-gnu/12/");
+  
+  // forward parameters
+  cape_exec_append_node (exec, params);
+  
   // run the external program
   res = cape_exec_run_direct (exec, (void*)mmfd, name, err);
   if (res)
@@ -168,7 +234,9 @@ int main (int argc, char *argv[])
 
 exit_and_cleanup:
 
+  cape_str_del (&sec);
   cape_str_del (&exec_source);
+  cape_str_del (&binary_src);
   
   cape_exec_del (&exec);
   cape_err_del (&err);
