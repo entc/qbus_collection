@@ -178,7 +178,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
 {
   QBusCon self = user_ptr;
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s, method = '%s'", frame->module, frame->sender, frame->method);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s, method = '%s'", frame->module, frame->sender, frame->method);
 
   if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
   {
