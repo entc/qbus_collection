@@ -17,4 +17,4 @@ COPY --from=0 /qore/build/image_gen .
 WORKDIR /bin
 
 HEALTHCHECK CMD ["/bin/healthcheck"]
-ENTRYPOINT ["/bin/qbus_mod_flow"]
+ENTRYPOINT ["/bin/execsec", "/bin/qbus_mod_flow.sec"]

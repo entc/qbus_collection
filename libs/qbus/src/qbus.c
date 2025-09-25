@@ -218,7 +218,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
   if (cape_str_compare (module_upper_case, qbus_config_name (self->config)))
   {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
+    //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
 
     // need to clone the qin
     QBusM qin = qbus_message_mv (msg);
@@ -235,7 +235,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
     {
       const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender);
 
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
 
       qbus_con_snd (self->con, cid, method, saves_key, QBUS_FRAME_TYPE_MSG_REQ, msg);
 

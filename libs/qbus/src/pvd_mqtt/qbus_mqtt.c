@@ -170,7 +170,7 @@ void qbus_pvd_ctx__internal__publish_connection (QbusPvdCtx self, QbusPvdConnect
   mqtt_msg.qos = 1;
   mqtt_msg.retained = 0;
 
-  printf ("publish message to %s\n", subscriber_topic);
+  //printf ("publish message to %s\n", subscriber_topic);
   
   // send away
   res = MQTTClient_publishMessage (connection->client, subscriber_topic, &mqtt_msg, &token);

@@ -213,7 +213,7 @@ QBusAgentContext qbus_agent__get__context (QBusAgent self, const char* host)
 {
   QBusAgentContext ret;
 
-  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "agent", "request from '%s'", host);
+  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "agent", "request from '%s'", host);
 
   {
     CapeMapNode n = cape_map_find (self->buffer_matrix, (void*)host);
