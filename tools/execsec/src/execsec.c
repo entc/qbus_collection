@@ -41,7 +41,7 @@ void* file_handle_get_in_memeory_filefd (const CapeString name, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void* file_handle_get_in_memeory_filefd (CapeErr err)
+void* file_handle_get_in_memeory_filefd (const CapeString name, CapeErr err)
 {
   cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "not supported on this OS");
   

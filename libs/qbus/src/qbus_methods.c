@@ -270,7 +270,7 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
 {
   QBusMethodCtx mctx = user_ptr;
   
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
   
   if (queue_size > 20)
   {
@@ -299,6 +299,10 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     {
       if (mctx->on_res && mitem)
       {
+        // transfer err
+        qout->err = err;
+        err = NULL;
+        
         mctx->on_res (mctx->on_res_user_ptr, mitem, &qout);
       }
       else

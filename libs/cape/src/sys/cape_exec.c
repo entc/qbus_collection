@@ -348,6 +348,8 @@ exit_and_cleanup:
 
 int cape_exec_run_direct (CapeExec self, void* fd, const CapeString name, CapeErr err)
 {
+#if defined __LINUX_OS
+  
   int res;
   pid_t pid;
     
@@ -410,6 +412,12 @@ int cape_exec_run_direct (CapeExec self, void* fd, const CapeString name, CapeEr
 exit_and_cleanup:
     
   return res;
+  
+#else
+  
+  return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "run direct is not supported for your OS");
+  
+#endif
 }
 
 //-----------------------------------------------------------------------------

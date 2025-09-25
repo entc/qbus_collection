@@ -91,19 +91,17 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
     cape_udc_add_name (payload, &(msg->files), "F");
   }
   
-  /*
-  if (err)
+  if (msg->err)
   {
-    number_t err_code = cape_err_code (err);
+    number_t err_code = cape_err_code (msg->err);
     if (err_code)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (err), cape_err_text (err));
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (msg->err), cape_err_text (msg->err));
       
-      cape_udc_add_s_cp (payload, "err_text", cape_err_text (err));
-      cape_udc_add_n (payload, "err_code", cape_err_code (err));
+      cape_udc_add_s_cp (payload, "err_text", cape_err_text (msg->err));
+      cape_udc_add_n (payload, "err_code", cape_err_code (msg->err));
     }
   }
-   */
   
   {
     frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
