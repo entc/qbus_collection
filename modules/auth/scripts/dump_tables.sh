@@ -10,6 +10,8 @@ auth_sessions_wp_view \
 auth_users_secret_view \
 auth_roles_gpid_view \
 auth_tokens_jobs \
+auth_perm \
+auth_logins \
 glob_emails \
 glob_persons \
 q5_users \
@@ -22,7 +24,6 @@ rbac_users_view \
 rbac_workspaces \
 rbac_workspaces_roles \
 rbac_workspaces_roles_view \
-auth_logins \
 auth_logins_last_view \
 auth_logins_cnt_view \
 rbac_users_logins_view \

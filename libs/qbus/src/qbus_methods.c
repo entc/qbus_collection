@@ -303,6 +303,9 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
         qout->err = err;
         err = NULL;
         
+        // transfer rinfo
+        cape_udc_replace_mv (&(qout->rinfo), &(mctx->qin->rinfo));
+        
         mctx->on_res (mctx->on_res_user_ptr, mitem, &qout);
       }
       else
