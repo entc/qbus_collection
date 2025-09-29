@@ -443,6 +443,23 @@ CapeString cape_fs_filename (const CapeString source)
 
 //-----------------------------------------------------------------------------
 
+struct CapeFileAc_s
+{
+#ifdef __WINDOWS_OS
+  
+  SECURITY_DESCRIPTOR* sp;
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+  
+  mode_t permissions;
+  uid_t uid;
+  gid_t gid;
+  
+#endif
+};
+
+//-----------------------------------------------------------------------------
+
 int cape_fs_path_create (const char* path, CapeErr err)
 {
 #ifdef __WINDOWS_OS
@@ -1069,6 +1086,69 @@ int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+#ifdef __WINDOWS_OS
+
+#elif defined __APPLE_CC__
+
+#else
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc* p_ac, CapeErr err)
+{
+  CapeFileAc ret = NULL;
+  CapeFileAc uac = NULL;
+  
+  if (*p_ac)
+  {
+    // transfer ownership
+    ret = *p_ac;
+    *p_ac = NULL;
+    
+    // if everything was set we use the user given AC
+    if (ret->uid && ret->gid && ret->permissions)
+    {
+      goto exit_and_cleanup;
+    }
+
+    // transfer ownership
+    uac = ret;
+    ret = NULL;
+  }
+  
+  ret = cape_fs_file_ac (source, err);
+  if (ret == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // adjust values
+  if (uac)
+  {
+    if (uac->uid)
+    {
+      ret->uid = uac->uid;
+    }
+    
+    if (uac->gid)
+    {
+      ret->gid = uac->gid;
+    }
+    
+    if (uac->permissions)
+    {
+      ret->permissions = uac->permissions;
+    }
+  }
+  
+exit_and_cleanup:
+  
+  cape_fs_ac_del (&uac);
+  return ret;
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+
 int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc* p_ac, CapeErr err)
 {
 #ifdef __WINDOWS_OS
@@ -1105,13 +1185,13 @@ int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc
     goto exit_and_cleanup;
   }
 
-  // TODO: merge from p_ac
-  ac = cape_fs_file_ac (source, err);
-  if (ac == NULL)
+  ac = cape_fs_file__merge_ac (source, p_ac, err);
+  if (NULL == ac)
   {
+    res = cape_err_code (err);
     goto exit_and_cleanup;
   }
-
+  
   res = cape_fh_open_ac (fh_d, O_WRONLY | O_CREAT, &ac, err);
   if (res)
   {
@@ -1220,23 +1300,6 @@ exit_and_cleanup:
 
 #endif
 }
-
-//-----------------------------------------------------------------------------
-
-struct CapeFileAc_s
-{
-#ifdef __WINDOWS_OS
-
-  SECURITY_DESCRIPTOR* sp;
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  mode_t permissions;
-  uid_t uid;
-  gid_t gid;
-
-#endif
-};
 
 //-----------------------------------------------------------------------------
 

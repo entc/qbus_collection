@@ -151,7 +151,7 @@ __CAPE_LIBEX   number_t           cape_fh_read_buf       (CapeFileHandle, char* 
 
 __CAPE_LIBEX   number_t           cape_fh_write_buf      (CapeFileHandle, const char* bufdat, number_t buflen);
 
-__CAPE_LIBEX   const CapeString   cape_fh_file           (CapeFileHandle);
+__CAPE_LIBEX   const CapeString   capemod_fh_file           (CapeFileHandle);
 
 //-----------------------------------------------------------------------------
 

@@ -28,12 +28,17 @@ struct ClddCtx_s
 
 //-----------------------------------------------------------------------------
 
-int cp_file (const CapeString source_file, const CapeString dest_path, const CapeString dest_file, CapeErr err)
+int cp_file (ClddCtx self, const CapeString source_file, const CapeString dest_path, const CapeString dest_file, CapeErr err)
 {
   int res;
 
+  // local objects
+  CapeFileAc ac = cape_fs_ac_new (self->uid, self->gid, self->mod);
+  CapeString hash1 = NULL;
+  CapeString hash2 = NULL;
+  
   printf ("copy %s -> %s\n", source_file, dest_file);
-
+  
   res = cape_fs_path_create_x (dest_path, err);
   if (res)
   {
@@ -41,17 +46,15 @@ int cp_file (const CapeString source_file, const CapeString dest_path, const Cap
     goto exit_and_cleanup;
   }
 
-  res = cape_fs_file_cp (source_file, dest_file, err);
+  res = cape_fs_file_cp__ac (source_file, dest_file, &ac, err);
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "copy file", "%s -> %s: %s", source_file, dest_file, cape_err_text (err));
     goto exit_and_cleanup;
   }
 
-  CapeFileAc ac = cape_fs_file_ac (source_file, err);
-
-  CapeString hash1 = qcrypt__hash_md5_file (source_file, err);
-  CapeString hash2 = qcrypt__hash_md5_file (dest_file, err);
+  hash1 = qcrypt__hash_md5_file (source_file, err);
+  hash2 = qcrypt__hash_md5_file (dest_file, err);
 
   //cape_log_fmt (CAPE_LL_INFO, "CLDD", "validate", "%s <-> %s", hash1, hash2);
 
@@ -67,6 +70,7 @@ exit_and_cleanup:
 
   cape_str_del (&hash1);
   cape_str_del (&hash2);
+  cape_fs_ac_del (&ac);
 
   return res;
 }
@@ -82,7 +86,7 @@ int has_default_library_path (const CapeString path)
 
 //-----------------------------------------------------------------------------
 
-int cp_library (const CapeString file, const CapeString expected_filename, ClddCtx ctx, CapeErr err)
+int cp_library (ClddCtx self, const CapeString file, const CapeString expected_filename, CapeErr err)
 {
   int res;
 
@@ -97,22 +101,22 @@ int cp_library (const CapeString file, const CapeString expected_filename, ClddC
   if (has_default_library_path (path2))
   {
     // create the destination directory
-    dest_path = cape_fs_path_merge (ctx->image_path, path2);
+    dest_path = cape_fs_path_merge (self->image_path, path2);
 
     // create the destination file
     dest_file = cape_fs_path_merge (dest_path, filename);
 
-    res = cp_file (file, dest_path, dest_file, err);
+    res = cp_file (self, file, dest_path, dest_file, err);
   }
   else
   {
     // create the destination directory
-    dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
+    dest_path = cape_fs_path_merge (self->image_path, "lib64");
 
     // create the destination file
     dest_file = cape_fs_path_merge (dest_path, filename);
 
-    res = cp_file (file, dest_path, dest_file, err);
+    res = cp_file (self, file, dest_path, dest_file, err);
   }
 
   if (res)
@@ -147,11 +151,11 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
+int cp_binary (ClddCtx self, const CapeString subdir_path, CapeErr err)
 {
   int res;
 
-  const CapeString filename = cape_fs_split (ctx->binary_src, NULL);
+  const CapeString filename = cape_fs_split (self->binary_src, NULL);
 
   // local objects
   CapeString dest_path = NULL;
@@ -161,23 +165,23 @@ int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
   
   if (subdir_path)
   {
-    dest_path = cape_fs_path_merge_3 (ctx->image_path, "bin", subdir_path);
+    dest_path = cape_fs_path_merge_3 (self->image_path, "bin", subdir_path);
   }
   else
   {
-    dest_path = cape_fs_path_merge (ctx->image_path, "bin");
+    dest_path = cape_fs_path_merge (self->image_path, "bin");
   }
 
   dest_file = cape_fs_path_merge (dest_path, filename);
 
   // TODO: use a special version to set mod and uid, gid to the destination file
-  res = cp_file (ctx->binary_src, dest_path, dest_file, err);
+  res = cp_file (self, self->binary_src, dest_path, dest_file, err);
   if (res)
   {
     goto cleanup_and_exit;
   }
   
-  if (ctx->vsec)
+  if (self->vsec)
   {
     // create a new filename with the extension '.sec'
     filename_encrypted = cape_str_catenate_2 (filename, ".sec");
@@ -186,7 +190,7 @@ int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
     dest_encrypted_file = cape_fs_path_merge (dest_path, filename_encrypted);
     
     // encrypt the file
-    res = qcrypt__encrypt_file (dest_file, dest_encrypted_file, ctx->vsec, err);
+    res = qcrypt__encrypt_file (dest_file, dest_encrypted_file, self->vsec, err);
     if (res)
     {
       cape_log_fmt (CAPE_LL_ERROR, "CLDD", "encrypt file", "%s: %s", dest_encrypted_file, cape_err_text (err));
@@ -221,6 +225,8 @@ cleanup_and_exit:
 
 void __STDCALL on_newline (void* ptr, const CapeString line)
 {
+  ClddCtx self = ptr;
+  
   CapeString s1 = NULL;
   CapeString s2 = NULL;
 
@@ -237,7 +243,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
       CapeString path = cape_str_trim_utf8 (s3);
       CapeErr err = cape_err_new ();
 
-      cp_library (path, s1_cleaned, ptr, err);
+      cp_library (self, path, s1_cleaned, err);
 
       cape_err_del (&err);
       cape_str_del (&path);
@@ -260,7 +266,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
       if (path[0] == '/')
       {
-        cp_library (path, NULL, ptr, err);
+        cp_library (self, path, NULL, err);
       }
 
       cape_err_del (&err);
