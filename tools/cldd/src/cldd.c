@@ -20,6 +20,10 @@ struct ClddCtx_s
   CapeMap paths;
   const CapeString vsec;
   
+  number_t uid;
+  number_t gid;
+  number_t mod;
+  
 }; typedef struct ClddCtx_s* ClddCtx;
 
 //-----------------------------------------------------------------------------
@@ -166,6 +170,7 @@ int cp_binary (ClddCtx ctx, const CapeString subdir_path, CapeErr err)
 
   dest_file = cape_fs_path_merge (dest_path, filename);
 
+  // TODO: use a special version to set mod and uid, gid to the destination file
   res = cp_file (ctx->binary_src, dest_path, dest_file, err);
   if (res)
   {
@@ -325,6 +330,15 @@ int main (int argc, char *argv[])
   // optional
   ctx.vsec = cape_udc_get_s (params, "sec", NULL);
 
+  // optional
+  ctx.uid = cape_udc_get_n (params, "uid", 0);
+
+  // optional
+  ctx.gid = cape_udc_get_n (params, "gid", 0);
+
+  // optional
+  ctx.mod = cape_udc_get_n (params, "mod", 0);
+  
   // set the context
   ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
 

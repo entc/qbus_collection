@@ -1069,7 +1069,7 @@ int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
+int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc* p_ac, CapeErr err)
 {
 #ifdef __WINDOWS_OS
 
@@ -1105,6 +1105,7 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  // TODO: merge from p_ac
   ac = cape_fs_file_ac (source, err);
   if (ac == NULL)
   {
@@ -1161,6 +1162,13 @@ exit_and_cleanup:
   return res;
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
+{
+  return cape_fs_file_cp__ac (source, destination, NULL, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -1248,6 +1256,26 @@ void cape_fs_ac_del (CapeFileAc* p_self)
     CAPE_DEL (p_self, struct CapeFileAc_s);
   }
 }
+
+//-----------------------------------------------------------------------------
+
+#ifdef __WINDOWS_OS
+
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+
+CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
+{
+  CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+  self->permissions = mod;
+  self->uid = uid;
+  self->gid = gid;
+
+  return self;
+}
+
+#endif
 
 //-----------------------------------------------------------------------------
 
