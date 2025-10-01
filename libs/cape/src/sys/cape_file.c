@@ -1114,7 +1114,7 @@ CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc* p_ac, CapeErr
     ret = NULL;
   }
   
-  ret = cape_fs_file_ac (source, err);
+  ret = cape_fs_file_ac_get (source, err);
   if (ret == NULL)
   {
     goto exit_and_cleanup;
@@ -1192,7 +1192,9 @@ int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc
     goto exit_and_cleanup;
   }
   
-  res = cape_fh_open_ac (fh_d, O_WRONLY | O_CREAT, &ac, err);
+  //printf ("use uid %i, gid %i\n", ac->uid, ac->gid);
+  
+  res = cape_fh_open_ex (fh_d, O_WRONLY | O_CREAT, ac->permissions, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1224,7 +1226,17 @@ int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc
       break;
     }
   }
-
+  
+  // update AC
+  if (ac->uid || ac->gid)
+  {
+    if (-1 == fchown ((number_t)cape_fh_fd(fh_d), ac->uid, ac->gid))
+    {
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
   res = CAPE_ERR_NONE;
 
 exit_and_cleanup:
@@ -1342,7 +1354,7 @@ CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
 
 //-----------------------------------------------------------------------------
 
-CapeFileAc cape_fs_file_ac (const char* path, CapeErr err)
+CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 {
 #ifdef __WINDOWS_OS
 
@@ -1386,6 +1398,42 @@ CapeFileAc cape_fs_file_ac (const char* path, CapeErr err)
     return self;
   }
 
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_ac_set (const char* path, CapeFileAc* p_ac, CapeErr err)
+{
+#ifdef __WINDOWS_OS
+  
+#elif defined __LINUX_OS || defined __BSD_OS
+  
+  int res;
+  
+  // local objects
+  CapeFileAc ac = NULL;
+  
+  ac = cape_fs_file__merge_ac (path, p_ac, err);
+  if (NULL == ac)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  if (-1 == chown (path, ac->uid, ac->gid))
+  {
+    res = cape_err_lastOSError (err);
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_fs_ac_del (&ac);
+  return res;
+  
 #endif
 }
 
@@ -1564,33 +1612,33 @@ int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr e
   int res;
   CapeFileAc ac = *p_ac;
 
-//  uid_t euid;
-//  gid_t egid;
+  /*
+  uid_t uid = getuid ();
+  gid_t gid = getgid ();
 
-  // retrieve the effective uid and gid
-//  euid = geteuid ();
-//  egid = geteuid ();
-
-  // set a new effective UID
-/*  if (seteuid (ac->uid) == -1)
+  if (uid != ac->uid)
   {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", ac->uid);
+    if (setuid (ac->uid) == -1)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", ac->uid);
 
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
   }
 
+  if (gid != ac->gid)
+  {
+    if (setgid (ac->gid) == -1)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", ac->gid);
+      
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
+  }
+  */
   // set a new effective GID
-  if (setegid (egid) == -1)
-  {
-    seteuid (euid);
-
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", ac->gid);
-
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-*/
   res = cape_fh_open_ex (self, flags, ac->permissions, err);
   if (res)
   {
@@ -1598,16 +1646,18 @@ int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr e
   }
 
   /*
-  // set the old effective UID
-  if (seteuid (euid) == -1)
+  if (setuid (uid) == -1)
   {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", uid);
+    
     res = cape_err_lastOSError (err);
     goto exit_and_cleanup;
   }
-
-  // set a new effective GID
-  if (setegid (egid) == -1)
+  
+  if (setgid (gid) == -1)
   {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", gid);
+    
     res = cape_err_lastOSError (err);
     goto exit_and_cleanup;
   }

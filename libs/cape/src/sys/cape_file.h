@@ -121,7 +121,10 @@ __CAPE_LIBEX   off_t              cape_fs_file_size      (const char* path, Cape
                                   /*
                                    returns file permissions or ACLs, including UID and GID
                                    */
-__CAPE_LIBEX   CapeFileAc         cape_fs_file_ac        (const char* path, CapeErr);
+__CAPE_LIBEX   CapeFileAc         cape_fs_file_ac_get    (const char* path, CapeErr);
+
+
+__CAPE_LIBEX   int                cape_fs_file_ac_set    (const char* path, CapeFileAc*, CapeErr);
 
 //-----------------------------------------------------------------------------
 

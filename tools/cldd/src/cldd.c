@@ -37,7 +37,7 @@ int cp_file (ClddCtx self, const CapeString source_file, const CapeString dest_p
   CapeString hash1 = NULL;
   CapeString hash2 = NULL;
   
-  printf ("copy %s -> %s\n", source_file, dest_file);
+  printf ("copy %s -> %s [%li:%li]\n", source_file, dest_file, self->uid, self->gid);
   
   res = cape_fs_path_create_x (dest_path, err);
   if (res)
@@ -162,6 +162,7 @@ int cp_binary (ClddCtx self, const CapeString subdir_path, CapeErr err)
   CapeString dest_file = NULL;
   CapeString filename_encrypted = NULL;
   CapeString dest_encrypted_file = NULL;
+  CapeFileAc ac = NULL;
   
   if (subdir_path)
   {
@@ -174,7 +175,6 @@ int cp_binary (ClddCtx self, const CapeString subdir_path, CapeErr err)
 
   dest_file = cape_fs_path_merge (dest_path, filename);
 
-  // TODO: use a special version to set mod and uid, gid to the destination file
   res = cp_file (self, self->binary_src, dest_path, dest_file, err);
   if (res)
   {
@@ -205,12 +205,24 @@ int cp_binary (ClddCtx self, const CapeString subdir_path, CapeErr err)
       goto cleanup_and_exit;
     }
     
+    ac = cape_fs_ac_new (self->uid, self->gid, self->mod);
+    
+    // set ac
+    res = cape_fs_file_ac_set (dest_encrypted_file, &ac, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "chown file", "%s: %s", dest_encrypted_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
     cape_log_fmt (CAPE_LL_INFO, "CLDD", "encrypt file", "replace %s -> %s", dest_file, dest_encrypted_file);
   }
   
   res = CAPE_ERR_NONE;
   
 cleanup_and_exit:
+
+  cape_fs_ac_del (&ac);
 
   cape_str_del (&filename_encrypted);
   cape_str_del (&dest_encrypted_file);

@@ -368,7 +368,15 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   QBus self = qbus_new (name);
   CapeUdc args = NULL;
 
-  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
+#if defined __WINDOWS_OS
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
+  
+#else
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization [%i:%i]", getuid(), getgid());
+  
+#endif
 
   // convert program arguments into a node with parameters
   args = cape_args_from_args (argc, argv, NULL);
