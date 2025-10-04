@@ -1,13 +1,13 @@
 FROM qore/qbus2:bookworm
 
+ARG CACHEBUST=1
+
 COPY docker /qore
 RUN mv /qore/2fd0e638-9489-410f-9d38-dbcacd5b15b6.txt /qore/CMakeLists.txt \
  && mkdir /qore/build \
  && cd /qore/build \
  && cmake .. \
  && make install
-
-RUN chmod -R 777 /qore/build/image_gen
 
 RUN ls -alR /qore/build/image_gen
 

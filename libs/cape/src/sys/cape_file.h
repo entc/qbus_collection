@@ -71,15 +71,15 @@ __CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeFileAc, CapeErr);
 
-__CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create only if it not exists */
-__CAPE_LIBEX   int                cape_fs_path_create_e  (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create_e  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create_x only if it not exists */
-__CAPE_LIBEX   int                cape_fs_path_create_xe (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create_xe (const char* path, CapeFileAc, CapeErr);
 
 __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, CapeErr);
 
@@ -111,7 +111,7 @@ __CAPE_LIBEX   int                cape_fs_file_cp        (const char* source, co
                                   /*
                                   copies a file with AC definitions, returns a cape error
                                    */
-__CAPE_LIBEX   int                cape_fs_file_cp__ac    (const char* source, const char* destination, CapeFileAc*, CapeErr);
+__CAPE_LIBEX   int                cape_fs_file_cp__ac    (const char* source, const char* destination, CapeFileAc, CapeErr);
 
                                   /*
                                   returns the size of a file, please check err for errors
@@ -124,7 +124,7 @@ __CAPE_LIBEX   off_t              cape_fs_file_size      (const char* path, Cape
 __CAPE_LIBEX   CapeFileAc         cape_fs_file_ac_get    (const char* path, CapeErr);
 
 
-__CAPE_LIBEX   int                cape_fs_file_ac_set    (const char* path, CapeFileAc*, CapeErr);
+__CAPE_LIBEX   int                cape_fs_file_ac_set    (const char* path, CapeFileAc, CapeErr);
 
 //-----------------------------------------------------------------------------
 

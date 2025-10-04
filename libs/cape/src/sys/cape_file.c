@@ -460,7 +460,61 @@ struct CapeFileAc_s
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_path_create (const char* path, CapeErr err)
+#ifdef __WINDOWS_OS
+
+#elif defined __APPLE_CC__
+
+#else
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
+{
+  CapeFileAc ret = NULL;
+  
+  if (ac_user)
+  {
+    // if everything was set we use the user given AC
+    if (ac_user->uid && ac_user->gid && ac_user->permissions)
+    {
+      ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);      
+      goto exit_and_cleanup;
+    }
+  }
+  
+  ret = cape_fs_file_ac_get (source, err);
+  if (ret == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // adjust values
+  if (ac_user)
+  {
+    if (ac_user->uid)
+    {
+      ret->uid = ac_user->uid;
+    }
+    
+    if (ac_user->gid)
+    {
+      ret->gid = ac_user->gid;
+    }
+    
+    if (ac_user->permissions)
+    {
+      ret->permissions = ac_user->permissions;
+    }
+  }
+  
+  exit_and_cleanup:
+  
+  return ret;
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_path_create (const char* path, CapeFileAc ac, CapeErr err)
 {
 #ifdef __WINDOWS_OS
 
@@ -479,38 +533,54 @@ int cape_fs_path_create (const char* path, CapeErr err)
 
 #elif defined __LINUX_OS || defined __BSD_OS
 
-  int res = mkdir (path, 0770);
+  int res = mkdir (path, (ac && (ac->permissions > 0)) ? ac->permissions : 0770);
   if (res)
   {
     int err_no = errno;
-    if (err_no != EEXIST)
+    
+    if (err_no == EEXIST)
+    {
+      res = CAPE_ERR_NONE;
+      goto exit_and_cleanup;
+    }
+    else
     {
       res = cape_err_formatErrorOS (err, err_no);
-
-      //cape_log_msg (CAPE_LL_ERROR, "CAPE", "path create", cape_err_text(err));
-
-      return res;
+      goto exit_and_cleanup;
     }
   }
 
-  return CAPE_ERR_NONE;
+  if (ac)
+  {
+    if (-1 == chown (path, (ac->uid > 0) ? ac->uid : getuid(), (ac->gid > 0) ? ac->gid : getgid()))
+    {
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
+  }
+    
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  return res;
 
 #endif
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_path_create_x (const char* path, CapeErr err)
+int cape_fs_path_create_x (const char* path, CapeFileAc ac, CapeErr err)
 {
   int res;
 
   // local objects
   CapeString directory = NULL;
   CapeString path_absolute = cape_fs_path_absolute (path);
-
+  
   // create all path elements
   CapeList tokens = cape_tokenizer_buf (path_absolute, cape_str_size (path_absolute), CAPE_FS_FOLDER_SEP);
-
+  
   // iterate through those elements
   CapeListCursor* cursor = cape_list_cursor_create (tokens, CAPE_DIRECTION_FORW);
   while (cape_list_cursor_next (cursor))
@@ -527,7 +597,7 @@ int cape_fs_path_create_x (const char* path, CapeErr err)
 
       //printf ("PART: %s\n", directory);
 
-      res = cape_fs_path_create (directory, err);
+      res = cape_fs_path_create (directory, ac, err);
       if (res)
       {
         goto exit_and_cleanup;
@@ -554,7 +624,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_path_create_e (const char* path, CapeErr err)
+int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 {
   struct stat st;
 
@@ -567,7 +637,7 @@ int cape_fs_path_create_e (const char* path, CapeErr err)
   {
     // not found or other error
     // try to create the path
-    return cape_fs_path_create (path, err);
+    return cape_fs_path_create (path, ac, err);
   }
 
   if (FALSE == S_ISDIR (st.st_mode))
@@ -582,7 +652,7 @@ int cape_fs_path_create_e (const char* path, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_path_create_xe (const char* path, CapeErr err)
+int cape_fs_path_create_xe (const char* path, CapeFileAc ac, CapeErr err)
 {
   struct stat st;
 
@@ -595,7 +665,7 @@ int cape_fs_path_create_xe (const char* path, CapeErr err)
   {
     // not found or other error
     // try to create the path
-    return cape_fs_path_create_x (path, err);
+    return cape_fs_path_create_x (path, ac, err);
   }
 
   if (FALSE == S_ISDIR (st.st_mode))
@@ -865,7 +935,7 @@ int cape_fs_path_cp__create_dirs (CapeMap list_dirs, CapeErr err)
 
   while (cape_map_cursor_next (cursor))
   {
-    res = cape_fs_path_create_xe ((CapeString)cape_map_node_key (cursor->node), err);
+    res = cape_fs_path_create_xe ((CapeString)cape_map_node_key (cursor->node), NULL, err);
     if (res)
     {
       goto exit_and_cleanup;
@@ -920,7 +990,7 @@ int cape_fs_path_cp (const char* source, const char* destination, CapeErr err)
   CapeMap list_dirs = cape_map_new (cape_map__compare__s, cape_fs_path_cp__lists_on_del, NULL);
 
   // try to create the destination path
-  res = cape_fs_path_create_x (destination, err);
+  res = cape_fs_path_create_x (destination, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -1086,70 +1156,7 @@ int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-#ifdef __WINDOWS_OS
-
-#elif defined __APPLE_CC__
-
-#else
-
-CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc* p_ac, CapeErr err)
-{
-  CapeFileAc ret = NULL;
-  CapeFileAc uac = NULL;
-  
-  if (*p_ac)
-  {
-    // transfer ownership
-    ret = *p_ac;
-    *p_ac = NULL;
-    
-    // if everything was set we use the user given AC
-    if (ret->uid && ret->gid && ret->permissions)
-    {
-      goto exit_and_cleanup;
-    }
-
-    // transfer ownership
-    uac = ret;
-    ret = NULL;
-  }
-  
-  ret = cape_fs_file_ac_get (source, err);
-  if (ret == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  // adjust values
-  if (uac)
-  {
-    if (uac->uid)
-    {
-      ret->uid = uac->uid;
-    }
-    
-    if (uac->gid)
-    {
-      ret->gid = uac->gid;
-    }
-    
-    if (uac->permissions)
-    {
-      ret->permissions = uac->permissions;
-    }
-  }
-  
-exit_and_cleanup:
-  
-  cape_fs_ac_del (&uac);
-  return ret;
-}
-
-#endif
-
-//-----------------------------------------------------------------------------
-
-int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc* p_ac, CapeErr err)
+int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
 {
 #ifdef __WINDOWS_OS
 
@@ -1185,7 +1192,7 @@ int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc
     goto exit_and_cleanup;
   }
 
-  ac = cape_fs_file__merge_ac (source, p_ac, err);
+  ac = cape_fs_file__merge_ac (source, ac_user, err);
   if (NULL == ac)
   {
     res = cape_err_code (err);
@@ -1403,7 +1410,7 @@ CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_file_ac_set (const char* path, CapeFileAc* p_ac, CapeErr err)
+int cape_fs_file_ac_set (const char* path, CapeFileAc ac_user, CapeErr err)
 {
 #ifdef __WINDOWS_OS
   
@@ -1414,7 +1421,7 @@ int cape_fs_file_ac_set (const char* path, CapeFileAc* p_ac, CapeErr err)
   // local objects
   CapeFileAc ac = NULL;
   
-  ac = cape_fs_file__merge_ac (path, p_ac, err);
+  ac = cape_fs_file__merge_ac (path, ac_user, err);
   if (NULL == ac)
   {
     res = cape_err_code (err);

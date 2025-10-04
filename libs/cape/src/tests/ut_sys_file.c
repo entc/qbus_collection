@@ -218,13 +218,13 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
 
-  res = cape_fs_path_create (path_test_folder, err);
+  res = cape_fs_path_create (path_test_folder, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
-  res = cape_fs_path_create (path_child_folder, err);
+  res = cape_fs_path_create (path_child_folder, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -272,7 +272,7 @@ int main (int argc, char *argv[])
     goto exit_and_cleanup;
   }
 
-  res = cape_fs_path_create_x (path_child_folder, err);
+  res = cape_fs_path_create_x (path_child_folder, NULL, err);
   if (res)
   {
     goto exit_and_cleanup;
