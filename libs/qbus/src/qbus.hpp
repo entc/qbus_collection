@@ -152,10 +152,34 @@ namespace qbus
       }
     }
 
+    //---------------------------------------------------------------------------
+    
     void forward ()
     {
       cape_udc_replace_mv (&(m_qout->cdata), &(m_qin->cdata));
     }
+    
+    //---------------------------------------------------------------------------
+    
+    void role_has (const CapeString role_name)
+    {
+      if (FALSE == qbus_message_role_has (m_qin, role_name))
+      {
+        throw std::runtime_error ("ERR.NO_ROLE");
+      }
+    }
+    
+    //---------------------------------------------------------------------------
+    
+    void role_or2 (const CapeString role01, const CapeString role02)
+    {
+      if (FALSE == qbus_message_role_or2 (m_qin, role01, role02))
+      {
+        throw std::runtime_error ("ERR.NO_ROLE");
+      }
+    }
+    
+    //---------------------------------------------------------------------------
     
     QBus qbus () { return m_qbus; }
 

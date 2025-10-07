@@ -15,6 +15,7 @@ ENV LD_LIBRARY_PATH="/lib64;/usr/lib/gcc/x86_64-pc-linux-gnu/12/"
 COPY --from=0 /qore/build/image_gen .
 
 WORKDIR /bin
+USER 1000:1000
 
 HEALTHCHECK CMD ["/bin/healthcheck"]
 ENTRYPOINT ["/bin/qbus_mod_auth"]
