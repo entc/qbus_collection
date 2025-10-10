@@ -20,10 +20,10 @@ INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmo
 
 #----------------------------------------------------------------------------------
 
-INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_debug.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt)
+#INSTALL (FILES ${CMAKE_CURRENT_SOURCE_DIR}/docker/CMakeLists_debug.txt DESTINATION ${CMAKE_BINARY_DIR}/docker RENAME e4d06b24-eba8-4d3d-b2a2-e71b4513f393.txt)
 
 # remove none used ones (needs to fix)
-INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_debug)")
+#INSTALL(CODE "execute_process(COMMAND docker image rm qmod/auth:${VERSION_NUMBER}_debug)")
 
 # build the docker image with buster
-INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmod/auth:${VERSION_NUMBER}_debug -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_debug ${CMAKE_BINARY_DIR})")
+#INSTALL(CODE "execute_process(COMMAND docker build --platform=linux/amd64 -t qmod/auth:${VERSION_NUMBER}_debug -f ${CMAKE_CURRENT_SOURCE_DIR}/docker/Dockerfile_debug ${CMAKE_BINARY_DIR})")
