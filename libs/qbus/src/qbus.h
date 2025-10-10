@@ -37,13 +37,22 @@ typedef void     (__STDCALL     *fct_qbus_on_rm)   (void* ptr);
 
 //-----------------------------------------------------------------------------
 
+                                                         /* register a method callback */
 __CAPE_LIBEX   int                qbus_register          (QBus, const CapeString method, void* user_ptr, fct_qbus_on_msg, fct_qbus_on_rm, CapeErr);
 
+                                                         /* initialize a request to a remote method */
 __CAPE_LIBEX   int                qbus_send              (QBus, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg, CapeErr);
 
+                                                         /* continue with another request to a remote method */
 __CAPE_LIBEX   int                qbus_continue          (QBus, const CapeString module, const CapeString method, QBusM qin, void** p_user_ptr, fct_qbus_on_msg, CapeErr);
 
-__CAPE_LIBEX   int                qbus_response          (QBus, const CapeString module, QBusM msg, CapeErr);
+                                                         /* save the current state, run this before qbus_response */
+__CAPE_LIBEX   int                qbus_save              (QBus, QBusM qin, CapeString* p_skey, CapeErr);
+
+                                                         /* send back the response, use qbus_save before */
+__CAPE_LIBEX   int                qbus_response          (QBus, const CapeString skey, QBusM msg, CapeErr);
+
+//-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeAioContext     qbus_aio               (QBus);
 

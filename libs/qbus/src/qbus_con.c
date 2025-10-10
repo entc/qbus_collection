@@ -188,7 +188,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         
         QBusM qin = qbus_con__qin_from_frame (frame);
         
-        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender);
+        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender, NULL);
 
         int res = qbus_methods_run (self->methods, frame->method, saves_key, &qin, err);
         if (res)
@@ -214,7 +214,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         }
         else
         {
-          const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, qbus_method_item_skey (mitem), qbus_method_item_sender (mitem));
+          const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, qbus_method_item_skey (mitem), qbus_method_item_sender (mitem), NULL);
 
           qbus_methods_queue (self->methods, mitem, &qin, saves_key);
         }

@@ -15,11 +15,13 @@ struct QBusMethodItem_s
   CapeString skey;
   CapeString sender;
   
+  CapeUdc rinfo;
+  
 }; typedef struct QBusMethodItem_s* QBusMethodItem;
 
 //-----------------------------------------------------------------------------
 
-QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender)
+QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, const CapeUdc rinfo)
 {
   QBusMethodItem self = CAPE_NEW (struct QBusMethodItem_s);
   
@@ -29,6 +31,8 @@ QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, con
   self->skey = cape_str_cp (saves_key);
   self->sender = cape_str_cp (sender);
 
+  self->rinfo = cape_udc_cp (rinfo);
+  
   return self;
 }
 
@@ -42,6 +46,8 @@ void qbus_method_item_del (QBusMethodItem* p_self)
     
     cape_str_del (&(self->skey));
     cape_str_del (&(self->sender));
+
+    cape_udc_del (&(self->rinfo));
 
     CAPE_DEL (p_self, struct QBusMethodItem_s);
   }
@@ -74,9 +80,6 @@ struct QBusMethodCtx_s
   void* on_msg_user_ptr;
   fct_qbus_on_msg on_msg;
 
-  void* on_res_user_ptr;
-  fct_qbus_methods__on_res on_res;
-
 }; typedef struct QBusMethodCtx_s* QBusMethodCtx;
 
 //-----------------------------------------------------------------------------
@@ -89,7 +92,7 @@ void qbus_method_ctx_del (QBusMethodCtx* p_self)
     
     qbus_message_del (&(self->qin));
     cape_str_del (&(self->saves_key));
-
+    
     CAPE_DEL (p_self, struct QBusMethodCtx_s);
   }
 }
@@ -203,11 +206,11 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString save_key)
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender)
+const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo)
 {
   CapeString save_key = cape_str_uuid ();
   
-  QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, saves_key, sender);
+  QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, saves_key, sender, rinfo);
   
   cape_mutex_lock (self->saves_mutex);
   
@@ -224,7 +227,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
 int qbus_methods_add (QBusMethods self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
-  cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_method_item_new (user_ptr, on_msg, NULL, NULL));
+  cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_method_item_new (user_ptr, on_msg, NULL, NULL, NULL));
     
   return CAPE_ERR_NONE;
 }
@@ -244,10 +247,7 @@ void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, c
     
     mctx->on_msg_user_ptr = mitem->user_ptr;
     mctx->on_msg = mitem->on_msg;
-    
-    mctx->on_res_user_ptr = self->user_ptr;
-    mctx->on_res = self->on_res;
-    
+        
     mctx->qin = *p_qin;
     *p_qin = NULL;
 
@@ -261,6 +261,34 @@ void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, c
   else
   {
     qbus_message_del (p_qin);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg, CapeErr err)
+{
+  if (self->on_res && mitem)
+  {
+    QBusM qout = *p_msg;
+    
+    // transfer err
+    qout->err = err;
+    err = NULL;
+            
+    if ((NULL == qout->rinfo) && mitem->rinfo)
+    {
+      // move rinfo
+      qout->rinfo = cape_udc_mv (&(mitem->rinfo));
+    }
+    
+    self->on_res (self->user_ptr, mitem, p_msg);
+  }
+  else
+  {
+    qbus_message_del (p_msg);
+
+    cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
   }
 }
 
@@ -291,30 +319,14 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
       mitem = qbus_methods_load (mctx->self, mctx->saves_key);
     }
     
+    // check for special case continue
     if (res == CAPE_ERR_CONTINUE)
     {
-      
+      // do nothing, the response is handled on another event
     }
     else
     {
-      if (mctx->on_res && mitem)
-      {
-        // transfer err
-        qout->err = err;
-        err = NULL;
-                
-        if (NULL == qout->rinfo)
-        {
-          // move rinfo
-          qout->rinfo = cape_udc_mv (&(mctx->qin->rinfo));
-        }
-        
-        mctx->on_res (mctx->on_res_user_ptr, mitem, &qout);
-      }
-      else
-      {
-        cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
-      }
+      qbus_methods_response (mctx->self, mitem, &qout, err);
     }
     
     qbus_method_item_del (&mitem);
@@ -343,6 +355,8 @@ int qbus_methods_run (QBusMethods self, const CapeString method_name, const Cape
   }
   else
   {
+    qbus_message_del (p_qin);
+    
     res = cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "method [%s] not found", method_name);
   }
   

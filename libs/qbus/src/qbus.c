@@ -87,9 +87,11 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 {
   QBus self = user_ptr;
 
-  if (qbus_method_item_sender (mitem))
+  const CapeString cid = qbus_method_item_sender (mitem);
+  
+  if (cid)
   {
-    qbus_con_snd (self->con, qbus_method_item_sender (mitem), NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
+    qbus_con_snd (self->con, cid, NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
 
     qbus_message_del (p_msg);
   }
@@ -221,9 +223,10 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
     //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
 
     // need to clone the qin
+    // TODO: check why we need this
     QBusM qin = qbus_message_mv (msg);
 
-    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender);
+    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo);
 
     return qbus_methods_run (self->methods, method, saves_key, &qin, err);
   }
@@ -233,7 +236,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
     if (cid)
     {
-      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender);
+      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo);
 
       //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC on %s with key = %s", cid, saves_key);
 
@@ -283,14 +286,35 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 
 //-----------------------------------------------------------------------------
 
-int qbus_response (QBus self, const CapeString module, QBusM msg, CapeErr err)
+int qbus_save (QBus self, QBusM msg, CapeString* p_skey, CapeErr err)
 {
-  if (module)
+  // save this context and overrides the given pointer to the skey
+  cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo));
+  
+  return CAPE_ERR_CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_response (QBus self, const CapeString skey, QBusM msg, CapeErr err)
+{
+  QBusMethodItem mitem = qbus_methods_load (self->methods, skey);
+
+  if (mitem)
   {
+    // need to clone the qin
+    // TODO: check why we need this
+    QBusM qin = qbus_message_mv (msg);
 
+    qbus_methods_response (self->methods, mitem, &qin, err);
 
-
-
+    qbus_method_item_del (&mitem);
+    
+    return CAPE_ERR_NONE;
+  }
+  else
+  {
+    return cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.MITEM_NOT_FOUND");
   }
 }
 
