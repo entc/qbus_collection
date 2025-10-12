@@ -104,6 +104,13 @@ struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, i
     {
       ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
 
+      {
+        char address[64];
+        cape_net__ntop (addr_current->ai_addr, address, 64);
+
+        cape_log_fmt (CAPE_LL_TRACE, "CAPE", "resolve", "use address [%s:%i]", address, port);
+      }
+      
       memcpy (ret, addr_current->ai_addr, sizeof(struct sockaddr_in));  // set the address
       ret->sin_port = htons(port);    // set the port
     }

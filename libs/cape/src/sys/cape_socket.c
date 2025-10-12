@@ -110,7 +110,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
-  long sock = -1;
+  int sock = -1;
   int opt = 1;
 
   if (NULL == addr)
@@ -118,7 +118,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     return NULL;
   }
 
-  // create socket
+  // try to create a TCP IPV4 socket
   sock = socket (AF_INET, SOCK_STREAM, 0);
   if (sock < 0)
   {
@@ -127,6 +127,8 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
     goto cleanup_and_exit;
   }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
 
   if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
   {
