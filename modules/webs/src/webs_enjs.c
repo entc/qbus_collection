@@ -174,7 +174,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
     {
       if (qin->cdata)
       {
-        h1 = cape_json_to_s (qin->cdata);
+        h1 = cape_json_to_s__strict (qin->cdata);
         if (h1 == NULL)
         {
           res = cape_err_set (err, CAPE_ERR_PARSER, "can't serialize");

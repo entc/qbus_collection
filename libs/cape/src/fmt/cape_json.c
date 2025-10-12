@@ -9,6 +9,7 @@
 // c includes
 #include <wchar.h>
 #include <stdio.h>
+#include <math.h>
 
 //-----------------------------------------------------------------------------------------------------------
 
@@ -625,6 +626,154 @@ void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, 
   }
 }
 
+//-----------------------------------------------------------------------------------------------------------
+
+void cape_json_fill__strict_name (CapeStream stream, const CapeString name, int comma)
+{
+  if (comma)
+  {
+    cape_stream_append_c (stream, ',');
+  }
+  
+  if (name)
+  {
+    cape_stream_append_c (stream, '"');
+
+    cape_json_escape (stream, name);
+
+    cape_stream_append_str (stream, "\":");
+  }
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
+void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeString name, int comma)
+{
+  switch (cape_udc_type (node))
+  {
+    case CAPE_UDC_LIST:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+
+      {
+        CapeUdcCursor* cursor = cape_udc_cursor_new (node, CAPE_DIRECTION_FORW);
+        
+        cape_stream_append_c (stream, '[');
+
+        while (cape_udc_cursor_next (cursor))
+        {
+          cape_json_fill__strict (stream, cursor->item, NULL, cursor->position);
+        }
+
+        cape_stream_append_c (stream, ']');
+
+        cape_udc_cursor_del (&cursor);
+      }
+
+      break;
+    }
+    case CAPE_UDC_NODE:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+      
+      {
+        CapeUdcCursor* cursor = cape_udc_cursor_new (node, CAPE_DIRECTION_FORW);
+              
+        cape_stream_append_c (stream, '{');
+        
+        while (cape_udc_cursor_next (cursor))
+        {
+          cape_json_fill__strict (stream, cursor->item, cape_udc_name (cursor->item), cursor->position);
+        }
+        
+        cape_stream_append_c (stream, '}');
+        
+        cape_udc_cursor_del (&cursor);
+      }
+
+      break;
+    }
+    case CAPE_UDC_STRING:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+      
+      {
+        const CapeString h = cape_udc_s (node, NULL);
+
+        cape_stream_append_c (stream, '"');
+
+        cape_json_escape (stream, h);
+
+        cape_stream_append_c (stream, '"');
+      }
+
+      break;
+    }
+    case CAPE_UDC_BOOL:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+
+      cape_stream_append_str (stream, cape_udc_b (node, FALSE) ? "true" : "false");
+      break;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+
+      cape_stream_append_n (stream, cape_udc_n (node, 0));
+      break;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      double val = cape_udc_f (node, .0);
+      
+      // JSON definition doesn't allow NAN and INF
+      if ((FALSE == isnan (val)) && (FALSE == isinf (val)))
+      {
+        cape_json_fill__strict_name (stream, name, comma);
+        cape_stream_append_f (stream, val);
+      }
+      
+      break;
+    }
+    case CAPE_UDC_DATETIME:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+
+      cape_stream_append_c (stream, '"');
+      cape_stream_append_d (stream, cape_udc_d (node, NULL));
+      cape_stream_append_c (stream, '"');
+
+      break;
+    }
+    case CAPE_UDC_STREAM:
+    {
+      cape_json_fill__strict_name (stream, name, comma);
+      
+      {
+        const CapeStream s = cape_udc_m (node);
+        
+        CapeString h = cape_stream_serialize (s, NULL);
+        if (h)
+        {
+          cape_stream_append_c (stream, '"');
+          cape_stream_append_str (stream, h);
+          cape_stream_append_c (stream, '"');
+        }
+        else
+        {
+          cape_stream_append_c (stream, '"');
+          cape_stream_append_c (stream, '"');
+        }
+        
+        cape_str_del (&h);
+      }
+      
+      break;
+    }
+  }
+}
+
 //-----------------------------------------------------------------------------
 
 CapeString __STDCALL cape_json_to_s__encode_stream (const CapeStream s)
@@ -647,6 +796,25 @@ CapeString cape_json_to_s (const CapeUdc source)
   else
   {
     return cape_str_cp ("NULL");
+  }
+}
+
+//-----------------------------------------------------------------------------------------------------------
+
+CapeString cape_json_to_s__strict (const CapeUdc source)
+{
+  if (source)
+  {
+    CapeStream stream = cape_stream_new ();
+    
+    // use the strict method
+    cape_json_fill__strict (stream, source, NULL, FALSE);
+    
+    return cape_stream_to_str (&stream);
+  }
+  else
+  {
+    return cape_str_cp ("{}");
   }
 }
 

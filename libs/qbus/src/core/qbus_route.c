@@ -904,7 +904,7 @@ void qbus_route_no_route (QBusRoute self, const char* module, const char* method
     msg->err = cape_err_new ();
     
     // set the error
-    cape_err_set (msg->err, CAPE_ERR_NOT_FOUND, "no route to module");
+    cape_err_set_fmt (msg->err, CAPE_ERR_NOT_FOUND, "no route to module '%s'", module);
     
     {
       // create a temporary error object
