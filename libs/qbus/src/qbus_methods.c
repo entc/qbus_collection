@@ -272,9 +272,8 @@ void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg
   {
     QBusM qout = *p_msg;
     
-    // transfer err
-    qout->err = err;
-    err = NULL;
+    // copy the error object to the message
+    qout->err = cape_err_cp (err);
             
     if ((NULL == qout->rinfo) && mitem->rinfo)
     {

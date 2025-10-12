@@ -33,6 +33,8 @@ namespace qbus
     {
     }
 
+    //---------------------------------------------------------------------------
+    
     ~Message ()
     {
       if (m_qout)
@@ -50,6 +52,8 @@ namespace qbus
       }
     }
 
+    //---------------------------------------------------------------------------
+    
     int get_err ()
     {
       CapeErr err = m_qin->err;
@@ -64,13 +68,33 @@ namespace qbus
       }
     }
 
-    void set_response (std::string& sender, std::string& chainkey)
+    //---------------------------------------------------------------------------
+    
+    void set_response (QBus qbus, std::string& chainkey)
     {
-      m_ret = CAPE_ERR_CONTINUE;
+      cape::ErrHolder errh;
 
-      sender.assign (m_qin->sender);
-      chainkey.assign (m_qin->chain_key);
+      {
+        // local object
+        CapeString skey = NULL;
+
+        // this will save the context within qbus and returns a skey
+        m_ret = qbus_save (qbus, m_qin, &skey, errh.err);
+
+        // override chainkeu
+        chainkey.assign (skey);
+        
+        cape_str_del (&skey);
+      }
+
+      // valide if everything was fine
+      if (m_ret != CAPE_ERR_CONTINUE)
+      {
+        throw cape::Exception (errh.code(), errh.text());
+      }
     }
+    
+    //---------------------------------------------------------------------------
     
     void set_continue (cape::Udc& content)
     {
@@ -83,6 +107,8 @@ namespace qbus
         m_qin->cdata = content.release();
       }
     }
+    
+    //---------------------------------------------------------------------------
     
     cape::Udc& rinfo_valid (int type)
     {
@@ -99,8 +125,12 @@ namespace qbus
       return m_rinfo_in;
     }
 
+    //---------------------------------------------------------------------------
+    
     cape::Udc& cdata () { return m_cdata_in; }
 
+    //---------------------------------------------------------------------------
+    
     cape::Udc& cdata_valid (int type)
     {
       if (m_cdata_in.empty())
@@ -116,8 +146,12 @@ namespace qbus
       return m_cdata_in;
     }
 
+    //---------------------------------------------------------------------------
+    
     cape::Udc& pdata () { return m_pdata_in; }
 
+    //---------------------------------------------------------------------------
+    
     cape::Udc& odata_owned (int type)
     {
       if (m_qout == NULL)
@@ -129,6 +163,8 @@ namespace qbus
       return m_out_cdata;
     }
 
+    //---------------------------------------------------------------------------
+    
     cape::Udc output (int type)
     {
       if (m_qout == NULL)
@@ -144,6 +180,8 @@ namespace qbus
       return h;
     }
 
+    //---------------------------------------------------------------------------
+    
     void throw_error ()
     {
       if (m_qin->err)

@@ -50,6 +50,8 @@ __CAPE_LIBEX   CapeErr           cape_err_new           (void);             // a
 
 __CAPE_LIBEX   void              cape_err_del           (CapeErr*);         // release memory
 
+__CAPE_LIBEX   CapeErr           cape_err_cp            (CapeErr);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void              cape_err_clr           (CapeErr);

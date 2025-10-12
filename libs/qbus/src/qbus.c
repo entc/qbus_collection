@@ -242,7 +242,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
       qbus_con_snd (self->con, cid, method, saves_key, QBUS_FRAME_TYPE_MSG_REQ, msg);
 
-      return CAPE_ERR_CONTINUE;
+      return CAPE_ERR_NONE;
     }
     else
     {
@@ -280,8 +280,16 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
   {
     res = qbus_request (self, module, method, qin, NULL, on_msg, err);
   }
-
-  return res;
+  
+  if (res)
+  {
+    return res;
+  }
+  else
+  {
+    // always return continue
+    return CAPE_ERR_CONTINUE;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -291,6 +299,7 @@ int qbus_save (QBus self, QBusM msg, CapeString* p_skey, CapeErr err)
   // save this context and overrides the given pointer to the skey
   cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo));
   
+  // always return continue
   return CAPE_ERR_CONTINUE;
 }
 
