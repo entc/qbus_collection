@@ -110,7 +110,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
-  int sock = -1;
+  number_t sock = -1;
   int opt = 1;
 
   if (NULL == addr)
@@ -127,10 +127,10 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
     goto cleanup_and_exit;
   }
-  
+    
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
 
-  if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
+  if (setsockopt ((int)sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -138,7 +138,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     goto cleanup_and_exit;
   }
 
-  if (bind (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
+  if (bind ((int)sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -147,12 +147,12 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   }
 
   // cannot fail
-  listen(sock, SOMAXCONN);
+  listen((int)sock, SOMAXCONN);
 
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host, port);
 
   ret = (void*)sock;
-  sock = 0;
+  sock = -1;
 
 cleanup_and_exit:
 
@@ -160,7 +160,7 @@ cleanup_and_exit:
 
   if (sock >= 0)
   {
-    close(sock);
+    close((int)sock);
   }
 
   return ret;
