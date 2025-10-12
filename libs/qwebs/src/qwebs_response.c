@@ -51,7 +51,7 @@ void qwebs_response__internal__content (CapeStream s, QWebs webs, CapeUdc conten
   // serialize UDC container to add as HTTP content
   if (content)
   {
-    CapeString h = cape_json_to_s (content);
+    CapeString h = cape_json_to_s__strict (content);
 
     qwebs_response__internal__content_length (s, cape_str_size (h));
     cape_stream_append_str (s, h);

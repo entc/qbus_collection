@@ -410,8 +410,10 @@ int qwebs_attach (QWebs self, CapeAioContext aio_context, CapeErr err)
   }
   
   void* handle = cape_sock__tcp__srv_new (self->host, self->port, err);
-  if (NULL == handle)
+  if (cape_err_code (err))
   {
+    cape_log_fmt (CAPE_LL_ERROR, "QWEBS", "attach", "error in creating socket: %s", cape_err_text (err));
+
     res = cape_err_code (err);
     goto exit_and_cleanup;
   }

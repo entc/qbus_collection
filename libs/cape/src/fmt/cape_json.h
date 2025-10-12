@@ -15,6 +15,11 @@ __CAPE_LIBEX   CapeUdc           cape_json_from_buf         (const char* buffer,
 
 __CAPE_LIBEX   CapeString        cape_json_to_s             (const CapeUdc source);
 
+                                 /* convert in strict mode (JSON definition), no nan, inf, or similar is allowed
+                                  -> items with not allowed content, will be excluded from output
+                                  */
+__CAPE_LIBEX   CapeString        cape_json_to_s__strict     (const CapeUdc source);
+
 __CAPE_LIBEX   CapeString        cape_json_to_s__ex         (const CapeUdc source, fct_cape_stream_base64_encode);
 
 __CAPE_LIBEX   CapeString        cape_json_to_s_max         (const CapeUdc source, number_t max_item_size);
