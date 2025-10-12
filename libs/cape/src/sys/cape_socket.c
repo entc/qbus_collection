@@ -110,7 +110,8 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
-  number_t sock = -1;
+  number_t sock1 = -1;
+  number_t sock2 = -1;
   int opt = 1;
 
   if (NULL == addr)
@@ -119,8 +120,8 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   }
 
   // try to create a TCP IPV4 socket
-  sock = socket (AF_INET, SOCK_STREAM, 0);
-  if (sock < 0)
+  sock1 = socket (AF_INET, SOCK_STREAM, 0);
+  if (sock1 < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -128,9 +129,24 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     goto cleanup_and_exit;
   }
     
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
+  // avoid to have the socket with FD = 0
+  if (sock1 == 0)
+  {
+    sock2 = 0;
+    
+    sock1 = socket (AF_INET, SOCK_STREAM, 0);
+    if (sock1 < 0)
+    {
+      // save the last system error into the error object
+      cape_err_lastOSError (err);
 
-  if (setsockopt ((int)sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
+      goto cleanup_and_exit;
+    }
+  }
+  
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock1);
+
+  if (setsockopt ((int)sock1, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -138,7 +154,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     goto cleanup_and_exit;
   }
 
-  if (bind ((int)sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
+  if (bind ((int)sock1, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -147,20 +163,25 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   }
 
   // cannot fail
-  listen((int)sock, SOMAXCONN);
+  listen((int)sock1, SOMAXCONN);
 
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host, port);
 
-  ret = (void*)sock;
-  sock = -1;
+  ret = (void*)sock1;
+  sock1 = -1;
 
 cleanup_and_exit:
 
   CAPE_FREE (addr);
 
-  if (sock >= 0)
+  if (sock1 >= 0)
   {
-    close((int)sock);
+    close((int)sock1);
+  }
+
+  if (sock2 >= 0)
+  {
+    close((int)sock2);
   }
 
   return ret;
