@@ -26,7 +26,6 @@ ADD_SUBDIRECTORY(qbus_collection/libs/qwebs/src)
 
 # tools
 ADD_SUBDIRECTORY(qbus_collection/tools/cldd/src)
-ADD_SUBDIRECTORY(qbus_collection/tools/healthcheck/src)
 
 # module
 ADD_SUBDIRECTORY(qbus_collection/modules/webs/src)

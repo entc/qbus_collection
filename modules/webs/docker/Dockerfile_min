@@ -1,4 +1,4 @@
-FROM qore/qbus2:bookworm
+FROM qore/qbus:bookworm
 
 COPY docker /qore
 RUN mv /qore/9e54a2c8-cea9-4569-b618-ba99cc6da9c8.txt /qore/CMakeLists.txt \
@@ -15,6 +15,4 @@ ENV LD_LIBRARY_PATH="/lib64;/usr/lib/gcc/x86_64-pc-linux-gnu/12/"
 COPY --from=0 /qore/build/image_gen .
 
 WORKDIR /bin
-
-HEALTHCHECK CMD ["/bin/healthcheck"]
 ENTRYPOINT ["/bin/qbus_mod_webs"]
