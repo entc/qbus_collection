@@ -462,8 +462,6 @@ struct CapeFileAc_s
 
 #ifdef __WINDOWS_OS
 
-#elif defined __APPLE_CC__
-
 #else
 
 CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
