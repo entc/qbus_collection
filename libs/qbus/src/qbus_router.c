@@ -99,7 +99,7 @@ void qbus_router_dump (QBusRouter self)
 
 void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString name)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on con", "connection change [ADD] detected, cid = %s, name = %s", cid, name);
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module ADD", "connection change detected, cid = %s, name = %s", cid, name);
   
   CapeList cids;
   
@@ -132,7 +132,7 @@ void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString na
 
 void qbus_router_rm (QBusRouter self, const CapeString cid, const CapeString name)
 {
-  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on con", "connection change [RM] detected, cid = %s, name = %s", cid, name);
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module REMOVE", "connection change detected, cid = %s, name = %s", cid, name);
 
   CapeMapNode n = cape_map_find (self->routes, (void*)name);
   if (n)

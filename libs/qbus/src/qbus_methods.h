@@ -16,7 +16,7 @@ struct QBusMethodItem_s; typedef struct QBusMethodItem_s* QBusMethodItem;
 
 __CAPE_LIBEX   void                 qbus_method_item_del      (QBusMethodItem* p_self);
 
-__CAPE_LIBEX   const CapeString     qbus_method_item_sender   (QBusMethodItem);
+__CAPE_LIBEX   const CapeString     qbus_method_item_cid      (QBusMethodItem);
 
 __CAPE_LIBEX   const CapeString     qbus_method_item_skey     (QBusMethodItem);
 
@@ -48,7 +48,7 @@ __CAPE_LIBEX   void                 qbus_methods_queue        (QBusMethods, QBus
 
 __CAPE_LIBEX   QBusMethodItem       qbus_methods_load         (QBusMethods, const CapeString save_key);
 
-__CAPE_LIBEX   const CapeString     qbus_methods_save         (QBusMethods, void* user_ptr, fct_qbus_on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo);
+__CAPE_LIBEX   const CapeString     qbus_methods_save         (QBusMethods, void* user_ptr, fct_qbus_on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString debug);
 
 //-----------------------------------------------------------------------------
 

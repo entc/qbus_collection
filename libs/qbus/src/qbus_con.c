@@ -186,10 +186,16 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
       {
         CapeErr err = cape_err_new ();
         
+        // parse the frame to create a new qbus message object
         QBusM qin = qbus_con__qin_from_frame (frame);
         
-        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender, NULL);
+        // create a new skey-mitem-set to store the request context
+        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender, qin->rinfo, "REQ");
 
+        // correct the qin skey environment
+        cape_str_replace_cp (&(qin->chain_key), saves_key);
+        cape_str_del (&(qin->sender));
+        
         int res = qbus_methods_run (self->methods, frame->method, saves_key, &qin, err);
         if (res)
         {
@@ -203,19 +209,28 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
       case QBUS_FRAME_TYPE_MSG_RES:
       {
         CapeErr err = cape_err_new ();
+
+        // parse the frame to create a new qbus message object
         QBusM qin = qbus_con__qin_from_frame (frame);
 
+        // extract the mitem from the methods storage
         QBusMethodItem mitem = qbus_methods_load (self->methods, frame->chain_key);
 
         if (NULL == mitem)
         {
           // this can't happen, but better to check this
-          
+          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "on snd", "can't find mitem for skey = '%s'", frame->chain_key);
         }
         else
         {
-          const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, qbus_method_item_skey (mitem), qbus_method_item_sender (mitem), NULL);
+          // the mitem skey has the original the request context
+          const CapeString saves_key = qbus_method_item_skey (mitem);
+          
+          // correct the qin skey environment
+          cape_str_replace_cp (&(qin->chain_key), saves_key);
+          cape_str_del (&(qin->sender));
 
+          // continue with the user process
           qbus_methods_queue (self->methods, mitem, &qin, saves_key);
         }
         

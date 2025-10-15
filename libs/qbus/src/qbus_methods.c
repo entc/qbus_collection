@@ -55,7 +55,7 @@ void qbus_method_item_del (QBusMethodItem* p_self)
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_method_item_sender (QBusMethodItem self)
+const CapeString qbus_method_item_cid (QBusMethodItem self)
 {
   return self->sender;
 }
@@ -180,13 +180,13 @@ int qbus_methods_init (QBusMethods self, number_t threads, void* user_ptr, fct_q
 
 //-----------------------------------------------------------------------------
 
-QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString save_key)
+QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString skey)
 {
   QBusMethodItem mitem = NULL;
   
   cape_mutex_lock (self->saves_mutex);
 
-  CapeMapNode n = cape_map_find (self->saves, (void*)save_key);
+  CapeMapNode n = cape_map_find (self->saves, (void*)skey);
 
   if (n)
   {
@@ -195,32 +195,36 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString save_key)
     cape_map_node_set (n, NULL);
 
     cape_map_erase (self->saves, n);
+
+    //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", skey);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "load", "can't load skey = '%s'", skey);
   }
   
   cape_mutex_unlock (self->saves_mutex);
-
-  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", save_key);
   
   return mitem;
 }
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo)
+const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString debug)
 {
-  CapeString save_key = cape_str_uuid ();
+  CapeString skey = cape_str_uuid ();
   
   QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, saves_key, sender, rinfo);
   
   cape_mutex_lock (self->saves_mutex);
   
-  cape_map_insert (self->saves, (void*)save_key, (void*)mitem);
+  cape_map_insert (self->saves, (void*)skey, (void*)mitem);
 
   cape_mutex_unlock (self->saves_mutex);
   
-  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' | on_msg = %p | sender = %s", save_key, on_msg, sender);
+  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' -> %p [skey: %s, sender: %s] {%s}", skey, mitem, saves_key, sender, debug);
 
-  return save_key;
+  return skey;
 }
 
 //-----------------------------------------------------------------------------
@@ -312,11 +316,6 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     QBusMethodItem mitem = NULL;
     
     int res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
-
-    if (mctx->saves_key)
-    {
-      mitem = qbus_methods_load (mctx->self, mctx->saves_key);
-    }
     
     // check for special case continue
     if (res == CAPE_ERR_CONTINUE)
@@ -325,6 +324,11 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     }
     else
     {
+      if (mctx->saves_key)
+      {
+        mitem = qbus_methods_load (mctx->self, mctx->saves_key);
+      }
+
       qbus_methods_response (mctx->self, mitem, &qout, err);
     }
     
