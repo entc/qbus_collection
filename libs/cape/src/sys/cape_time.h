@@ -135,8 +135,11 @@ __CAPE_LIBEX   CapeString      cape_datetime_s__fmt_lcl   (const CapeDatetime*, 
                                /* convert into UTC time -> use the format for transformation */
 __CAPE_LIBEX   CapeString      cape_datetime_s__fmt_utc   (const CapeDatetime*, const CapeString format);
 
-                               /* 2013-10-21T13:28:06.419Z */
+                               /* 2013-10-21T13:28:06.419Z with milliseconds */
 __CAPE_LIBEX   CapeString      cape_datetime_s__std_msec  (const CapeDatetime*);   // RFC 3339
+
+                               /* 2013-10-21T13:28:06.419123Z with microseconds */
+__CAPE_LIBEX   CapeString      cape_datetime_s__std_usec  (const CapeDatetime*);   // RFC 3339
 
                                /* 2013-10-21T13:28:06Z */
 __CAPE_LIBEX   CapeString      cape_datetime_s__std       (const CapeDatetime*);   // RFC 3339
@@ -173,6 +176,9 @@ __CAPE_LIBEX   int             cape_datetime__std         (CapeDatetime*, const 
 
                                /* 1970-01-01T13:28:06.419Z */
 __CAPE_LIBEX   int             cape_datetime__std_msec    (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 1970-01-01T13:28:06.412419Z */
+__CAPE_LIBEX   int             cape_datetime__std_usec    (CapeDatetime*, const CapeString datetime_in_text);
 
                                /* 2019-09-01 12:08:21.231 */
 __CAPE_LIBEX   int             cape_datetime__str_msec    (CapeDatetime*, const CapeString datetime_in_text);

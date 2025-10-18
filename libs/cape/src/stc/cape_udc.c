@@ -1749,7 +1749,7 @@ int cape_udc_cto_d (CapeUdc self)
     {
       CapeDatetime dt;
 
-      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
+      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__std_usec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
       {
         // cleanup
         cape_str_del ((CapeString*)&(self->data));

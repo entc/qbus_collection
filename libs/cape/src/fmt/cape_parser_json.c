@@ -393,7 +393,7 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
     case CAPE_JPARSER_OBJECT_TEXT:
     {
       // parse again if text might be a datetime : 2012-04-23T18:25:43.511Z
-      if (cape_stream_size (self->valElement->stream) == 24 || cape_stream_size (self->valElement->stream) == 20)
+      if (cape_stream_size (self->valElement->stream) == 27 || cape_stream_size (self->valElement->stream) == 24 || cape_stream_size (self->valElement->stream) == 20)
       {
         const char* buf = cape_stream_get (self->valElement->stream);
 
@@ -403,7 +403,7 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
         {
           CapeDatetime dt;
 
-          if (cape_datetime__std_msec (&dt, buf) || cape_datetime__std (&dt, buf))
+          if (cape_datetime__std_msec (&dt, buf) || cape_datetime__std_usec (&dt, buf) || cape_datetime__std (&dt, buf))
           {
             if (self->onItem)
             {

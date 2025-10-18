@@ -975,6 +975,13 @@ CapeString cape_datetime_s__std_msec (const CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_datetime_s__std_usec (const CapeDatetime* dt)
+{
+  return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02i.%03iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec, dt->usec);
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_datetime_s__std (const CapeDatetime* dt)
 {
   return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec);
@@ -1119,7 +1126,36 @@ int cape_datetime__std (CapeDatetime* dt, const CapeString datetime_in_text)
 
 int cape_datetime__std_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  return cape_sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%u.%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  if (cape_str_size (datetime_in_text) == 24)
+  {
+    int res = cape_sscanf (datetime_in_text, "%4u-%2u-%2uT%2u:%2u:%2u.%3uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+    
+    dt->usec = dt->msec * 1000;
+    
+    return res;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__std_usec (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  if (cape_str_size (datetime_in_text) == 27)
+  {
+    int res = cape_sscanf (datetime_in_text, "%4u-%2u-%2uT%2u:%2u:%2u.%6uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->usec)) == 7;
+    
+    dt->msec = dt->usec / 1000;
+
+    return res;
+  }
+  else
+  {
+    return FALSE;
+  }
 }
 
 //-----------------------------------------------------------------------------
