@@ -400,18 +400,26 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
     goto exit_and_error;
   }
   
-  if (!PyList_Check (clist))
+  // optional
+  if (clist != Py_None)
   {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
-    goto exit_and_error;
-  }
-
-  if (!PyDict_Check (cdata))
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
-    goto exit_and_error;
+    if (!PyList_Check (clist))
+    {
+      cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
+      goto exit_and_error;
+    }
   }
   
+  // optional
+  if (cdata != Py_None)
+  {
+    if (!PyDict_Check (cdata))
+    {
+      cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
+      goto exit_and_error;
+    }
+  }
+    
   if (!PyCallable_Check (cbfct)) 
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "4. parameter is not a callback");
@@ -420,8 +428,15 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
   
   qin = qbus_message_new (NULL, NULL);
   
-  qin->clist = py_transform_to_udc (clist);
-  qin->cdata = py_transform_to_udc (cdata);
+  if (clist != Py_None)
+  {
+    qin->clist = py_transform_to_udc (clist);
+  }
+  
+  if (cdata != Py_None)
+  {
+    qin->cdata = py_transform_to_udc (cdata);
+  }
 
   {
     PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
