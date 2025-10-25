@@ -379,7 +379,9 @@ exit_and_cleanup:
 
 void cape_sock__close (void* sock)
 {
-  close ((long)sock);
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)sock);
+  
+  close ((number_t)sock);
 }
 
 //-----------------------------------------------------------------------------

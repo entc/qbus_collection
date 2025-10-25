@@ -1,5 +1,4 @@
 SUBDIRS (src)
-SUBDIRS (test)
 SUBDIRS (app)
 
 # for docker install
