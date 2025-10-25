@@ -106,7 +106,7 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
   {
     frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
     frame->msg_size = cape_str_size (frame->msg_data);
-    frame->msg_type = QBUS_MTYPE_JSON;
+    frame->msg_type = msg->mtype;
   }
 
   cape_udc_del (&payload);

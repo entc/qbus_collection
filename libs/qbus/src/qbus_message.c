@@ -22,7 +22,7 @@ QBusM qbus_message_new (const CapeString key, const CapeString sender)
   
   self->err = NULL;
   
-  self->mtype = QBUS_MTYPE_NONE;
+  self->mtype = QBUS_MTYPE_JSON;   // use as default
     
   return self;
 }
