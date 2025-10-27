@@ -2,9 +2,11 @@
 
 // cape includes
 #include <sys/cape_socket.h>
+#include <sys/cape_log.h>
 
 // project includes
 #include "qwave_aioctx.h"
+#include "qwave_config.h"
 
 //-----------------------------------------------------------------------------
 
@@ -14,6 +16,7 @@ struct QWave_s
     number_t port;
     
     QWaveAioctx aioctx;
+    QWaveConfig config;
 };
 
 //-----------------------------------------------------------------------------
@@ -26,6 +29,7 @@ QWave qwave_new (const CapeString host, number_t port, CapeUdc parameters)
     self->port = port;
     
     self->aioctx = qwave_aioctx_new ();
+    self->config = qwave_config_new ();
     
     return self;
 }
@@ -38,6 +42,7 @@ void qwave_del (QWave* p_self)
     {
         QWave self = *p_self;
         
+        qwave_config_del (&(self->config));
         qwave_aioctx_del (&(self->aioctx));
         
         cape_str_del (&(self->host));
@@ -48,26 +53,102 @@ void qwave_del (QWave* p_self)
 
 //-----------------------------------------------------------------------------
 
-/*
-int qwave__events__sigmask (QWave self, sigset_t* sigset)
+int __STDCALL qwave_server__on_request (void* user_ptr, void* handle)
 {
-    int res, i;
+    qwave_conctx_read (user_ptr, handle);
     
-    // null the sigset
-    res = sigemptyset (sigset);
+    return QWAVE_EVENT_RESULT__CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_factory_conctx (QWave self, void* handle_sock, const CapeString remote_address)
+{
+    QWaveConctx conctx = qwave_conctx_new (self->config, remote_address);
     
-    for (i = 0; i < 32; i++)
     {
-        if (self->smap[i])
+        CapeErr err = cape_err_new();
+        
+        int res = qwave_aioctx_add (self->aioctx, &handle_sock, conctx, qwave_server__on_request, err);
+        if (res)
         {
-            // add this signal to the sigset
-            res = sigaddset (sigset, i);
+            
+        }
+        
+        cape_err_del (&err);        
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+#ifdef __WINDOWS_OS
+
+#elif defined __LINUX_OS
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
+{
+    QWave self = user_ptr;
+    
+    struct sockaddr addr;
+    socklen_t addrlen = 0;
+    
+    const char* remoteAddr = NULL;
+    
+    memset (&addr, 0x00, sizeof(addr));
+    
+    number_t sock = accept ((number_t)handle, &addr, &addrlen);
+    if (sock < 0)
+    {
+        if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+        {
+            CapeErr err = cape_err_new ();
+            
+            cape_err_lastOSError (err);
+
+            cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "accept", "error in accept: %s", cape_err_text (err));
+            
+            return QWAVE_EVENT_RESULT__ERROR_CLOSED;
+        }
+        else
+        {
+            return QWAVE_EVENT_RESULT__TRYAGAIN;
         }
     }
     
-    return 0;
+    remoteAddr = inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr);
+    
+    // set the socket to none blocking
+    {
+        int flags = fcntl(sock, F_GETFL, 0);
+        if (flags == -1)
+        {
+            
+        }
+        
+        flags |= O_NONBLOCK;
+        
+        if (fcntl(sock, F_SETFL, flags) != 0)
+        {
+            
+        }
+    }
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "new connection from '%s' on fd [%lu]", remoteAddr, sock);
+
+    qwave_factory_conctx (self, (void*)sock, remoteAddr);
+    
+    return QWAVE_EVENT_RESULT__CONTINUE;
 }
-*/
+
+#endif
 
 //-----------------------------------------------------------------------------
 
@@ -92,7 +173,7 @@ int qwave_run (QWave self, CapeErr err)
         goto cleanup_and_exit;
     }
     
-    res = qwave_aioctx_add (self->aioctx, &socket_handle, err);
+    res = qwave_aioctx_add (self->aioctx, &socket_handle, self, qwave_server__on_accept, err);
     if (res)
     {
         goto cleanup_and_exit;

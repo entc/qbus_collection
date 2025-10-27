@@ -16,10 +16,19 @@ __CAPE_LIBEX     void               qwave_aioctx_del    (QWaveAioctx*);
 
 //-----------------------------------------------------------------------------
 
+// the list of event return codes
+#define QWAVE_EVENT_RESULT__CONTINUE         0
+#define QWAVE_EVENT_RESULT__ERROR_CLOSED     1
+#define QWAVE_EVENT_RESULT__TRYAGAIN         2
+
+typedef int     (__STDCALL *fct_qwave__on_aio_event)      (void* user_ptr, void* handle);
+
+//-----------------------------------------------------------------------------
+
                                     /* initialize the AIO */
 __CAPE_LIBEX     int                qwave_aioctx_open   (QWaveAioctx, CapeErr err);
 
-__CAPE_LIBEX     int                qwave_aioctx_add    (QWaveAioctx, void** p_handle, CapeErr err);
+__CAPE_LIBEX     int                qwave_aioctx_add    (QWaveAioctx, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
