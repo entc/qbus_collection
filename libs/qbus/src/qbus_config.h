@@ -33,4 +33,8 @@ __CAPE_LIBEX   CapeUdc            qbus_config_node       (QBusConfig, const char
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   void               qbus_config_set_n      (QBusConfig, const char* name, number_t val);
+
+//-----------------------------------------------------------------------------
+
 #endif

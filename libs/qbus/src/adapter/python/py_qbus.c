@@ -13,7 +13,7 @@ PyObject* py_object_qbus_new (PyTypeObject* type, PyObject* args, PyObject* kwds
   PyObject_QBus* self = (PyObject_QBus*)type->tp_alloc(type, 0);
 
   self->qbus = NULL;
-  
+
   return (PyObject*) self;
 }
 
@@ -25,7 +25,7 @@ void py_object_qbus_del (PyObject_QBus* self)
   {
     qbus_del (&(self->qbus));
   }
-  
+
   Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -34,11 +34,11 @@ void py_object_qbus_del (PyObject_QBus* self)
 int py_object_qbus_init (PyObject_QBus* self, PyObject *args, PyObject *kwds)
 {
   PyObject* name;
-  
+
   if (!PyArg_ParseTuple (args, "O", &name))
   {
     return -1;
-  }  
+  }
 
   if (!PYOBJECT_IS_STRING (name))
   {
@@ -47,7 +47,7 @@ int py_object_qbus_init (PyObject_QBus* self, PyObject *args, PyObject *kwds)
 
   // create a new qbus object
   self->qbus = qbus_new (PYOBJECT_AS_STRING(name));
-  
+
   return 0;
 }
 
@@ -63,72 +63,72 @@ void py_object_qbus_del_e (PyObject_QBus* self)
 PyObject* py_object_qbus_wait (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
-  
+
   CapeUdc cape_argument = NULL;
-  
+
   PyObject* argument;
-  
+
   CapeErr err = cape_err_new ();
-  
+
   if (!PyArg_ParseTuple (args, "O", &argument))
   {
     return NULL;
   }
-  
+
   if (argument)
   {
     cape_argument = py_transform_to_udc (argument);
   }
-  
+
   if (NULL == cape_argument)
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid input parameters");
     goto exit_and_error;
   }
-  
+
   if (cape_argument)
   {
     CapeString h = cape_json_to_s (cape_argument);
-    
+
     printf ("B: %s\n", h);
-    
+
     cape_str_del (&h);
   }
-    
+
   {
     int res = qbus_wait (self->qbus, &cape_argument, err);
     if (res)
     {
       printf ("ERROR: %s\n", cape_err_text (err));
-      
+
       goto exit_and_error;
     }
   }
-  
+
 exit_and_error:
-  
+
   if (cape_err_code (err))
   {
     PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
-    
+
     // tell python an error ocoured
     ret = NULL;
   }
-  
+
   cape_udc_del (&cape_argument);
-  
+
   cape_err_del (&err);
-  
+
   return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 typedef struct {
-  
+
   PyObject* fct;
   PyObject_QBus* qbus;
-  
+
 } PythonCallbackData;
 
 //-----------------------------------------------------------------------------
@@ -136,22 +136,22 @@ typedef struct {
 int __STDCALL py_object_qbus_register__on_message (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   PythonCallbackData* pcd = ptr;
-  
+
   PyObject* arglist;
   PyObject* result;
-  
+
   PyObject* py_qin = Py_None;
-  
+
   if (qin->cdata)
   {
     py_qin = py_transform_to_pyo (qin->cdata);
   }
 
   arglist = Py_BuildValue ("(O)", py_qin);
-  
+
   // depricated
   //result = PyEval_CallObject (pcd->fct, arglist);
-  
+
   result = PyObject_Call (pcd->fct, arglist, NULL);
   if (result)
   {
@@ -172,7 +172,7 @@ int __STDCALL py_object_qbus_register__on_message (QBus qbus, void* ptr, QBusM q
   // cleanup
   Py_XDECREF (py_qin);
   Py_DECREF (arglist);
-    
+
   return CAPE_ERR_NONE;
 }
 
@@ -181,9 +181,9 @@ int __STDCALL py_object_qbus_register__on_message (QBus qbus, void* ptr, QBusM q
 static void __STDCALL py_object_qbus_register__on_removed (void* ptr)
 {
   PythonCallbackData* pcd = ptr;
-  
+
   Py_DECREF (pcd->fct);
-  
+
   CAPE_DEL(&pcd, PythonCallbackData);
 }
 
@@ -192,37 +192,37 @@ static void __STDCALL py_object_qbus_register__on_removed (void* ptr)
 PyObject* py_object_qbus_register (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
-  
+
   CapeErr err = cape_err_new ();
-  
+
   PyObject* name;
   PyObject* cbfct;
-  
+
   if (!PyArg_ParseTuple (args, "OO", &name, &cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
     goto exit_and_error;
   }
-  
+
   if (!PYOBJECT_IS_STRING (name))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
     goto exit_and_error;
   }
-  
-  if (!PyCallable_Check (cbfct)) 
+
+  if (!PyCallable_Check (cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter is not a callback");
     goto exit_and_error;
   }
-  
+
   {
     PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
-    
+
     pcd->fct = cbfct;
-    
+
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "register callback %s", PYOBJECT_AS_STRING (name));
-    
+
     {
       int res = qbus_register (self->qbus, PYOBJECT_AS_STRING (name), pcd, py_object_qbus_register__on_message, py_object_qbus_register__on_removed, err);
       if (res)
@@ -231,19 +231,19 @@ PyObject* py_object_qbus_register (PyObject_QBus* self, PyObject* args, PyObject
       }
     }
   }
-  
+
 exit_and_error:
-  
+
   if (cape_err_code (err))
   {
     PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
-    
+
     // tell python an error occoured
     ret = NULL;
   }
-  
+
   cape_err_del (&err);
-  
+
   return ret;
 }
 
@@ -252,12 +252,12 @@ exit_and_error:
 PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
-  
+
   CapeErr err = cape_err_new ();
-  
+
   PyObject* name;
   PyObject* default_val;
-  
+
   if (!PyArg_ParseTuple (args, "OO", &name, &default_val))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
@@ -269,7 +269,7 @@ PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* 
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
     goto exit_and_error;
   }
-  
+
   if (PYOBJECT_IS_STRING (default_val))
   {
     const CapeString h = qbus_config_s (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PYOBJECT_AS_STRING (default_val));
@@ -279,39 +279,39 @@ PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* 
   else if (PyLong_Check (default_val))
   {
     number_t h = qbus_config_n (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PyLong_AsLong (default_val));
-    
+
     ret = PyLong_FromLong (h);
   }
   else if (PyFloat_Check (default_val))
   {
     double h = qbus_config_f (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), PyFloat_AsDouble (default_val));
-    
+
     ret = PyFloat_FromDouble (h);
   }
   else if (PyBool_Check (default_val))
   {
     int h = qbus_config_b (qbus_config (self->qbus), PYOBJECT_AS_STRING (name), default_val == Py_True);
-    
+
     ret = PyBool_FromLong (h);
   }
   else
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter has not supported type");
-    goto exit_and_error;    
+    goto exit_and_error;
   }
-  
+
 exit_and_error:
-  
+
   if (cape_err_code (err))
   {
     PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
-    
+
     // tell python an error occoured
     ret = NULL;
   }
-  
+
   cape_err_del (&err);
-  
+
   return ret;
 }
 
@@ -321,48 +321,48 @@ int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QB
 {
   int res;
   PythonCallbackData* pcd = ptr;
-  
+
   PyObject* arglist;
   PyObject* result;
-  
+
   PyObject* py_qin = Py_None;
-  
+
   if (qin->cdata)
   {
     py_qin = py_transform_to_pyo (qin->cdata);
   }
-  
+
   arglist = Py_BuildValue ("(OOO)", pcd->qbus, py_qin, Py_None);
-  
+
   // depricated
   //result = PyEval_CallObject (pcd->fct, arglist);
-  
+
   result = PyObject_Call (pcd->fct, arglist, NULL);
   /*
   if (result)
   {
     qout->cdata = py_transform_to_udc (result);
     qout->mtype = QBUS_MTYPE_JSON;
-    
+
     Py_XDECREF (result);
   }
   else
   {
     // some error happened, tell python
     PyErr_Print();
-    
+
     // we need to clean, otherwise it will crash at some point
     PyErr_Clear();
   }
   */
-  
+
   // cleanup
   Py_XDECREF (py_qin);
   Py_DECREF (arglist);
-  
+
   //Py_DECREF (pcd->fct);
   CAPE_DEL(&pcd, PythonCallbackData);
-  
+
   return CAPE_ERR_NONE;
 }
 
@@ -371,7 +371,7 @@ int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QB
 PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
-  
+
   // local objects
   CapeErr err = cape_err_new ();
   QBusM qin = NULL;
@@ -381,13 +381,13 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
   PyObject* clist;
   PyObject* cdata;
   PyObject* cbfct;
-  
+
   if (!PyArg_ParseTuple (args, "OOOOO", &module, &method, &clist, &cdata, &cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
     goto exit_and_error;
   }
-  
+
   if (!PYOBJECT_IS_STRING (module))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
@@ -399,7 +399,7 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter is not a string");
     goto exit_and_error;
   }
-  
+
   // optional
   if (clist != Py_None)
   {
@@ -409,7 +409,7 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
       goto exit_and_error;
     }
   }
-  
+
   // optional
   if (cdata != Py_None)
   {
@@ -419,20 +419,20 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
       goto exit_and_error;
     }
   }
-    
-  if (!PyCallable_Check (cbfct)) 
+
+  if (!PyCallable_Check (cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "4. parameter is not a callback");
     goto exit_and_error;
   }
-  
+
   qin = qbus_message_new (NULL, NULL);
-  
+
   if (clist != Py_None)
   {
     qin->clist = py_transform_to_udc (clist);
   }
-  
+
   if (cdata != Py_None)
   {
     qin->cdata = py_transform_to_udc (cdata);
@@ -440,32 +440,32 @@ PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kw
 
   {
     PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
-    
+
     pcd->fct = cbfct;
     pcd->qbus = self;
-    
+
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "send message to %s", PYOBJECT_AS_STRING (module));
-    
+
     int res = qbus_send (self->qbus, PYOBJECT_AS_STRING (module), PYOBJECT_AS_STRING (method), qin, pcd, py_object_qbus_send__on_event, err);
     if (res && res != CAPE_ERR_CONTINUE)
     {
-      
+
     }
   }
-  
+
 exit_and_error:
-  
-  if (cape_err_code (err))
+
+  if (cape_err_code (err) && (cape_err_code (err) != CAPE_ERR_CONTINUE))
   {
-    PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
-    
+//    PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
+
     // tell python an error occoured
-    ret = NULL;
+//    ret = NULL;
   }
-  
+
   qbus_message_del (&qin);
   cape_err_del (&err);
-  
+
   return ret;
 }
 
@@ -475,42 +475,35 @@ int __STDCALL py_object_qbus_timer__on_timer (void* ptr)
 {
   int ret = TRUE;
   PythonCallbackData* pcd = ptr;
-  
+
   PyObject* arglist;
   PyObject* result;
 
   arglist = Py_BuildValue ("(O)", pcd->qbus);
 
   result = PyObject_Call (pcd->fct, arglist, NULL);
-  
+
   /*
   if (result)
   {
 
-    
+
     Py_XDECREF (result);
   }
   else
   {
     // some error happened, tell python
     PyErr_Print();
-    
+
     // we need to clean, otherwise it will crash at some point
     PyErr_Clear();
   }
   */
-  
+
   // cleanup
   Py_DECREF (arglist);
 
-  if (FALSE == ret)
-  {
-    // in case of the last event cleanup
-    Py_DECREF (pcd->qbus);
-    
-    CAPE_DEL(&pcd, PythonCallbackData);
-  }
-    
+  // continue
   return TRUE;
 }
 
@@ -519,68 +512,68 @@ int __STDCALL py_object_qbus_timer__on_timer (void* ptr)
 PyObject* py_object_qbus_timer (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
-  
+
   // local objects
   CapeErr err = cape_err_new ();
-  
+
   PyObject* timeoit_in_ms;
   PyObject* cbfct;
-  
+
   if (!PyArg_ParseTuple (args, "OO", &timeoit_in_ms, &cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
     goto exit_and_error;
   }
-  
+
   if (!PyLong_Check (timeoit_in_ms))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a number");
     goto exit_and_error;
   }
 
-  if (!PyCallable_Check (cbfct)) 
+  if (!PyCallable_Check (cbfct))
   {
     cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter is not a callback");
     goto exit_and_error;
   }
-  
+
   {
     int res;
     CapeAioTimer timer = cape_aio_timer_new ();
-    
+
     PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
-    
+
     pcd->fct = cbfct;
 
     Py_INCREF(self);
     pcd->qbus = self;
-    
+
     res = cape_aio_timer_set (timer, PyLong_AsLong (timeoit_in_ms), pcd, py_object_qbus_timer__on_timer, err);
     if (res)
     {
-      
+
     }
-    
+
     res = cape_aio_timer_add (&timer, qbus_aio (self->qbus));
     if (res)
     {
-      
+
     }
   }
-  
-  
+
+
 exit_and_error:
-  
+
   if (cape_err_code (err))
   {
     PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
-    
+
     // tell python an error occoured
     ret = NULL;
   }
-  
+
   cape_err_del (&err);
-  
+
   return ret;
 }
 
@@ -589,9 +582,9 @@ exit_and_error:
 PyObject* py_object_qbus_msg_new (PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
   PyObject_QBusMsg* self = (PyObject_QBusMsg*)type->tp_alloc(type, 0);
-  
+
   self->message = NULL;
-  
+
   return (PyObject*) self;
 }
 
@@ -603,7 +596,7 @@ void py_object_qbus_msg_del (PyObject_QBusMsg* self)
   {
     qbus_message_del(&(self->message));
   }
-  
+
   Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -612,11 +605,11 @@ void py_object_qbus_msg_del (PyObject_QBusMsg* self)
 int py_object_qbus_msg_init (PyObject_QBusMsg* self, PyObject *args, PyObject *kwds)
 {
   PyObject* name;
-  
-  
+
+
   // create a new qbus object
   self->message = qbus_message_new (NULL, NULL);
-  
+
   return 0;
 }
 

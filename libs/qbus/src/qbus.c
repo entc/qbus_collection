@@ -103,37 +103,42 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 
 //-----------------------------------------------------------------------------
 
-int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
+int qbus_init__preconditions (QBus self, CapeUdc* p_args, CapeErr err)
 {
   int res;
-
+  
   // parse arguments and load config
   qbus_config_init (self->config, p_args);
-
+  
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
   if (res)
   {
     return res;
   }
-
+  
   // activate signal handling strategy
   // avoid that other threads got terminated by sigint
   res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
-  if (res)
-  {
-    return res;
-  }
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_init__submodules (QBus self, CapeErr err)
+{
+  int res;
 
   res = qbus_methods_init (self->methods, qbus_config_n (self->config, "threads", 4), self, qbus_on_res, err);
   if (res)
   {
     return res;
   }
-
+  
   // create
   self->con = qbus_con_new (self->router, self->methods, qbus_config_name (self->config));
-
+  
   res = qbus_con_init (self->con, self->engines, self->aio, qbus_config_s (self->config, "h", "127.0.0.1"), err);
   if (res)
   {
@@ -149,8 +154,25 @@ int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
       return res;
     }
   }
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
+{
+  int res;
   
-  return CAPE_ERR_NONE;
+  res = qbus_init__preconditions (self, p_args, err);
+  if (res)
+  {
+    return res;
+  }
+  
+  res = qbus_init__submodules (self, err);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -217,6 +239,8 @@ int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_
 
 int qbus_request (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
+  int res;
+  
   // local objects
   CapeString module_upper_case = cape_str_cp (module);
   cape_str_to_upper (module_upper_case);
@@ -231,7 +255,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
     const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, "local");
 
-    return qbus_methods_run (self->methods, method, saves_key, &qin, err);
+    res = qbus_methods_run (self->methods, method, saves_key, &qin, err);
   }
   else
   {
@@ -245,15 +269,18 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
       qbus_con_snd (self->con, cid, method, skey, QBUS_FRAME_TYPE_MSG_REQ, msg);
 
-      return CAPE_ERR_NONE;
+      res = CAPE_ERR_NONE;
     }
     else
     {
       qbus__intern__no_route (self, module_upper_case, method, msg, user_ptr, on_msg);
 
-      return cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
+      res =  cape_err_set_fmt (err, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
     }
   }
+  
+  cape_str_del (&module_upper_case);
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -417,21 +444,33 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
   // convert program arguments into a node with parameters
   args = cape_args_from_args (argc, argv, NULL);
 
-  res = qbus_init (self, &args, err);
+  res = qbus_init__preconditions (self, &args, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- user initialization --------------------------------------------------");
+
+  if (on_init)
+  {
+    res = on_init (self, ptr, &ptr, err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- submodules -----------------------------------------------------------");
+    
+  res = qbus_init__submodules (self, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
 
-  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "run on_init");
-
-  if (on_init)
-  {
-    on_init (self, ptr, &ptr, err);
-  }
-
-  cape_log_msg (CAPE_LL_TRACE, "QBUS", "instance", "start main loop");
-
+  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
+  
 #if defined __WINDOWS_OS
 
   // TODO: nice to have

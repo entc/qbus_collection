@@ -361,3 +361,10 @@ int qbus_config_b (QBusConfig self, const char* name, int default_val)
 
 //-----------------------------------------------------------------------------
 
+void qbus_config_set_n (QBusConfig self, const char* name, number_t val)
+{
+  cape_udc_put_n (self->config_node, name, val);
+}
+
+//-----------------------------------------------------------------------------
+

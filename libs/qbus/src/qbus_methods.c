@@ -175,6 +175,8 @@ int qbus_methods_init (QBusMethods self, number_t threads, void* user_ptr, fct_q
   self->user_ptr = user_ptr;
   self->on_res = on_res;
 
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "methods", "start queue with %lu threads", threads);
+  
   return cape_queue_start (self->queue, (int)threads, err);
 }
 
