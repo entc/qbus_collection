@@ -235,7 +235,7 @@ int main (int argc, char *argv[])
       goto exit_and_cleanup;
     }
     
-    printf ("T11: %i\n", ret);
+    printf ("T12: %i\n", ret);
   }
 
   {
@@ -245,7 +245,7 @@ int main (int argc, char *argv[])
       goto exit_and_cleanup;
     }
     
-    printf ("T12: %i\n", ret);
+    printf ("T13: %i\n", ret);
   }
 
   {
@@ -263,6 +263,20 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
   }
 
+  {
+    CapeString h = cape_template_run ("'{{val_float5|lpad:30}}'", values, NULL, NULL, err);
+    
+    if (h)
+    {
+      printf ("LPAD: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+    
+    cape_str_del (&h);
+  }
   {
     CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
     

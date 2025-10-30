@@ -32,6 +32,7 @@
 #define FORMAT_TYPE_PIPE        4
 #define FORMAT_TYPE_SUBSTR      5
 #define FORMAT_TYPE_DATE_UTC    6
+#define FORMAT_TYPE_LPAD        7
 
 //-----------------------------------------------------------------------------
 
@@ -98,6 +99,11 @@ void cape_template_part_checkForFormat (CapeTemplatePart self, const CapeString 
     else if (cape_str_equal (h, "decimal"))
     {
       self->format_type = FORMAT_TYPE_DECIMAL;
+      self->eval = cape_str_trim_utf8 (f2);
+    }
+    else if (cape_str_equal (h, "lpad"))
+    {
+      self->format_type = FORMAT_TYPE_LPAD;
       self->eval = cape_str_trim_utf8 (f2);
     }
     else if (cape_str_begins (h, "pipe_"))
@@ -462,56 +468,6 @@ void cape_template_part_eval_datetime__utc (CapeTemplatePart self, CapeDatetime*
 
 //-----------------------------------------------------------------------------
 
-int cape_template_part_eval_datetime_item (CapeTemplatePart self, CapeUdc item, CapeTemplateCB cb, CapeErr err)
-{
-  const CapeDatetime* dt = cape_udc_d (item, NULL);
-  if (dt)
-  {
-    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval datetime", "evaluate %s = []", cape_udc_name (item));
-    
-    switch (self->format_type)
-    {
-      case FORMAT_TYPE_NONE:
-      {
-        CapeString val = cape_datetime_s__std (dt);
-        
-        if (cb->on_text)
-        {
-          cb->on_text (cb->ptr, val);
-        }
-
-        cape_str_del (&val);
-        
-        break;
-      }
-      case FORMAT_TYPE_DATE_LCL:
-      {
-        CapeDatetime* h1 = cape_datetime_cp (dt);
-
-        cape_template_part_eval_datetime__lcl (self, h1, cb);
-        
-        cape_datetime_del (&h1);
-        
-        break;
-      }
-      case FORMAT_TYPE_DATE_UTC:
-      {
-        CapeDatetime* h1 = cape_datetime_cp (dt);
-        
-        cape_template_part_eval_datetime__utc (self, h1, cb);
-        
-        cape_datetime_del (&h1);
-
-        break;
-      }
-    }
-  }
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
 int cape_template_part_eval_substr (CapeTemplatePart self, const CapeString value, CapeTemplateCB cb, CapeErr err)
 {
   CapeList tokens = cape_tokenizer_buf (self->eval, cape_str_size (self->eval), '%');
@@ -542,6 +498,36 @@ int cape_template_part_eval_substr (CapeTemplatePart self, const CapeString valu
   }
   
   cape_list_del (&tokens);
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_part_eval_lpad (CapeTemplatePart self, const CapeString value, CapeTemplateCB cb, CapeErr err)
+{
+  // convert eval value into number
+  number_t digits = cape_str_to_n (self->eval);
+  
+  printf ("LPAD: using digits = %lu\n", digits);
+  
+  CapeString val = NULL;
+  
+  if (digits)
+  {
+    val = cape_str_lpad (value, ' ', digits);    
+  }
+  else
+  {
+    val = cape_str_cp (value);
+  }
+  
+  if (cb->on_text)
+  {
+    cb->on_text (cb->ptr, val);
+  }
+  
+  cape_str_del (&val);
   
   return CAPE_ERR_NONE;
 }
@@ -620,224 +606,6 @@ int cape_template_part_eval_decimal (CapeTemplatePart self, double value, CapeTe
   }
 
   cape_str_del (&devider);
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_template_part_eval_str (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
-{
-  const CapeString text = cape_udc_s (item, NULL);
-  if (text)
-  {
-    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval str", "evaluate %s = '%s'", cape_udc_name (item), text);
-    
-    switch (self->format_type)
-    {
-      case FORMAT_TYPE_NONE:
-      {
-        if (self->eval)
-        {
-          if (cape__evaluate_expression__compare (self->eval, text))
-          {
-            return cape_template_part_apply (self, node_stack, cb, 0, err);
-          }
-        }
-        else
-        {
-          if (cb->on_text)
-          {
-            cb->on_text (cb->ptr, text);
-          }
-          
-          return cape_template_part_apply (self, node_stack, cb, 0, err);
-        }
-        
-        break;
-      }
-      case FORMAT_TYPE_SUBSTR:
-      {
-        return cape_template_part_eval_substr (self, text, cb, err);
-      }
-      case FORMAT_TYPE_DATE_LCL:
-      {
-        CapeDatetime dt;
-        
-        // convert text into dateformat
-        if (cape_datetime__str_msec (&dt, text) || cape_datetime__str (&dt, text) || cape_datetime__std_msec (&dt, text) || cape_datetime__date_de (&dt, text))
-        {
-          // set the original as UTC
-          dt.is_utc = TRUE;
-          
-          // convert into local time
-          cape_datetime_to_local (&dt);
-          
-          // apply format
-          {
-            CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
-            
-            cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template eval", "applied date '%s' >> '%s' -> '%lu.%lu.%lu' -> '%s'", text, self->eval, dt.day, dt.month, dt.year, h);
-            
-            if (cb->on_text)
-            {
-              cb->on_text (cb->ptr, h);
-            }
-            
-            cape_str_del (&h);
-          }
-        }
-        else
-        {
-          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
-        }
-        
-        return cape_template_part_apply (self, node_stack, cb, 0, err);
-      }
-      case FORMAT_TYPE_PIPE:
-      {
-        if (cb->on_pipe)
-        {
-          CapeString h = cb->on_pipe (self->modn, self->eval, text);
-          if (h)
-          {
-            if (cb->on_text)
-            {
-              cb->on_text (cb->ptr, h);
-            }
-            
-            cape_str_del (&h);
-          }
-        }
-        else
-        {
-          if (cb->on_text)
-          {
-            cb->on_text (cb->ptr, text);
-          }
-        }
-        
-        return cape_template_part_apply (self, node_stack, cb, 0, err);
-      }
-      case FORMAT_TYPE_DECIMAL:
-      {
-        // try to convert text into a number
-        double value = cape_str_to_f (text);
-
-        return cape_template_part_eval_decimal (self, value, cb, err);
-      }
-    }
-  }
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_template_part_eval_number (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
-{
-  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval number", "evaluate %s = [%i]", cape_udc_name (item), cape_udc_n (item, 0));
-
-  switch (self->format_type)
-  {
-    case FORMAT_TYPE_NONE:
-    {
-      if (self->eval)
-      {
-        number_t h = strtol (self->eval, NULL, 10);
-        
-        if (h == cape_udc_n (item, 0))
-        {
-          return cape_template_part_apply (self, node_stack, cb, 0, err);
-        }
-      }
-      else
-      {
-        if (cb->on_text)
-        {
-          CapeString h = cape_str_fmt ("%li", cape_udc_n (item, 0));
-          
-          cb->on_text (cb->ptr, h);
-          
-          cape_str_del (&h);
-          
-          return cape_template_part_apply (self, node_stack, cb, 0, err);
-        }
-      }
-      
-      break;
-    }
-    case FORMAT_TYPE_DECIMAL:
-    {
-      return cape_template_part_eval_decimal (self, cape_udc_n (item, 0), cb, err);
-    }
-  }
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_template_part_eval_double (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
-{
-  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval double", "evaluate %s = []", cape_udc_name (item));
-
-  if (self->eval)
-  {
-    double h = cape_str_to_f (self->eval);
-    
-    if (h == cape_udc_f (item, .0))
-    {
-      return cape_template_part_apply (self, node_stack, cb, 0, err);
-    }
-  }
-  else
-  {
-    if (cb->on_text)
-    {
-      CapeString h = cape_str_f (cape_udc_f (item, .0));
-      
-      cb->on_text (cb->ptr, h);
-      
-      cape_str_del (&h);
-      
-      return cape_template_part_apply (self, node_stack, cb, 0, err);
-    }
-  }
-  
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_template_part_eval_bool (CapeTemplatePart self, CapeList node_stack, CapeUdc item, CapeTemplateCB cb, CapeErr err)
-{
-  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "eval bool", "evaluate %s = []", cape_udc_name (item));
-
-  if (self->eval)
-  {
-    int h = cape_udc_b (item, FALSE);
-    
-    if ((h == TRUE) && cape_str_equal (self->eval, "TRUE"))
-    {
-      return cape_template_part_apply (self, node_stack, cb, 0, err);
-    }
-    else if ((h == FALSE) && cape_str_equal (self->eval, "FALSE"))
-    {
-      return cape_template_part_apply (self, node_stack, cb, 0, err);
-    }
-  }
-  else
-  {
-    if (cb->on_text)
-    {
-      const CapeString h = cape_udc_b (item, FALSE) ? "TRUE" : "FALSE";
-      
-      cb->on_text (cb->ptr, h);
-
-      return cape_template_part_apply (self, node_stack, cb, 0, err);
-    }
-  }
   
   return CAPE_ERR_NONE;
 }
@@ -1190,11 +958,406 @@ int cape_template_mod_apply__date (CapeTemplatePart self, CapeList node_stack, C
 
 //-----------------------------------------------------------------------------
 
+int cape_template_item__type_none (CapeTemplatePart self, CapeUdc item, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
+{
+  switch (cape_udc_type (item))
+  {
+    case CAPE_UDC_LIST:
+    {
+      CapeUdcCursor* cursor_item = cape_udc_cursor_new (item, CAPE_DIRECTION_FORW);
+      
+      while (cape_udc_cursor_next (cursor_item))
+      {
+        // add a next level
+        cape_list_push_back (node_stack, cursor_item->item);
+        
+        int res = cape_template_part_apply (self, node_stack, cb, cursor_item->position, err);
+        
+        cape_list_pop_back (node_stack);
+        
+        if (res)
+        {
+          return res;
+        }
+      }
+      
+      cape_udc_cursor_del (&cursor_item);
+      
+      break;
+    }
+    case CAPE_UDC_NODE:
+    {
+      // add a next level
+      cape_list_push_back (node_stack, item);
+      
+      int res = cape_template_part_apply (self, node_stack, cb, pos, err);
+      
+      cape_list_pop_back (node_stack);
+      
+      if (res)
+      {
+        return res;
+      }
+      
+      break;
+    }
+    case CAPE_UDC_STRING:
+    {
+      const CapeString text = cape_udc_s (item, NULL);
+      
+      if (self->eval)
+      {
+        if (cape__evaluate_expression__compare (self->eval, text))
+        {
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      else
+      {
+        if (cb->on_text)
+        {
+          cb->on_text (cb->ptr, text);
+        }
+        
+        return cape_template_part_apply (self, node_stack, cb, 0, err);
+      }
+      
+      break;
+    }
+    case CAPE_UDC_NUMBER:
+    {
+      if (self->eval)
+      {
+        number_t h = strtol (self->eval, NULL, 10);
+        
+        if (h == cape_udc_n (item, 0))
+        {
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      else
+      {
+        if (cb->on_text)
+        {
+          CapeString h = cape_str_fmt ("%li", cape_udc_n (item, 0));
+          
+          cb->on_text (cb->ptr, h);
+          
+          cape_str_del (&h);
+          
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      
+      break;
+    }
+    case CAPE_UDC_FLOAT:
+    {
+      if (self->eval)
+      {
+        double h = cape_str_to_f (self->eval);
+        
+        if (h == cape_udc_f (item, .0))
+        {
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      else
+      {
+        if (cb->on_text)
+        {
+          CapeString h = cape_str_f (cape_udc_f (item, .0));
+          
+          cb->on_text (cb->ptr, h);
+          
+          cape_str_del (&h);
+          
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      
+      break;
+    }
+    case CAPE_UDC_BOOL:
+    {
+      if (self->eval)
+      {
+        int h = cape_udc_b (item, FALSE);
+        
+        if ((h == TRUE) && cape_str_equal (self->eval, "TRUE"))
+        {
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+        else if ((h == FALSE) && cape_str_equal (self->eval, "FALSE"))
+        {
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      else
+      {
+        if (cb->on_text)
+        {
+          const CapeString h = cape_udc_b (item, FALSE) ? "TRUE" : "FALSE";
+          
+          cb->on_text (cb->ptr, h);
+          
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+        }
+      }
+      
+      break;
+    }
+    case CAPE_UDC_DATETIME:
+    {
+      const CapeDatetime* dt = cape_udc_d (item, NULL);
+      
+      CapeString val = cape_datetime_s__std (dt);
+      
+      if (cb->on_text)
+      {
+        cb->on_text (cb->ptr, val);
+      }
+      
+      cape_str_del (&val);
+      
+      break;
+    }
+    default:
+    {
+      
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_item__type_date (CapeTemplatePart self, CapeUdc item, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
+{
+  
+  
+  
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
+{
+  int res;
+  
+  // check if the item exists
+  CapeUdc item = cape_template__seek_item (node_stack, self->text);
+  if (NULL == item)
+  {
+    cape_log_fmt (CAPE_LL_WARN, "CAPE", "template", "can't find node '%s'", self->text);
+    return CAPE_ERR_NONE;
+  }
+
+  // call the tag callback
+  if (cb->on_tag)
+  {
+    cb->on_tag (cb->ptr, self->text);
+  }
+  
+  // do we have a format
+  switch (self->format_type)
+  {
+    case FORMAT_TYPE_NONE:
+    {
+      res = cape_template_item__type_none (self, item, node_stack, cb, pos, err);
+      break;
+    }
+    case FORMAT_TYPE_DECIMAL:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString text = cape_udc_s (item, NULL);
+          
+          // try to convert text into a number
+          double value = cape_str_to_f (text);
+          
+          return cape_template_part_eval_decimal (self, value, cb, err);
+
+          break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+          return cape_template_part_eval_decimal (self, cape_udc_n (item, 0), cb, err);
+          
+          break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+          return cape_template_part_eval_decimal (self, cape_udc_f (item, 0.0), cb, err);
+          
+          break;
+        }
+      }
+      
+      break;
+    }
+    case FORMAT_TYPE_SUBSTR:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString text = cape_udc_s (item, NULL);
+          
+          return cape_template_part_eval_substr (self, text, cb, err);
+          
+          break;
+        }
+      }
+      
+      break;
+    }
+    case FORMAT_TYPE_LPAD:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString text = cape_udc_s (item, NULL);
+
+          return cape_template_part_eval_lpad (self, text, cb, err);
+          
+          break;
+        }
+      }
+    }
+    case FORMAT_TYPE_DATE_LCL:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_DATETIME:
+        {
+          const CapeDatetime* dt = cape_udc_d (item, NULL);
+          
+          CapeDatetime* h1 = cape_datetime_cp (dt);
+          
+          cape_template_part_eval_datetime__lcl (self, h1, cb);
+          
+          cape_datetime_del (&h1);
+          
+          break;
+        }
+        case CAPE_UDC_STRING:
+        {
+          const CapeString text = cape_udc_s (item, NULL);
+          
+          CapeDatetime dt;
+          
+          // convert text into dateformat
+          if (cape_datetime__str_msec (&dt, text) || cape_datetime__str (&dt, text) || cape_datetime__std_msec (&dt, text) || cape_datetime__date_de (&dt, text))
+          {
+            // set the original as UTC
+            dt.is_utc = TRUE;
+            
+            // convert into local time
+            cape_datetime_to_local (&dt);
+            
+            // apply format
+            {
+              CapeString h = cape_datetime_s__fmt_lcl (&dt, self->eval);
+              
+              cape_log_fmt (CAPE_LL_TRACE, "CAPE", "template eval", "applied date '%s' >> '%s' -> '%lu.%lu.%lu' -> '%s'", text, self->eval, dt.day, dt.month, dt.year, h);
+              
+              if (cb->on_text)
+              {
+                cb->on_text (cb->ptr, h);
+              }
+              
+              cape_str_del (&h);
+            }
+          }
+          else
+          {
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "template eval", "can't evaluate '%s' as date", text);
+          }
+          
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+
+          break;
+        }
+      }
+            
+      break;
+    }
+    case FORMAT_TYPE_DATE_UTC:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_DATETIME:
+        {
+          const CapeDatetime* dt = cape_udc_d (item, NULL);
+          
+          CapeDatetime* h1 = cape_datetime_cp (dt);
+          
+          cape_template_part_eval_datetime__utc (self, h1, cb);
+          
+          cape_datetime_del (&h1);
+          
+          break;
+        }
+        case CAPE_UDC_STRING:
+        {
+        
+          break;
+        }
+      }
+        
+      break;
+    }
+    case FORMAT_TYPE_PIPE:
+    {
+      switch (cape_udc_type (item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          const CapeString text = cape_udc_s (item, NULL);
+
+          if (cb->on_pipe)
+          {
+            CapeString h = cb->on_pipe (self->modn, self->eval, text);
+            if (h)
+            {
+              if (cb->on_text)
+              {
+                cb->on_text (cb->ptr, h);
+              }
+              
+              cape_str_del (&h);
+            }
+          }
+          else
+          {
+            if (cb->on_text)
+            {
+              cb->on_text (cb->ptr, text);
+            }
+          }
+          
+          return cape_template_part_apply (self, node_stack, cb, 0, err);
+          
+          break;
+        }
+      }
+    }
+  }    
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
 {
   if (self->parts)
   {
-    CapeListCursor* cursor = cape_list_cursor_create (self->parts, CAPE_DIRECTION_FORW);
+    CapeListCursor* cursor = cape_list_cursor_new (self->parts, CAPE_DIRECTION_FORW);
     
     while (cape_list_cursor_next (cursor))
     {
@@ -1253,9 +1416,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
         }
         case PART_TYPE_TAG:
         {
-          const CapeString name = part->text;
-          
-          if (cape_str_equal (name, "INDEX_1"))
+          if (cape_str_equal (part->text, "INDEX_1"))
           {
             CapeString h = cape_str_n (pos + 1);
             
@@ -1268,123 +1429,9 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
           }
           else
           {
-            CapeUdc item = cape_template__seek_item (node_stack, name);
-            if (item)
-            {
-              if (cb->on_tag)
-              {
-                cb->on_tag (cb->ptr, name);
-              }
-              
-              switch (cape_udc_type (item))
-              {
-                case CAPE_UDC_LIST:
-                {
-                  CapeUdcCursor* cursor_item = cape_udc_cursor_new (item, CAPE_DIRECTION_FORW);
-                  
-                  while (cape_udc_cursor_next (cursor_item))
-                  {
-                    // add a next level
-                    cape_list_push_back (node_stack, cursor_item->item);
-                    
-                    int res = cape_template_part_apply (part, node_stack, cb, cursor_item->position, err);
-                    
-                    cape_list_pop_back (node_stack);
-                    
-                    if (res)
-                    {
-                      return res;
-                    }
-                  }
-                  
-                  cape_udc_cursor_del (&cursor_item);
-                  
-                  break;
-                }
-                case CAPE_UDC_NODE:
-                {
-                  // add a next level
-                  cape_list_push_back (node_stack, item);
-
-                  int res = cape_template_part_apply (part, node_stack, cb, cursor->position, err);
-
-                  cape_list_pop_back (node_stack);
-
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-                case CAPE_UDC_STRING:
-                {
-                  int res = cape_template_part_eval_str (part, node_stack, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-                case CAPE_UDC_NUMBER:
-                {
-                  int res = cape_template_part_eval_number (part, node_stack, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-                case CAPE_UDC_FLOAT:
-                {
-                  int res = cape_template_part_eval_double (part, node_stack, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-                case CAPE_UDC_BOOL:
-                {
-                  int res = cape_template_part_eval_bool (part, node_stack, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-
-                  break;
-                }
-                case CAPE_UDC_DATETIME:
-                {
-                  int res = cape_template_part_eval_datetime_item (part, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-                default:
-                {
-                  int res = cape_template_part_eval_str (part, node_stack, item, cb, err);
-                  if (res)
-                  {
-                    return res;
-                  }
-                  
-                  break;
-                }
-              }
-            }
-            else
-            {
-              cape_log_fmt (CAPE_LL_WARN, "CAPE", "template", "can't find node '%s'", name);
-            }
+            cape_template_tag_apply (part, node_stack, cb, cursor->position, err);
           }
-
+          
           break;
         }
       }
