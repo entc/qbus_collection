@@ -83,7 +83,7 @@ void qwave_factory_conctx (QWave self, void* handle_sock, const CapeString remot
 
 #ifdef __WINDOWS_OS
 
-#elif defined __LINUX_OS
+#elif defined __LINUX_OS || defined __BSD_OS
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -147,6 +147,8 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
     
     return QWAVE_EVENT_RESULT__CONTINUE;
 }
+
+//-----------------------------------------------------------------------------
 
 #endif
 

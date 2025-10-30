@@ -254,6 +254,161 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
+#elif defined __BSD_OS
+
+#include <sys/event.h>
+#include <unistd.h>
+
+//-----------------------------------------------------------------------------
+
+struct QWaveAioctxEvent_s
+{
+    number_t fd;
+    void* user_ptr;
+    fct_qwave__on_aio_event on_event;
+    
+}; typedef struct QWaveAioctxEvent_s* QWaveAioctxEvent;
+
+//-----------------------------------------------------------------------------
+
+QWaveAioctxEvent qwave_aioctx_event_new (number_t fd, void* user_ptr, fct_qwave__on_aio_event fct)
+{
+    QWaveAioctxEvent self = CAPE_NEW (struct QWaveAioctxEvent_s);
+    
+    self->fd = fd;
+    self->user_ptr = user_ptr;
+    self->on_event = fct;
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_aioctx_event_del (QWaveAioctxEvent* p_self)
+{
+    if (*p_self)
+    {
+        QWaveAioctxEvent self = *p_self;
+        
+        
+        
+        
+        CAPE_DEL (p_self, struct QWaveAioctxEvent_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int qwave_aioctx_handle (QWaveAioctxEvent self)
+{
+    if (self->on_event)
+    {
+        return self->on_event (self->user_ptr, (void*)(self->fd));
+    }
+    else
+    {
+        return QWAVE_EVENT_RESULT__CONTINUE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+struct QWaveAioctx_s
+{
+    int kevent_fd;         // kevent file descriptor
+};
+
+//-----------------------------------------------------------------------------
+
+QWaveAioctx qwave_aioctx_new ()
+{
+    QWaveAioctx self = CAPE_NEW (struct QWaveAioctx_s);
+
+    self->kevent_fd = -1;
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_aioctx_del (QWaveAioctx* p_self)
+{
+    if (*p_self)
+    {
+        QWaveAioctx self = *p_self;
+        
+        if (-1 != self->kevent_fd)
+        {
+            close (self->kevent_fd);
+            self->kevent_fd = -1;
+        }
+                
+        CAPE_DEL (p_self, struct QWaveAioctx_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int qwave_aioctx_open (QWaveAioctx self, CapeErr err)
+{
+    // create a new kevent
+    self->kevent_fd = kqueue ();
+    
+    // check if the open was successful
+    if (self->kevent_fd == -1)
+    {
+      return cape_err_lastOSError (err);
+    }
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err)
+{
+  int res;
+  int i = 0;
+  
+  void* handle = *p_handle;
+  struct kevent change_event;
+  
+  // local objects
+  QWaveAioctxEvent event = qwave_aioctx_event_new (handle, user_ptr, fct);
+
+  EV_SET(&change_event, (number_t)handle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, event);
+  
+  if (-1 == kevent (self->kevent_fd, &change_event, 1, NULL, 0, NULL))
+  {
+    
+    
+  }
+
+  event = NULL;
+  *p_handle = NULL;
+  
+  res = CAPE_ERR_NONE;
+  
+cleanup_and_exit:
+  
+  qwave_aioctx_event_del (&event);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
+{
+  
+  
+}
+
+//-----------------------------------------------------------------------------
+
+#endif
+
+//-----------------------------------------------------------------------------
+
 int qwave_aioctx_wait (QWaveAioctx self, CapeErr err)
 {
     while (qwave_aioctx_next (self, -1, err) == CAPE_ERR_NONE);
@@ -263,9 +418,4 @@ int qwave_aioctx_wait (QWaveAioctx self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-#elif defined __BSD_OS
-
-#include <sys/event.h>
-
-#endif
 

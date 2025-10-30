@@ -6,7 +6,7 @@
 
 //-----------------------------------------------------------------------------------------------------------
 
-CapeUdc cape_args_from_args (int argc, char *argv[], const CapeString name)
+CapeUdc cape_args_from_args (number_t argc, char *argv[], const CapeString name)
 {
   CapeUdc params = cape_udc_new (CAPE_UDC_NODE, name);
   CapeUdc current_argument = NULL;

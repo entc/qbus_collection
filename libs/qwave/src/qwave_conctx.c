@@ -312,7 +312,7 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 #ifdef __WINDOWS_OS
 
-#elif defined __LINUX_OS
+#elif defined __LINUX_OS || defined __BSD_OS
 
 #include <sys/socket.h>
 #include <netinet/in.h>
