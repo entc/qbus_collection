@@ -42,6 +42,8 @@ PyObject*   py_object_qbus_send       (PyObject_QBus*, PyObject* args, PyObject*
 
 PyObject*   py_object_qbus_timer      (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
+PyObject*   py_object_qbus_once       (PyObject_QBus*, PyObject* args, PyObject* kwds);
+
 //-----------------------------------------------------------------------------
 
 static PyMethodDef PyMethodDef_QBus [] = 
@@ -51,6 +53,7 @@ static PyMethodDef PyMethodDef_QBus [] =
   {"config",      (PyCFunction)py_object_qbus_config,      METH_VARARGS, "set / get config parameters"},
   {"send",        (PyCFunction)py_object_qbus_send,        METH_VARARGS, "send a message to another module"},
   {"timer",       (PyCFunction)py_object_qbus_timer,       METH_VARARGS, "add a timer"},
+  {"once",        (PyCFunction)py_object_qbus_once,        METH_VARARGS, "add a timer which is called once"},
   {NULL}
 };
 

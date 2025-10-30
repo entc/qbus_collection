@@ -579,6 +579,93 @@ exit_and_error:
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL py_object_qbus_timer__on_once (void* ptr)
+{
+  PythonCallbackData* pcd = ptr;
+  
+  PyObject* arglist = Py_BuildValue ("(O)", pcd->qbus);
+  
+  PyObject_Call (pcd->fct, arglist, NULL);
+  
+  // cleanup
+  Py_DECREF (arglist);
+  
+  // continue
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+PyObject* py_object_qbus_once (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+  PyObject* ret = Py_None;
+  
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  PyObject* timeoit_in_ms;
+  PyObject* cbfct;
+  
+  if (!PyArg_ParseTuple (args, "OO", &timeoit_in_ms, &cbfct))
+  {
+    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
+    goto exit_and_error;
+  }
+  
+  if (!PyLong_Check (timeoit_in_ms))
+  {
+    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a number");
+    goto exit_and_error;
+  }
+  
+  if (!PyCallable_Check (cbfct))
+  {
+    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter is not a callback");
+    goto exit_and_error;
+  }
+  
+  {
+    int res;
+    CapeAioTimer timer = cape_aio_timer_new ();
+    
+    PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
+    
+    pcd->fct = cbfct;
+    
+    Py_INCREF(self);
+    pcd->qbus = self;
+    
+    res = cape_aio_timer_set (timer, PyLong_AsLong (timeoit_in_ms), pcd, py_object_qbus_timer__on_once, err);
+    if (res)
+    {
+      
+    }
+    
+    res = cape_aio_timer_add (&timer, qbus_aio (self->qbus));
+    if (res)
+    {
+      
+    }
+  }
+  
+  
+exit_and_error:
+  
+  if (cape_err_code (err))
+  {
+    PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
+    
+    // tell python an error occoured
+    ret = NULL;
+  }
+  
+  cape_err_del (&err);
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 PyObject* py_object_qbus_msg_new (PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
   PyObject_QBusMsg* self = (PyObject_QBusMsg*)type->tp_alloc(type, 0);
