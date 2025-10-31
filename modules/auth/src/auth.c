@@ -987,6 +987,11 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // all vault functions
   qbus_register (qbus, "vault_set"            , ctx, qbus_auth_vault_open, NULL, err);
+
+  // return vesc
+  // can only be used internal
+  qbus_register (qbus, "vault_get"            , ctx, qbus_auth_vault_get, NULL, err);
+  
   qbus_register (qbus, "getVaultSecret"       , ctx, qbus_auth_vault_get, NULL, err);
 
   // -------- callback methods --------------------------------------------

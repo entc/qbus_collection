@@ -22,4 +22,5 @@ WORKDIR /bin
 USER 1000:1000
 
 HEALTHCHECK CMD ["/bin/healthcheck"]
-ENTRYPOINT ["/bin/execsec", "/bin/qbus_mod_flow.sec"]
+#ENTRYPOINT ["/bin/execsec", "/bin/qbus_mod_flow.sec"]
+ENTRYPOINT ["/bin/qbus_mod_flow"]

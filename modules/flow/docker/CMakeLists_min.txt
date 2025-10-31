@@ -34,7 +34,7 @@ ADD_SUBDIRECTORY(qbus_collection/tools/execsec/src)
 # module
 ADD_SUBDIRECTORY(qbus_collection/modules/flow/src)
 
-INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BINARY_DIR}/qbus_collection/modules/flow/src/${CMAKE_CFG_INTDIR}/qbus_mod_flow ${CMAKE_CURRENT_BINARY_DIR}/image_gen -uid 1000 -gid 1000 -sec b2752234-3244-4731-8a43-023058d64909\")")
+INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${CMAKE_CURRENT_BINARY_DIR}/qbus_collection/modules/flow/src/${CMAKE_CFG_INTDIR}/qbus_mod_flow ${CMAKE_CURRENT_BINARY_DIR}/image_gen -uid 1000 -gid 1000\")")
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_QBUS_DIR}/libqbus_pvd_mqtt.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen -uid 1000 -gid 1000 -p qbus\")")
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${PVD_ADBL_DIR}/libadbl2_mysql.so ${CMAKE_CURRENT_BINARY_DIR}/image_gen -uid 1000 -gid 1000 -p adbl\")")
 INSTALL(CODE "execute_process(COMMAND bash -c \"${TOOL_CLDD} ${TOOL_HEALTHCHECK} ${CMAKE_CURRENT_BINARY_DIR}/image_gen -uid 1000 -gid 1000\")")
