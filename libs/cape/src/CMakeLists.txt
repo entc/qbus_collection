@@ -90,7 +90,6 @@ SET(CAPE_FMT_SOURCES
   fmt/cape_tokenizer.c
   fmt/cape_args.c
   fmt/cape_dragon4.c
-  fmt/cape_template.c
 )
 
 SET(CAPE_FMT_HEADERS
@@ -100,7 +99,6 @@ SET(CAPE_FMT_HEADERS
   fmt/cape_tokenizer.h
   fmt/cape_args.h
   fmt/cape_dragon4.h
-  fmt/cape_template.h
 )
 
 #----------------------------------------------------------------------------------

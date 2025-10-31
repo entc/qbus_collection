@@ -7,7 +7,7 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   CapeUdc           cape_args_from_args           (int argc, char *argv[], const CapeString name);
+__CAPE_LIBEX   CapeUdc           cape_args_from_args           (number_t argc, char *argv[], const CapeString name);
 
 __CAPE_LIBEX   CapeString        cape_args_config_file         (const CapeString primary_folder, const CapeString name);
 

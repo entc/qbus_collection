@@ -7,7 +7,9 @@
 #include <fmt/cape_json.h>
 #include <stc/cape_list.h>
 #include <fmt/cape_tokenizer.h>
-#include <fmt/cape_template.h>
+
+// qtee includes
+#include <qtee_eval.h>
 
 //-----------------------------------------------------------------------------
 

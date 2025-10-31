@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core" "../../../libs/qflow/src" "../../../libs/qjobs/src" "../../../libs/qcrypt/src")
+INCLUDE_DIRECTORIES("../../../libs/cape/src" "../../../libs/qbus/src" "../../../libs/adbl/src/core" "../../../libs/qflow/src" "../../../libs/qjobs/src" "../../../libs/qcrypt/src" "../../../libs/qtee/src")
 
 #----------------------------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ SET (QBUS_MODULES_FLOW_HEADERS
 )
 
 ADD_EXECUTABLE (qbus_mod_flow ${QBUS_MODULES_FLOW_SOURCES} ${QBUS_MODULES_FLOW_HEADERS})
-TARGET_LINK_LIBRARIES (qbus_mod_flow qbus qflow adbl2 qjobs)
+TARGET_LINK_LIBRARIES (qbus_mod_flow qbus qflow adbl2 qjobs qtee)
 
 # for local install
 INSTALL (TARGETS qbus_mod_flow DESTINATION mods)
