@@ -25,6 +25,7 @@ ADD_SUBDIRECTORY(qbus_collection/libs/qbus/src)
 ADD_SUBDIRECTORY(qbus_collection/libs/qcrypt/src)
 ADD_SUBDIRECTORY(qbus_collection/libs/qflow/src)
 ADD_SUBDIRECTORY(qbus_collection/libs/qjobs/src)
+ADD_SUBDIRECTORY(qbus_collection/libs/qtee/src)
 
 # tools
 ADD_SUBDIRECTORY(qbus_collection/tools/cldd/src)
