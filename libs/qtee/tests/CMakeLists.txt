@@ -1,9 +1,11 @@
-find_package(PkgConfig REQUIRED)
-pkg_search_module(CPPUTEST REQUIRED cpputest>=3.8)
+SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
+find_package(CPPUTEST)
+find_package(CPPUTEST_EXT)
 
-message(STATUS "Found CppUTest version ${CPPUTEST_VERSION}")
 message(STATUS "Found CppUTest includes ${CPPUTEST_INCLUDE_DIRS}")
 message(STATUS "Found CppUTest libraries ${CPPUTEST_LIBRARIES}")
+message(STATUS "Found CppUTest_Ext includes ${CPPUTEST_EXT_INCLUDE_DIRS}")
+message(STATUS "Found CppUTest_Ext libraries ${CPPUTEST_EXT_LIBRARIES}")
 
 if(CPPUTEST_FOUND)
 
