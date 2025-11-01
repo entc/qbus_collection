@@ -3176,7 +3176,7 @@ int flow_run_dbw_condition (FlowRunDbw self)
         int ret, res;
         CapeErr err = cape_err_new ();
 
-        res = cape_eval_b (condition, self->tdata, &ret, NULL, err);
+        res = qtee_eval_b (condition, self->tdata, &ret, NULL, err);
 
         printf ("COND: %i\n", ret);
 
