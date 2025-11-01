@@ -10,7 +10,6 @@
 // cpputest includes
 //#include "PureCTests_c.h" /* the offending C header */
 #include "CppUTest/TestHarness_c.h"
-#include "CppUtestExt/MockSupport_c.h"
 
 //-----------------------------------------------------------------------------
 
