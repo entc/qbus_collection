@@ -9,13 +9,9 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int            cape_eval_b                  (const CapeString s, CapeUdc node, int*, fct_cape_template__on_pipe, CapeErr);
+__CAPE_LIBEX   int            qtee_eval_b                  (const CapeString s, CapeUdc node, int*, fct_cape_template__on_pipe, CapeErr);
 
 __CAPE_LIBEX   int            qtee_compare                 (const CapeString left, const CapeString right);
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   double         cape_eval_to_f               (const CapeString s);
 
 //-----------------------------------------------------------------------------
 

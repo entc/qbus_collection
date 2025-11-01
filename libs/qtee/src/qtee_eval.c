@@ -44,7 +44,7 @@ int qtee_compare (const CapeString left, const CapeString right)
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression__greater_than (const CapeString left, const CapeString right)
+int qtee__evaluate_expression__greater_than (const CapeString left, const CapeString right)
 {
   int ret;
 
@@ -81,7 +81,7 @@ int cape__evaluate_expression__greater_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression__smaller_than (const CapeString left, const CapeString right)
+int qtee__evaluate_expression__smaller_than (const CapeString left, const CapeString right)
 {
   int ret;
 
@@ -118,7 +118,7 @@ int cape__evaluate_expression__smaller_than (const CapeString left, const CapeSt
 
 //-----------------------------------------------------------------------------
 
-CapeList cape__evaluate_expression__list (const CapeString source)
+CapeList qtee__evaluate_expression__list (const CapeString source)
 {
   CapeList ret = NULL;
 
@@ -135,14 +135,14 @@ CapeList cape__evaluate_expression__list (const CapeString source)
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression__in (const CapeString left, const CapeString right)
+int qtee__evaluate_expression__in (const CapeString left, const CapeString right)
 {
   int ret = FALSE;
 
   CapeString l_trimmed = cape_str_trim_utf8 (left);
   CapeString r_trimmed = cape_str_trim_utf8 (right);
 
-  CapeList right_list = cape__evaluate_expression__list (r_trimmed);
+  CapeList right_list = qtee__evaluate_expression__list (r_trimmed);
 
   if (right_list)
   {
@@ -171,14 +171,7 @@ int cape__evaluate_expression__in (const CapeString left, const CapeString right
 
 //-----------------------------------------------------------------------------
 
-int cape_eval_f (const CapeString s, CapeUdc node, double* p_ret, fct_cape_template__on_pipe on_pipe, CapeErr err)
-{
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape__evaluate_expression__single (const CapeString expression)
+int qtee__evaluate_expression__single (const CapeString expression)
 {
   int ret = FALSE;
 
@@ -195,15 +188,15 @@ int cape__evaluate_expression__single (const CapeString expression)
   }
   else if (cape_tokenizer_split (expression, '>', &left, &right))
   {
-    ret = cape__evaluate_expression__greater_than (left, right);
+    ret = qtee__evaluate_expression__greater_than (left, right);
   }
   else if (cape_tokenizer_split (expression, '<', &left, &right))
   {
-    ret = cape__evaluate_expression__smaller_than (left, right);
+    ret = qtee__evaluate_expression__smaller_than (left, right);
   }
   else if (cape_tokenizer_split (expression, 'I', &left, &right))
   {
-    ret = cape__evaluate_expression__in (left, right);
+    ret = qtee__evaluate_expression__in (left, right);
   }
   else
   {
@@ -218,21 +211,21 @@ int cape__evaluate_expression__single (const CapeString expression)
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression_not (const CapeString expression)
+int qtee__evaluate_expression_not (const CapeString expression)
 {
   if (cape_str_begins (expression, "NOT "))
   {
-    return !cape__evaluate_expression__single (expression + 4);
+    return !qtee__evaluate_expression__single (expression + 4);
   }
   else
   {
-    return cape__evaluate_expression__single (expression);
+    return qtee__evaluate_expression__single (expression);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression_or (const CapeString expression)
+int qtee__evaluate_expression_or (const CapeString expression)
 {
   int ret = FALSE;
 
@@ -247,7 +240,7 @@ int cape__evaluate_expression_or (const CapeString expression)
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
     while (cape_list_cursor_next (cursor))
     {
-      ret = cape__evaluate_expression_not (cape_list_node_data (cursor->node));
+      ret = qtee__evaluate_expression_not (cape_list_node_data (cursor->node));
       if (ret == TRUE)
       {
         goto exit_and_cleanup;
@@ -256,7 +249,7 @@ int cape__evaluate_expression_or (const CapeString expression)
   }
   else
   {
-    ret = cape__evaluate_expression_not (expression);
+    ret = qtee__evaluate_expression_not (expression);
   }
 
 exit_and_cleanup:
@@ -269,7 +262,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cape__evaluate_expression_and (const CapeString expression)
+int qtee__evaluate_expression_and (const CapeString expression)
 {
   int ret = TRUE;
 
@@ -284,7 +277,7 @@ int cape__evaluate_expression_and (const CapeString expression)
     cursor = cape_list_cursor_create (logical_parts, CAPE_DIRECTION_FORW);
     while (cape_list_cursor_next (cursor))
     {
-      ret = cape__evaluate_expression_or (cape_list_node_data (cursor->node));
+      ret = qtee__evaluate_expression_or (cape_list_node_data (cursor->node));
       if (ret == FALSE)
       {
         goto exit_and_cleanup;
@@ -293,7 +286,7 @@ int cape__evaluate_expression_and (const CapeString expression)
   }
   else
   {
-    ret = cape__evaluate_expression_or (expression);
+    ret = qtee__evaluate_expression_or (expression);
   }
 
 exit_and_cleanup:
@@ -315,7 +308,7 @@ int __STDCALL qtee_eval__on_text (void* ptr, const char* text)
 
 //-----------------------------------------------------------------------------
 
-int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template__on_pipe on_pipe, CapeErr err)
+int qtee_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template__on_pipe on_pipe, CapeErr err)
 {
   int res;
 
@@ -335,7 +328,7 @@ int cape_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template
     goto exit_and_cleanup;
   }
 
-  *p_ret = cape__evaluate_expression_and (cape_stream_get (stream));
+  *p_ret = qtee__evaluate_expression_and (cape_stream_get (stream));
 
   res = CAPE_ERR_NONE;
 
