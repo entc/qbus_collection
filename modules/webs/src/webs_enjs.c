@@ -200,7 +200,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
     }
     case QBUS_MTYPE_FILE:
     {
-      //cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
+      cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
 
       // if the file is encrypted check if we have the vsec for it
       if (cape_udc_get_b (qin->cdata, "encrypted", FALSE))

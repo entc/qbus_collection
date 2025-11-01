@@ -68,7 +68,7 @@ __CAPE_LIBEX  void                qbus_log_fmt           (QBus, const CapeString
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void               qbus_instance          (const char* name, void* ptr, fct_qbus_on_init, fct_qbus_on_done, int argc, char *argv[]);
+__CAPE_LIBEX   void               qbus_instance          (const char* name, void* ptr, fct_qbus_on_init, fct_qbus_on_done, number_t argc, char *argv[]);
 
 //-----------------------------------------------------------------------------
 

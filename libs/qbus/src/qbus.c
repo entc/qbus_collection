@@ -422,7 +422,7 @@ int qbus_wait (QBus self, CapeUdc* p_args, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, int argc, char *argv[])
+void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, number_t argc, char *argv[])
 {
   int res;
 
