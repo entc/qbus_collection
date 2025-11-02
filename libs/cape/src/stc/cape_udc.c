@@ -124,6 +124,11 @@ void cape_udc_del (CapeUdc* p_self)
       cape_datetime_del ((CapeDatetime**)&(self->data));
       break;
     }
+    case CAPE_UDC_STREAM:
+    {
+      cape_stream_del ((CapeStream*)&(self->data));
+      break;
+    }
   }
 
   CAPE_DEL(p_self, struct CapeUdc_s);
