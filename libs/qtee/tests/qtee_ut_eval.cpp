@@ -8,8 +8,23 @@
 #include <stdio.h>
 
 // cpputest includes
-//#include "PureCTests_c.h" /* the offending C header */
-#include "CppUTest/TestHarness_c.h"
+#include "CppUTest/TestHarness.h"
+#include "CppUTest/CommandLineTestRunner.h"
+
+//-----------------------------------------------------------------------------
+
+TEST_GROUP(FirstTestGroup)
+{
+};
+
+//-----------------------------------------------------------------------------
+
+TEST(FirstTestGroup, AddTest)
+{
+    const int expected = 7;
+//    int result = add(3, 4);
+//    LONGS_EQUAL(expected, result);
+}
 
 //-----------------------------------------------------------------------------
 
@@ -24,6 +39,8 @@ static char* __STDCALL main__on_pipe (const char* name, const char* pipe, const 
 
 int main (int argc, char *argv[])
 {
+  return CommandLineTestRunner::RunAllTests(argc, argv);
+  
   int res, ret;
   CapeErr err = cape_err_new ();
 
