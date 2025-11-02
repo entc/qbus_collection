@@ -266,7 +266,16 @@ CapeString qtee_format_item__datetime (QTeeFormatItem self, const CapeDatetime* 
     {
         case FORMAT_TYPE_DATE_UTC:
         {
-            ret = cape_datetime_s__fmt_utc (original_value, self->format_text);
+            // check for special formats
+            if (cape_str_equal (self->format_text, "fd1"))
+            {
+                ret = cape_datetime_s__fd1 (original_value);   // FD1
+            }
+            else
+            {
+                ret = cape_datetime_s__fmt_utc (original_value, self->format_text);
+            }
+            
             break;
         }
         case FORMAT_TYPE_DATE_LCL:

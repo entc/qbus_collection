@@ -165,6 +165,9 @@ __CAPE_LIBEX   CapeString      cape_datetime_s__ISO8601   (const CapeDatetime*);
                                /* 2019244120821 */
 __CAPE_LIBEX   CapeString      cape_datetime_s__DOY       (const CapeDatetime*);   // DOY
 
+                               /* 2020-065T07:10:15.586 */
+__CAPE_LIBEX   CapeString      cape_datetime_s__fd1       (const CapeDatetime*);   // FD1
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   time_t          cape_datetime_n__unix      (const CapeDatetime*);

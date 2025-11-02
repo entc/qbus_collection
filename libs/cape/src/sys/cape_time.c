@@ -127,7 +127,20 @@ void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
   timeinfo->tm_mon   = dt->month - 1;
   timeinfo->tm_year  = dt->year - 1900;
 
-  timeinfo->tm_isdst = dt->is_dst;
+  // set to determine proper value for DST by mktime
+  timeinfo->tm_isdst = -1; //dt->is_dst;
+  
+  // initialize with zeros
+  timeinfo->tm_yday = 0;
+  timeinfo->tm_wday = 0;
+  timeinfo->tm_zone = NULL;
+  timeinfo->tm_gmtoff = 0;
+
+  // this will fill up the timeinfo with all values
+  if (mktime(timeinfo) == -1)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1049,6 +1062,22 @@ CapeString cape_datetime_s__DOY (const CapeDatetime* dt)
   int doy = days[leap][dt->month] + dt->day;
 
   return cape_str_fmt ("%04i%03i%02i%02i%02i", dt->year, doy, dt->hour, dt->minute, dt->sec);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime_s__fd1 (const CapeDatetime* self)
+{
+  CapeString ret = NULL;
+  
+  // unfortunately there is NO format placeholder for milliseconds
+  CapeString first_part = cape_datetime__internal__fmt_utc (self, "%Y-%jT%H:%M:%S");
+
+  ret = cape_str_fmt ("%s.%03i", first_part, self->msec);
+
+  cape_str_del (&first_part);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
