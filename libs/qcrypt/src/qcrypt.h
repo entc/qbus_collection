@@ -16,6 +16,10 @@
 
 __CAPE_LIBEX  CapeString     qcrypt__decrypt            (const CapeString vsec, const CapeString encrypted_text, CapeErr err);
 
+__CAPE_LIBEX  CapeStream     qcrypt__decrypt_m          (const CapeString vsec, const CapeString encrypted_text, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX  int            qcrypt__decrypt_node       (const CapeString vsec, const CapeString encrypted_text, CapeUdc dest_list, CapeErr err);
 
 __CAPE_LIBEX  int            qcrypt__decrypt_row_text   (const CapeString vsec, const CapeUdc row, const CapeString data_name, CapeErr err);
@@ -25,6 +29,10 @@ __CAPE_LIBEX  int            qcrypt__decrypt_row_node   (const CapeString vsec, 
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX  CapeString     qcrypt__encrypt            (const CapeString vsec, const CapeString decrypted_text, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_m          (const CapeString vsec, const CapeStream source, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_o          (const CapeString vsec, const char* bufdat, number_t buflen, CapeErr err);
 
 //-----------------------------------------------------------------------------
 // encode / decode methods
