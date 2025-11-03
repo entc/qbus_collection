@@ -44,6 +44,9 @@ __CAPE_LIBEX CapeStream        cape_stream_sub (CapeStream, number_t start, numb
                                /* replace the stream object with a new one */
 __CAPE_LIBEX void              cape_stream_replace_mv (CapeStream*, CapeStream*);
 
+                               /* returns the last byte from the data buffer */
+__CAPE_LIBEX char              cape_stream_last_c (CapeStream);
+
 //-----------------------------------------------------------------------------
 
                                /* define the mime type of the content */

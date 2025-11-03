@@ -2,6 +2,7 @@
 #include "fmt/cape_dragon4.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
+#include "sys/cape_log.h"
 
 // c includes
 #include <stdio.h>
@@ -253,6 +254,23 @@ void cape_stream_replace_mv (CapeStream* p_self, CapeStream* p_source)
 
 //-----------------------------------------------------------------------------
 
+char cape_stream_last_c (CapeStream self)
+{
+  if (self->size > 0)
+  {
+    const char* pos = self->pos - 1; 
+    
+    return *(pos);
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "can't fetch last byte");
+    return 0;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_mime_set (CapeStream self, const CapeString mime)
 {
   cape_str_replace_cp (&(self->mime_type), mime);
@@ -271,6 +289,7 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
 {
   if (cb_encode)
   {
+    // TODO: use a prefix to encode
     CapeString h = cb_encode (self);
     if (h)
     {
@@ -281,6 +300,8 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
       cape_stream_append_str (s, ";base64,");
 
       cape_stream_append_str (s, h);
+      cape_str_del (&h);
+      
       return cape_stream_to_str (&s);
     }
   }
@@ -296,14 +317,18 @@ CapeStream cape_stream_deserialize (CapeString source, fct_cape_stream_base64_de
 
   if (cb_decode && cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
   {
-    CapeStream s = cb_decode (source + pos + 8);
+    CapeStream s = cb_decode (source + 5 + pos + 8);
     if (s)
     {
       s->mime_type = cape_str_sub (source + 5, pos);
       return s;
     }
+    else
+    {
+      cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "decode failed");
+    }
   }
-
+  
   return NULL;
 }
 
