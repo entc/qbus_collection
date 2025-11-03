@@ -22,7 +22,6 @@
 #define PART_TYPE_FILE   2
 #define PART_TYPE_TAG    3
 #define PART_TYPE_NODE   4
-#define PART_TYPE_CR     5
 #define PART_TYPE_MOD    6
 
 //-----------------------------------------------------------------------------
@@ -117,6 +116,8 @@ CapeTemplatePart cape_template_part_new (int type, const CapeString raw_text, Ca
   self->parts = NULL;
   self->parent = parent;
   
+  self->format = NULL;
+  
   // analyse the text value for later evaluation
   cape_template_part_checkForEval (self, raw_text);
   
@@ -128,6 +129,8 @@ CapeTemplatePart cape_template_part_new (int type, const CapeString raw_text, Ca
 void cape_template_part_del (CapeTemplatePart* p_self)
 {
   CapeTemplatePart self = *p_self;
+  
+  qtee_format_del (&(self->format));
   
   cape_str_del (&(self->text));
   cape_str_del (&(self->eval));
@@ -346,7 +349,7 @@ int cape_template_mod_apply__math (CapeTemplatePart self, CapeList node_stack, C
   {
     if (cb->on_text)
     {
-      cb->on_text (cb->ptr, h);
+      cb->on_text (cb->ptr, h, cape_str_size (h));
     }
     
     cape_str_del (&h);
@@ -437,7 +440,7 @@ int cape_template_mod_apply__date (CapeTemplatePart self, CapeList node_stack, C
   
     if (cb->on_text)
     {
-      cb->on_text (cb->ptr, h);
+      cb->on_text (cb->ptr, h, cape_str_size (h));
     }
     
     cape_datetime_del (&value);
@@ -518,7 +521,7 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
           {
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, value);
+              cb->on_text (cb->ptr, value, cape_str_size (value));
             }
             
             cape_str_del (&value);
@@ -546,7 +549,7 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
           {
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, value);
+              cb->on_text (cb->ptr, value, cape_str_size (value));
             }
             
             cape_str_del (&value);
@@ -574,7 +577,7 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
           {
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, value);
+              cb->on_text (cb->ptr, value, cape_str_size (value));
             }
             
             cape_str_del (&value);
@@ -606,7 +609,7 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
           {
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, value);
+              cb->on_text (cb->ptr, value, cape_str_size (value));
             }
             
             cape_str_del (&value);
@@ -630,7 +633,7 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
           {
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, value);
+              cb->on_text (cb->ptr, value, cape_str_size (value));
             }
             
             cape_str_del (&value);
@@ -638,6 +641,24 @@ int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTem
         }
         
         break;
+      }
+      case CAPE_UDC_STREAM:
+      {
+        if (self->eval)
+        {
+          
+          
+        }
+        else
+        {
+          // TODO: add stream also to the format
+          CapeStream m = cape_udc_m (found_item);
+          
+          if (cb->on_text)
+          {
+            cb->on_text (cb->ptr, cape_stream_data (m), cape_stream_size (m));
+          }
+        }
       }
     }
   }
@@ -660,11 +681,10 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
       switch (part->type)
       {
         case PART_TYPE_TEXT:
-        case PART_TYPE_CR:
         {
           if (cb->on_text)
           {
-            cb->on_text (cb->ptr, part->text);
+            cb->on_text (cb->ptr, part->text, cape_str_size (part->text));
           }
 
           break;
@@ -716,7 +736,7 @@ int cape_template_part_apply (CapeTemplatePart self, CapeList node_stack, CapeTe
             
             if (cb->on_text)
             {
-              cb->on_text (cb->ptr, h);
+              cb->on_text (cb->ptr, h, cape_str_size (h));
             }
             
             cape_str_del (&h);
@@ -870,10 +890,13 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
     case PART_TYPE_TEXT:
     case PART_TYPE_FILE:
     {
-      const CapeString text = cape_stream_get (self->sb);
-      
-      cape_template_part_add (self->part, cape_template_part_new (type, text, NULL));
-      cape_stream_clr (self->sb);
+      if (cape_stream_size (self->sb) > 0)
+      {
+        const CapeString text = cape_stream_get (self->sb);
+        
+        cape_template_part_add (self->part, cape_template_part_new (type, text, NULL));
+        cape_stream_clr (self->sb);
+      }
       
       break;
     }
@@ -924,13 +947,6 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
         }
       }
       
-      // always clear
-      cape_stream_clr (self->sb);
-      
-      break;
-    }
-    case PART_TYPE_CR:
-    {
       // always clear
       cape_stream_clr (self->sb);
       
@@ -1083,13 +1099,15 @@ int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, n
       {
         if ((*c == '\n')||(*c == '\r'))
         {
-          cape_stream_append_c (self->sb, *c);
+         // cape_stream_append_c (self->sb, *c);
           
+          /*
           res = cape_template_compiler_part (self, PART_TYPE_CR, err);
           if (res)
           {
             return res;
           }
+          */
           
           self->state = 0;
         }
@@ -1104,7 +1122,6 @@ int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, n
         else
         {
           cape_stream_append_c (self->sb, *c);
-          
           self->state = 0;
         }
 
@@ -1248,9 +1265,9 @@ int cape_template_apply (CapeTemplate self, CapeUdc node, void* ptr, fct_cape_te
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL cape_eval__on_text (void* ptr, const char* text)
+int __STDCALL cape_eval__on_text (void* ptr, const char* bufdat, number_t buflen)
 {
-  cape_stream_append_str (ptr, text);
+  cape_stream_append_buf (ptr, bufdat, buflen);
 
   return CAPE_ERR_NONE;
 }

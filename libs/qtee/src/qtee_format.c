@@ -364,6 +364,8 @@ QTeeFormat qtee_format_new (void)
     QTeeFormat self = CAPE_NEW (struct QTeeFormat_s);
     
     self->formats = NULL;
+    self->node_name = NULL;
+
     self->encrypted = FALSE;
     
     return self;
@@ -378,6 +380,7 @@ void qtee_format_del (QTeeFormat* p_self)
         QTeeFormat self = *p_self;
         
         cape_list_del (&(self->formats));
+        cape_str_del (&(self->node_name));
         
         CAPE_DEL (p_self, struct QTeeFormat_s);
     }

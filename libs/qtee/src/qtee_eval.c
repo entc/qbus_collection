@@ -299,9 +299,9 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qtee_eval__on_text (void* ptr, const char* text)
+int __STDCALL qtee_eval__on_text (void* ptr, const char* bufdat, number_t buflen)
 {
-  cape_stream_append_str (ptr, text);
+  cape_stream_append_buf (ptr, bufdat, buflen);
 
   return CAPE_ERR_NONE;
 }

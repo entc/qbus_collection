@@ -15,7 +15,7 @@ struct CapeTemplate_s; typedef struct CapeTemplate_s* CapeTemplate;
 
 //-----------------------------------------------------------------------------
 
-typedef int    (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* text);
+typedef int    (__STDCALL *fct_cape_template__on_text) (void* ptr, const char* bufdat, number_t buflen);
 typedef int    (__STDCALL *fct_cape_template__on_file) (void* ptr, const char* file, number_t flags, CapeErr err);
 typedef char*  (__STDCALL *fct_cape_template__on_pipe) (const char* name, const char* pipe, const char* value);
 typedef void   (__STDCALL *fct_cape_template__on_tag) (void* ptr, const char* tag);
