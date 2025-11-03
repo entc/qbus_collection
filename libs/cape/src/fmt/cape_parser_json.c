@@ -416,7 +416,23 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
           }
         }
       }
-
+      else if (cape_stream_size (self->valElement->stream) > 5)
+      {
+        const char* buf = cape_stream_get (self->valElement->stream);
+        
+        if (buf[0] == 'd' && buf[1] == 'a' && buf[2] == 't' && buf[3] == 'a' && buf[4] == ':')
+        {
+          if (self->onItem)
+          {
+            // void* ptr, void* obj, int type, const char* key, void* val
+            self->onItem (self->ptr, self->keyElement->obj, CAPE_JPARSER_OBJECT_STREAM, (void*)buf, key, index);
+          }
+          
+          cape_stream_clr (self->valElement->stream);
+          break;
+        }
+      }
+      
       if (self->onItem)
       {
         // void* ptr, void* obj, int type, const char* key, void* val
