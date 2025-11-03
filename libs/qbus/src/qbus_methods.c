@@ -293,7 +293,7 @@ void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg
   {
     qbus_message_del (p_msg);
 
-    cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
+    //cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
   }
 }
 

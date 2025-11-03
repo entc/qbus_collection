@@ -102,7 +102,7 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
       cape_udc_add_n (payload, "err_code", cape_err_code (msg->err));
     }
   }
-  
+    
   {
     frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
     frame->msg_size = cape_str_size (frame->msg_data);
