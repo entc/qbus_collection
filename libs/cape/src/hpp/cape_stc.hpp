@@ -106,7 +106,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    CapeStream obj ()
+    CapeStream obj () const
     {
       return m_obj;
     }
@@ -330,22 +330,22 @@ namespace cape
       }
 
       cape_stream_append_buf (m_obj, bufdat, buflen);
-      
+
       return buflen;
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     template <class ...Ts> void append_fmt (const CapeString format, Ts&&... args)
     {
       if (m_obj == NULL)
       {
         throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
       }
-      
+
       cape_stream_append_fmt (m_obj, format, args...);
     }
-    
+
     //-----------------------------------------------------------------------------
 
     void append_u08 (cape_uint8 val)
@@ -393,28 +393,28 @@ namespace cape
 
       cape_stream_append_64 (m_obj, val, network_byte_order ? TRUE : FALSE);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     void append_bd (double val, bool network_byte_order)
     {
       if (m_obj == NULL)
       {
         throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
       }
-      
+
       cape_stream_append_bd (m_obj, val, network_byte_order ? TRUE : FALSE);
     }
-    
+
     //-----------------------------------------------------------------------------
-    
+
     void append_bf (float val, bool network_byte_order)
     {
       if (m_obj == NULL)
       {
         throw cape::Exception (CAPE_ERR_NO_OBJECT, "Stream object has no content");
       }
-      
+
       cape_stream_append_bf (m_obj, val, network_byte_order ? TRUE : FALSE);
     }
 
@@ -897,19 +897,19 @@ namespace cape
     }
 
     //-----------------------------------------------------------------------------
-    
+
     Udc last () const
     {
       if (m_obj == NULL)
       {
         std::string error_message = "UDC object has no content: {last}";
-        
+
         throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
       }
-      
+
       return Udc (cape_udc_get_last (m_obj));
     }
-    
+
     //-----------------------------------------------------------------------------
 
     template <typename S> Udc get (const S& name)
@@ -1386,6 +1386,18 @@ namespace cape
     static cape::String as (CapeUdc obj, const char* dv = "") { return cape::String (cape_str_cp (cape_udc_s (obj, dv))); }
   };
 
+  template <> struct UdcTransType<cape::Stream&>
+  {
+    static void add_cp (CapeUdc obj, const char* name, const cape::Stream& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
+    static void add_mv (CapeUdc obj, const char* name, const cape::Stream& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
+  };
+
+  template <> struct UdcTransType<cape::Stream&&>
+  {
+    static void add_cp (CapeUdc obj, const char* name, cape::Stream&& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
+    static void add_mv (CapeUdc obj, const char* name, cape::Stream&& value) { CapeStream h = value.release(); cape_udc_add_m_mv (obj, name, &h); }
+  };
+
   template <> struct UdcTransType<Udc>
   {
     static void add_cp (CapeUdc obj, const char* name, const Udc& value)
@@ -1431,23 +1443,6 @@ namespace cape
       {
         cape_udc_add (obj, &h);
       }
-    }
-  };
-
-  template <> struct UdcTransType<cape::Stream&>
-  {
-    static void add_cp (CapeUdc obj, const char* name, const cape::Stream& value)
-    {
-      const CapeString h = value.to_cstr ();
-
-      cape_udc_add_s_cp (obj, name, h);
-    }
-
-    static void add_mv (CapeUdc obj, const char* name, cape::Stream& value)
-    {
-      CapeString h = value.to_cstr ();
-
-      cape_udc_add_s_mv (obj, name, &h);
     }
   };
 
