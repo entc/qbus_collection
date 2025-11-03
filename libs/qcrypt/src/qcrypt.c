@@ -99,7 +99,7 @@ CapeStream qcrypt__decrypt_m (const CapeString vsec, const CapeString encrypted_
   
   ret = cape_stream_new ();
   
-  dec = qdecrypt_aes_new (ret, vsec, QCRYPT_AES_TYPE_CFB, QCRYPT_KEY_PASSPHRASE_MD5);
+  dec = qdecrypt_aes_new (ret, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
   
   {
     int res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
@@ -112,8 +112,6 @@ CapeStream qcrypt__decrypt_m (const CapeString vsec, const CapeString encrypted_
     }
   }
   
-  printf ("decrypted bytes: %lu\n", cape_stream_size (ret));
-
   return ret;
 }
 
@@ -129,6 +127,8 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
   }
   else
   {
+    return cape_stream_to_str (&s);
+    /*
     CapeString ret = NULL;
     
     // transform into a string
@@ -140,6 +140,7 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
     cape_str_del (&h);
     
     return ret;
+    */
   }
 }
 

@@ -170,6 +170,7 @@ struct QDecryptAES_s
   int blocksize;
   
   number_t cypher_type;
+  number_t padding_type;
   number_t key_type;
   
   number_t total_size;
@@ -185,7 +186,7 @@ struct QDecryptAES_s
 
 //-----------------------------------------------------------------------------
 
-QDecryptAES qdecrypt_aes_new (CapeStream r_product, const CapeString secret, number_t cypher_type, number_t key_type)
+QDecryptAES qdecrypt_aes_new (CapeStream r_product, number_t cypher_type, number_t padding_type, const CapeString secret, number_t key_type)
 {
   QDecryptAES self = CAPE_NEW (struct QDecryptAES_s);
   
@@ -212,6 +213,7 @@ QDecryptAES qdecrypt_aes_new (CapeStream r_product, const CapeString secret, num
   
   // cipher settings
   self->cypher_type = cypher_type;
+  self->padding_type = padding_type;
   self->key_type = key_type;
 
   // key settings
@@ -389,7 +391,22 @@ int qdecrypt_aes_finalize (QDecryptAES self, CapeErr err)
 
     cape_stream_set (self->product, lenLast);
   }
-
+  
+  switch (self->padding_type)
+  {
+    default:
+    {
+      break;
+    }
+    case QCRYPT_PADDING_ANSI_X923:   // forced padding
+    {
+      // identify the last byte which contains the padding information
+      // reduce the buffer length
+      cape_stream_dec (self->product, cape_stream_last_c (self->product));
+      break;
+    }
+  }
+  
   return CAPE_ERR_NONE;
 
 #endif

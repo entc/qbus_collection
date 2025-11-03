@@ -50,7 +50,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   }
   
   // create the decryption context
-  dec = qdecrypt_aes_new (outb, vsec, 0, 0);
+  dec = qdecrypt_aes_new (outb, 0, 0, vsec, 0);
   
   while (TRUE)
   {
@@ -129,7 +129,7 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
   self->product = cape_stream_new ();
   
   // create the decryption context
-  self->dec = qdecrypt_aes_new (self->product, vsec, 0, 0);
+  self->dec = qdecrypt_aes_new (self->product, 0, 0, vsec, 0);
   
   self->state = TRUE;
 
