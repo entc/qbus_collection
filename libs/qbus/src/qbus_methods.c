@@ -299,6 +299,24 @@ void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg
 
 //-----------------------------------------------------------------------------
 
+void qbus_methods_send (QBusMethods self, const CapeString saves_key, CapeErr err)
+{
+  QBusMethodItem mitem = NULL;
+  QBusM qout = qbus_message_new (NULL, NULL);
+  
+  if (saves_key)
+  {
+    mitem = qbus_methods_load (self, saves_key);
+  }
+  
+  qbus_methods_response (self, mitem, &qout, err);
+  
+  qbus_method_item_del (&mitem);
+  qbus_message_del (&qout);
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, number_t queue_size)
 {
   QBusMethodCtx mctx = user_ptr;

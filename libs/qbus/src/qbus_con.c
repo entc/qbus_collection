@@ -197,9 +197,13 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         cape_str_del (&(qin->sender));
         
         int res = qbus_methods_run (self->methods, frame->method, saves_key, &qin, err);
+        
         if (res)
         {
-          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "routing", "%s", cape_err_text (err));
+          cape_log_fmt (CAPE_LL_ERROR, "QBUS", "methods", "%s", cape_err_text (err));
+
+          // directly sends back the error message
+          qbus_methods_send (self->methods, saves_key, err);
         }
         
         cape_err_del (&err);
