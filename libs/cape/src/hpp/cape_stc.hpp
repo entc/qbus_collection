@@ -898,7 +898,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    Udc last () const
+    Udc last ()
     {
       if (m_obj == NULL)
       {
@@ -912,7 +912,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    template <typename S> Udc get (const S& name)
+    template <typename S> Udc get (const S& name) const
     {
       if (m_obj == NULL)
       {
@@ -926,14 +926,14 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    Udc get (const char* name)
+    Udc get (const char* name) const
     {
       return Udc (cape_udc_get (m_obj, name));
     }
 
     //-----------------------------------------------------------------------------
 
-    template <typename S, typename T> T get (const S& name, T const& default_value)
+    template <typename S, typename T> T get (const S& name, T const& default_value) const
     {
       if (m_obj == NULL)
       {
@@ -955,7 +955,7 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
-    template <typename T> T get (const char* name, T const& default_value)
+    template <typename T> T get (const char* name, T const& default_value) const
     {
       if (m_obj == NULL)
       {
