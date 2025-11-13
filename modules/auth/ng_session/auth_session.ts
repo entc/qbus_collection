@@ -123,8 +123,10 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  public disable (): void
+  public disable (session_expired: boolean = false): void
   {
+    this.conn.session__logout (session_expired);
+
     this.storage_clear ();
     this.roles.next (null);
   }
@@ -189,7 +191,7 @@ export class AuthSession
 
         this.idle.emit (this.timer_idle_countdown);
 
-        if (this.timer_idle_countdown == 0) this.disable ();
+        if (this.timer_idle_countdown == 0) this.disable (true);
 
       });
     }
