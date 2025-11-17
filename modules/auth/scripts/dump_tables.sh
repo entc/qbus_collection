@@ -4,7 +4,7 @@ MYSQLDUMP="mysqldump"
 #MYSQLDUMP="/opt/local/lib/mariadb/bin/mysqldump"
 
 #$MYSQLDUMP --set-gtid-purged=off -u $1 -p $2 \
-$MYSQLDUMP --single-transaction -u $1 -p $2 \
+$MYSQLDUMP --single-transaction -h 127.0.0.1 -P 13306 -u $1 -p $2 \
 auth_sessions \
 auth_sessions_wp_view \
 auth_users_secret_view \

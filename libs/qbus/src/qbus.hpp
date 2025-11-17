@@ -54,7 +54,23 @@ namespace qbus
 
     //---------------------------------------------------------------------------
     
-    int get_err ()
+    const CapeString get_err_text ()
+    {
+      CapeErr err = m_qin->err;
+      
+      if (err)
+      {
+        return cape_err_text (err);
+      }
+      else
+      {
+        return NULL;
+      }
+    }
+    
+    //---------------------------------------------------------------------------
+    
+    int get_err_code ()
     {
       CapeErr err = m_qin->err;
 
