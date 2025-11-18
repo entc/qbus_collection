@@ -103,7 +103,8 @@ void __attribute__ ((destructor)) library_fini (void)
 
   mysql_thread_end ();
   
-  mysql_library_end ();
+  // valgrind tells here, that an invalid read occours
+ // mysql_library_end ();
 }
 
 #endif
