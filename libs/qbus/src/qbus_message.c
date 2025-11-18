@@ -149,3 +149,14 @@ int qbus_message_role_or2 (QBusM self, const CapeString role01, const CapeString
 }
 
 //-----------------------------------------------------------------------------
+
+CapeErr qbus_message_err_new (QBusM self)
+{
+  cape_err_del (&(self->err));
+  
+  self->err = cape_err_new ();
+
+  return self->err;
+}
+
+//-----------------------------------------------------------------------------

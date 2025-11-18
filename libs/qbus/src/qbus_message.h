@@ -53,6 +53,8 @@ __CAPE_LIBEX   int                qbus_message_role_has  (QBusM, const CapeStrin
 
 __CAPE_LIBEX   int                qbus_message_role_or2  (QBusM, const CapeString role01, const CapeString role02);
 
+__CAPE_LIBEX   CapeErr            qbus_message_err_new   (QBusM);
+
 //-----------------------------------------------------------------------------
 
 #endif

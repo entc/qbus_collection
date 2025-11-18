@@ -190,7 +190,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
         QBusM qin = qbus_con__qin_from_frame (frame);
         
         // create a new skey-mitem-set to store the request context
-        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender, qin->rinfo, "REQ");
+        const CapeString saves_key = qbus_methods_save (self->methods, NULL, NULL, frame->chain_key, frame->sender, qin->rinfo, NULL);
 
         // correct the qin skey environment
         cape_str_replace_cp (&(qin->chain_key), saves_key);
@@ -265,11 +265,16 @@ void __STDCALL qbus_con__on_con (void* user_ptr, const CapeString cid, const Cap
   {
     case 1:
     {
+      // append a new router connection
       qbus_router_add (self->router, cid, name);
       break;
     }
     case 2:
     {
+      // abort all ongoing requests
+      qbus_methods_abort (self->methods, cid, name);
+      
+      // remove this connection
       qbus_router_rm (self->router, cid, name);
       break;
     }

@@ -46,11 +46,13 @@ __CAPE_LIBEX   void                 qbus_methods_send         (QBusMethods, cons
 
 __CAPE_LIBEX   void                 qbus_methods_queue        (QBusMethods, QBusMethodItem mitem, QBusM* p_qin, const CapeString saves_key);
 
+__CAPE_LIBEX   void                 qbus_methods_abort        (QBusMethods, const CapeString cid, const CapeString name);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   QBusMethodItem       qbus_methods_load         (QBusMethods, const CapeString save_key);
 
-__CAPE_LIBEX   const CapeString     qbus_methods_save         (QBusMethods, void* user_ptr, fct_qbus_on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString debug);
+__CAPE_LIBEX   const CapeString     qbus_methods_save         (QBusMethods, void* user_ptr, fct_qbus_on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString cid);
 
 //-----------------------------------------------------------------------------
 

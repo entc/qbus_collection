@@ -16,12 +16,13 @@ struct QBusMethodItem_s
   CapeString sender;
   
   CapeUdc rinfo;
+  CapeString cid;
   
 }; typedef struct QBusMethodItem_s* QBusMethodItem;
 
 //-----------------------------------------------------------------------------
 
-QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, const CapeUdc rinfo)
+QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, const CapeString cid, const CapeUdc rinfo)
 {
   QBusMethodItem self = CAPE_NEW (struct QBusMethodItem_s);
   
@@ -32,6 +33,7 @@ QBusMethodItem qbus_method_item_new (void* user_ptr, fct_qbus_on_msg on_msg, con
   self->sender = cape_str_cp (sender);
 
   self->rinfo = cape_udc_cp (rinfo);
+  self->cid = cape_str_cp (cid);
   
   return self;
 }
@@ -48,7 +50,8 @@ void qbus_method_item_del (QBusMethodItem* p_self)
     cape_str_del (&(self->sender));
 
     cape_udc_del (&(self->rinfo));
-
+    cape_str_del (&(self->cid));
+    
     CAPE_DEL (p_self, struct QBusMethodItem_s);
   }
 }
@@ -212,11 +215,11 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString skey)
 
 //-----------------------------------------------------------------------------
 
-const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString debug)
+const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_on_msg on_msg, const CapeString saves_key, const CapeString sender, CapeUdc rinfo, const CapeString cid)
 {
   CapeString skey = cape_str_uuid ();
   
-  QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, saves_key, sender, rinfo);
+  QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, saves_key, sender, cid, rinfo);
   
   cape_mutex_lock (self->saves_mutex);
   
@@ -233,7 +236,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
 int qbus_methods_add (QBusMethods self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
-  cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_method_item_new (user_ptr, on_msg, NULL, NULL, NULL));
+  cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_method_item_new (user_ptr, on_msg, NULL, NULL, NULL, NULL));
     
   return CAPE_ERR_NONE;
 }
@@ -384,6 +387,47 @@ int qbus_methods_run (QBusMethods self, const CapeString method_name, const Cape
   }
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods_abort (QBusMethods self, const CapeString cid, const CapeString name)
+{
+  cape_mutex_lock (self->saves_mutex);
+  
+  {
+    CapeMapCursor* cursor = cape_map_cursor_new (self->saves, CAPE_DIRECTION_FORW);
+
+    while (cape_map_cursor_next (cursor))
+    {
+      QBusMethodItem mitem = cape_map_node_value (cursor->node);
+      
+      if (cape_str_equal (cid, mitem->cid))
+      {
+        // the mitem skey has the original the request context
+        const CapeString saves_key = qbus_method_item_skey (mitem);
+
+        QBusM qin = qbus_message_new (saves_key, NULL);
+        
+        cape_err_set_fmt (qbus_message_err_new (qin), CAPE_ERR_PROCESS_ABORT, "module [%s] has terminated", name);
+        
+        // continue with the user process
+        qbus_methods_queue (self, mitem, &qin, saves_key);
+        
+        qbus_method_item_del (&mitem);
+        
+        cape_map_node_set (cursor->node, NULL);
+
+        cape_map_cursor_erase (self->saves, cursor);
+        
+        qbus_message_del (&qin);
+      }      
+    }
+    
+    cape_map_cursor_del(&cursor);
+  }
+  
+  cape_mutex_unlock (self->saves_mutex);
 }
 
 //-----------------------------------------------------------------------------
