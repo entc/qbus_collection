@@ -76,13 +76,28 @@ static void __STDCALL cape_json_onItem (void* ptr, void* obj, int type, void* va
     }
     case CAPE_JPARSER_OBJECT_STREAM:
     {
-      CapeStream s = cape_stream_deserialize (val, ptr);
-      
-      if (s)
+      if (ptr)
       {
-        CapeUdc h = cape_udc_new (CAPE_UDC_STREAM, key);
+        CapeStream s = cape_stream_deserialize (val, ptr);
+
+        if (s)
+        {
+          CapeUdc h = cape_udc_new (CAPE_UDC_STREAM, key);
+          
+          cape_udc_set_m_mv (h, &s);
+          
+          cape_udc_add (obj, &h);
+        }
+        else
+        {
+          cape_log_msg (CAPE_LL_ERROR, "CAPE", "json", "can't deserialize stream");
+        }
+      }
+      else
+      {
+        CapeUdc h = cape_udc_new (CAPE_UDC_STRING, key);
         
-        cape_udc_set_m_mv (h, &s);
+        cape_udc_set_s_cp (h, val);
         
         cape_udc_add (obj, &h);
       }

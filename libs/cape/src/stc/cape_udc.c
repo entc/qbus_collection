@@ -1853,6 +1853,32 @@ CapeUdc cape_udc_get_last (CapeUdc self)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc cape_udc_find_n__iterate (CapeUdc self, const CapeString name, number_t value)
+{
+  CapeUdc ret = NULL;
+  
+  // local objects
+  CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+  
+  while (cape_udc_cursor_next (cursor))
+  {
+    CapeUdc seek_node = cape_udc_get (cursor->item, name);
+    if (seek_node)
+    {
+      if ((seek_node->type == CAPE_UDC_NUMBER) && ((number_t)(seek_node->data) == value))
+      {
+        ret = cursor->item;
+        break;
+      }
+    }
+  }
+  
+  cape_udc_cursor_del (&cursor);
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc cape_udc_find_n (CapeUdc self, const CapeString name, number_t value)
 {
   CapeUdc ret = NULL;
@@ -1862,26 +1888,48 @@ CapeUdc cape_udc_find_n (CapeUdc self, const CapeString name, number_t value)
     case CAPE_UDC_LIST:
     case CAPE_UDC_NODE:
     {
-      CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
-      
-      while (cape_udc_cursor_next (cursor))
-      {
-        CapeUdc seek_node = cape_udc_get (cursor->item, name);
-        if (seek_node)
-        {
-          if ((seek_node->type == CAPE_UDC_NUMBER) && ((number_t)(seek_node->data) == value))
-          {
-            ret = cursor->item;
-          }
-        }
-      }
-      
-      cape_udc_cursor_del (&cursor);
+      ret = cape_udc_find_n__iterate (self, name, value);
       break;
     }
   }
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_reduce_s__iterate (CapeUdc self, const CapeString name, const CapeString value)
+{
+  CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+
+  while (cape_udc_cursor_next (cursor))
+  {
+    // compare user ids
+    if (cape_str_equal (value, cape_udc_get_s (cursor->item, name, NULL)))
+    {
+      CapeUdc h = cape_udc_cursor_ext (self, cursor);
+      cape_udc_del (&h);
+      
+      break;
+    }
+  }
+  
+  cape_udc_cursor_del (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_reduce_s (CapeUdc self, const CapeString name, const CapeString value)
+{
+  switch (self->type)
+  {
+    case CAPE_UDC_LIST:
+    case CAPE_UDC_NODE:
+    {
+      cape_udc_reduce_s__iterate (self, name, value);
+      break;
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
