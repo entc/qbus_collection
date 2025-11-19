@@ -17,9 +17,9 @@ int __STDCALL test_custom_files__on_load (void* ptr, const char* bufdat, number_
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL test_custom_files__on_text (void* ptr, const char* text)
+int __STDCALL test_custom_files__on_text (void* ptr, const char* bufdat, number_t buflen)
 {
-  cape_stream_append_str (ptr, text);
+  cape_stream_append_buf (ptr, bufdat, buflen);
   return CAPE_ERR_NONE;
 }
 

@@ -44,5 +44,8 @@ target_link_libraries   (ut_sys_queue cape)
 add_executable          (ut_fmt_tokenizer ut_fmt_tokenizer.c)
 target_link_libraries   (ut_fmt_tokenizer cape)
 
+add_executable          (ut_sys_net ut_sys_net.c)
+target_link_libraries   (ut_sys_net cape)
+
 add_executable          (ut_sys_socket ut_sys_socket.c)
 target_link_libraries   (ut_sys_socket cape)
