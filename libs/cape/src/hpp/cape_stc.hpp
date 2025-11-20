@@ -1386,15 +1386,9 @@ namespace cape
     static cape::String as (CapeUdc obj, const char* dv = "") { return cape::String (cape_str_cp (cape_udc_s (obj, dv))); }
   };
 
-  template <> struct UdcTransType<cape::Stream&>
+  template <> struct UdcTransType<cape::Stream>
   {
     static void add_cp (CapeUdc obj, const char* name, const cape::Stream& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
-    static void add_mv (CapeUdc obj, const char* name, const cape::Stream& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
-  };
-
-  template <> struct UdcTransType<cape::Stream&&>
-  {
-    static void add_cp (CapeUdc obj, const char* name, cape::Stream&& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
     static void add_mv (CapeUdc obj, const char* name, cape::Stream&& value) { CapeStream h = value.release(); cape_udc_add_m_mv (obj, name, &h); }
   };
 
