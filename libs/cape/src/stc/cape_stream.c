@@ -171,6 +171,25 @@ CapeStream cape_stream_mv (CapeStream* p_self)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_stream_cp (const CapeStream other)
+{
+  CapeStream self = CAPE_NEW (struct CapeStream_s);
+    
+  self->buffer = CAPE_ALLOC (other->size + 1);
+  self->size = other->size;
+
+  memcpy (self->buffer, other->buffer, other->size);
+  
+  self->pos = self->buffer + other->size;
+
+  // copy mime type
+  self->mime_type = cape_str_cp (other->mime_type);
+    
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 const char* cape_stream_get (CapeStream self)
 {
   // set terminator

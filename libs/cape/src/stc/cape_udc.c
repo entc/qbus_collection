@@ -819,9 +819,14 @@ void cape_udc_set_m_cp (CapeUdc self, const CapeStream val)
   {
     case CAPE_UDC_STREAM:
     {
+      if (self->data)
+      {
+        cape_stream_del ((CapeStream*)&(self->data));
+      }
+      
       if (val)
       {
-
+        self->data = cape_stream_cp (val);
       }
 
       break;
