@@ -406,10 +406,11 @@ namespace qbus
 
   template <typename C> class MessageSend
   {
-    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
 
   public:
 
+    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
+    
     MessageSend () : m_msg (qbus_message_new (NULL, NULL))
     {
     }
