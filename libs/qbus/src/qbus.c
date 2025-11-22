@@ -253,7 +253,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
     // TODO: check why we need this
     QBusM qin = qbus_message_mv (msg);
 
-    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, "local");
+    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
 
     res = qbus_methods_run (self->methods, method, saves_key, &qin, err);
   }
@@ -263,7 +263,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
     if (cid)
     {
-      const CapeString skey = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, "request");
+      const CapeString skey = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, cid);
 
       //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC [%s:%s] on %s with skey = %s", module, method, cid, skey);
 
@@ -327,7 +327,7 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 int qbus_save (QBus self, QBusM msg, CapeString* p_skey, CapeErr err)
 {
   // save this context and overrides the given pointer to the skey
-  cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo, "save"));
+  cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo, NULL));
   
   // always return continue
   return CAPE_ERR_CONTINUE;

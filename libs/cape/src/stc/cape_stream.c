@@ -171,6 +171,40 @@ CapeStream cape_stream_mv (CapeStream* p_self)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
+{
+  CapeStream self = CAPE_NEW (struct CapeStream_s);
+  
+  // allocate memory and set the size
+  self->buffer = CAPE_ALLOC (buflen + 1);
+  self->size = buflen;
+  
+  // copy the data
+  memcpy (self->buffer, bufdat, buflen);
+  
+  // set the new position
+  self->pos = self->buffer + buflen;
+  
+  // no mime type
+  self->mime_type = NULL;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_stream_cp (const CapeStream other)
+{
+  CapeStream self = cape_stream_from_buf (other->buffer, other->pos - other->buffer);
+    
+  // copy mime type
+  self->mime_type = cape_str_cp (other->mime_type);
+    
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 const char* cape_stream_get (CapeStream self)
 {
   // set terminator
@@ -184,28 +218,6 @@ const char* cape_stream_get (CapeStream self)
 const char* cape_stream_data (CapeStream self)
 {
   return self->buffer;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
-{
-  CapeStream self = CAPE_NEW (struct CapeStream_s);
-
-  // allocate memory and set the size
-  self->buffer = CAPE_ALLOC (buflen + 1);
-  self->size = buflen;
-
-  // copy the data
-  memcpy (self->buffer, bufdat, buflen);
-
-  // set the new position
-  self->pos = self->buffer + buflen;
-
-  // no mime type
-  self->mime_type = NULL;
-
-  return self;
 }
 
 //-----------------------------------------------------------------------------

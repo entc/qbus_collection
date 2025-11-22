@@ -25,6 +25,9 @@ __CAPE_LIBEX void              cape_stream_clr (CapeStream);
                                /* moves stream ownership */
 __CAPE_LIBEX CapeStream        cape_stream_mv (CapeStream*);
 
+                               /* copy the stream */
+__CAPE_LIBEX CapeStream        cape_stream_cp (const CapeStream);
+
                                /* converts the stream into a c-string (adds zero termination) */
 __CAPE_LIBEX const char*       cape_stream_get (CapeStream);
 

@@ -54,7 +54,23 @@ namespace qbus
 
     //---------------------------------------------------------------------------
     
-    int get_err ()
+    const CapeString get_err_text ()
+    {
+      CapeErr err = m_qin->err;
+      
+      if (err)
+      {
+        return cape_err_text (err);
+      }
+      else
+      {
+        return NULL;
+      }
+    }
+    
+    //---------------------------------------------------------------------------
+    
+    int get_err_code ()
     {
       CapeErr err = m_qin->err;
 
@@ -390,10 +406,11 @@ namespace qbus
 
   template <typename C> class MessageSend
   {
-    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
 
   public:
 
+    typedef void(*fct_next_message)(QBus qbus, std::unique_ptr<C>& self, qbus::Message& msg);
+    
     MessageSend () : m_msg (qbus_message_new (NULL, NULL))
     {
     }
