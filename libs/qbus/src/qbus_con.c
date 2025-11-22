@@ -149,7 +149,7 @@ QBusM qbus_con__qin_from_frame (QBusFrame frame)
               qin->err = cape_err_new ();
               
               // set the error
-              cape_err_set (qin->err, (int)err_code, cape_udc_get_s (payload, "err_text", "no error text"));
+              cape_err_set__i (qin->err, 0, NULL, (int)err_code, cape_udc_get_s (payload, "err_text", "no error text"));
             }
           }
         }
