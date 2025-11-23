@@ -90,11 +90,14 @@ int cape_err_set__i (CapeErr self, int line_number, const char* file, int code, 
 {
   self->code = code;
   
-  // returns only the file
-  const CapeString file_relative = cape_fs_split (file, NULL);
-  
-  // print to STDERR
-  fprintf (stderr, "{%s:%i} | %s\n", file_relative, line_number, error_message);
+  if (file)
+  {
+    // returns only the file
+    const CapeString file_relative = cape_fs_split (file, NULL);
+    
+    // print to STDERR
+    fprintf (stderr, "{%s:%i} | %s\n", file_relative, line_number, error_message);
+  }
   
   cape_str_replace_cp (&(self->text), error_message);
   
