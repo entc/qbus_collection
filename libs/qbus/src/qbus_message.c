@@ -59,12 +59,13 @@ QBusM qbus_message_mv (QBusM original)
   self->cdata = cape_udc_mv (&(original->cdata));
   self->pdata = cape_udc_mv (&(original->pdata));
   self->clist = cape_udc_mv (&(original->clist));
+  self->blob = cape_stream_mv (&(original->blob));
+
   self->rinfo = cape_udc_mv (&(original->rinfo));
   self->files = cape_udc_mv (&(original->files));
-  self->files = cape_udc_mv (&(original->files));
-
-  self->blob = cape_stream_mv (&(original->blob));
   
+  self->err = NULL;
+
   return self;
 }
 
