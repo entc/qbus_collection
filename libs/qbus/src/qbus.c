@@ -308,7 +308,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
         QBusM qin = qbus_message_mv (msg);
 
         qin->err = cape_err_new ();
-        cape_err_set_fmt__i (qin->err, NULL, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
+        cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
         
         qbus_methods_queue (self->methods, mitem, &qin, qin->chain_key);
         
