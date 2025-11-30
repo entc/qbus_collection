@@ -96,7 +96,7 @@ QBusFrame qbus_con__frame_from_qin (QBusM msg)
     number_t err_code = cape_err_code (msg->err);
     if (err_code)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (msg->err), cape_err_text (msg->err));
+      // cape_log_fmt (CAPE_LL_TRACE, "QBUS", "frame set", "{%i} -- set err -- %s", cape_err_code (msg->err), cape_err_text (msg->err));
       
       cape_udc_add_s_cp (payload, "err_text", cape_err_text (msg->err));
       cape_udc_add_n (payload, "err_code", cape_err_code (msg->err));

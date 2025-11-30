@@ -1831,8 +1831,7 @@ number_t cape_dc_type (CapeDirCursor self)
 {
   if (self->node)
   {
-    unsigned short fts_info = self->node->fts_info;
-
+//    unsigned short fts_info = self->node->fts_info;
 //    printf ("%i FTS_DEFAULT=%i, FTS_F=%i, FTS_SL=%i, FTS_DP=%i\n", fts_info, fts_info & FTS_DEFAULT, fts_info & FTS_F, fts_info & FTS_SL, fts_info & FTS_DP);
 
     switch (self->node->fts_info)

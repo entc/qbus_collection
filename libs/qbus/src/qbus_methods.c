@@ -201,7 +201,7 @@ QBusMethodItem qbus_methods_load (QBusMethods self, const CapeString skey)
 
     cape_map_erase (self->saves, n);
 
-    //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", skey);
+ //   cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "load", "load skey = '%s'", skey);
   }
   else
   {
@@ -259,7 +259,7 @@ void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, c
         
     mctx->qin = *p_qin;
     *p_qin = NULL;
-
+    
     mctx->qbus = self->qbus;
     mctx->self = self;
     
@@ -337,7 +337,7 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     QBusM qout = qbus_message_new (NULL, NULL);
     
     QBusMethodItem mitem = NULL;
-    
+        
     int res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
     
     // check for special case continue
@@ -347,12 +347,18 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     }
     else
     {
+      if (res)
+      {
+        cape_log_fmt (CAPE_LL_WARN, "QBUS", "queue", "method returned an error [%lu]: %s", res, cape_err_text (err));
+      }
+      
       if (mctx->saves_key)
       {
         mitem = qbus_methods_load (mctx->self, mctx->saves_key);
       }
-
-      qbus_methods_response (mctx->self, mitem, &qout, err);
+      
+      // set the error object only in case there was an error
+      qbus_methods_response (mctx->self, mitem, &qout, res ? err : NULL);
     }
     
     qbus_method_item_del (&mitem);

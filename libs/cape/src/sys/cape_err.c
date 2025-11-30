@@ -3,6 +3,7 @@
 // cape includes
 #include "stc/cape_str.h"
 #include "sys/cape_file.h"
+#include "sys/cape_log.h"
 
 #ifdef __WINDOWS_OS
 #include <windows.h>
@@ -54,12 +55,19 @@ void cape_err_del (CapeErr* p_self)
 
 CapeErr cape_err_cp (CapeErr rhs)
 {
-  CapeErr self = CAPE_NEW (struct CapeErr_s);
-  
-  self->text = cape_str_cp (rhs->text);
-  self->code = rhs->code;
-  
-  return self;    
+  if (rhs)
+  {
+    CapeErr self = CAPE_NEW (struct CapeErr_s);
+    
+    self->text = cape_str_cp (rhs->text);
+    self->code = rhs->code;
+    
+    return self;
+  }
+  else
+  {
+    return NULL;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -95,8 +103,8 @@ int cape_err_set__i (CapeErr self, int line_number, const char* file, int code, 
     // returns only the file
     const CapeString file_relative = cape_fs_split (file, NULL);
     
-    // print to STDERR
-    fprintf (stderr, "{%s:%i} | %s\n", file_relative, line_number, error_message);
+    // print Error
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "error", "ERROR [%i]: {%s:%i} | %s", code, file_relative, line_number, error_message);
   }
   
   cape_str_replace_cp (&(self->text), error_message);
