@@ -2,6 +2,7 @@
 #include "fmt/cape_dragon4.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
+#include "sys/cape_log.h"
 
 // c includes
 #include <stdio.h>
@@ -159,6 +160,17 @@ void cape_stream_clr (CapeStream self)
 
 //-----------------------------------------------------------------------------
 
+CapeStream cape_stream_mv (CapeStream* p_self)
+{
+  CapeStream self = *p_self;
+
+  *p_self = NULL;
+
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
 const char* cape_stream_get (CapeStream self)
 {
   // set terminator
@@ -232,12 +244,29 @@ void cape_stream_replace_mv (CapeStream* p_self, CapeStream* p_source)
 {
   // free the old stream
   cape_stream_del (p_self);
-  
+
   // transfer ownership
   *p_self = *p_source;
-  
+
   // release ownership
   *p_source = NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+char cape_stream_last_c (CapeStream self)
+{
+  if (self->size > 0)
+  {
+    const char* pos = self->pos - 1;
+
+    return *(pos);
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "can't fetch last byte");
+    return 0;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -260,6 +289,7 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
 {
   if (cb_encode)
   {
+    // TODO: use a prefix to encode
     CapeString h = cb_encode (self);
     if (h)
     {
@@ -270,6 +300,8 @@ CapeString cape_stream_serialize (CapeStream self, fct_cape_stream_base64_encode
       cape_stream_append_str (s, ";base64,");
 
       cape_stream_append_str (s, h);
+      cape_str_del (&h);
+
       return cape_stream_to_str (&s);
     }
   }
@@ -283,14 +315,29 @@ CapeStream cape_stream_deserialize (CapeString source, fct_cape_stream_base64_de
 {
   number_t pos;
 
-  if (cb_decode && cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
+  if (cb_decode)
   {
-    CapeStream s = cb_decode (source + pos + 8);
-    if (s)
+    if (cape_str_begins (source, "data:") && cape_str_find (source + 5, ";base64,", &pos))
     {
-      s->mime_type = cape_str_sub (source + 5, pos);
-      return s;
+      CapeStream s = cb_decode (source + 5 + pos + 8);
+      if (s)
+      {
+        s->mime_type = cape_str_sub (source + 5, pos);
+        return s;
+      }
+      else
+      {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "deserialize: decode failed");
+      }
     }
+    else
+    {
+      cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "deserialize: not found");
+    }
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "deserialize: no decode method provided");
   }
 
   return NULL;
@@ -315,7 +362,7 @@ void cape_stream_set (CapeStream self, number_t bytes_appended)
 void cape_stream_dec (CapeStream self, number_t bytes_reverted)
 {
   self->pos -= bytes_reverted;
-  
+
   if (self->pos < self->buffer)
   {
     self->pos = self->buffer;
@@ -436,7 +483,7 @@ void cape_stream_append_c_series (CapeStream self, char c, number_t amount)
   if (amount > 0)
   {
     cape_stream_reserve (self, amount);
-    
+
     memset (self->pos, c, amount);
     self->pos += amount;
   }
@@ -628,22 +675,22 @@ void cape_stream_append_bf (CapeStream self, float val, int network_byte_order)
 int cape_stream_to_file (CapeStream self, const CapeString file, CapeErr err)
 {
   int res;
-  
+
   // local objects
   CapeFileHandle fh = cape_fh_new (NULL, file);
-  
+
   // try to create a new file
   res = cape_fh_open (fh, O_CREAT | O_TRUNC | O_WRONLY, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
-  
+
   // write the content of the stream into a file
   {
     number_t bytes_to_write = self->pos - self->buffer;
     number_t bytes_written = 0;
-      
+
     while (bytes_written < bytes_to_write)
     {
       number_t bytes_written_part = cape_fh_write_buf (fh, self->buffer + bytes_written, bytes_to_write - bytes_written);
@@ -653,13 +700,13 @@ int cape_stream_to_file (CapeStream self, const CapeString file, CapeErr err)
         res = cape_err_lastOSError (err);
         goto exit_and_cleanup;
       }
-      
+
       bytes_written = bytes_written + bytes_written_part;
     }
   }
-  
+
   res = CAPE_ERR_NONE;
-  
+
 exit_and_cleanup:
 
   cape_fh_del (&fh);

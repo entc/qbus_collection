@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_udc.h"
 
 //=============================================================================
 
@@ -18,6 +19,10 @@ __CAPE_LIBEX   void              cape_exec_del          (CapeExec*);        // r
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int               cape_exec_run          (CapeExec, const char* executable, CapeErr);
+
+__CAPE_LIBEX   int               cape_exec_run_direct   (CapeExec, void* fd, const CapeString name, CapeErr);
+
+__CAPE_LIBEX   void              cape_exec_append_node  (CapeExec, CapeUdc parameters);
 
 __CAPE_LIBEX   void              cape_exec_append_s     (CapeExec, const char* parameter);
 

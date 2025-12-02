@@ -1,18 +1,11 @@
-#include "fmt/cape_template.h"
-#include "fmt/cape_json.h"
-#include "sys/cape_file.h"
+#include "qtee_template.h"
+
+// cape inlcude
+#include <fmt/cape_json.h>
+#include <sys/cape_file.h>
 
 // c includes
 #include <stdio.h>
-
-//-----------------------------------------------------------------------------
-
-static char* __STDCALL main__on_pipe (const char* name, const char* pipe, const char* value)
-{
-  //printf ("ON PIPE: name = '%s', pipe = '%s', value = '%s'\n", pipe, value);
-  
-  return cape_str_cp ("13");
-}
 
 //-----------------------------------------------------------------------------
 
@@ -24,9 +17,9 @@ int __STDCALL test_custom_files__on_load (void* ptr, const char* bufdat, number_
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL test_custom_files__on_text (void* ptr, const char* text)
+int __STDCALL test_custom_files__on_text (void* ptr, const char* bufdat, number_t buflen)
 {
-  cape_stream_append_str (ptr, text);
+  cape_stream_append_buf (ptr, bufdat, buflen);
   return CAPE_ERR_NONE;
 }
 
@@ -118,137 +111,6 @@ int main (int argc, char *argv[])
   }
   
   {
-    res = cape_eval_b ("{{val_str1}} = 1 AND {{val_str2}} = 1 OR {{val_str2}} = 2", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    printf ("T1: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float1|decimal:10%,%2}} = 0,11", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    printf ("T2: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float2|decimal:10%,%2}} = 0,11", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    printf ("T3: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float3|decimal:10%,%3}} = 113,432", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    printf ("T4: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float4|decimal:10%,%3}} = 113,432", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-
-    printf ("T5: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float5|decimal:1%,%2}} = 10,36", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T6: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_float6|decimal:1%,%2}} = 10,35", values, &ret, NULL, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T7: %i\n", ret);
-  }
-
-  // user parsing
-  {
-    res = cape_eval_b ("{{val_float4|pipe_test:xyz}} = 13", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T8: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_bool_true}} = TRUE", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T9: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{extras.val1}} = 1234", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T10: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{val_bool_true}} = TRUE AND NOT {{extras.val1}} = 0001 AND NOT {{extras.val1}} = 0002", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T11: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{extras.val2|substr:2%3}} = 678", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T11: %i\n", ret);
-  }
-
-  {
-    res = cape_eval_b ("{{extras.val1}} I [678, 1234]", values, &ret, main__on_pipe, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-    
-    printf ("T12: %i\n", ret);
-  }
-
-  {
     CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);
 
     if (h)
@@ -263,6 +125,20 @@ int main (int argc, char *argv[])
     cape_str_del (&h);
   }
 
+  {
+    CapeString h = cape_template_run ("'{{val_float5|lpad:30}}'", values, NULL, NULL, err);
+    
+    if (h)
+    {
+      printf ("LPAD: %s\n", h);
+    }
+    else
+    {
+      printf ("ERR %s\n", cape_err_text(err));
+    }
+    
+    cape_str_del (&h);
+  }
   {
     CapeUdc n = cape_udc_new (CAPE_UDC_NODE, NULL);
     

@@ -80,6 +80,14 @@ __CAPE_LIBEX   void            cape_datetime_cross__set   (CapeDatetime*);
 
 __CAPE_LIBEX   int             cape_datetime_cross__is    (const CapeDatetime*);
 
+                               /* returns if the year is a leap year */
+__CAPE_LIBEX   int             cape_datetime_year_isleap  (const CapeDatetime*);
+
+                               /* returns the day of the year */
+__CAPE_LIBEX   number_t        cape_datetime_year_day     (const CapeDatetime*);
+
+//-----------------------------------------------------------------------------
+
                                // append the datetime to the certain time period defined in delta string format
                                /* D2, h2, m2, s2, u2 | D2:h2:m2:s2:u2 */
 __CAPE_LIBEX   void            cape_datetime_add_s        (CapeDatetime*, const CapeString delta);
@@ -127,8 +135,11 @@ __CAPE_LIBEX   CapeString      cape_datetime_s__fmt_lcl   (const CapeDatetime*, 
                                /* convert into UTC time -> use the format for transformation */
 __CAPE_LIBEX   CapeString      cape_datetime_s__fmt_utc   (const CapeDatetime*, const CapeString format);
 
-                               /* 2013-10-21T13:28:06.419Z */
+                               /* 2013-10-21T13:28:06.419Z with milliseconds */
 __CAPE_LIBEX   CapeString      cape_datetime_s__std_msec  (const CapeDatetime*);   // RFC 3339
+
+                               /* 2013-10-21T13:28:06.419123Z with microseconds */
+__CAPE_LIBEX   CapeString      cape_datetime_s__std_usec  (const CapeDatetime*);   // RFC 3339
 
                                /* 2013-10-21T13:28:06Z */
 __CAPE_LIBEX   CapeString      cape_datetime_s__std       (const CapeDatetime*);   // RFC 3339
@@ -154,6 +165,9 @@ __CAPE_LIBEX   CapeString      cape_datetime_s__ISO8601   (const CapeDatetime*);
                                /* 2019244120821 */
 __CAPE_LIBEX   CapeString      cape_datetime_s__DOY       (const CapeDatetime*);   // DOY
 
+                               /* 2020-065T07:10:15.586 */
+__CAPE_LIBEX   CapeString      cape_datetime_s__fd1       (const CapeDatetime*);   // FD1
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   time_t          cape_datetime_n__unix      (const CapeDatetime*);
@@ -165,6 +179,9 @@ __CAPE_LIBEX   int             cape_datetime__std         (CapeDatetime*, const 
 
                                /* 1970-01-01T13:28:06.419Z */
 __CAPE_LIBEX   int             cape_datetime__std_msec    (CapeDatetime*, const CapeString datetime_in_text);
+
+                               /* 1970-01-01T13:28:06.412419Z */
+__CAPE_LIBEX   int             cape_datetime__std_usec    (CapeDatetime*, const CapeString datetime_in_text);
 
                                /* 2019-09-01 12:08:21.231 */
 __CAPE_LIBEX   int             cape_datetime__str_msec    (CapeDatetime*, const CapeString datetime_in_text);

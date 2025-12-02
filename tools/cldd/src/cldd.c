@@ -4,6 +4,8 @@
 #include <fmt/cape_parser_line.h>
 #include <fmt/cape_tokenizer.h>
 #include <stc/cape_map.h>
+#include <fmt/cape_args.h>
+#include <fmt/cape_json.h>
 
 // qcrypt includes
 #include <qcrypt_file.h>
@@ -12,37 +14,44 @@
 
 struct ClddCtx_s
 {
-  const CapeString image_path;
-  CapeMap paths;
+  CapeString binary_src;
+  CapeString image_path;
 
+  CapeMap paths;
+  CapeString vsec;
+    
+  CapeFileAc ac;
+  
 }; typedef struct ClddCtx_s* ClddCtx;
 
 //-----------------------------------------------------------------------------
 
-int cp_file (const CapeString source_file, const CapeString dest_path, const CapeString dest_file, CapeErr err)
+int cldd_ctx__cp_file (ClddCtx self, const CapeString source_file, const CapeString dest_path, const CapeString dest_file, CapeErr err)
 {
   int res;
 
+  // local objects
+  CapeString hash1 = NULL;
+  CapeString hash2 = NULL;
+  
   printf ("copy %s -> %s\n", source_file, dest_file);
-
-  res = cape_fs_path_create_x (dest_path, err);
+  
+  res = cape_fs_path_create_x (dest_path, self->ac, err);
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "create path", "%s: %s", dest_path, cape_err_text (err));
     goto exit_and_cleanup;
   }
 
-  res = cape_fs_file_cp (source_file, dest_file, err);
+  res = cape_fs_file_cp__ac (source_file, dest_file, self->ac, err);
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "copy file", "%s -> %s: %s", source_file, dest_file, cape_err_text (err));
     goto exit_and_cleanup;
   }
 
-  CapeFileAc ac = cape_fs_file_ac (source_file, err);
-
-  CapeString hash1 = qcrypt__hash_md5_file (source_file, err);
-  CapeString hash2 = qcrypt__hash_md5_file (dest_file, err);
+  hash1 = qcrypt__hash_md5_file (source_file, err);
+  hash2 = qcrypt__hash_md5_file (dest_file, err);
 
   //cape_log_fmt (CAPE_LL_INFO, "CLDD", "validate", "%s <-> %s", hash1, hash2);
 
@@ -64,7 +73,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int has_default_library_path (const CapeString path)
+int cldd_ctx__has_default_library_path (const CapeString path)
 {
   return cape_str_equal (path, "/lib64") || cape_str_equal (path, "/usr/lib64") || cape_str_equal (path, "/lib") || cape_str_equal (path, "/usr/lib");
 
@@ -73,7 +82,7 @@ int has_default_library_path (const CapeString path)
 
 //-----------------------------------------------------------------------------
 
-int cp_library (const CapeString file, const CapeString expected_filename, ClddCtx ctx, CapeErr err)
+int cldd_ctx__cp_library (ClddCtx self, const CapeString file, const CapeString expected_filename, CapeErr err)
 {
   int res;
 
@@ -85,25 +94,25 @@ int cp_library (const CapeString file, const CapeString expected_filename, ClddC
   // extract the filename and the path
   const CapeString filename = cape_fs_split (file, &path2);
 
-  if (has_default_library_path (path2))
+  if (cldd_ctx__has_default_library_path (path2))
   {
     // create the destination directory
-    dest_path = cape_fs_path_merge (ctx->image_path, path2);
+    dest_path = cape_fs_path_merge (self->image_path, path2);
 
     // create the destination file
     dest_file = cape_fs_path_merge (dest_path, filename);
 
-    res = cp_file (file, dest_path, dest_file, err);
+    res = cldd_ctx__cp_file (self, file, dest_path, dest_file, err);
   }
   else
   {
     // create the destination directory
-    dest_path = cape_fs_path_merge (ctx->image_path, "lib64");
+    dest_path = cape_fs_path_merge (self->image_path, "lib64");
 
     // create the destination file
     dest_file = cape_fs_path_merge (dest_path, filename);
 
-    res = cp_file (file, dest_path, dest_file, err);
+    res = cldd_ctx__cp_file (self, file, dest_path, dest_file, err);
   }
 
   if (res)
@@ -138,28 +147,76 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int cp_binary (const CapeString file, const CapeString image_path, const CapeString subdir_path, CapeErr err)
+int cldd_ctx__cp_binary (ClddCtx self, const CapeString subdir_path, CapeErr err)
 {
   int res;
 
-  const CapeString filename = cape_fs_split (file, NULL);
+  const CapeString filename = cape_fs_split (self->binary_src, NULL);
 
   // local objects
   CapeString dest_path = NULL;
   CapeString dest_file = NULL;
+  CapeString filename_encrypted = NULL;
+  CapeString dest_encrypted_file = NULL;
   
   if (subdir_path)
   {
-    dest_path = cape_fs_path_merge_3 (image_path, "bin", subdir_path);
+    dest_path = cape_fs_path_merge_3 (self->image_path, "bin", subdir_path);
   }
   else
   {
-    dest_path = cape_fs_path_merge (image_path, "bin");
+    dest_path = cape_fs_path_merge (self->image_path, "bin");
   }
 
   dest_file = cape_fs_path_merge (dest_path, filename);
 
-  res = cp_file (file, dest_path, dest_file, err);
+  res = cldd_ctx__cp_file (self, self->binary_src, dest_path, dest_file, err);
+  if (res)
+  {
+    goto cleanup_and_exit;
+  }
+  
+  if (self->vsec)
+  {
+    // create a new filename with the extension '.sec'
+    filename_encrypted = cape_str_catenate_2 (filename, ".sec");
+    
+    // create a new destionation for the encrypted file
+    dest_encrypted_file = cape_fs_path_merge (dest_path, filename_encrypted);
+    
+    // encrypt the file
+    res = qcrypt__encrypt_file (dest_file, dest_encrypted_file, self->vsec, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "encrypt file", "%s: %s", dest_encrypted_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
+    // remove original
+    res = cape_fs_file_rm (dest_file, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "remove file", "%s: %s", dest_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
+    // set ac
+    res = cape_fs_file_ac_set (dest_encrypted_file, self->ac, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "CLDD", "chown file", "%s: %s", dest_encrypted_file, cape_err_text (err));
+      goto cleanup_and_exit;
+    }
+    
+    cape_log_fmt (CAPE_LL_INFO, "CLDD", "encrypt file", "replace %s -> %s", dest_file, dest_encrypted_file);
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+cleanup_and_exit:
+
+  cape_str_del (&filename_encrypted);
+  cape_str_del (&dest_encrypted_file);
 
   cape_str_del (&dest_file);
   cape_str_del (&dest_path);
@@ -169,8 +226,10 @@ int cp_binary (const CapeString file, const CapeString image_path, const CapeStr
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL on_newline (void* ptr, const CapeString line)
+void __STDCALL cldd_ctx__on_newline (void* ptr, const CapeString line)
 {
+  ClddCtx self = ptr;
+  
   CapeString s1 = NULL;
   CapeString s2 = NULL;
 
@@ -187,7 +246,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
       CapeString path = cape_str_trim_utf8 (s3);
       CapeErr err = cape_err_new ();
 
-      cp_library (path, s1_cleaned, ptr, err);
+      cldd_ctx__cp_library (self, path, s1_cleaned, err);
 
       cape_err_del (&err);
       cape_str_del (&path);
@@ -210,7 +269,7 @@ void __STDCALL on_newline (void* ptr, const CapeString line)
 
       if (path[0] == '/')
       {
-        cp_library (path, NULL, ptr, err);
+        cldd_ctx__cp_library (self, path, NULL, err);
       }
 
       cape_err_del (&err);
@@ -236,84 +295,168 @@ void __STDCALL cldd__paths__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-int main (int argc, char *argv[])
+ClddCtx cldd_ctx_new ()
+{
+  ClddCtx self = CAPE_NEW (struct ClddCtx_s);
+  
+  self->binary_src = NULL;
+  self->image_path = NULL;
+  
+  // set the context
+  self->paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
+  
+  self->vsec = NULL;
+      
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void cldd_ctx_del (ClddCtx* p_self)
+{
+  if (*p_self)
+  {
+    ClddCtx self = *p_self;
+    
+    cape_fs_ac_del (&(self->ac));
+    
+    cape_map_del (&(self->paths));
+    
+    cape_str_del (&(self->binary_src));
+    cape_str_del (&(self->image_path));
+    cape_str_del (&(self->vsec));
+    
+    CAPE_DEL (p_self, struct ClddCtx_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cldd_ctx_init (ClddCtx self, int argc, char *argv[], CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc params = cape_args_from_args (argc, argv, NULL);
+  
+  // some debug output
+  {
+    CapeString s = cape_json_to_s (params);
+    
+    printf ("params = %s\n", s);
+    
+    cape_str_del (&s);
+  }
+  
+  // check the parameters
+  self->binary_src = cape_udc_ext_s (params, "_1");
+  if (NULL == self->binary_src)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no source");
+    goto cleanup_and_exit;
+  }
+  
+  self->image_path = cape_udc_ext_s (params, "_2");
+  if (NULL == self->image_path)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "no destination");
+    goto cleanup_and_exit;
+  }
+  
+  // optional
+  self->vsec = cape_udc_ext_s (params, "sec");
+  
+  // optional
+  self->ac = cape_fs_ac_new (cape_udc_get_n (params, "uid", 0), cape_udc_get_n (params, "gid", 0), cape_udc_get_n (params, "mod", 0));
+    
+  // create the destination folder
+  res = cape_fs_path_create_x (self->image_path, self->ac, err);
+  if (res)
+  {
+    goto cleanup_and_exit;
+  }
+  
+  // copy the binary file
+  res = cldd_ctx__cp_binary (self, cape_udc_get_s (params, "p", NULL), err);
+  
+cleanup_and_exit:
+  
+  cape_udc_del (&params);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cldd_ctx_copy_libraries (ClddCtx self, CapeErr err)
 {
   int res;
   const CapeString output;
-  struct ClddCtx_s ctx;
+  
+  // local objects
+  CapeExec exec = NULL;
+  CapeParserLine lparser = NULL;
+  
+  // create a new execution environment
+  exec = cape_exec_new ();
+  
+  // add the input file as first parameter
+  cape_exec_append_s (exec, self->binary_src);
+  
+  // run the external program
+  res = cape_exec_run (exec, "ldd", err);
+  if (res)
+  {
+    goto cleanup_and_exit;
+  }
+  
+  // retrieve the std::out output
+  output = cape_exec_get_stdout (exec);
+  
+  // create a new line parser for the output
+  lparser = cape_parser_line_new (self, cldd_ctx__on_newline);
+  
+  // run the parser
+  res = cape_parser_line_process (lparser, output, cape_str_size (output), err);
+  
+cleanup_and_exit:
+  
+  cape_parser_line_del (&lparser);
+  cape_exec_del (&exec);
+  
+  return res;  
+}
+
+//-----------------------------------------------------------------------------
+
+int main (int argc, char *argv[])
+{
+  int res;
 
   // local objects
   CapeErr err = cape_err_new ();
-  CapeExec exec = NULL;
-  CapeParserLine lparser = NULL;
+  ClddCtx ctx = cldd_ctx_new ();
 
   // adjust logger output
   cape_log_set_level (CAPE_LL_INFO);
   cape_log_msg (CAPE_LL_INFO, "CLDD", "main", "start CLDD app");
 
-  if (argc <= 2)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "too few params");
-    goto exit_and_cleanup;
-  }
-
-  // set the context
-  ctx.image_path = argv[2];
-  ctx.paths = cape_map_new (cape_map__compare__s, cldd__paths__on_del, NULL);
-
-  // create the distination folder
-  res = cape_fs_path_create_x (argv[2], err);
+  res = cldd_ctx_init (ctx, argc, argv, err);
   if (res)
   {
-    goto exit_and_cleanup;
+    goto cleanup_and_exit;
   }
+  
+  res = cldd_ctx_copy_libraries (ctx, err);
 
-  // copy the binary file
-  res = cp_binary (argv[1], argv[2], (argc >= 3) ? argv[3] : NULL, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  // create a new execution environment
-  exec = cape_exec_new ();
-
-  // add the input file as first parameter
-  cape_exec_append_s (exec, argv[1]);
-
-  // run the external program
-  res = cape_exec_run (exec, "ldd", err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  // retrieve the std::out output
-  output = cape_exec_get_stdout (exec);
-
-  // create a new line parser for the output
-  lparser = cape_parser_line_new (&ctx, on_newline);
-
-  // run the parser
-  res = cape_parser_line_process (lparser, output, cape_str_size (output), err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  res = CAPE_ERR_NONE;
-
-exit_and_cleanup:
+cleanup_and_exit:
 
   if (res)
   {
     cape_log_fmt (CAPE_LL_ERROR, "CLDD", "error", "%s", cape_err_text (err));
   }
 
-  cape_map_del (&(ctx.paths));
-
-  cape_parser_line_del (&lparser);
-  cape_exec_del (&exec);
+  cldd_ctx_del (&ctx);
   cape_err_del (&err);
 
   return res;

@@ -227,6 +227,24 @@ export class Graph {
 
   //-----------------------------------------------------------------------------
 
+  public box_loading_activate (box: GraphBox, data): any
+  {
+    let data_original = box.get();
+
+    box.set (data);
+
+    return data_original;
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public box_loading_done (box: GraphBox, data)
+  {
+    setTimeout(() => box.set (data), 200);
+  }
+
+  //-----------------------------------------------------------------------------
+
   private box__dissable (box: GraphBox): void
   {
     const dom_el = this.el_dom.nativeElement;
@@ -1070,6 +1088,13 @@ export class GraphBox
       // -> without the call the context will not be displayed
       this.view.detectChanges();
     }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public get ()
+  {
+    return this.ctx.$implicit;
   }
 
   //---------------------------------------------------------------------------

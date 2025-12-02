@@ -30,6 +30,8 @@
 
 #if defined __LINUX_OS || defined __BSD_OS
 
+#define CAPE_SOCKET_INVALID -1
+
 //-----------------------------------------------------------------------------
 
 struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, int ipv6, CapeErr err);
@@ -42,7 +44,7 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, (u_short)port, FALSE, err);
-  int sock;
+  int sock = CAPE_SOCKET_INVALID;
 
   if (NULL == addr)
   {
@@ -88,7 +90,7 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
   cape_log_msg (CAPE_LL_TRACE, "CAPE", "clt new", "connected");
   
   ret = (void*)(number_t)sock;
-  sock = 0;
+  sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
@@ -110,8 +112,8 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
   // local objects
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
-  number_t sock1 = -1;
-  number_t sock2 = -1;
+  number_t sock1 = CAPE_SOCKET_INVALID;
+  number_t sock2 = CAPE_SOCKET_INVALID;
   int opt = 1;
 
   if (NULL == addr)
@@ -168,7 +170,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host, port);
 
   ret = (void*)sock1;
-  sock1 = -1;
+  sock1 = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
@@ -193,7 +195,7 @@ void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
 {
   void* ret = NULL;
 
-  long sock = -1;
+  long sock = CAPE_SOCKET_INVALID;
 
   // create socket as datagram
 #if defined __LINUX_OS
@@ -236,7 +238,7 @@ void* cape_sock__udp__clt_new (const char* host, long port, CapeErr err)
   cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket clt UDP", "open socket on %s:%i", host, port);
 
   ret = (void*)sock;
-  sock = 0;
+  sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
@@ -254,7 +256,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 {
   void* ret = NULL;
 
-  long sock = -1;
+  long sock = CAPE_SOCKET_INVALID;
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
 
   // create socket
@@ -323,7 +325,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
   cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%i", host, port);
 
   ret = (void*)sock;
-  sock = 0;
+  sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
@@ -341,7 +343,7 @@ cleanup_and_exit:
 
 void* cape_sock__icmp__new (CapeErr err)
 {
-  long sock = -1;
+  long sock = CAPE_SOCKET_INVALID;
 
   // create socket
 #if defined __LINUX_OS
@@ -377,7 +379,9 @@ exit_and_cleanup:
 
 void cape_sock__close (void* sock)
 {
-  close ((long)sock);
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)sock);
+  
+  close ((number_t)sock);
 }
 
 //-----------------------------------------------------------------------------

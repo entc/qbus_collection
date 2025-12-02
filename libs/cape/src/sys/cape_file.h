@@ -56,15 +56,30 @@ __CAPE_LIBEX   CapeString         cape_fs_filename       (const CapeString);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeErr);
+struct CapeFileAc_s; typedef struct CapeFileAc_s* CapeFileAc;
 
-__CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeErr);
+#ifdef __WINDOWS_OS
+
+
+#else
+
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (uid_t uid, gid_t gid, mode_t mod);
+
+#endif
+
+__CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeFileAc, CapeErr);
+
+__CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create only if it not exists */
-__CAPE_LIBEX   int                cape_fs_path_create_e  (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create_e  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create_x only if it not exists */
-__CAPE_LIBEX   int                cape_fs_path_create_xe (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_path_create_xe (const char* path, CapeFileAc, CapeErr);
 
 __CAPE_LIBEX   off_t              cape_fs_path_size      (const char* path, CapeErr);
 
@@ -94,18 +109,22 @@ __CAPE_LIBEX   int                cape_fs_file_mv        (const char* source, co
 __CAPE_LIBEX   int                cape_fs_file_cp        (const char* source, const char* destination, CapeErr);
 
                                   /*
+                                  copies a file with AC definitions, returns a cape error
+                                   */
+__CAPE_LIBEX   int                cape_fs_file_cp__ac    (const char* source, const char* destination, CapeFileAc, CapeErr);
+
+                                  /*
                                   returns the size of a file, please check err for errors
                                    */
 __CAPE_LIBEX   off_t              cape_fs_file_size      (const char* path, CapeErr);
 
-//-----------------------------------------------------------------------------
+                                  /*
+                                   returns file permissions or ACLs, including UID and GID
+                                   */
+__CAPE_LIBEX   CapeFileAc         cape_fs_file_ac_get    (const char* path, CapeErr);
 
-struct CapeFileAc_s; typedef struct CapeFileAc_s* CapeFileAc;
 
-__CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
-
-                                  /* returns file permissions or ACLs, including UID and GID */
-__CAPE_LIBEX   CapeFileAc         cape_fs_file_ac        (const char* path, CapeErr);
+__CAPE_LIBEX   int                cape_fs_file_ac_set    (const char* path, CapeFileAc, CapeErr);
 
 //-----------------------------------------------------------------------------
 

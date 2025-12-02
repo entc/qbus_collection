@@ -124,6 +124,11 @@ void cape_udc_del (CapeUdc* p_self)
       cape_datetime_del ((CapeDatetime**)&(self->data));
       break;
     }
+    case CAPE_UDC_STREAM:
+    {
+      cape_stream_del ((CapeStream*)&(self->data));
+      break;
+    }
   }
 
   CAPE_DEL(p_self, struct CapeUdc_s);
@@ -1749,7 +1754,7 @@ int cape_udc_cto_d (CapeUdc self)
     {
       CapeDatetime dt;
 
-      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
+      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__std_usec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
       {
         // cleanup
         cape_str_del ((CapeString*)&(self->data));

@@ -91,6 +91,8 @@ int flow_run_add__create_run_in_database (FlowRun self, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  cape_log_fmt (CAPE_LL_TRACE, "FLOW", "run", "add to queue, module = %s, method = %s", self->module, self->method);
+  
   {
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
 

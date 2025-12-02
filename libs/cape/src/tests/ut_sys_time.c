@@ -75,6 +75,13 @@ int main (int argc, char *argv[])
    
    printf ("-> UNIX    : '%lu'\n", unix_timestamp);
  }
+ {
+   CapeString s = cape_datetime_s__fd1 (&utc_time);
+   
+   printf ("-> FD1 U   : '%s'\n", s);
+   
+   cape_str_del (&s);
+ }
  
   // cross out datetime
   {

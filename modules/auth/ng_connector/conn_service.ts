@@ -139,11 +139,14 @@ import * as CryptoJS from 'crypto-js';
 
   private session__decrypt_body (body: object, creds: AuthLoginCreds): AuthSessionItem
   {
-    const aitem: string = body['aitem'];
-
-    if (aitem)
+    if (body)
     {
-      return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (aitem, creds.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 })));
+      const aitem: string = body['aitem'];
+
+      if (aitem)
+      {
+        return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (aitem, creds.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 })));
+      }
     }
 
     return null;

@@ -1,7 +1,3 @@
-#ifdef __GNUC__
-#define _GNU_SOURCE 1
-#endif
-
 #include "cape_exec.h"
 
 // cape includes
@@ -102,19 +98,22 @@ char** cape_exec_run__argv (CapeExec self, const CapeString executable)
   int i = 0;
   char** argv = CAPE_ALLOC (sizeof(char*) * (cape_list_size (self->arguments) + 2));
 
-  argv[i] = (char*)executable;
+  if (executable)
+  {
+    argv[i] = (char*)executable;
+    i++;
+  }
 
   {
     CapeListCursor cursor; cape_list_cursor_init (self->arguments, &cursor, CAPE_DIRECTION_FORW);
 
     while (cape_list_cursor_next (&cursor))
     {
-      i++;
       argv[i] = cape_list_node_data (cursor.node);
+      i++;
     }
   }
 
-  i++;
   argv[i] = NULL;
 
   return argv;
@@ -224,7 +223,7 @@ int cape_exec_run__recording (CapeExec self, pid_t pid, int fd_stdout, int fd_st
     FD_SET (fd_stdout, &fdsread);
     FD_SET (fd_stderr, &fdsread);
 
-    w = waitpid (pid, &status, WUNTRACED | WCONTINUED);
+    //w = waitpid (pid, &status, WUNTRACED | WCONTINUED);
 
     // run select
     {
@@ -347,6 +346,82 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int cape_exec_run_direct (CapeExec self, void* fd, const CapeString name, CapeErr err)
+{
+#if defined __LINUX_OS
+  
+  int res;
+  pid_t pid;
+    
+  // fork
+  pid = fork();
+  
+  switch (pid)
+  {
+    case -1: // error
+    {
+      res = cape_err_lastOSError (err);
+      goto exit_and_cleanup;
+    }
+    case  0: // child process
+    {
+      int ret;
+      
+      // local objects
+      char** argv = cape_exec_run__argv (self, name);
+      char** envp = cape_exec_run__envp (self);
+      
+      if (envp)
+      {
+        ret = fexecve ((number_t)fd, argv, envp);
+        
+        CAPE_FREE (envp);
+      }
+      else
+      {
+        const char* const envp[] = {NULL};
+        
+        ret = fexecve ((number_t)fd, argv, (char* const*)envp);
+      }
+      
+      if (ret == -1)
+      {
+        CapeErr err = cape_err_new ();
+        
+        cape_err_lastOSError (err);
+        
+        printf ("error in execv: %s\n", cape_err_text (err));
+        
+        cape_err_del (&err);
+      }
+      
+      CAPE_FREE (argv);
+      
+      exit(0);
+    }
+    default: // parent process
+    {
+      wait (NULL);
+      
+      return CAPE_ERR_NONE;
+    }
+  }
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+    
+  return res;
+  
+#else
+  
+  return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "run direct is not supported for your OS");
+  
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_exec_env__make_val (const char* name, const char* parameter)
 {
   return cape_str_catenate_c (name, '=', parameter);
@@ -369,6 +444,32 @@ void cape_exec_env_set (CapeExec self, const char* name, const char* parameter)
   else
   {
     cape_map_insert (self->environment, (void*)cape_str_cp (name), (void*)cape_exec_env__make_val (name, parameter));
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_exec_append_node (CapeExec self, CapeUdc parameters)
+{
+  if (cape_udc_type (parameters) == CAPE_UDC_NODE)
+  {
+    CapeUdcCursor* cursor = cape_udc_cursor_new (parameters, CAPE_DIRECTION_FORW);
+    
+    while (cape_udc_cursor_next (cursor))
+    {
+      switch (cape_udc_type (cursor->item))
+      {
+        case CAPE_UDC_STRING:
+        {
+          cape_exec_append_fmt (self, "-%s", cape_udc_name (cursor->item));
+          cape_exec_append_s (self, cape_udc_s (cursor->item, ""));
+                   
+          break;
+        }
+      }
+    }
+    
+    cape_udc_cursor_del (&cursor);
   }
 }
 

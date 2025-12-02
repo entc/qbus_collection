@@ -127,7 +127,20 @@ void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
   timeinfo->tm_mon   = dt->month - 1;
   timeinfo->tm_year  = dt->year - 1900;
 
-  timeinfo->tm_isdst = dt->is_dst;
+  // set to determine proper value for DST by mktime
+  timeinfo->tm_isdst = -1; //dt->is_dst;
+  
+  // initialize with zeros
+  timeinfo->tm_yday = 0;
+  timeinfo->tm_wday = 0;
+  timeinfo->tm_zone = NULL;
+  timeinfo->tm_gmtoff = 0;
+
+  // this will fill up the timeinfo with all values
+  if (mktime(timeinfo) == -1)
+  {
+    cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -827,6 +840,27 @@ int cape_datetime_cross__is (const CapeDatetime* self)
 
 //-----------------------------------------------------------------------------
 
+int cape_datetime_year_isleap (const CapeDatetime* self)
+{
+  return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_datetime_year_day (const CapeDatetime* self)
+{
+  static const int days[2][13] = {
+    {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+    {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
+  };
+  
+  int leap = cape_datetime_year_isleap (self);
+  
+  return days[leap][self->month] + self->day;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime__internal__cross_out_format (CapeString* p_format)
 {
   // replace complex placeholders
@@ -954,6 +988,13 @@ CapeString cape_datetime_s__std_msec (const CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_datetime_s__std_usec (const CapeDatetime* dt)
+{
+  return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02i.%03iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec, dt->usec);
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_datetime_s__std (const CapeDatetime* dt)
 {
   return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec);
@@ -1021,6 +1062,22 @@ CapeString cape_datetime_s__DOY (const CapeDatetime* dt)
   int doy = days[leap][dt->month] + dt->day;
 
   return cape_str_fmt ("%04i%03i%02i%02i%02i", dt->year, doy, dt->hour, dt->minute, dt->sec);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_datetime_s__fd1 (const CapeDatetime* self)
+{
+  CapeString ret = NULL;
+  
+  // unfortunately there is NO format placeholder for milliseconds
+  CapeString first_part = cape_datetime__internal__fmt_utc (self, "%Y-%jT%H:%M:%S");
+
+  ret = cape_str_fmt ("%s.%03i", first_part, self->msec);
+
+  cape_str_del (&first_part);
+  
+  return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -1098,7 +1155,36 @@ int cape_datetime__std (CapeDatetime* dt, const CapeString datetime_in_text)
 
 int cape_datetime__std_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  return cape_sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%u.%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+  if (cape_str_size (datetime_in_text) == 24)
+  {
+    int res = cape_sscanf (datetime_in_text, "%4u-%2u-%2uT%2u:%2u:%2u.%3uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+    
+    dt->usec = dt->msec * 1000;
+    
+    return res;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_datetime__std_usec (CapeDatetime* dt, const CapeString datetime_in_text)
+{
+  if (cape_str_size (datetime_in_text) == 27)
+  {
+    int res = cape_sscanf (datetime_in_text, "%4u-%2u-%2uT%2u:%2u:%2u.%6uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->usec)) == 7;
+    
+    dt->msec = dt->usec / 1000;
+
+    return res;
+  }
+  else
+  {
+    return FALSE;
+  }
 }
 
 //-----------------------------------------------------------------------------

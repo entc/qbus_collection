@@ -41,9 +41,6 @@ target_link_libraries   (ut_sys_time cape)
 add_executable          (ut_sys_queue ut_sys_queue.c)
 target_link_libraries   (ut_sys_queue cape)
 
-add_executable          (ut_fmt_template ut_fmt_template.c)
-target_link_libraries   (ut_fmt_template cape)
-
 add_executable          (ut_fmt_tokenizer ut_fmt_tokenizer.c)
 target_link_libraries   (ut_fmt_tokenizer cape)
 

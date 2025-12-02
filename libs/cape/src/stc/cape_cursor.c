@@ -42,7 +42,7 @@ void cape_cursor_del (CapeCursor* p_self)
 {
   if (*p_self)
   {
-    CapeCursor self = *p_self;
+    //CapeCursor self = *p_self;
 
     CAPE_DEL (p_self, struct CapeCursor_s);
   }

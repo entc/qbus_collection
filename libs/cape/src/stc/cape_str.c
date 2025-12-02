@@ -1,8 +1,4 @@
 // c includes
-#ifdef __GNUC__
-#define _GNU_SOURCE 1
-#endif
-
 #include "cape_str.h"
 #include "cape_stream.h"
 

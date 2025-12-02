@@ -1,23 +1,10 @@
-PROJECT(cape)
-
 SET (CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
-
-IF (CMAKE_VERSION VERSION_LESS "3.1")
-  IF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-  ENDIF ()
-ELSE ()
-  SET (CMAKE_CXX_STANDARD 11)
-ENDIF ()
 
 find_package(DLL QUIET)
 find_package(PThread)
 find_package(Math)
 find_package(Fts QUIET)
 find_package(Execinfo QUIET)
-
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0")
-SET(CMAKE_C_FLAGS_DEBUG "-O0")
 
 #----------------------------------------------------------------------------------
 
@@ -103,7 +90,6 @@ SET(CAPE_FMT_SOURCES
   fmt/cape_tokenizer.c
   fmt/cape_args.c
   fmt/cape_dragon4.c
-  fmt/cape_template.c
 )
 
 SET(CAPE_FMT_HEADERS
@@ -113,7 +99,6 @@ SET(CAPE_FMT_HEADERS
   fmt/cape_tokenizer.h
   fmt/cape_args.h
   fmt/cape_dragon4.h
-  fmt/cape_template.h
 )
 
 #----------------------------------------------------------------------------------
