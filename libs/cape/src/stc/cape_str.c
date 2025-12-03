@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include <stdio.h>
+
 // c includes
 #include "cape_str.h"
 #include "cape_stream.h"
@@ -11,9 +14,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
-
-#define _GNU_SOURCE
-#include <stdio.h>
 
 //-----------------------------------------------------------------------------
 
