@@ -166,6 +166,7 @@ int auth_vault_get (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_AUTH");
     goto exit_and_cleanup;
   }
+  
 
   // retrieve the default wpid from the account
   wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);

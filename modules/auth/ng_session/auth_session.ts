@@ -113,6 +113,8 @@ export class AuthSession
 
         this.roles.next (sitem['roles']);
 
+        console.log('login done, set storage');
+
         this.storage_set (sitem);
       }
 
@@ -229,6 +231,7 @@ export class AuthSession
   {
     // encode the vsec
     sitem.vsec = this.gen_vsec (this.user, this.pass);
+    this.session.next (sitem);
 
     sessionStorage.setItem (SESSION_STORAGE_VSEC, sitem.vsec);
     sessionStorage.setItem (SESSION_STORAGE_TOKEN, sitem.token);
@@ -240,7 +243,6 @@ export class AuthSession
     sessionStorage.setItem (SESSION_STORAGE_WPID, String(sitem.wpid));
     sessionStorage.setItem (SESSION_STORAGE_GPID, String(sitem.gpid));
 
-    this.session.next (sitem);
     this.timer_set (sitem.vp);
   }
 
