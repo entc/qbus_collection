@@ -227,7 +227,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
   cape_mutex_unlock (self->saves_mutex);
   
-  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' -> %p [skey: %s, sender: %s] {%s}", skey, mitem, saves_key, sender, debug);
+  cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' -> %p [skey: %s, sender: %s] {%s}", skey, mitem, saves_key, sender, cid);
 
   return skey;
 }
@@ -296,7 +296,7 @@ void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg
   {
     qbus_message_del (p_msg);
 
-    //cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
+    cape_log_msg (CAPE_LL_WARN, "QBUS", "on event", "no 'on_res' callback was set");
   }
 }
 
