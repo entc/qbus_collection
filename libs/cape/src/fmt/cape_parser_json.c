@@ -30,6 +30,7 @@
 #define JPARSER_STATE_NUMBER_BEG    16     // a number might follow after +/-
 #define JPARSER_STATE_NUMINF_RUN    17     // infinite number
 #define JPARSER_STATE_NUMNAN_RUN    18     // not a number
+#define JPARSER_STATE_NULL          19     // null
 
 //=============================================================================
 
@@ -498,6 +499,8 @@ void cape_parser_json_item_next (CapeParserJson self, int type, const char* key,
     {
       if (self->onItem)
       {
+        printf ("apply NAN key = %s\n", key);
+        
         double dat = CAPE_MATH_NAN;
         self->onItem (self->ptr, self->keyElement->obj, CAPE_JPARSER_OBJECT_FLOAT, (void*)&dat, key, index);
       }
@@ -1493,6 +1496,7 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
 
         break;
       }
+        /*
       case 'n':
       {
         switch (state)
@@ -1662,6 +1666,7 @@ int cape_parser_json_process (CapeParserJson self, const char* buffer, number_t 
         
         break;
       }
+         */
       default:
       {
         switch (state)

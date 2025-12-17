@@ -7,6 +7,21 @@
 
 int main (int argc, char *argv[])
 {
+  // null
+  {
+    CapeUdc m = NULL;
+    CapeString s2 = NULL;
+
+    m = cape_json_from_s ("{\"obj1\":null}");
+
+    s2 = cape_json_to_s (m);
+    
+    printf ("TEST1: %s\n", s2);
+
+    cape_str_del (&s2);
+    cape_udc_del (&m);
+  }
+  
   // float
   {
     CapeString s1;

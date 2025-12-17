@@ -7,7 +7,7 @@ export class Timeline {
 
   //-----------------------------------------------------------------------------
 
-  constructor (private el_dom: ElementRef, private el_box: TemplateRef<any>, private el_switch:TemplateRef<any>, private rd: Renderer2)
+  constructor (private el_dom: ElementRef, private el_box: TemplateRef<any>, private rd: Renderer2)
   {
     this.parts = [];
   }
@@ -50,7 +50,7 @@ export class Timeline {
   {
     for (var i in this.parts)
     {
-      this.parts[i].refresh (this.el_dom, this.el_box, this.el_switch, this.rd);
+      this.parts[i].refresh (this.el_dom, this.el_box, this.rd);
     }
   }
 
@@ -84,7 +84,7 @@ export class TimelinePart {
 
   //-----------------------------------------------------------------------------
 
-  public refresh (el_dom: ElementRef, el_box: TemplateRef<any>, el_switch: TemplateRef<any>, rd: Renderer2)
+  public refresh (el_dom: ElementRef, el_box: TemplateRef<any>, rd: Renderer2)
   {
     const dom_el = el_dom.nativeElement;
 
@@ -99,7 +99,7 @@ export class TimelinePart {
 
     if (!this.graph)
     {
-      this.graph = new Graph (el_dom, el_box, el_switch, rd);
+      this.graph = new Graph (el_dom, el_box, rd);
 
       this.graph.init (true, false);
 

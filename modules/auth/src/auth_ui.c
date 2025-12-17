@@ -89,14 +89,7 @@ int auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, num
     
     cape_udc_add_d    (values, "ltime"        , &dt);
   }
-  
-  {
-    CapeString h = cape_json_to_s(rinfo);
     
-    printf ("RINFO: %s\n", h);
-    
-  }
-  
   {
     const CapeString remote = cape_udc_get_s (rinfo, "remote", NULL);
     if (remote)

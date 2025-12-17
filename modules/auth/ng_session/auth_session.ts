@@ -113,6 +113,8 @@ export class AuthSession
 
         this.roles.next (sitem['roles']);
 
+        console.log('login done, set storage');
+
         this.storage_set (sitem);
       }
 
@@ -123,8 +125,10 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  public disable (): void
+  public disable (session_expired: boolean = false): void
   {
+    this.conn.session__logout (session_expired);
+
     this.storage_clear ();
     this.roles.next (null);
   }
@@ -189,7 +193,7 @@ export class AuthSession
 
         this.idle.emit (this.timer_idle_countdown);
 
-        if (this.timer_idle_countdown == 0) this.disable ();
+        if (this.timer_idle_countdown == 0) this.disable (true);
 
       });
     }
@@ -227,6 +231,7 @@ export class AuthSession
   {
     // encode the vsec
     sitem.vsec = this.gen_vsec (this.user, this.pass);
+    this.session.next (sitem);
 
     sessionStorage.setItem (SESSION_STORAGE_VSEC, sitem.vsec);
     sessionStorage.setItem (SESSION_STORAGE_TOKEN, sitem.token);
@@ -238,7 +243,6 @@ export class AuthSession
     sessionStorage.setItem (SESSION_STORAGE_WPID, String(sitem.wpid));
     sessionStorage.setItem (SESSION_STORAGE_GPID, String(sitem.gpid));
 
-    this.session.next (sitem);
     this.timer_set (sitem.vp);
   }
 
