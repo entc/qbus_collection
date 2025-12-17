@@ -227,7 +227,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
   cape_mutex_unlock (self->saves_mutex);
   
-  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' -> %p [skey: %s, sender: %s] {%s}", skey, mitem, saves_key, sender, debug);
+  //cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "save", "save skey = '%s' -> %p [skey: %s, sender: %s] {%s}", skey, mitem, saves_key, sender, cid);
 
   return skey;
 }

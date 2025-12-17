@@ -87,8 +87,7 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 {
   QBus self = user_ptr;
 
-  const CapeString cid = qbus_method_item_cid (mitem);
-  
+  const CapeString cid = qbus_method_item_cid (mitem);  
   if (cid)
   {
     qbus_con_snd (self->con, cid, NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
@@ -366,8 +365,17 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 
 int qbus_save (QBus self, QBusM msg, CapeString* p_skey, CapeErr err)
 {
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "save", "save message, skey = %s, sender = %s", msg->chain_key, msg->sender);
+  
+  // use this key directly
+  cape_str_replace_cp (p_skey, msg->chain_key);
+  
+  /*
+  
   // save this context and overrides the given pointer to the skey
   cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo, NULL));
+  
+  */
   
   // always return continue
   return CAPE_ERR_CONTINUE;
