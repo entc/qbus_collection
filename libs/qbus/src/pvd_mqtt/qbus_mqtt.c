@@ -53,9 +53,6 @@ extern "C" BOOL WINAPI DllMain (HINSTANCE const instance, DWORD const reason, LP
   {
     case DLL_PROCESS_ATTACH:
     {
-      cape_log_msg (CAPE_LL_DEBUG, "ADBL", "load library", "MYSQL INIT");
-
-      mysql_library_init (0, NULL, NULL);
 
       break;
     }
@@ -71,11 +68,6 @@ extern "C" BOOL WINAPI DllMain (HINSTANCE const instance, DWORD const reason, LP
     }
     case DLL_PROCESS_DETACH:
     {
-      cape_log_msg (CAPE_LL_DEBUG, "ADBL", "unload library", "MYSQL DONE");
-
-      mysql_thread_end ();
-
-      mysql_library_end ();
 
       break;
     }

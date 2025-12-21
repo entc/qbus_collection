@@ -1,8 +1,10 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { ConnService } from './conn_service';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+//---------------------------------------------------------------------------
 
+import { ConnService } from './conn_service';
 //---------------------------------------------------------------------------
 
 @NgModule({
@@ -11,7 +13,8 @@ import { ConnService } from './conn_service';
     ],
     imports: [
         CommonModule,
-        HttpClientModule
+        HttpClientModule,
+        NgbModule
     ]
 })
 export class ConnModule

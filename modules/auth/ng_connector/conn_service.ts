@@ -4,6 +4,7 @@ import { Observable, Subscriber, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds, ConnStatus } from '@qbus/auth_session';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
+import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import * as CryptoJS from 'crypto-js';
 
 //---------------------------------------------------------------------------
@@ -13,7 +14,7 @@ import * as CryptoJS from 'crypto-js';
   // the connection status is always available and connected
   public status: Observable<ConnStatus> = new Observable ((subscriber) => subscriber.next({state: 0, url: null, connected: true}));
 
-  constructor (private http: HttpClient)
+  constructor (private http: HttpClient, private modal_service: NgbModal)
   {
   }
 
@@ -198,6 +199,13 @@ import * as CryptoJS from 'crypto-js';
   public session__login (creds: AuthLoginCreds): Observable<AuthLoginItem>
   {
     return new Observable ((subscriber) => this.session__login_request (subscriber, creds));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public session__logout (session_expired: boolean)
+  {
+    this.modal_service.dismissAll();
   }
 
   //---------------------------------------------------------------------------
