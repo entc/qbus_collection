@@ -28,6 +28,12 @@ __CAPE_LIBEX   int                  qbus_con_init         (QBusCon, QBusEngines 
 
 __CAPE_LIBEX   void                 qbus_con_snd          (QBusCon, const CapeString cid, const CapeString method, const CapeString save_key, int ftype, QBusM);
 
+__CAPE_LIBEX   void                 qbus_con_sub_add      (QBusCon, const CapeString topic);
+
+__CAPE_LIBEX   void                 qbus_con_sub_rm       (QBusCon, const CapeString topic);
+
+__CAPE_LIBEX   void                 qbus_con_sub_next     (QBusCon, const CapeString topic, CapeUdc* p_val);
+
 //-----------------------------------------------------------------------------
 
 #endif

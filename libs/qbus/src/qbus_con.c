@@ -172,13 +172,18 @@ QBusM qbus_con__qin_from_frame (QBusFrame frame)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame)
+void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeString topic)
 {
   QBusCon self = user_ptr;
 
   //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "routing", "request info: module = %s, sender = %s, method = '%s'", frame->module, frame->sender, frame->method);
 
-  if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
+  if (topic)
+  {
+    // TODO: implementation missing
+    
+  }
+  else if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
   {
     switch (frame->ftype)
     {
@@ -338,6 +343,29 @@ void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, 
     qbus_frame_del (&frame);
   }
 
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_con_sub_add (QBusCon self, const CapeString topic)
+{
+  // forward request to engine
+  qbus_engine_con_subscribe (self->engine, self->con, topic);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_con_sub_rm (QBusCon self, const CapeString topic)
+{
+  // forward request to engine
+  qbus_engine_con_unsubscribe (self->engine, self->con, topic);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_con_sub_next (QBusCon self, const CapeString topic, CapeUdc* p_val)
+{
+  // TODO: implementation missing
 }
 
 //-----------------------------------------------------------------------------

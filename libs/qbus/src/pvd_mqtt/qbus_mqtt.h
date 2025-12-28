@@ -9,15 +9,21 @@
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX  int            __STDCALL qbus_pvd_init          (CapeErr err);
+__CAPE_LIBEX  int            __STDCALL qbus_pvd_init             (CapeErr err);
 
-__CAPE_LIBEX  void           __STDCALL qbus_pvd_done          ();
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_done             ();
 
-__CAPE_LIBEX  QbusPvdCtx     __STDCALL qbus_pvd_ctx_new       (CapeAioContext, CapeUdc options, CapeErr);
+__CAPE_LIBEX  QbusPvdCtx     __STDCALL qbus_pvd_ctx_new          (CapeAioContext, CapeUdc options, CapeErr);
 
-__CAPE_LIBEX  void           __STDCALL qbus_pvd_ctx_del       (QbusPvdCtx*);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_ctx_del          (QbusPvdCtx*);
 
-__CAPE_LIBEX  void           __STDCALL qbus_pvd_con_snd       (QbusPvdConnection, const CapeString cid, QBusFrame frame);
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_con_snd          (QbusPvdConnection, const CapeString cid, QBusFrame frame);
+
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_con_subscribe    (QbusPvdConnection, const CapeString topic);
+
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_con_unsubscribe  (QbusPvdConnection, const CapeString topic);
+
+__CAPE_LIBEX  void           __STDCALL qbus_pvd_con_next         (QbusPvdConnection, const CapeString topic, QBusFrame frame);
 
 //-----------------------------------------------------------------------------
 

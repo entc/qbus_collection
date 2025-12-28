@@ -16,6 +16,7 @@
 #define MQTT_TOPIC_PRE__MQTT_CID  'N'
 #define MQTT_TOPIC_PRE__BY_ID     'A'
 #define MQTT_TOPIC_PRE__CTRL      'C'
+#define MQTT_TOPIC_PRE__VALUE     'V'
 
 //------------------------------------------------------------------------------------------------------
 
@@ -237,7 +238,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
         
         if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
         {
-          self->on_snd (self->user_ptr, frame);
+          self->on_snd (self->user_ptr, frame, NULL);
         }
         else
         {
@@ -247,6 +248,28 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
         qbus_frame_del (&frame);
       }
       
+      break;
+    }
+    case MQTT_TOPIC_PRE__VALUE:
+    {
+      if (self->on_snd)
+      {
+        QBusFrame frame = qbus_frame_new (NULL);   // create empty frame
+        
+        number_t written = 0;
+        
+        if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
+        {
+          self->on_snd (self->user_ptr, frame, topicName + 2);
+        }
+        else
+        {
+          cape_log_fmt (CAPE_LL_ERROR, "mqtt", "on message", "protocol error on message = %lu", message->msgid);
+        }
+
+        qbus_frame_del (&frame);
+      }
+
       break;
     }
   }
@@ -562,3 +585,57 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
 
 //------------------------------------------------------------------------------------------------------
 
+void __STDCALL qbus_pvd_con_subscribe (QbusPvdConnection self, const CapeString topic)
+{
+  CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "subscribe to %s", subscriber_topic);
+  
+  MQTTClient_subscribe (self->client, subscriber_topic, 1);
+
+  cape_str_del (&subscriber_topic);
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void __STDCALL qbus_pvd_con_unsubscribe (QbusPvdConnection self, const CapeString topic)
+{
+  CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "unsubscribe to %s", subscriber_topic);
+  
+  MQTTClient_unsubscribe (self->client, subscriber_topic);
+
+  cape_str_del (&subscriber_topic);
+}
+
+//------------------------------------------------------------------------------------------------------
+
+void __STDCALL qbus_pvd_con_next (QbusPvdConnection self, const CapeString topic, QBusFrame frame)
+{
+  // local objects
+  CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
+  CapeStream payload = cape_stream_new ();
+
+  MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
+  MQTTClient_deliveryToken token;
+
+  // convert from frame into a byte stream
+  qbus_frame_serialize (frame, payload);
+
+  mqtt_msg.payload = (void*)cape_stream_data (payload);
+  mqtt_msg.payloadlen = (int)cape_stream_size (payload);
+  mqtt_msg.qos = 1;
+  
+  // if we want to store the last message, even if there are no subscribers
+  // turn on retained
+  mqtt_msg.retained = 0;
+
+  // send away
+  MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
+  
+  cape_stream_del (&payload);
+  cape_str_del(&subscriber_topic);
+}
+
+//------------------------------------------------------------------------------------------------------

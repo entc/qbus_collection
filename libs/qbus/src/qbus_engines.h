@@ -33,6 +33,12 @@ __STDCALL      const CapeString     qbus_engine_con_cid   (QBusEngine, QbusPvdCo
 
 __STDCALL      void                 qbus_engine_con_snd   (QBusEngine, QbusPvdConnection, const CapeString cid, QBusFrame frame);
 
+__STDCALL      void                 qbus_engine_con_subscribe   (QBusEngine, QbusPvdConnection, const CapeString topic);
+
+__STDCALL      void                 qbus_engine_con_unsubscribe   (QBusEngine, QbusPvdConnection, const CapeString topic);
+
+__STDCALL      void                 qbus_engine_con_next   (QBusEngine, QbusPvdConnection, const CapeString topic, QBusFrame frame);
+
 //-----------------------------------------------------------------------------
 
 struct QBusEngines_s; typedef struct QBusEngines_s* QBusEngines;

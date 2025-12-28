@@ -34,6 +34,7 @@ typedef int      (__STDCALL     *fct_qbus_on_init) (QBus, void* ptr, void** p_pt
 typedef int      (__STDCALL     *fct_qbus_on_done) (QBus, void* ptr, CapeErr);
 typedef int      (__STDCALL     *fct_qbus_on_msg)  (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
 typedef void     (__STDCALL     *fct_qbus_on_rm)   (void* ptr);
+typedef void     (__STDCALL     *fct_qbus_on_val)  (QBus, void* ptr, const CapeString ident, CapeUdc val);
 
 //-----------------------------------------------------------------------------
 
@@ -51,6 +52,15 @@ __CAPE_LIBEX   int                qbus_save              (QBus, QBusM qin, CapeS
 
                                                          /* send back the response, use qbus_save before */
 __CAPE_LIBEX   int                qbus_response          (QBus, const CapeString skey, QBusM msg, CapeErr);
+
+                                                         /* subscribe to an identifier */
+__CAPE_LIBEX   int                qbus_subscribe         (QBus, const CapeString module, const CapeString ident, void* user_ptr, fct_qbus_on_val, CapeErr);
+
+                                                         /* unsubscribe from an identifier */
+__CAPE_LIBEX   int                qbus_unsubscribe       (QBus, const CapeString module, const CapeString ident, CapeErr);
+
+                                                         /* send value as an identifier */
+__CAPE_LIBEX   void               qbus_next              (QBus, const CapeString ident, CapeUdc* p_val);
 
 //-----------------------------------------------------------------------------
 

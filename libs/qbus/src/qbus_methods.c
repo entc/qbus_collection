@@ -114,6 +114,8 @@ struct QBusMethods_s
   
   void* user_ptr;
   fct_qbus_methods__on_res on_res;
+  
+  CapeMutex sub_mutex;
 };
 
 //-----------------------------------------------------------------------------
@@ -139,6 +141,7 @@ QBusMethods qbus_methods_new (QBus qbus)
   self->saves = cape_map_new (cape_map__compare__s, qbus_methods__methods__on_del, NULL);
 
   self->saves_mutex = cape_mutex_new ();
+  self->sub_mutex = cape_mutex_new ();
     
   self->user_ptr = NULL;
   self->on_res = NULL;
@@ -165,6 +168,7 @@ void qbus_methods_del (QBusMethods* p_self)
     }
     
     cape_map_del (&(self->saves));
+    cape_mutex_del (&(self->sub_mutex));
     cape_mutex_del (&(self->saves_mutex));
     
     CAPE_DEL (p_self, struct QBusMethods_s);
@@ -234,7 +238,7 @@ const CapeString qbus_methods_save (QBusMethods self, void* user_ptr, fct_qbus_o
 
 //-----------------------------------------------------------------------------
 
-int qbus_methods_add (QBusMethods self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
+int qbus_methods__rpc_add (QBusMethods self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
   cape_map_insert (self->methods, (void*)cape_str_cp (method), (void*)qbus_method_item_new (user_ptr, on_msg, NULL, NULL, NULL, NULL));
     
@@ -434,6 +438,34 @@ void qbus_methods_abort (QBusMethods self, const CapeString cid, const CapeStrin
   }
   
   cape_mutex_unlock (self->saves_mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_methods__sub_add (QBusMethods self, const CapeString topic, void* user_ptr, fct_qbus_on_val on_val, CapeErr err)
+{
+  cape_mutex_lock (self->sub_mutex);
+
+  {
+    // TODO: implementation missing
+
+  }
+
+  cape_mutex_unlock (self->sub_mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods__sub_rm (QBusMethods self, const CapeString topic)
+{
+  cape_mutex_lock (self->sub_mutex);
+
+  {
+    // TODO: implementation missing
+
+  }
+
+  cape_mutex_unlock (self->sub_mutex);
 }
 
 //-----------------------------------------------------------------------------

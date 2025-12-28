@@ -192,6 +192,24 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
     goto exit_and_cleanup;
   }
 
+  self->functions.pvd_con_subscribe = cape_dl_funct (self->hlib, "qbus_pvd_con_subscribe", err);
+  if (self->functions.pvd_con_subscribe == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_con_unsubscribe = cape_dl_funct (self->hlib, "qbus_pvd_con_unsubscribe", err);
+  if (self->functions.pvd_con_unsubscribe == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
+  self->functions.pvd_con_next = cape_dl_funct (self->hlib, "qbus_pvd_con_next", err);
+  if (self->functions.pvd_con_next == NULL)
+  {
+    goto exit_and_cleanup;
+  }
+
   // optional methods
   // if the library has its own initializing concept, those methods can be implemented
   self->functions.pvd_init = cape_dl_funct (self->hlib, "qbus_pvd_init", err);
@@ -316,6 +334,44 @@ void qbus_engine_con_snd (QBusEngine self, QbusPvdConnection connection, const C
   else
   {
    // res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engine_con_subscribe (QBusEngine self, QbusPvdConnection connection, const CapeString topic)
+{
+  if (self->functions.pvd_con_subscribe)
+  {
+    self->functions.pvd_con_subscribe (connection, topic);
+  }
+  else
+  {
+   // res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engine_con_unsubscribe (QBusEngine self, QbusPvdConnection connection, const CapeString topic)
+{
+  if (self->functions.pvd_con_unsubscribe)
+  {
+    self->functions.pvd_con_unsubscribe (connection, topic);
+  }
+  else
+  {
+   // res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "qbus pvd interface was not initialized");
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engine_con_next (QBusEngine self, QbusPvdConnection connection, const CapeString topic, QBusFrame frame)
+{
+  if (self->functions.pvd_con_next)
+  {
+    self->functions.pvd_con_next (connection, topic, frame);
   }
 }
 

@@ -247,7 +247,7 @@ void qbus__intern__no_route (QBus self, const char* skey)
 
 int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_on_msg on_msg, fct_qbus_on_rm on_rm, CapeErr err)
 {
-  return qbus_methods_add (self->methods, method, user_ptr, on_msg, on_rm, err);
+  return qbus_methods__rpc_add (self->methods, method, user_ptr, on_msg, on_rm, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -403,6 +403,73 @@ int qbus_response (QBus self, const CapeString skey, QBusM msg, CapeErr err)
   {
     return cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.MITEM_NOT_FOUND");
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_subscribe (QBus self, const CapeString module, const CapeString ident, void* user_ptr, fct_qbus_on_val on_val, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString topic = NULL;
+  CapeString module_upper_case = cape_str_cp (module);
+  cape_str_to_upper (module_upper_case);
+
+  // create the topic
+  topic = cape_str_catenate_c (module, '_', ident);
+  
+  // this will activate the subscription on the connection
+  qbus_con_sub_add (self->con, topic);
+  
+  // this will save the callback related to the topic
+  res = qbus_methods__sub_add (self->methods, topic, user_ptr, on_val, err);
+  
+  cape_str_del (&module_upper_case);
+  cape_str_del (&topic);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_unsubscribe (QBus self, const CapeString module, const CapeString ident, CapeErr err)
+{
+  int res;
+
+  // local objects
+  CapeString topic = NULL;
+  CapeString module_upper_case = cape_str_cp (module);
+  cape_str_to_upper (module_upper_case);
+
+  // create the topic
+  topic = cape_str_catenate_c (module, '_', ident);
+
+  // this will deactive the subscription on the connection
+  qbus_con_sub_rm (self->con, topic);
+
+  // this will remove the callback related to the topic
+  qbus_methods__sub_rm (self->methods, topic);
+  
+  res = CAPE_ERR_NONE;
+  
+  cape_str_del (&module_upper_case);
+  cape_str_del (&topic);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_next (QBus self, const CapeString ident, CapeUdc* p_val)
+{
+  // local objects
+  CapeString topic = cape_str_catenate_c (qbus_config_name (self->config), '_', ident);
+
+  // this will emit the new value to the engine
+  qbus_con_sub_next (self->con, topic, p_val);
+
+  cape_str_del (&topic);
 }
 
 //-----------------------------------------------------------------------------
