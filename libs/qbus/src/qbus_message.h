@@ -11,6 +11,7 @@
 #define QBUS_MTYPE_NONE         0
 #define QBUS_MTYPE_JSON         1
 #define QBUS_MTYPE_FILE         2
+#define QBUS_MTYPE_SUBV         3
 
 //-----------------------------------------------------------------------------
 

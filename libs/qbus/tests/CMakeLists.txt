@@ -12,6 +12,9 @@ target_link_libraries   (ut_qbus_perform qbus)
 add_executable          (ut_qbus_emitter ut_qbus_emitter.c)
 target_link_libraries   (ut_qbus_emitter qbus)
 
+add_executable          (ut_qbus_subs ut_qbus_subs.c)
+target_link_libraries   (ut_qbus_subs qbus)
+
 #----------------------------------------------------------------------------------------
 
 if (PVD_QBUS_DIR)

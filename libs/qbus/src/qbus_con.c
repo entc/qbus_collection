@@ -172,6 +172,51 @@ QBusM qbus_con__qin_from_frame (QBusFrame frame)
 
 //-----------------------------------------------------------------------------
 
+QBusFrame qbus_con__frame_from_val (CapeUdc* p_val)
+{
+  QBusFrame frame = qbus_frame_new ();
+
+  // local objects
+  CapeUdc payload = cape_udc_mv (p_val);
+  
+  frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
+  frame->msg_size = cape_str_size (frame->msg_data);
+  frame->msg_type = QBUS_MTYPE_SUBV;
+  
+  cape_udc_del (&payload);
+
+  return frame;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_con__val_from_frame (QBusFrame frame)
+{
+  CapeUdc val = NULL;
+  
+  switch (frame->msg_type)
+  {
+    case QBUS_MTYPE_SUBV:
+    {
+      if (frame->msg_size)
+      {
+        // convert from raw data into json data structure
+        CapeUdc payload = cape_json_from_buf (frame->msg_data, frame->msg_size, qcrypt__stream_base64_decode);
+        if (payload)
+        {
+          cape_udc_replace_mv (&val, &payload);
+        }
+      }
+      
+      break;
+    }
+  }
+  
+  return val;
+}
+
+//-----------------------------------------------------------------------------
+
 void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeString topic)
 {
   QBusCon self = user_ptr;
@@ -182,7 +227,10 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeStri
   {
     CapeErr err = cape_err_new ();
 
-    int res = qbus_methods__sub_run (self->methods, topic, err);
+    // parse the frame to create a new value object
+    CapeUdc val = qbus_con__val_from_frame (frame);
+
+    int res = qbus_methods__sub_run (self->methods, topic, &val, err);
     if (res)
     {
       cape_log_fmt (CAPE_LL_ERROR, "QBUS", "methods", "%s", cape_err_text (err));
@@ -350,7 +398,6 @@ void qbus_con_snd (QBusCon self, const CapeString cid, const CapeString method, 
 
     qbus_frame_del (&frame);
   }
-
 }
 
 //-----------------------------------------------------------------------------
@@ -373,7 +420,11 @@ void qbus_con_sub_rm (QBusCon self, const CapeString topic)
 
 void qbus_con_sub_next (QBusCon self, const CapeString topic, CapeUdc* p_val)
 {
-  // TODO: implementation missing
+  QBusFrame frame = qbus_con__frame_from_val (p_val);
+
+  qbus_engine_con_next (self->engine, self->con, topic, frame);
+  
+  qbus_frame_del (&frame);
 }
 
 //-----------------------------------------------------------------------------

@@ -544,7 +544,7 @@ void qbus_methods__sub_rm (QBusMethods self, const CapeString topic)
 
 //-----------------------------------------------------------------------------
 
-int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeErr err)
+int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeUdc* p_val, CapeErr err)
 {
   int res;
   
@@ -554,7 +554,7 @@ int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeErr err
     CapeMapNode n = cape_map_find (self->sub_items, (void*)topic);
     if (n)
     {
-      
+      // TODO: must be implemented
       
     }
     else
@@ -564,6 +564,9 @@ int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeErr err
   }
 
   cape_mutex_unlock (self->sub_mutex);
+  
+  // cleanup
+  cape_udc_del (p_val);
   
   return res;
 }
