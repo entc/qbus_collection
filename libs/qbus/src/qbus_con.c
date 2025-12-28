@@ -180,8 +180,16 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeStri
 
   if (topic)
   {
-    // TODO: implementation missing
-    
+    CapeErr err = cape_err_new ();
+
+    int res = qbus_methods__sub_run (self->methods, topic, err);
+    if (res)
+    {
+      cape_log_fmt (CAPE_LL_ERROR, "QBUS", "methods", "%s", cape_err_text (err));
+
+    }
+
+    cape_err_del (&err);
   }
   else if (cape_str_equal (qbus_engine_con_cid (self->engine, self->con), frame->module))
   {

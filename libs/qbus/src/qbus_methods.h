@@ -62,6 +62,8 @@ __CAPE_LIBEX   int                  qbus_methods__sub_add     (QBusMethods, cons
 
 __CAPE_LIBEX   void                 qbus_methods__sub_rm      (QBusMethods, const CapeString topic);
 
+__CAPE_LIBEX   int                  qbus_methods__sub_run     (QBusMethods, const CapeString topic, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

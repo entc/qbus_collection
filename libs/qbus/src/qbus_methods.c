@@ -7,6 +7,8 @@
 #include <sys/cape_queue.h>
 #include <sys/cape_mutex.h>
 
+//-----------------------------------------------------------------------------
+
 struct QBusMethodItem_s
 {
   void* user_ptr;
@@ -72,6 +74,40 @@ const CapeString qbus_method_item_skey (QBusMethodItem self)
 
 //-----------------------------------------------------------------------------
 
+struct QBusMethodSubItem_s
+{
+  void* user_ptr;
+  fct_qbus_on_val on_val;
+  
+}; typedef struct QBusMethodSubItem_s* QBusMethodSubItem;
+
+//-----------------------------------------------------------------------------
+
+QBusMethodSubItem qbus_method_sub_item_new (void* user_ptr, fct_qbus_on_val on_val)
+{
+  QBusMethodSubItem self = CAPE_NEW (struct QBusMethodSubItem_s);
+  
+  self->user_ptr = user_ptr;
+  self->on_val = on_val;
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_method_sub_item_del (QBusMethodSubItem* p_self)
+{
+  if (*p_self)
+  {
+//    QBusMethodSubItem self = *p_self;
+    
+    
+    CAPE_DEL (p_self, struct QBusMethodSubItem_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusMethodCtx_s
 {
   QBusM qin;
@@ -116,11 +152,12 @@ struct QBusMethods_s
   fct_qbus_methods__on_res on_res;
   
   CapeMutex sub_mutex;
+  CapeMap sub_items;
 };
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_methods__methods__on_del (void* key, void* val)
+void __STDCALL qbus_methods__rpc_items__on_del (void* key, void* val)
 {
   {
     CapeString h = key; cape_str_del (&h);
@@ -132,22 +169,37 @@ void __STDCALL qbus_methods__methods__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qbus_methods__sub_items__on_del (void* key, void* val)
+{
+  {
+    CapeString h = key; cape_str_del (&h);
+  }
+  {
+    QBusMethodSubItem h = val; qbus_method_sub_item_del (&h);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 QBusMethods qbus_methods_new (QBus qbus)
 {
   QBusMethods self = CAPE_NEW (struct QBusMethods_s);
   
-  self->queue = cape_queue_new (10000);     // run a task maximum of 10 seconds
-  self->methods = cape_map_new (cape_map__compare__s, qbus_methods__methods__on_del, NULL);
-  self->saves = cape_map_new (cape_map__compare__s, qbus_methods__methods__on_del, NULL);
+  // run a task maximum of 10 seconds
+  self->queue = cape_queue_new (qbus_config_n (qbus_config (qbus), "queue_timeout", 10000));
 
-  self->saves_mutex = cape_mutex_new ();
-  self->sub_mutex = cape_mutex_new ();
-    
   self->user_ptr = NULL;
   self->on_res = NULL;
   
   self->qbus = qbus;
 
+  self->saves_mutex = cape_mutex_new ();
+  self->methods = cape_map_new (cape_map__compare__s, qbus_methods__rpc_items__on_del, NULL);
+  self->saves = cape_map_new (cape_map__compare__s, qbus_methods__rpc_items__on_del, NULL);
+  
+  self->sub_mutex = cape_mutex_new ();
+  self->sub_items = cape_map_new (cape_map__compare__s, qbus_methods__sub_items__on_del, NULL);
+  
   return self;
 }
 
@@ -168,9 +220,11 @@ void qbus_methods_del (QBusMethods* p_self)
     }
     
     cape_map_del (&(self->saves));
-    cape_mutex_del (&(self->sub_mutex));
     cape_mutex_del (&(self->saves_mutex));
-    
+
+    cape_map_del (&(self->sub_items));
+    cape_mutex_del (&(self->sub_mutex));
+
     CAPE_DEL (p_self, struct QBusMethods_s);
   }
 }
@@ -444,14 +498,27 @@ void qbus_methods_abort (QBusMethods self, const CapeString cid, const CapeStrin
 
 int qbus_methods__sub_add (QBusMethods self, const CapeString topic, void* user_ptr, fct_qbus_on_val on_val, CapeErr err)
 {
+  int res;
+  
   cape_mutex_lock (self->sub_mutex);
 
   {
-    // TODO: implementation missing
-
+    CapeMapNode n = cape_map_find (self->sub_items, (void*)topic);
+    if (n)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.METHOD_ALREADY_EXISTS");
+    }
+    else
+    {
+      cape_map_insert (self->sub_items, (void*)cape_str_cp (topic), (void*)qbus_method_sub_item_new (user_ptr, on_val));
+      
+      res = CAPE_ERR_NONE;
+    }
   }
 
   cape_mutex_unlock (self->sub_mutex);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -461,11 +528,44 @@ void qbus_methods__sub_rm (QBusMethods self, const CapeString topic)
   cape_mutex_lock (self->sub_mutex);
 
   {
-    // TODO: implementation missing
+    CapeMapNode n = cape_map_find (self->sub_items, (void*)topic);
+    if (n)
+    {
+      cape_map_erase (self->sub_items, n);
+    }
+    else
+    {
 
+    }
   }
 
   cape_mutex_unlock (self->sub_mutex);
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeErr err)
+{
+  int res;
+  
+  cape_mutex_lock (self->sub_mutex);
+
+  {
+    CapeMapNode n = cape_map_find (self->sub_items, (void*)topic);
+    if (n)
+    {
+      
+      
+    }
+    else
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.TOPIC_NOT_FOUND");
+    }
+  }
+
+  cape_mutex_unlock (self->sub_mutex);
+  
+  return res;
 }
 
 //-----------------------------------------------------------------------------
