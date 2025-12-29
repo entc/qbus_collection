@@ -296,7 +296,7 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeStri
           cape_str_del (&(qin->sender));
 
           // continue with the user process
-          qbus_methods_queue (self->methods, mitem, &qin, saves_key);
+          qbus_methods__rpc_queue (self->methods, mitem, &qin, saves_key);
         }
         
         qbus_method_item_del (&mitem);

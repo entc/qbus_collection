@@ -305,7 +305,7 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
+void qbus_methods__rpc_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
 {
   if (mitem->on_msg)
   {
@@ -439,7 +439,7 @@ int qbus_methods_run (QBusMethods self, const CapeString method_name, const Cape
   
   if (n)
   {
-    qbus_methods_queue (self, cape_map_node_value (n), p_qin, saves_key);
+    qbus_methods__rpc_queue (self, cape_map_node_value (n), p_qin, saves_key);
     
     res = CAPE_ERR_NONE;
   }
@@ -476,7 +476,7 @@ void qbus_methods_abort (QBusMethods self, const CapeString cid, const CapeStrin
         cape_err_set_fmt (qbus_message_err_new (qin), CAPE_ERR_PROCESS_ABORT, "module [%s] has terminated", name);
         
         // continue with the user process
-        qbus_methods_queue (self, mitem, &qin, saves_key);
+        qbus_methods__rpc_queue (self, mitem, &qin, saves_key);
         
         qbus_method_item_del (&mitem);
         
@@ -544,6 +544,16 @@ void qbus_methods__sub_rm (QBusMethods self, const CapeString topic)
 
 //-----------------------------------------------------------------------------
 
+void qbus_methods__sub_queue (QBusMethods self, QBusMethodSubItem sitem, CapeUdc* p_val)
+{
+  // TODO: must be implemented
+  
+
+  
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeUdc* p_val, CapeErr err)
 {
   int res;
@@ -554,8 +564,7 @@ int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeUdc* p_
     CapeMapNode n = cape_map_find (self->sub_items, (void*)topic);
     if (n)
     {
-      // TODO: must be implemented
-      
+      qbus_methods__sub_queue (self, cape_map_node_value (n), p_val);
     }
     else
     {

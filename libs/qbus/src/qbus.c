@@ -109,7 +109,7 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
     }
      */
 
-    qbus_methods_queue (self->methods, mitem, p_msg, saves_key);
+    qbus_methods__rpc_queue (self->methods, mitem, p_msg, saves_key);
   }
 }
 
@@ -309,7 +309,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
         qin->err = cape_err_new ();
         cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
         
-        qbus_methods_queue (self->methods, mitem, &qin, qin->chain_key);
+        qbus_methods__rpc_queue (self->methods, mitem, &qin, qin->chain_key);
         
         qbus_method_item_del (&mitem);
       }

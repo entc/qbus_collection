@@ -48,7 +48,7 @@ __CAPE_LIBEX   void                 qbus_methods_response     (QBusMethods, QBus
 
 __CAPE_LIBEX   void                 qbus_methods_send         (QBusMethods, const CapeString saves_key, CapeErr err);
 
-__CAPE_LIBEX   void                 qbus_methods_queue        (QBusMethods, QBusMethodItem mitem, QBusM* p_qin, const CapeString saves_key);
+__CAPE_LIBEX   void                 qbus_methods__rpc_queue   (QBusMethods, QBusMethodItem mitem, QBusM* p_qin, const CapeString saves_key);
 
 __CAPE_LIBEX   void                 qbus_methods_abort        (QBusMethods, const CapeString cid, const CapeString name);
 
