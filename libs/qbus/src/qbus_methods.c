@@ -108,36 +108,6 @@ void qbus_method_sub_item_del (QBusMethodSubItem* p_self)
 
 //-----------------------------------------------------------------------------
 
-struct QBusMethodCtx_s
-{
-  QBusM qin;
-  QBus qbus;
-  QBusMethods self;
-  
-  CapeString saves_key;
-  
-  void* on_msg_user_ptr;
-  fct_qbus_on_msg on_msg;
-
-}; typedef struct QBusMethodCtx_s* QBusMethodCtx;
-
-//-----------------------------------------------------------------------------
-
-void qbus_method_ctx_del (QBusMethodCtx* p_self)
-{
-  if (*p_self)
-  {
-    QBusMethodCtx self = *p_self;
-    
-    qbus_message_del (&(self->qin));
-    cape_str_del (&(self->saves_key));
-    
-    CAPE_DEL (p_self, struct QBusMethodCtx_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
 struct QBusMethods_s
 {
   CapeQueue queue;
@@ -301,38 +271,6 @@ int qbus_methods__rpc_add (QBusMethods self, const CapeString method, void* user
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, number_t queue_size);
-
-//-----------------------------------------------------------------------------
-
-void qbus_methods__rpc_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
-{
-  if (mitem->on_msg)
-  {
-    // create chain object
-    QBusMethodCtx mctx = CAPE_NEW (struct QBusMethodCtx_s);
-    
-    mctx->on_msg_user_ptr = mitem->user_ptr;
-    mctx->on_msg = mitem->on_msg;
-        
-    mctx->qin = *p_qin;
-    *p_qin = NULL;
-    
-    mctx->qbus = self->qbus;
-    mctx->self = self;
-    
-    mctx->saves_key = cape_str_cp (skey);
-   
-    cape_queue_add (self->queue, NULL, qbus_methods__queue__on_event, NULL, NULL, mctx, 0);
-  }
-  else
-  {
-    qbus_message_del (p_qin);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
 void qbus_methods_response (QBusMethods self, QBusMethodItem mitem, QBusM* p_msg, CapeErr err)
 {
   if (self->on_res && mitem)
@@ -378,9 +316,59 @@ void qbus_methods_send (QBusMethods self, const CapeString saves_key, CapeErr er
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, number_t queue_size)
+struct QBusMethodRpcQueueItem_s
 {
-  QBusMethodCtx mctx = user_ptr;
+  QBusM qin;
+  QBus qbus;
+  QBusMethods self;
+  
+  CapeString saves_key;
+  
+  void* on_msg_user_ptr;
+  fct_qbus_on_msg on_msg;
+
+}; typedef struct QBusMethodRpcQueueItem_s* QBusMethodRpcQueueItem;
+
+//-----------------------------------------------------------------------------
+
+QBusMethodRpcQueueItem qbus_methods__rpc_queue_item_new (QBusMethods methods, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
+{
+  QBusMethodRpcQueueItem self = CAPE_NEW (struct QBusMethodRpcQueueItem_s);
+  
+  self->on_msg_user_ptr = mitem->user_ptr;
+  self->on_msg = mitem->on_msg;
+      
+  self->qin = *p_qin;
+  *p_qin = NULL;
+  
+  self->qbus = methods->qbus;
+  self->self = methods;
+  
+  self->saves_key = cape_str_cp (skey);
+
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods__rpc_queue_item_del (QBusMethodRpcQueueItem* p_self)
+{
+  if (*p_self)
+  {
+    QBusMethodRpcQueueItem self = *p_self;
+    
+    qbus_message_del (&(self->qin));
+    cape_str_del (&(self->saves_key));
+    
+    CAPE_DEL (p_self, struct QBusMethodRpcQueueItem_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, number_t queue_size)
+{
+  QBusMethodRpcQueueItem mctx = user_ptr;
   
   //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
   
@@ -425,7 +413,25 @@ void __STDCALL qbus_methods__queue__on_event (void* user_ptr, number_t pos, numb
     cape_err_del (&err);
   }
   
-  qbus_method_ctx_del (&mctx);
+  qbus_methods__rpc_queue_item_del (&mctx);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods__rpc_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
+{
+  if (mitem->on_msg)
+  {
+    // create new queue item
+    QBusMethodRpcQueueItem mqi = qbus_methods__rpc_queue_item_new (self, mitem, p_qin, skey);
+   
+    // append a new task to the queue
+    cape_queue_add (self->queue, NULL, qbus_methods__rpc_queue__on_event, NULL, NULL, mqi, 0);
+  }
+  else
+  {
+    qbus_message_del (p_qin);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -544,12 +550,79 @@ void qbus_methods__sub_rm (QBusMethods self, const CapeString topic)
 
 //-----------------------------------------------------------------------------
 
+struct QBusMethodSubQueueItem_s
+{
+  void* on_val_user_ptr;
+  fct_qbus_on_val on_val;
+  
+  CapeUdc val;
+
+}; typedef struct QBusMethodSubQueueItem_s* QBusMethodSubQueueItem;
+
+//-----------------------------------------------------------------------------
+
+QBusMethodSubQueueItem qbus_methods__sub_queue_item_new (QBusMethodSubItem sitem, CapeUdc* p_val)
+{
+  QBusMethodSubQueueItem self = CAPE_NEW (struct QBusMethodSubQueueItem_s);
+  
+  self->on_val_user_ptr = sitem->user_ptr;
+  self->on_val = sitem->on_val;
+
+  self->val = cape_udc_mv (p_val);
+  
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_methods__sub_queue_item_del (QBusMethodSubQueueItem* p_self)
+{
+  if (*p_self)
+  {
+    QBusMethodSubQueueItem self = *p_self;
+    
+    cape_udc_del (&(self->val));
+    
+    CAPE_DEL (p_self, struct QBusMethodSubQueueItem_s);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qbus_methods__sub_queue__on_event (void* user_ptr, number_t pos, number_t queue_size)
+{
+  QBusMethodSubQueueItem mqi = user_ptr;
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "on event", "queue task started, size = %lu", queue_size);
+  
+  if (queue_size > 20)
+  {
+    
+    
+  }
+  
+  // run the callback
+  mqi->on_val (mqi->on_val_user_ptr, mqi->val);
+  
+  qbus_methods__sub_queue_item_del (&mqi);
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_methods__sub_queue (QBusMethods self, QBusMethodSubItem sitem, CapeUdc* p_val)
 {
-  // TODO: must be implemented
-  
+  if (sitem->on_val)
+  {
+    // create new queue item
+    QBusMethodSubQueueItem mqi = qbus_methods__sub_queue_item_new (sitem, p_val);
 
-  
+    // append a new task to the queue
+    cape_queue_add (self->queue, NULL, qbus_methods__sub_queue__on_event, NULL, NULL, mqi, 0);
+  }
+  else
+  {
+    cape_udc_del (p_val);
+  }
 }
 
 //-----------------------------------------------------------------------------

@@ -34,7 +34,7 @@ typedef int      (__STDCALL     *fct_qbus_on_init) (QBus, void* ptr, void** p_pt
 typedef int      (__STDCALL     *fct_qbus_on_done) (QBus, void* ptr, CapeErr);
 typedef int      (__STDCALL     *fct_qbus_on_msg)  (QBus, void* ptr, QBusM qin, QBusM qout, CapeErr);
 typedef void     (__STDCALL     *fct_qbus_on_rm)   (void* ptr);
-typedef void     (__STDCALL     *fct_qbus_on_val)  (QBus, void* ptr, const CapeString ident, CapeUdc val);
+typedef void     (__STDCALL     *fct_qbus_on_val)  (void* ptr, CapeUdc val);
 
 //-----------------------------------------------------------------------------
 
