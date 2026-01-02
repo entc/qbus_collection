@@ -177,7 +177,10 @@ QBusFrame qbus_con__frame_from_val (CapeUdc* p_val)
   QBusFrame frame = qbus_frame_new ();
 
   // local objects
-  CapeUdc payload = cape_udc_mv (p_val);
+  CapeUdc payload = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  // local objects
+  cape_udc_add_name (payload, p_val, "V");
   
   frame->msg_data = cape_json_to_s__ex (payload, qcrypt__stream_base64_encode);
   frame->msg_size = cape_str_size (frame->msg_data);
@@ -204,7 +207,9 @@ CapeUdc qbus_con__val_from_frame (QBusFrame frame)
         CapeUdc payload = cape_json_from_buf (frame->msg_data, frame->msg_size, qcrypt__stream_base64_decode);
         if (payload)
         {
-          cape_udc_replace_mv (&val, &payload);
+          val = cape_udc_ext (payload, "V");
+          
+          cape_udc_del (&payload);
         }
       }
       

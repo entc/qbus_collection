@@ -417,7 +417,7 @@ int qbus_subscribe (QBus self, const CapeString module, const CapeString ident, 
   cape_str_to_upper (module_upper_case);
 
   // create the topic
-  topic = cape_str_catenate_c (module, '_', ident);
+  topic = cape_str_catenate_c (module_upper_case, '_', ident);
   
   // this will activate the subscription on the connection
   qbus_con_sub_add (self->con, topic);
@@ -443,7 +443,7 @@ int qbus_unsubscribe (QBus self, const CapeString module, const CapeString ident
   cape_str_to_upper (module_upper_case);
 
   // create the topic
-  topic = cape_str_catenate_c (module, '_', ident);
+  topic = cape_str_catenate_c (module_upper_case, '_', ident);
 
   // this will deactive the subscription on the connection
   qbus_con_sub_rm (self->con, topic);

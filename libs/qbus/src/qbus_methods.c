@@ -638,6 +638,8 @@ int qbus_methods__sub_run (QBusMethods self, const CapeString topic, CapeUdc* p_
     if (n)
     {
       qbus_methods__sub_queue (self, cape_map_node_value (n), p_val);
+      
+      res = CAPE_ERR_NONE;
     }
     else
     {
