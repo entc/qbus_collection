@@ -58,6 +58,8 @@ export class AuthSession
 
         if (status.connected)
         {
+          console.log('status connected event');
+
           this.session.next ({
                 vsec: sessionStorage.getItem (SESSION_STORAGE_VSEC),
                 token: sessionStorage.getItem (SESSION_STORAGE_TOKEN),
@@ -72,11 +74,12 @@ export class AuthSession
                 user: null,
                 remote: ''
           });
-          this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles.next (data));
+
+          this.json_rpc ('AUTH', 'session_roles', {}).subscribe ((data: object) => this.roles_set (data));
         }
         else
         {
-          this.roles.next (null);
+          this.roles_set (null);
           this.session.next (null);
         }
 
@@ -88,6 +91,16 @@ export class AuthSession
     {
       this.session = new BehaviorSubject(null);
     }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private roles_set (data: object)
+  {
+    console.log('set roles');
+    console.log(data);
+
+    this.roles.next (data);
   }
 
   //---------------------------------------------------------------------------
@@ -111,7 +124,7 @@ export class AuthSession
         // set the user
         sitem.user = user;
 
-        this.roles.next (sitem['roles']);
+        this.roles_set (sitem['roles']);
 
         console.log('login done, set storage');
 
@@ -130,7 +143,7 @@ export class AuthSession
     this.conn.session__logout (session_expired);
 
     this.storage_clear ();
-    this.roles.next (null);
+    this.roles_set (null);
   }
 
   //---------------------------------------------------------------------------
@@ -778,6 +791,9 @@ export class AuthSessionRoleDirective {
     this.auth_session.roles.subscribe ((roles: object) => {
 
       this.roles = roles;
+
+      console.log('update view');
+
       this.updateView ();
     });
   }

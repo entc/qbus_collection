@@ -23,6 +23,9 @@
 
 struct AuthContext_s
 {
+  // default workspace
+  number_t wpid;
+  
   // module objects
   AuthTokens tokens;
   AuthVault vault;
@@ -255,12 +258,25 @@ static int __STDCALL qbus_auth_ui_rm (QBus qbus, void* ptr, QBusM qin, QBusM qou
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth__wp_default_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+  
+  // create a temporary object
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
+  
+  // run the command
+  return auth_wp_default_get (&auth_gp, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth__wp_info_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
   
   // run the command
   return auth_wp_info_get (&auth_gp, qin, qout, err);
@@ -273,7 +289,7 @@ static int __STDCALL qbus_auth__wp_get (QBus qbus, void* ptr, QBusM qin, QBusM q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
   
   // run the command
   return auth_wp_get (&auth_gp, qin, qout, err);
@@ -286,7 +302,7 @@ static int __STDCALL qbus_auth__gp_get (QBus qbus, void* ptr, QBusM qin, QBusM q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
   
   // run the command
   return auth_gp_get (&auth_gp, qin, qout, err);
@@ -299,7 +315,7 @@ static int __STDCALL qbus_auth__account_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
   
   // run the command
   return auth_gp_account (&auth_gp, qin, qout, err);
@@ -312,7 +328,7 @@ static int __STDCALL qbus_auth__gp_set (QBus qbus, void* ptr, QBusM qin, QBusM q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault);
+  AuthGP auth_gp = auth_gp_new (ctx->adbl_session, ctx->vault, ctx->wpid);
   
   // run the command
   return auth_gp_set (&auth_gp, qin, qout, err);
@@ -704,6 +720,8 @@ AuthContext auth_context_new (void)
 {
   AuthContext self = CAPE_NEW (struct AuthContext_s);
   
+  self->wpid = 0;
+  
   self->adbl_ctx = NULL;
   self->adbl_session = NULL;
 
@@ -740,6 +758,9 @@ void auth_context_del (AuthContext* p_self)
 int auth_context_init (AuthContext self, QBus qbus, CapeErr err)
 {
   int res;
+
+  // fetch the default workspace
+  self->wpid = qbus_config_n (qbus_config (qbus), "wpid", 0);
   
   self->adbl_ctx = adbl_ctx_new ("adbl", "adbl2_mysql", err);
   if (self->adbl_ctx == NULL)
@@ -861,6 +882,10 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "ui_rm"                , ctx, qbus_auth_ui_rm, NULL, err);
 
   // -------- callback methods --------------------------------------------
+
+  // if a default workspace was set, this call will return the workspace info
+  //   args:
+  qbus_register (qbus, "wp_default_get"       , ctx, qbus_auth__wp_default_get, NULL, err);
 
   // get all workspaces
   qbus_register (qbus, "wp_info_get"          , ctx, qbus_auth__wp_info_get, NULL, err);

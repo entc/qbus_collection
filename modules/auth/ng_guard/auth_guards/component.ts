@@ -33,6 +33,8 @@ import { ConnService } from '@conn/conn_service';
         // get the destination url
         this.nurl = evt['url'];
 
+        console.log(this.nurl);
+
         if (this.conn_connected)
         {
           if (this.has_login_url ())
@@ -102,6 +104,8 @@ import { ConnService } from '@conn/conn_service';
       }
       else   // fresh login
       {
+        console.log('navigate to default route');
+
         this.router.navigate([''], {});
       }
 
@@ -157,6 +161,8 @@ import { ConnService } from '@conn/conn_service';
       }
       else
       {
+        console.log('navigate by url');
+
         this.router.navigateByUrl(url, {});
       }
 

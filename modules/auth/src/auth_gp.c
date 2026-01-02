@@ -13,19 +13,22 @@ struct AuthGP_s
 {
   AdblSession adbl_session;   // reference
   AuthVault vault;            // reference
+
+  number_t wpid_default;      // default workspace
   
   number_t wpid;
 };
 
 //-----------------------------------------------------------------------------
 
-AuthGP auth_gp_new (AdblSession adbl_session, AuthVault vault)
+AuthGP auth_gp_new (AdblSession adbl_session, AuthVault vault, number_t wpid)
 {
   AuthGP self = CAPE_NEW (struct AuthGP_s);
   
   self->adbl_session = adbl_session;
   self->vault = vault;
   
+  self->wpid_default = wpid;  
   self->wpid = 0;
   
   return self;
@@ -414,15 +417,58 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int auth_wp__internal__fetch_workspace (AuthGP self, number_t wpid, CapeUdc* p_result, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  
+  // query
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "id"               , wpid);
+    cape_udc_add_n      (values, "active"           , 0);
+    cape_udc_add_s_cp   (values, "name"             , NULL);
+    cape_udc_add_s_cp   (values, "domain"           , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_workspaces", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+    goto exit_and_cleanup;
+  }
+
+  cape_udc_replace_mv (p_result, &first_row);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_wp_info_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
   AuthGP self = *p_self;
   
-  // local objects
-  CapeUdc query_results = NULL;
-  CapeUdc first_row = NULL;
-
   // check roles
   if (qbus_message_role_has (qin, "admin"))
   {
@@ -454,40 +500,34 @@ int auth_wp_info_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  // query
-  {
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    cape_udc_add_n      (params, "id"               , self->wpid);
-    cape_udc_add_n      (values, "active"           , 0);
-    cape_udc_add_s_cp   (values, "name"             , NULL);
-    cape_udc_add_s_cp   (values, "domain"           , NULL);
-
-    // execute the query
-    query_results = adbl_session_query (self->adbl_session, "rbac_workspaces", &params, &values, err);
-    if (query_results == NULL)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-  }
-
-  first_row = cape_udc_ext_first (query_results);
-  if (NULL == first_row)
-  {
-    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
-    goto exit_and_cleanup;
-  }
-  
-  cape_udc_replace_mv (&(qout->cdata), &first_row);
-  res = CAPE_ERR_NONE;
+  res = auth_wp__internal__fetch_workspace (self, self->wpid, &(qout->cdata), err);
 
 exit_and_cleanup:
+    
+  auth_gp_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_wp_default_get (AuthGP* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthGP self = *p_self;
   
-  cape_udc_del (&first_row);
-  cape_udc_del (&query_results);
-  
+  if (self->wpid_default)
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "default get", "deliver default workspace info for wpid = %lu", self->wpid_default);
+    
+    res = auth_wp__internal__fetch_workspace (self, self->wpid_default, &(qout->cdata), err);
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "AUTH", "default get", "no default workspace was set");
+
+    res = CAPE_ERR_NONE;
+  }
+      
   auth_gp_del (p_self);
   return res;
 }
