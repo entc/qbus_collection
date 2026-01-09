@@ -792,8 +792,6 @@ export class AuthSessionRoleDirective {
 
       this.roles = roles;
 
-      console.log('update view');
-
       this.updateView ();
     });
   }

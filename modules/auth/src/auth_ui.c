@@ -26,6 +26,7 @@ struct AuthUI_s
   CapeUdc options_2factor;         // reference
   CapeUdc options_fp;              // reference
 
+  number_t wpid_default;
   number_t userid;
   number_t wpid;
   
@@ -35,7 +36,7 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp)
+AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp, number_t wpid_default)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
@@ -45,6 +46,7 @@ AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, Auth
   self->vault = vault;
   self->options_2factor = options_2factor;
   self->options_fp = options_fp;
+  self->wpid_default = wpid_default;
   
   self->userid = 0;
   self->wpid = 0;
@@ -688,7 +690,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   
   // in case there are several workspaces for the same user
   // a wpid will be added to the authentication credentials
-  self->wpid = cape_udc_get_n (auth_crypt_credentials, "wpid", 0);
+  self->wpid = cape_udc_get_n (auth_crypt_credentials, "wpid", self->wpid_default);
   
   // extract into parts
   cid = cape_udc_get_s (auth_crypt_credentials, "id", NULL);

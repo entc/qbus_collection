@@ -44,31 +44,12 @@ struct AuthContext_s
 
 //-------------------------------------------------------------------------------------
 
-static int __STDCALL qbus_auth_rinfo_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
-{
-  if (qin->rinfo)
-  {
-    // transfer ownership
-    qout->cdata = qin->rinfo;
-    qin->rinfo = NULL;
-    
-    // add type
-    cape_udc_add_s_cp (qout->cdata, "type", "rinfo");
-    
-    return CAPE_ERR_NONE;
-  }
-  
-  return cape_err_set (err, CAPE_ERR_NO_AUTH, "no authentication");
-}
-
-//-------------------------------------------------------------------------------------
-
 static int __STDCALL qbus_auth_ui_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
 
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_get (&auth_ui, qin, qout, err);
@@ -81,7 +62,7 @@ static int __STDCALL qbus_auth_ui_login (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_login (&auth_ui, qin, qout, err);
@@ -94,7 +75,7 @@ static int __STDCALL qbus_auth_ui_login_get (QBus qbus, void* ptr, QBusM qin, QB
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_login_get (&auth_ui, qin, qout, err);
@@ -107,7 +88,7 @@ static int __STDCALL qbus_auth_ui_login_logs (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_login_logs (&auth_ui, qin, qout, err);
@@ -120,7 +101,7 @@ static int __STDCALL qbus_auth_ui_switch (QBus qbus, void* ptr, QBusM qin, QBusM
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_switch (&auth_ui, qin, qout, err);
@@ -133,7 +114,7 @@ static int __STDCALL qbus_auth_ui_set (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_set (&auth_ui, qin, qout, err);
@@ -146,7 +127,7 @@ static int __STDCALL qbus_auth_ui_add (QBus qbus, void* ptr, QBusM qin, QBusM qo
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_add (&auth_ui, qin, qout, err);
@@ -159,7 +140,7 @@ static int __STDCALL qbus_auth__ui__pp_put (QBus qbus, void* ptr, QBusM qin, QBu
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_pp_put (&auth_ui, qin, qout, err);
@@ -172,7 +153,7 @@ static int __STDCALL qbus_auth__ui__pp_get (QBus qbus, void* ptr, QBusM qin, QBu
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_pp_get (&auth_ui, qin, qout, err);
@@ -185,7 +166,7 @@ static int __STDCALL qbus_auth_ui_config_get (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_config_get (&auth_ui, qin, qout, err);
@@ -198,7 +179,7 @@ static int __STDCALL qbus_auth_ui_config_set (QBus qbus, void* ptr, QBusM qin, Q
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_config_set (&auth_ui, qin, qout, err);
@@ -211,7 +192,7 @@ static int __STDCALL qbus_auth_ui_2f_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_2f_send (&auth_ui, qin, qout, err);
@@ -224,7 +205,7 @@ static int __STDCALL qbus_auth_ui_fp_send (QBus qbus, void* ptr, QBusM qin, QBus
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_fp_send (&auth_ui, qin, qout, err);
@@ -237,7 +218,7 @@ static int __STDCALL qbus_auth_ui_users (QBus qbus, void* ptr, QBusM qin, QBusM 
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_users (&auth_ui, qin, qout, err);
@@ -250,7 +231,7 @@ static int __STDCALL qbus_auth_ui_rm (QBus qbus, void* ptr, QBusM qin, QBusM qou
   AuthContext ctx = ptr;
   
   // create a temporary object
-  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp);
+  AuthUI auth_ui = auth_ui_new (qbus, ctx->adbl_session, ctx->tokens, ctx->vault, ctx->options_2factor, ctx->options_fp, ctx->wpid);
   
   // run the command
   return auth_ui_rm (&auth_ui, qin, qout, err);
@@ -817,15 +798,6 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // -------- callback methods --------------------------------------------
 
-  // REST interface
-  qbus_register (qbus, "GET"                  , ctx, qbus_auth_rinfo_get, NULL, err);
-
-  // -------- callback methods --------------------------------------------
-
-  // a fresh login
-  //   args: wpid
-//  qbus_register (qbus, "ui_login"             , ctx, qbus_auth_ui_login, NULL, err);
-
   // a fresh login
   //   args: wpid
   qbus_register (qbus, "ui_login_get"         , ctx, qbus_auth_ui_login_get, NULL, err);
@@ -835,8 +807,8 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
   qbus_register (qbus, "ui_login_logs"        , ctx, qbus_auth_ui_login_logs, NULL, err);
 
   // all user credential functions
-  qbus_register (qbus, "getUI"                , ctx, qbus_auth_ui_get, NULL, err);
-
+  qbus_register (qbus, "ui_get"               , ctx, qbus_auth_ui_get, NULL, err);
+  
   // change a user (needs admin roles)
   //   args: gpid
   qbus_register (qbus, "ui_switch"            , ctx, qbus_auth_ui_switch, NULL, err);

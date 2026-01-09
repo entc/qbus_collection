@@ -143,6 +143,24 @@ export class AuthUsersComponent implements OnInit {
 
     });
   }
+
+  //-----------------------------------------------------------------------------
+
+  public open_add_merge (info: AuthWpInfo)
+  {
+    var ctx: AuthUserContext = new AuthUserContext;
+
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = null;
+    ctx.userid = null;
+    ctx.info = info;
+
+    this.modal_service.open (AuthUsersMergeModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'xl', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
+
+      this.fetch ();
+
+    });
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -291,6 +309,28 @@ export class AuthUserItem
   public on_check_password (val: string): void
   {
     this.pass = val;
+  }
+
+}
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-users-merge-modal',
+  templateUrl: './modal_merge.html'
+}) export class AuthUsersMergeModalComponent {
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public apply ()
+  {
+
   }
 
 }

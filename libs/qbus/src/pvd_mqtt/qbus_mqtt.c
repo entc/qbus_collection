@@ -574,7 +574,7 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
   mqtt_msg.qos = 1;
-  mqtt_msg.retained = 0;
+  mqtt_msg.retained = TRUE;
 
   // send away
   MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
@@ -629,7 +629,7 @@ void __STDCALL qbus_pvd_con_next (QbusPvdConnection self, const CapeString topic
   
   // if we want to store the last message, even if there are no subscribers
   // turn on retained
-  mqtt_msg.retained = 0;
+  mqtt_msg.retained = TRUE;
 
   // send away
   MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);

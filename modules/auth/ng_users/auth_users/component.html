@@ -4,7 +4,15 @@
 
     <div class="btn-group" role="group" aria-label="Basic example">
       <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
-      <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i></button>
+      <div class="btn-group" ngbDropdown role="group" aria-label="Add Roles">
+        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;{{ 'AUTH.USER' | transloco }}</button>
+        <button class="btn btn-sm btn-outline-success" ngbDropdownToggle><i class="fa fa-bars"></i></button>
+        <div class="dropdown-menu" ngbDropdownMenu>
+          <button *authSessionRole="['admin']" (click)="open_add_merge (info_item)" type="button" class="dropdown-item text-success">
+            <i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;|&nbsp;&nbsp;{{ 'AUTH.ADD_USER_MERGE' | transloco }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <ng-container *ngFor="let item of users | async">

@@ -14,7 +14,7 @@ import { AuthCommonModule } from '@qbus/auth_common.module';
 // components
 import { AuthRolesComponent } from './auth_roles/component';
 import { AuthSessionsComponent } from './auth_sessions/component';
-import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersAddModalComponent, AuthUsersPasswdModalComponent } from './auth_users/component';
+import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersAddModalComponent, AuthUsersPasswdModalComponent, AuthUsersMergeModalComponent } from './auth_users/component';
 
 //-----------------------------------------------------------------------------
 
@@ -25,7 +25,8 @@ import { AuthUsersComponent, AuthUsersSettingsModalComponent, AuthUsersAddModalC
         AuthUsersSettingsModalComponent,
         AuthUsersAddModalComponent,
         AuthUsersPasswdModalComponent,
-        AuthSessionsComponent
+        AuthSessionsComponent,
+        AuthUsersMergeModalComponent
     ],
     imports: [
         CommonModule,

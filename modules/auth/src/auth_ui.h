@@ -27,7 +27,7 @@ struct AuthUI_s; typedef struct AuthUI_s* AuthUI;
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   AuthUI  auth_ui_new         (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp);
+__CAPE_LIBEX   AuthUI  auth_ui_new         (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp, number_t wpid_default);
 
 __CAPE_LIBEX   void    auth_ui_del         (AuthUI*);
 
