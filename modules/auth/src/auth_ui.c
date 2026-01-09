@@ -2059,7 +2059,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr err)
+int auth_ui__workspace__fetch_users (AuthUI self, number_t wpid, CapeUdc* p_users, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"             , wpid);
+    cape_udc_add_n      (values, "userid"           , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cape_udc_replace_mv (p_users, &query_results);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__workspace__find (AuthUI self, number_t wpid, CapeString* p_domain, CapeErr err)
 {
   int res;
   
@@ -2072,7 +2106,7 @@ int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "id"               , self->wpid);
+    cape_udc_add_n      (params, "id"               , wpid);
     cape_udc_add_s_cp   (values, "domain"           , NULL);
     
     // execute the query
@@ -2098,7 +2132,11 @@ int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr
     goto exit_and_cleanup;
   }
   
-  cape_str_replace_mv (p_domain, &domain);
+  if (p_domain)
+  {
+    cape_str_replace_mv (p_domain, &domain);
+  }
+  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
@@ -2276,7 +2314,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_ui__intern__check_workspace (self, &domain, err);
+  res = auth_ui__workspace__find (self, self->wpid, &domain, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -3744,7 +3782,7 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "id"           , 0);
 
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
@@ -3767,6 +3805,143 @@ exit_and_cleanup:
   
   cape_udc_del (&first_row);
   cape_udc_del (&query_results);
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__users__get (AuthUI self, number_t wpid, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+
+  // check if account exists and userid and gpid belong together
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"         , wpid);
+    cape_udc_add_n      (params, "userid"       , userid);
+
+    cape_udc_add_n      (values, "id"           , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = (1 == cape_udc_size (query_results)) ? CAPE_ERR_NONE : cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  number_t wpid_src;
+  number_t user_src;
+  number_t wpid_dst;
+  number_t users_dst;
+  const CapeString vsec;
+  
+  // local objects
+  CapeUdc wp_users = NULL;
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  // run security check
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    wpid_src = cape_udc_get_n (qin->cdata, "wpid_src", 0);
+    if (0 == wpid_src)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID_SRC");
+      goto exit_and_cleanup;
+    }
+
+    user_src = cape_udc_get_n (qin->cdata, "user_src", 0);
+    if (0 == user_src)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER_SRC");
+      goto exit_and_cleanup;
+    }
+
+    wpid_dst = cape_udc_get_n (qin->cdata, "wpid_dst", 0);
+    if (0 == wpid_dst)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID_DST");
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  // check if a user like that exists
+  res = auth_ui__users__get (self, wpid_src, user_src, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // check if workspace exists
+  res = auth_ui__workspace__find (self, wpid_dst, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_ui__workspace__fetch_users (self, wpid_dst, &wp_users, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  if (0 < cape_udc_size (wp_users))
+  {
+    // get the vault from the destination workspace
+    vsec = auth_vault__vsec (self->vault, wpid_dst);
+    if (vsec == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "no vault");
+      goto exit_and_cleanup;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "user", "create an user for workspace [%lu] -> use existing vault", wpid_dst);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "user", "create an user for an empty workspace [%lu] -> create new vault", wpid_dst);
+  }
+  
+
+  
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del(&wp_users);
   
   auth_ui_del (p_self);
   return res;

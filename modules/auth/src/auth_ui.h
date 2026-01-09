@@ -63,6 +63,8 @@ __CAPE_LIBEX   int     auth_ui_users       (AuthUI*, QBusM qin, QBusM qout, Cape
 
 __CAPE_LIBEX   int     auth_ui_rm          (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int     auth_ui_merge       (AuthUI*, QBusM qin, QBusM qout, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL   int     auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, number_t usid, CapeUdc rinfo, CapeUdc cdata, number_t status, CapeErr err);
