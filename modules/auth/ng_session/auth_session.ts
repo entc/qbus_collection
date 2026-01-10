@@ -630,6 +630,7 @@ export class AuthLoginCreds
 
 export class AuthWpInfo
 {
+  id: number;
   domain: string;
   active: number;
   name: string;

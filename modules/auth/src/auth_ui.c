@@ -3857,10 +3857,14 @@ int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   number_t user_src;
   number_t wpid_dst;
   number_t users_dst;
-  const CapeString vsec;
   
   // local objects
   CapeUdc wp_users = NULL;
+  CapeString vsec = NULL;
+  CapeString user_encoded = NULL;
+  CapeString pass_encoded = NULL;
+  CapeString vsec_encoded = NULL;
+  CapeString login = NULL;
   
   if (qin->cdata == NULL)
   {
@@ -3921,7 +3925,7 @@ int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   if (0 < cape_udc_size (wp_users))
   {
     // get the vault from the destination workspace
-    vsec = auth_vault__vsec (self->vault, wpid_dst);
+    vsec = cape_str_cp (auth_vault__vsec (self->vault, wpid_dst));
     if (vsec == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_RUNTIME, "no vault");
@@ -3932,7 +3936,15 @@ int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   else
   {
+    vsec = cape_str_uuid ();
+
     cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "user", "create an user for an empty workspace [%lu] -> create new vault", wpid_dst);
+  }
+  
+  //res = auth_ui__intern__encode (NULL, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
   }
   
 
@@ -3941,6 +3953,7 @@ int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   
 exit_and_cleanup:
   
+  cape_str_del (&vsec);
   cape_udc_del(&wp_users);
   
   auth_ui_del (p_self);

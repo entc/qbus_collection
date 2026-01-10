@@ -155,7 +155,7 @@ export class AuthUsersComponent implements OnInit {
     ctx.userid = null;
     ctx.info = info;
 
-    this.modal_service.open (AuthUsersMergeModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'xl', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
+    this.modal_service.open (AuthUsersMergeModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'lg', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
 
       this.fetch ();
 
@@ -320,17 +320,112 @@ export class AuthUserItem
   templateUrl: './modal_merge.html'
 }) export class AuthUsersMergeModalComponent {
 
+  public wpid: number = 1;
+  public userid: number = 0;
+  public workspace_list: AuthWpInfo[];
+  public users_list: AuthUserItem[];
+
   //---------------------------------------------------------------------------
 
   constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
   {
+    this.fetch_workspaces ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  public fetch_workspaces ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'workspaces_get', {}).subscribe ((data: AuthWpInfo[]) => {
+
+      this.workspace_list = data;
+
+      if (this.workspace_list.length > 0)
+      {
+        this.workspace_set (this.workspace_list[0].id);
+      }
+      else
+      {
+        this.wpid = 0;
+      }
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  private fetch_users ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'ui_users', {wpid: this.wpid}).subscribe ((data: AuthUserItem[]) => {
+
+      this.users_list = data;
+
+      if (this.users_list.length > 0)
+      {
+        this.user_set (this.users_list[0].userid);
+      }
+      else
+      {
+        this.userid = 0;
+      }
+
+    });
+  }
+
+  //---------------------------------------------------------------------------
+
+  private workspace_set (wpid: number)
+  {
+    if (wpid)
+    {
+      this.wpid = wpid;
+      this.fetch_users ();
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public workspace_select (e: Event)
+  {
+    const target = e.target as HTMLSelectElement;
+
+    if (target && target.value)
+    {
+      this.workspace_set (Number (target.value));
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private user_set (userid: number)
+  {
+    if (userid)
+    {
+      this.userid = userid;
+    }
+  }
+
+  //---------------------------------------------------------------------------
+
+  public user_select (e: Event)
+  {
+    const target = e.target as HTMLSelectElement;
+
+    if (target && target.value)
+    {
+      this.user_set (Number (target.value));
+    }
   }
 
   //---------------------------------------------------------------------------
 
   public apply ()
   {
+    this.auth_session.json_rpc ('AUTH', 'ui_merge', {wpid_dst: this.ctx.wpid, wpid_src: this.wpid, user_src: this.userid}).subscribe (() => {
 
+      this.modal.close();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
 }
