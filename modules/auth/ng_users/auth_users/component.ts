@@ -324,6 +324,8 @@ export class AuthUserItem
   public userid: number = 0;
   public workspace_list: AuthWpInfo[];
   public users_list: AuthUserItem[];
+  public input_pass: string;
+  public input_user: string;
 
   //---------------------------------------------------------------------------
 
@@ -421,7 +423,7 @@ export class AuthUserItem
 
   public apply ()
   {
-    this.auth_session.json_rpc ('AUTH', 'ui_merge', {wpid_dst: this.ctx.wpid, wpid_src: this.wpid, user_src: this.userid}).subscribe (() => {
+    this.auth_session.json_rpc ('AUTH', 'ui_merge', {wpid_dst: this.ctx.wpid, wpid_src: this.wpid, user_src: this.userid, pass: this.input_pass, user: this.input_user}).subscribe (() => {
 
       this.modal.close();
 

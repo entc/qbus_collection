@@ -29,6 +29,21 @@
 
     </div>
   </div>
+  <hr>
+
+  <div class="input-group">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em"><small>{{ 'AUTH.USERNAME' | transloco }}</small></span>
+    </div>
+    <input type="text" class="form-control" [(ngModel)]="input_user">
+  </div>
+
+  <div class="input-group mt-2">
+    <div class="input-group-prepend">
+      <span class="input-group-text width_10em"><small>{{ 'AUTH.PASSWORD' | transloco }}</small></span>
+    </div>
+    <input type="password" class="form-control" [(ngModel)]="input_pass">
+  </div>
 
 </div>
 <div class="modal-footer">
