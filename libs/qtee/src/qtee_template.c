@@ -453,7 +453,16 @@ int cape_template_mod_apply__date (CapeTemplatePart self, CapeList node_stack, C
 
 int cape_template_tag_apply (CapeTemplatePart self, CapeList node_stack, CapeTemplateCB cb, number_t pos, CapeErr err)
 {
-  CapeUdc found_item = qtee_format_item (self->format, node_stack);
+  CapeUdc found_item = NULL;
+  
+  if (self->format)
+  {
+    found_item = qtee_format_item (self->format, node_stack);
+  }
+  else
+  {
+    cape_log_msg (CAPE_LL_WARN, "QTEE", "template", "no format defined");
+  }
 
   // call the tag callback
   if (cb->on_tag)
