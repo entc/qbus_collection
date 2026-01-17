@@ -1,17 +1,18 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
-import { AuthSession, AuthSessionRoleDirective } from '@qbus/auth_session';
+import { AuthSession, AuthSessionRoleDirective, AuthSessionWorkspaceDirective, AuthWorkspaceGuard } from '@qbus/auth_session';
 import { ConnModule } from '@conn/conn_module';
-
 //=============================================================================
 
 @NgModule({
     declarations: [
-        AuthSessionRoleDirective
+        AuthSessionRoleDirective,
+        AuthSessionWorkspaceDirective
     ],
     providers: [
-        AuthSession
+        AuthSession,
+        AuthWorkspaceGuard
     ],
     imports: [
         CommonModule,
@@ -19,7 +20,8 @@ import { ConnModule } from '@conn/conn_module';
         HttpClientModule
     ],
     exports: [
-        AuthSessionRoleDirective
+        AuthSessionRoleDirective,
+        AuthSessionWorkspaceDirective
     ]
 })
 export class AuthSessionModule

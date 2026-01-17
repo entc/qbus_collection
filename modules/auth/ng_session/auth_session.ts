@@ -1,6 +1,6 @@
 import { Component, Injectable, Directive, TemplateRef, OnInit, Input, Output, Injector, ElementRef, ViewContainerRef, EventEmitter, Type, ComponentFactoryResolver } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { CanActivate, RouterStateSnapshot, UrlTree, ActivatedRouteSnapshot } from '@angular/router';
+import { CanActivate, RouterStateSnapshot, UrlTree, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, Subscriber, BehaviorSubject, Subject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
 import { throwError, of, timer } from 'rxjs';
@@ -8,7 +8,6 @@ import { interval } from 'rxjs/internal/observable/interval';
 import * as CryptoJS from 'crypto-js';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import { ConnService } from '@conn/conn_service';
-
 //-----------------------------------------------------------------------------
 
 const SESSION_STORAGE_TOKEN        = 'session_token';
@@ -144,6 +143,18 @@ export class AuthSession
 
     this.storage_clear ();
     this.roles_set (null);
+  }
+
+  //---------------------------------------------------------------------------
+
+  public contains_wpid (wpid: number, workspaces: number[]): boolean
+  {
+    if (wpid && Array.isArray (workspaces))
+    {
+      return workspaces.includes(wpid);
+    }
+
+    return false;
   }
 
   //---------------------------------------------------------------------------
@@ -838,5 +849,128 @@ export class AuthSessionRoleDirective {
 }
 
 //-----------------------------------------------------------------------------
+
+@Directive({
+  selector: '[authWorkspace]'
+})
+export class AuthSessionWorkspaceDirective implements OnInit {
+
+  private workspaces: Array<number>;
+  private subscription;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_session: AuthSession, private element: ElementRef, private templateRef: TemplateRef<any>, private viewContainer: ViewContainerRef)
+  {
+    // run with an initial value
+    this.view_update (0);
+  }
+
+  //---------------------------------------------------------------------------
+
+  @Input () set authWorkspace (val: Array<number>)
+  {
+    this.subscription = this.auth_session.session.subscribe ((sitem: AuthSessionItem) => this.view_update (sitem.wpid));
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.subscription.unsubscribe ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  private view_update (wpid: number)
+  {
+    if (this.workspaces)
+    {
+      if (this.auth_session.contains_wpid (wpid, this.workspaces))
+      {
+        this.viewContainer.clear();
+        this.viewContainer.createEmbeddedView(this.templateRef);
+      }
+      else
+      {
+        this.viewContainer.clear();
+      }
+    }
+    else
+    {
+      this.viewContainer.clear();
+      this.viewContainer.createEmbeddedView(this.templateRef);
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+@Injectable()
+export class AuthWorkspaceGuard implements CanActivate, OnInit {
+
+  private subscription;
+  private current_wpid: number = 0;
+
+  //---------------------------------------------------------------------------
+
+  constructor (private auth_session: AuthSession, private router: Router)
+  {
+    this.subscription = this.auth_session.session.subscribe ((sitem: AuthSessionItem) => this.current_wpid = sitem.wpid);
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnInit()
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+
+  ngOnDestroy()
+  {
+    this.subscription.unsubscribe ();
+  }
+
+  //---------------------------------------------------------------------------
+
+  canActivate (next: ActivatedRouteSnapshot): Promise<boolean | UrlTree> | boolean | UrlTree
+  {
+    let rules = next.data.rules;
+    let state = next['_routerState'];
+
+    if (rules && Array.isArray (rules))
+    {
+      let found: AuthWorkspaceRoute = rules.find ((e: AuthWorkspaceRoute) => e.wpid == this.current_wpid);
+
+      if (found)
+      {
+        //console.log('AuthWorkspaceGuard found path for wpid = ' + this.current_wpid + ', path = ' + found.path);
+
+        return this.router.createUrlTree ([state.url, found.path]);
+      }
+      else
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+interface AuthWorkspaceRoute
+{
+  wpid: number;
+  path: string;
+}
 
 //-----------------------------------------------------------------------------
