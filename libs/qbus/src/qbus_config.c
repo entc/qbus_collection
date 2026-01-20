@@ -64,6 +64,8 @@ void qbus_config_del (QBusConfig* p_self)
     cape_udc_del (&(self->config_node));
     cape_str_del (&(self->config_file));
     cape_str_del (&(self->module_name));
+    
+    cape_log_disable_syslog ();
 
     CAPE_DEL (p_self, struct QBusConfig_s);
   }
@@ -212,6 +214,16 @@ void qbus_config_init (QBusConfig self, CapeUdc* p_args)
     
     // adjust the global log level
     cape_log_set_level (log_level);
+  }
+  
+  // syslog
+  {
+    CapeUdc syslog_node = cape_udc_get (self->config_node, "syslog");
+    
+    if (syslog_node)
+    {
+      cape_log_enable_syslog (cape_udc_get_s (syslog_node, "addr", "127.0.0.1"), cape_udc_get_n (syslog_node, "port", 514)); 
+    }
   }
 
   // debug

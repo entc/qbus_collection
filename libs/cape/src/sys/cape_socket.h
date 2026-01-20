@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_stream.h"
 
 //=============================================================================
 
@@ -13,9 +14,11 @@ __CAPE_LIBEX   void*         cape_sock__tcp__srv_new      (const char* host, lon
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void*         cape_sock__udp__clt_new      (const char* host, long port, CapeErr err);
+__CAPE_LIBEX   void*         cape_sock__udp__clt_new      (CapeErr err);
 
 __CAPE_LIBEX   void*         cape_sock__udp__srv_new      (const char* host, long port, CapeErr err);
+
+__CAPE_LIBEX   int           cape_sock__udp__send_to      (void* handle, CapeStream buf, const char* host, long port, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

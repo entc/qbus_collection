@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
   {
     CapeAioSocketUdp aio_handle;
 
-    void* clt_handle = cape_sock__udp__clt_new ("127.0.0.1", 43340, err);    
+    void* clt_handle = cape_sock__udp__clt_new (err);    
     if (clt_handle == NULL)
     {
       cape_log_msg (CAPE_LL_ERROR, "TEST", "aio sock", cape_err_text (err));

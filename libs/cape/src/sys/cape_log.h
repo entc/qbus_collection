@@ -2,6 +2,7 @@
 #define __CAPE_SYS__LOG__H 1
 
 #include "sys/cape_export.h"
+#include "stc/cape_str.h"
 
 //-----------------------------------------------------------------------------
 
@@ -26,6 +27,12 @@ __CAPE_LIBEX   void              cape_log_fmt           (CapeLogLevel, const cha
 __CAPE_LIBEX   void              cape_log_set_level     (CapeLogLevel);
 
 __CAPE_LIBEX   CapeLogLevel      cape_log_level_from_s  (const char* log_level_as_text, CapeLogLevel alt);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   void              cape_log_enable_syslog    (const CapeString remote_udp_adress, number_t port);
+
+__CAPE_LIBEX   void              cape_log_disable_syslog   (void);
 
 //-----------------------------------------------------------------------------
 

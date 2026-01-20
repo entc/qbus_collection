@@ -21,8 +21,8 @@
 struct CapeErr_s
 {
     char* text;
-    
     int code;
+    int enable_logging;
 };
 
 //-----------------------------------------------------------------------------
@@ -33,6 +33,20 @@ CapeErr cape_err_new (void)
 
   self->text = NULL;
   self->code = CAPE_ERR_NONE;
+  self->enable_logging = TRUE;
+  
+  return self;    
+}
+
+//-----------------------------------------------------------------------------
+
+CapeErr cape_err_new_ex (int enable_logging)
+{
+  CapeErr self = CAPE_NEW (struct CapeErr_s);
+  
+  self->text = NULL;
+  self->code = CAPE_ERR_NONE;
+  self->enable_logging = enable_logging;
   
   return self;    
 }
@@ -103,8 +117,15 @@ int cape_err_set__i (CapeErr self, int line_number, const char* file, int code, 
     // returns only the file
     const CapeString file_relative = cape_fs_split (file, NULL);
     
-    // print Error
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "error", "ERROR [%i]: {%s:%i} | %s", code, file_relative, line_number, error_message);
+    if (self->enable_logging)
+    {
+      // print Error
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "error", "ERROR [%i]: {%s:%i} | %s", code, file_relative, line_number, error_message);
+    }
+    else
+    {
+      printf ("ERROR [%i]: {%s:%i} | %s\n", code, file_relative, line_number, error_message);
+    }
   }
   
   cape_str_replace_cp (&(self->text), error_message);
