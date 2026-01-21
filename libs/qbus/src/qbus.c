@@ -252,6 +252,18 @@ int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL qbus_request__on_modules_get (QBus self, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  // local objects
+  CapeUdc modules = qbus_router_list (self->router);
+  
+  cape_udc_replace_mv (&(qout->cdata), &modules);
+  
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_request (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
   int res;
@@ -260,7 +272,29 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
   CapeString module_upper_case = cape_str_cp (module);
   cape_str_to_upper (module_upper_case);
 
-  if (cape_str_compare (module_upper_case, qbus_config_name (self->config)))
+  if (cape_str_compare (module_upper_case, "QBUS"))  // internal methods
+  {
+    if (cape_str_equal (method, "modules_get"))
+    {
+      {
+        QBusMethodItem mitem = qbus_method_item_new (self, qbus_request__on_modules_get, msg->chain_key, msg->sender, NULL, msg->rinfo);
+
+        // need to clone the qin
+        // TODO: check why we need this
+        QBusM qin = qbus_message_mv (msg);
+
+        qin->err = cape_err_new ();
+        cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
+        
+        qbus_methods__rpc_queue (self->methods, mitem, &qin, qin->chain_key);
+        
+        qbus_method_item_del (&mitem);
+      }
+      
+      res = CAPE_ERR_NONE;
+    }
+  }
+  else if (cape_str_compare (module_upper_case, qbus_config_name (self->config)))
   {
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
 
@@ -627,3 +661,5 @@ exit_and_cleanup:
   qbus_del (&self);
   cape_err_del (&err);
 }
+
+//-----------------------------------------------------------------------------

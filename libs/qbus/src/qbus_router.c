@@ -194,6 +194,20 @@ const CapeString qbus_router_get (QBusRouter self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void qbus_router_list__add_cids (CapeUdc cids_node, CapeList cids)
+{
+  CapeListCursor* cursor = cape_list_cursor_new (cids, CAPE_DIRECTION_FORW);
+
+  while (cape_list_cursor_next (cursor))
+  {
+    cape_udc_add_s_cp (cids_node, NULL, (char*)cape_list_node_data (cursor->node));
+  }
+
+  cape_list_cursor_del (&cursor);
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc qbus_router_list (QBusRouter self)
 {
   CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
@@ -202,9 +216,13 @@ CapeUdc qbus_router_list (QBusRouter self)
   
   while (cape_map_cursor_next (cursor))
   {
-    CapeList cids = cape_map_node_value (cursor->node);
+    CapeUdc list_node = cape_udc_new (CAPE_UDC_NODE, NULL);
     
+    cape_udc_add_s_cp (list_node, "name", cape_map_node_key (cursor->node));
     
+    qbus_router_list__add_cids (cape_udc_add_list (ret, "cids"), cape_map_node_value (cursor->node));
+    
+    cape_udc_add (ret, &list_node);
   }
   
   cape_map_cursor_del (&cursor);
