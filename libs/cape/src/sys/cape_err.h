@@ -48,6 +48,8 @@ struct CapeErr_s; typedef struct CapeErr_s* CapeErr;
 
 __CAPE_LIBEX   CapeErr           cape_err_new           (void);             // allocate memory and initialize the object
 
+__CAPE_LIBEX   CapeErr           cape_err_new_ex        (int enable_logging);             // allocate memory and initialize the object
+
 __CAPE_LIBEX   void              cape_err_del           (CapeErr*);         // release memory
 
 __CAPE_LIBEX   CapeErr           cape_err_cp            (CapeErr);

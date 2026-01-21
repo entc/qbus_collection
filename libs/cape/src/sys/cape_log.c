@@ -5,9 +5,15 @@
 #include "sys/cape_file.h"
 #include "sys/cape_time.h"
 #include "stc/cape_str.h"
+#include "sys/cape_socket.h"
 
 const void* CAPE_LOG_OUT_FD = NULL;
 static CapeLogLevel g_log_level = CAPE_LL_TRACE;
+void* g_log_udp_handle = NULL;
+
+// for udp sending
+CapeString g_udp_host = NULL;
+number_t g_udp_port = 0;
 
 //-----------------------------------------------------------------------------
 
@@ -43,6 +49,45 @@ static const char* msg_matrix[7] = { "___", "FAT", "ERR", "WRN", "INF", "DBG", "
 void cape_log_set_level (CapeLogLevel log_level)
 {
   g_log_level = log_level;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_log_enable_syslog (const CapeString host, number_t port)
+{
+  // local objects
+  CapeErr err = cape_err_new ();
+  
+  g_log_udp_handle = cape_sock__udp__clt_new (err);
+
+  g_udp_host = cape_str_cp (host);
+  g_udp_port = port;
+  
+  if (g_log_udp_handle == NULL)
+  {    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "log", "can't create UDP client: %s", cape_err_text (err));
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "log", "log into syslog: %s:%lu", host, port);
+  }
+  
+  cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_log_disable_syslog (void)
+{
+  if (g_log_udp_handle)
+  {
+    cape_sock__close (g_log_udp_handle);
+    g_log_udp_handle = NULL;
+    
+    cape_str_del (&g_udp_host);
+    g_udp_port = 0;
+    
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -133,6 +178,19 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
   else
   {
     printf("\033[%sm%s\033[0m\n", clr_matrix[lvl], buffer);
+  }
+  
+  if (g_log_udp_handle)
+  {
+    CapeStream s = cape_stream_new ();
+    CapeErr err = cape_err_new_ex (FALSE);   // disable logging of errors
+    
+    cape_stream_append_buf (s, buffer, len);
+        
+    cape_sock__udp__send_to (g_log_udp_handle, s, g_udp_host, g_udp_port, err);
+    
+    cape_stream_del (&s);
+    cape_err_del (&err);
   }
   
 #endif 
