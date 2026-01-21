@@ -9,6 +9,7 @@
 #include <stc/cape_str.h>
 #include <sys/cape_log.h>
 #include <fmt/cape_args.h>
+#include <fmt/cape_json.h>
 
 // c includes
 #include <stdlib.h>
@@ -259,6 +260,14 @@ int __STDCALL qbus_request__on_modules_get (QBus self, void* ptr, QBusM qin, QBu
   
   cape_udc_replace_mv (&(qout->cdata), &modules);
   
+  {
+    CapeString h = cape_json_to_s (qout->cdata);
+    
+    printf ("modules get = %s\n", h);
+    
+    cape_str_del (&h);
+  }
+  
   return CAPE_ERR_NONE;
 }
 
@@ -276,17 +285,20 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
   {
     if (cape_str_equal (method, "modules_get"))
     {
+      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
+      
+      // need to clone the qin
+      // TODO: check why we need this
+      QBusM qin = qbus_message_mv (msg);
+      
+      // correct the qin skey environment
+      cape_str_replace_cp (&(qin->chain_key), saves_key);
+      cape_str_del (&(qin->sender));
+      
       {
-        QBusMethodItem mitem = qbus_method_item_new (self, qbus_request__on_modules_get, msg->chain_key, msg->sender, NULL, msg->rinfo);
-
-        // need to clone the qin
-        // TODO: check why we need this
-        QBusM qin = qbus_message_mv (msg);
-
-        qin->err = cape_err_new ();
-        cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
+        QBusMethodItem mitem = qbus_method_item_new (self, qbus_request__on_modules_get, saves_key, NULL, NULL, qin->rinfo);
         
-        qbus_methods__rpc_queue (self->methods, mitem, &qin, qin->chain_key);
+        qbus_methods__rpc_queue (self->methods, mitem, &qin, saves_key);
         
         qbus_method_item_del (&mitem);
       }

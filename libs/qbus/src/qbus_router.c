@@ -220,7 +220,7 @@ CapeUdc qbus_router_list (QBusRouter self)
     
     cape_udc_add_s_cp (list_node, "name", cape_map_node_key (cursor->node));
     
-    qbus_router_list__add_cids (cape_udc_add_list (ret, "cids"), cape_map_node_value (cursor->node));
+    qbus_router_list__add_cids (cape_udc_add_list (list_node, "cids"), cape_map_node_value (cursor->node));
     
     cape_udc_add (ret, &list_node);
   }
