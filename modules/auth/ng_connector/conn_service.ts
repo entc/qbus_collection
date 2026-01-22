@@ -293,11 +293,11 @@ import * as CryptoJS from 'crypto-js';
 
   //---------------------------------------------------------------------------
 
-  public session__json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<T>
+  public session__json_rpc<T> (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_cdata: object, qbus_clist: object): Observable<T>
   {
     return new Observable<T>((subscriber) => {
 
-      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_cdata);
       let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
 
         switch (event.type)

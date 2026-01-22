@@ -403,9 +403,9 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_params: object): Observable<T>
+  public json_rpc<T> (qbus_module: string, qbus_method: string, qbus_cdata: object, qbus_clist: object = []): Observable<T>
   {
-    return this.conn.session__json_rpc<T> (qbus_module, qbus_method, qbus_params, this.session_get_token (), this.session_token).pipe(map((res: T) => {
+    return this.conn.session__json_rpc<T> (this.session_get_token (), this.session_token, qbus_module, qbus_method, qbus_cdata, qbus_clist).pipe(map((res: T) => {
 
       this.timer_update ();
       return res;

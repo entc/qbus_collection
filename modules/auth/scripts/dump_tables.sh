@@ -9,6 +9,8 @@ auth_sessions \
 auth_sessions_wp_view \
 auth_users_secret_view \
 auth_roles_gpid_view \
+auth_roles_wp_view \
+auth_roles_ui_view \
 auth_tokens_jobs \
 auth_perm \
 auth_logins \
