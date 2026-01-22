@@ -98,7 +98,7 @@ export class FlowEditorComponent implements OnInit {
 
   public edit_details (wf: IWorkflow)
   {
-    this.router.navigate(['../flow_editor', wf.id], {relativeTo: this.route});
+    this.router.navigate(['../flow-editor', wf.id], {relativeTo: this.route});
   }
 
   //-----------------------------------------------------------------------------
