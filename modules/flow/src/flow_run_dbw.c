@@ -10,6 +10,7 @@
 
 // qtee includes
 #include <qtee_eval.h>
+#include <qtee_template.h>
 
 //-----------------------------------------------------------------------------
 
@@ -2005,6 +2006,45 @@ CapeUdc flow_run_dbw_rinfo_get (FlowRunDbw self)
 
 //-----------------------------------------------------------------------------
 
+void flow_run_dbw__apply_tdata (CapeUdc cdata, CapeUdc tdata)
+{
+  switch (cape_udc_type (cdata))
+  {
+    case CAPE_UDC_NODE:
+    {
+      CapeUdcCursor* cursor =cape_udc_cursor_new (cdata, CAPE_DIRECTION_FORW);
+      
+      while (cape_udc_cursor_next (cursor))
+      {
+        flow_run_dbw__apply_tdata (cursor->item, tdata);        
+      }
+      
+      cape_udc_cursor_del (&cursor);
+     
+      break;
+    }
+    case CAPE_UDC_STRING:
+    {
+      CapeErr err = cape_err_new ();
+      
+      CapeString h = cape_template_run (cape_udc_s (cdata, ""), tdata, NULL, NULL, err);
+      if  (h)
+      {
+        cape_udc_set_s_mv (cdata, &h);
+      }
+      else
+      {
+        
+      }
+      
+      cape_err_del (&err);
+      break;
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString* p_method, CapeUdc* p_cdata, CapeUdc* p_clist, CapeErr err)
 {
   int res;
@@ -2022,6 +2062,14 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
 
   if (self->pdata)
   {
+    {
+      CapeString h = cape_json_to_s (self->pdata);
+      
+      printf ("PDATA: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+    
     module = cape_udc_ext_s (self->pdata, "module");
     method = cape_udc_ext_s (self->pdata, "method");
 
@@ -2072,6 +2120,19 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
   // check for the list in t_data
   if (self->tdata)
   {
+    {
+      CapeString h = cape_json_to_s (self->tdata);
+      
+      printf ("TDATA: %s\n", h);
+      
+      cape_str_del (&h);
+    }
+    
+    if (cdata)
+    {
+      flow_run_dbw__apply_tdata (cdata, self->tdata);
+    }
+    
     // optional
     if (precondition_node_name)
     {

@@ -2298,6 +2298,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString user = NULL;
   CapeString pass = NULL;
   CapeString domain = NULL;
+  int use_domain = FALSE;
   CapeString user_encoded = NULL;
   CapeString pass_encoded = NULL;
   CapeString vsec_encoded = NULL;
@@ -2340,6 +2341,9 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASSWORD");
     goto exit_and_cleanup;
   }
+  
+  // optional
+  use_domain = cape_udc_get_b (qin->cdata, "use_domain", TRUE);
 
   gpdata = cape_udc_ext (qin->cdata, "gpdata");
   if (NULL == gpdata)
@@ -2361,7 +2365,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_ui__intern__encode (domain, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
+  res = auth_ui__intern__encode (use_domain ? domain : NULL, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
   if (res)
   {
     goto exit_and_cleanup;

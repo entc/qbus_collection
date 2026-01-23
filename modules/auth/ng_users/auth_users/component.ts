@@ -282,6 +282,7 @@ export class AuthUserItem
 
   public name: string;
   public pass: string;
+  public use_domain: boolean = true;
 
   public title: string;
   public firstname: string;
@@ -297,7 +298,7 @@ export class AuthUserItem
 
   public apply ()
   {
-    this.auth_session.json_rpc ('AUTH', 'ui_add', {wpid: this.ctx.wpid, username: this.name, password: this.pass, gpdata: {title: this.title, firstname: this.firstname, lastname: this.lastname}}).subscribe (() => {
+    this.auth_session.json_rpc ('AUTH', 'ui_add', {wpid: this.ctx.wpid, username: this.name, password: this.pass, use_domain: this.use_domain, gpdata: {title: this.title, firstname: this.firstname, lastname: this.lastname}}).subscribe (() => {
 
       this.modal.close();
 

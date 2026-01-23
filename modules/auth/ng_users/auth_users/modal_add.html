@@ -5,13 +5,33 @@
 </div>
 <div class="modal-body">
 
-  <div class="input-group mt-2">
-    <div class="input-group-prepend">
-      <span class="input-group-text width_10em">{{ 'AUTH.USERNAME' | transloco }}</span>
+  <div class="row">
+    <div class="col-lg-8 col-12">
+
+      <div class="input-group mt-2">
+        <div class="input-group-prepend">
+          <span class="input-group-text width_10em">{{ 'AUTH.USERNAME' | transloco }}</span>
+        </div>
+        <input type="text" class="form-control" [(ngModel)]="name">
+        <div class="input-group-append" *ngIf="true == use_domain">
+          <span class="input-group-text">&commat;{{ ctx.info.domain }}</span>
+        </div>
+      </div>
+
     </div>
-    <input type="text" class="form-control" [(ngModel)]="name">
-    <div class="input-group-append">
-      <span class="input-group-text">&commat;{{ ctx.info.domain }}</span>
+    <div class="col-lg-4 col-12">
+
+      <div class="input-group mt-2">
+        <div class="input-group-prepend">
+          <div class="input-group-text">
+            <input [(ngModel)]="use_domain" type="checkbox" aria-label="use domain">
+          </div>
+        </div>
+        <div class="input-group-prepend">
+          <span class="input-group-text w-100">{{ 'AUTH.USE_DOMAIN' | transloco }}</span>
+        </div>
+      </div>
+
     </div>
   </div>
 

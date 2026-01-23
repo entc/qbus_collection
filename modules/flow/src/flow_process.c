@@ -90,11 +90,8 @@ int flow_process__intern__qin_check (FlowProcess self, QBusM qin, CapeErr err)
     return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
   }
 
+  // optional
   self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
-  if (self->gpid == 0)
-  {
-    return cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
-  }
 
   if (qin->cdata == NULL)
   {
@@ -111,7 +108,13 @@ int flow_process_add__instance (FlowProcess self, AdblTrx trx, CapeString* p_cb_
   CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
 
   cape_udc_add_n      (values, "wpid"         , self->wpid);
-  cape_udc_add_n      (values, "gpid"         , self->gpid);
+  
+  if (self->gpid)
+  {
+    // OPTIONAL
+    cape_udc_add_n      (values, "gpid"         , self->gpid);
+  }
+
   cape_udc_add_n      (values, "wfid"         , self->wfid);
   cape_udc_add_s_cp   (values, "modp"         , self->modp);
   cape_udc_add_n      (values, "refid"        , self->refid);
