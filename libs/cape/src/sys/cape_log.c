@@ -6,14 +6,14 @@
 #include "sys/cape_time.h"
 #include "stc/cape_str.h"
 #include "sys/cape_socket.h"
+#include "sys/cape_net.h"
 
 const void* CAPE_LOG_OUT_FD = NULL;
 static CapeLogLevel g_log_level = CAPE_LL_TRACE;
-void* g_log_udp_handle = NULL;
 
 // for udp sending
-CapeString g_udp_host = NULL;
-number_t g_udp_port = 0;
+void* g_log_udp_handle = NULL;
+CapeSockaddr g_sockaddr = NULL;
 
 //-----------------------------------------------------------------------------
 
@@ -58,19 +58,26 @@ void cape_log_enable_syslog (const CapeString host, number_t port)
   // local objects
   CapeErr err = cape_err_new ();
   
-  g_log_udp_handle = cape_sock__udp__clt_new (err);
-
-  g_udp_host = cape_str_cp (host);
-  g_udp_port = port;
-  
-  if (g_log_udp_handle == NULL)
-  {    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "log", "can't create UDP client: %s", cape_err_text (err));
-  }
-  else
+  // this will resolve the incoming host & port
+  g_sockaddr = cape_net__resolve_os (host, port, FALSE, err);
+  if (NULL == g_sockaddr)
   {
-    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "log", "log into syslog: %s:%lu", host, port);
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "log", "can't create UDP client: %s", cape_err_text (err));
+    goto claenup_and_exit;
   }
+  
+  // this will create a new socket
+  g_log_udp_handle = cape_sock__udp__clt_new (err);
+  if (NULL == g_sockaddr)
+  {
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "log", "can't create UDP client: %s", cape_err_text (err));
+    goto claenup_and_exit;
+
+  }
+
+  cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "log", "log into syslog: %s:%lu", host, port);
+  
+claenup_and_exit:
   
   cape_err_del (&err);
 }
@@ -79,14 +86,12 @@ void cape_log_enable_syslog (const CapeString host, number_t port)
 
 void cape_log_disable_syslog (void)
 {
+  cape_net__resolve_del (&g_sockaddr);
+  
   if (g_log_udp_handle)
   {
     cape_sock__close (g_log_udp_handle);
     g_log_udp_handle = NULL;
-    
-    cape_str_del (&g_udp_host);
-    g_udp_port = 0;
-    
   }
 }
 
@@ -187,7 +192,7 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
     
     cape_stream_append_buf (s, buffer, len);
         
-    cape_sock__udp__send_to (g_log_udp_handle, s, g_udp_host, g_udp_port, err);
+    cape_sock__udp__send_to_nr (g_log_udp_handle, s, g_sockaddr, err);
     
     cape_stream_del (&s);
     cape_err_del (&err);

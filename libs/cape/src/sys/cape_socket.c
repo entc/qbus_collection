@@ -256,7 +256,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 {
   void* ret = NULL;
 
-  long sock = CAPE_SOCKET_INVALID;
+  int sock = CAPE_SOCKET_INVALID;
   struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
 
   // create socket
@@ -313,7 +313,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
     flags |= O_NONBLOCK;
 
     // set flags
-    if (fcntl (sock, F_SETFL, flags) != 0)
+    if (fcntl ((int)sock, F_SETFL, flags) != 0)
     {
       // save the last system error into the error object
       cape_err_lastOSError (err);
@@ -324,7 +324,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 
   cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%i", host, port);
 
-  ret = (void*)sock;
+  ret = (void*)(number_t)sock;
   sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
@@ -333,7 +333,7 @@ cleanup_and_exit:
 
   if (sock >= 0)
   {
-    close(sock);
+    close((int)sock);
   }
 
   return ret;
@@ -352,18 +352,32 @@ int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, lon
     
     memset (&send_addr, 0, sizeof(struct sockaddr_in));
     
-    
     send_addr.sin_family = AF_INET;      // set the network type
     send_addr.sin_port = htons (port);    // set the port
     send_addr.sin_addr.s_addr = inet_addr(host);
     
-    ssize_t bytes_send = sendto ((number_t)handle, cape_stream_data (buf) + bufpos, cape_stream_size (buf) - bufpos, MSG_DONTWAIT, (const struct sockaddr*)&send_addr, sizeof(struct sockaddr_in));    
-    if (bytes_send == -1)
-    {
-      res = cape_err_lastOSError (err);
-    }
+    res = cape_sock__udp__send_to_nr (handle, buf, &send_addr, err);
   }
       
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, CapeSockaddr addr, CapeErr err)
+{
+  int res = CAPE_ERR_NONE;
+  number_t bufpos = 0;
+
+  // file descriptor
+  int fd = (int)(number_t)handle;
+  
+  ssize_t bytes_send = sendto (fd, cape_stream_data (buf) + bufpos, cape_stream_size (buf) - bufpos, MSG_DONTWAIT, (const struct sockaddr*)addr, sizeof(struct sockaddr_in));
+  if (bytes_send == -1)
+  {
+    res = cape_err_lastOSError (err);
+  }
+
   return res;
 }
 

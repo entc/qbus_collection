@@ -48,14 +48,14 @@ void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
 
 //-----------------------------------------------------------------------------
 
-struct sockaddr_in* cape_net__resolve_os (const CapeString host, u_short port, int ipv6, CapeErr err)
+CapeSockaddr cape_net__resolve_os (const CapeString host, u_short port, int ipv6, CapeErr err)
 {
-  struct sockaddr_in* ret = NULL;
+  CapeSockaddr ret = NULL;
   struct addrinfo* addr_result;
 
   if (NULL == host)
   {
-    ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
+    ret = CAPE_NEW(struct sockaddr_in);
 
     ret->sin_family = AF_INET;      // set the network type
     ret->sin_port = htons(port);    // set the port
@@ -120,6 +120,16 @@ exit_and_cleanup:
 
   freeaddrinfo (addr_result);
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_net__resolve_del (CapeSockaddr* p_self)
+{
+  if (*p_self)
+  {
+    CAPE_DEL (p_self, struct sockaddr_in);
+  }
 }
 
 //-----------------------------------------------------------------------------
