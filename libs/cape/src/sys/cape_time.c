@@ -826,6 +826,17 @@ int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_datetime_delta__s (const CapeDatetime* s1, const CapeDatetime* s2)
+{
+  time_t t1 = cape_datetime_n__unix (s1);
+  time_t t2 = cape_datetime_n__unix (s2);
+  
+  // we assume that the t2 is the bigger value
+  return t2 - t1;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_cross__set (CapeDatetime* self)
 {
   self->month = 0;
@@ -1148,6 +1159,7 @@ int cape_datetime__date_sce (CapeDatetime* dt, const CapeString datetime_in_text
 int cape_datetime__std (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   dt->msec = 0;
+  dt->usec = 0;
   return cape_sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
 }
 

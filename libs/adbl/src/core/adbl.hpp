@@ -128,6 +128,30 @@ namespace adbl {
       cape::Udc query_results (&h);
       return query_results;
     }
+    
+    //-----------------------------------------------------------------------------
+    
+    cape::Udc query (const char* table, cape::Udc& values, number_t limit, number_t offset, const CapeString group_by, const CapeString order_by)
+    {
+      cape::ErrHolder errh;
+      
+      if (NULL == m_session)
+      {
+        throw std::runtime_error ("ADBL-session was not initialized");
+      }
+      
+      // transfer ownership
+      CapeUdc c_values = values.release ();
+
+      CapeUdc h = adbl_session_query_ex (m_session, table, NULL, &c_values, limit, offset, group_by, order_by, errh.err);
+      if (h == NULL)
+      {
+        throw std::runtime_error (errh.text());
+      }
+      
+      cape::Udc query_results (&h);
+      return query_results;
+    }
 
     //-----------------------------------------------------------------------------
 

@@ -127,6 +127,9 @@ __CAPE_LIBEX   void            cape_datetime__sub_n       (const CapeDatetime*, 
                                // compares two datetimes
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
 
+                               // calculate the difference between two datetimes (1. earlier, 2. later) in seconds
+__CAPE_LIBEX   number_t        cape_datetime_delta__s     (const CapeDatetime*, const CapeDatetime*);
+
 //-----------------------------------------------------------------------------
 
                                /* convert into localtime -> use the format for transformation */
