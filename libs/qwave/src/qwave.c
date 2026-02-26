@@ -104,7 +104,7 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
     
     memset (&addr, 0x00, sizeof(addr));
     
-    number_t sock = accept ((number_t)handle, &addr, &addrlen);
+    number_t sock = accept ((int)(number_t)handle, &addr, &addrlen);
     if (sock < 0)
     {
         if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))

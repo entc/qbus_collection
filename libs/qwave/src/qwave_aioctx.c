@@ -258,6 +258,7 @@ cleanup_and_exit:
 
 #include <sys/event.h>
 #include <unistd.h>
+#include <errno.h>
 
 //-----------------------------------------------------------------------------
 
@@ -376,7 +377,7 @@ int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwa
   // local objects
   QWaveAioctxEvent event = qwave_aioctx_event_new (handle, user_ptr, fct);
 
-  EV_SET(&change_event, (number_t)handle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, event);
+  EV_SET (&change_event, (number_t)handle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, event);
   
   if (-1 == kevent (self->kevent_fd, &change_event, 1, NULL, 0, NULL))
   {
@@ -399,7 +400,142 @@ cleanup_and_exit:
 
 int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
 {
+  int res;
+  struct timespec tmout;
   
+  struct kevent event;
+  memset (&event, 0x0, sizeof(struct kevent));
+  
+  if (timeout_in_ms == -1)
+  {
+    res = kevent (self->kevent_fd, NULL, 0, &event, 1, NULL);
+  }
+  else
+  {
+    // calculate the correct tmout values
+    tmout.tv_sec = timeout_in_ms / 1000;
+    tmout.tv_nsec = (timeout_in_ms % 1000) * 1000;
+    
+    res = kevent (self->kevent_fd, NULL, 0, &event, 1, &tmout);
+  }
+  
+  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "event %i", res);
+  
+  if( res == -1 )
+  {
+    if (errno == EINTR)
+    {
+      return CAPE_ERR_NONE;
+    }
+    
+    res = cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+    
+    return res;
+  }
+  else if (event.flags & EV_ERROR)
+  {
+    res = cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+    
+    return res;
+  }
+  else if (res == 0)
+  {
+    return CAPE_ERR_NONE;  // timeout
+  }
+  else
+  {
+    // retrieve the handle object from the userdata of the epoll event
+    QWaveAioctxEvent event = (QWaveAioctxEvent)event.udata;
+    if (event)
+    {
+      number_t hflags_result;
+      
+      if (hobj->on_event)
+      {
+        hflags_result = hobj->on_event (hobj->ptr, hobj->hflags, event.flags, 0);
+      }
+      else
+      {
+        hflags_result = 0;
+      }
+
+      if (hflags_result & CAPE_AIO_DONE)
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "remove handle %p", hobj->ptr);
+
+        // remove the event from the kqueue
+        cape_aio_delete_event (self, hobj, (void*)event.ident);
+
+        // remove the handle from events
+        cape_aio_remove_handle (self, hobj);
+
+        if (hflags_result & CAPE_AIO_ABORT)
+        {
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "abort");
+          return CAPE_ERR_CONTINUE;
+        }
+      }
+      else
+      {
+        if (hflags_result & CAPE_AIO_ABORT)
+        {
+          cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "abort");
+          return CAPE_ERR_CONTINUE;
+        }
+
+        if (hflags_result & CAPE_AIO__INTERNAL_NO_CHANGE)
+        {
+          // there is no change on the hflags
+        }
+        else
+        {
+          hobj->hflags = hflags_result;
+        }
+        
+        cape_aio_update_event (self, hobj, (void*)event.ident, hobj->option);
+      }
+    }
+    else
+    {
+      const char* signalKind = NULL;
+      
+      // assign all known signals
+      switch (event.ident)
+      {
+        case 1: signalKind = "SIGHUP (Hangup detected on controlling terminal or death of controlling process)"; break;
+        case 2: signalKind = "SIGINT (Interrupt from keyboard)"; break;
+        case 3: signalKind = "SIGQUIT (Quit from keyboard)"; break;
+        case 4: signalKind = "SIGILL (Illegal Instruction)"; break;
+        case 6: signalKind = "SIGABRT (Abort signal from abort(3))"; break;
+        case 8: signalKind = "SIGFPE (Floating-point exception)"; break;
+        case 9: signalKind = "SIGKILL (Kill signal)"; break;
+        case 11: signalKind = "SIGSEGV (Invalid memory reference)"; break;
+        case 13: signalKind = "SIGPIPE (Broken pipe: write to pipe with no readers; see pipe(7))"; break;
+        case 15: signalKind = "SIGTERM (Termination signal)"; break;
+      }
+      
+      if (signalKind)
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio next", "signal seen [%i] -> %s", event.ident, signalKind);
+        
+        if (event.ident == SIGINT || event.ident == SIGTERM)
+        {
+          return CAPE_ERR_CONTINUE;
+        }
+      }
+      else
+      {
+        //eclog_fmt (LL_TRACE, "ENTC", "signal", "signal seen [%i] -> unknown signal", event.ident);
+      }
+    }
+    
+    return CAPE_ERR_NONE;
+  }
+
   
 }
 

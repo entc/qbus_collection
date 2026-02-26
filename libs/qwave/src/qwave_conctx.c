@@ -331,12 +331,14 @@ void qwave_conctx_read (QWaveConctx self, void* handle)
 
     while (TRUE)
     {
+        int fd = (int)(number_t)handle;
+      
         // reserve 1024 bytes
         cape_stream_cap (self->buffer, 1024);
         
         // try to read bytes from FD
-        bytes_read = read((number_t)handle, cape_stream_pos (self->buffer), 1024);
-        if(bytes_read == -1)
+        bytes_read = read (fd, cape_stream_pos (self->buffer), 1024);
+        if (bytes_read == -1)
         {
             if (errno != EAGAIN)
             {
