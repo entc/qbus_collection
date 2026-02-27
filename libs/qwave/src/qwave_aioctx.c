@@ -198,6 +198,35 @@ int qwave_aioctx__handle_event (QWaveAioctx self, struct epoll_event* event, Cap
 
 //-----------------------------------------------------------------------------
 
+int qwave_aioctx__sigmask (QWaveAioctx self, sigset_t* sigset, CapeErr err)
+{
+    int ret_code, i;
+    
+    // null the sigset
+    ret_code = sigemptyset (sigset);
+    if (-1 == ret_code)
+    {
+        return cape_err_lastOSError (err);
+    }
+    
+    for (i = 0; i < 32; i++)
+    {
+        if (self->smap[i])
+        {
+            // add this signal to the sigset
+            ret_code = sigaddset (sigset, i);
+            if (-1 == ret_code)
+            {
+                return cape_err_lastOSError (err);
+            }
+        }
+    }
+    
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
 {
     int res;
@@ -206,9 +235,12 @@ int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
     struct epoll_event* events = NULL;
     sigset_t sigset;
     
-    //  res = qwave__events__sigmask (self, &sigset);
-    // we must block the signals in order for signalfd to receive them
-    //res = sigprocmask (SIG_BLOCK, &sigset, NULL);
+    res = qwave_aioctx__sigmask (self, &sigset, err);
+    if (res)
+    {
+      
+      goto cleanup_and_exit;
+    }
     
     // we should also block sigpipe
     sigaddset (&sigset, SIGPIPE);
@@ -250,6 +282,16 @@ cleanup_and_exit:
     
     free (events);
     return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qwave_aioctx_kill (QWaveAioctx self, CapeErr err)
+{
+    // trigger a kill event
+    kill (getpid(), SIGTERM);
+  
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

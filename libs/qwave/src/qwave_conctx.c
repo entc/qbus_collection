@@ -4,6 +4,7 @@
 
 // cape includes
 #include <sys/cape_log.h>
+#include <sys/cape_socket.h>
 #include <stc/cape_stream.h>
 #include <stc/cape_map.h>
 #include <fmt/cape_tokenizer.h>
@@ -310,77 +311,70 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
-#ifdef __WINDOWS_OS
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_read (QWaveConctx self, void* handle)
+int qwave_conctx_read_next (QWaveConctx self, void* handle, CapeErr err)
 {
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "new request on fd [%lu]", handle);
-    
-    number_t bytes_read;
-
-    while (TRUE)
-    {
-        int fd = (int)(number_t)handle;
-      
-        // reserve 1024 bytes
-        cape_stream_cap (self->buffer, 1024);
+    int ret = TRUE;
         
-        // try to read bytes from FD
-        bytes_read = read (fd, cape_stream_pos (self->buffer), 1024);
-        if (bytes_read == -1)
+    switch (cape_sock__read (handle, self->buffer, 1024, err))
+    {
+        case CAPE_ERR_NONE:
         {
-            if (errno != EAGAIN)
+            //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+            http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+            
+            if (self->parser.http_errno > 0)
             {
+                CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
                 
+                cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "read", "parser returned an error [%i]: %s", self->parser.http_errno, h);
+                
+                cape_str_del (&h);
+
+                ret = FALSE;
+            }
+            
+            if (http_body_is_final (&(self->parser)))
+            {
                 
             }
             
-            return;
-        }
-        else if (bytes_read == 0)
-        {
-            
             break;
         }
-        
-        cape_stream_set (self->buffer, bytes_read);
-        
-        //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-        http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
-
-        if (self->parser.http_errno > 0)
+        case CAPE_ERR_EOF:
         {
-            CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
-            
-            cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "read", "parser returned an error [%i]: %s", self->parser.http_errno, h);
-            
-            cape_str_del (&h);
-            
-            // close it
-            return;
+            ret = FALSE;
+            break;
+        }            
+        case CAPE_ERR_CONTINUE:
+        {            
+            ret =TRUE;
+            break;
         }
-        
-        if (http_body_is_final (&(self->parser)))
+        default:
         {
-            return;
+            ret = FALSE;
+            break;
         }
     }
-        
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-#endif
+void qwave_conctx_read (QWaveConctx self, void* handle)
+{    
+    // local objects
+    CapeErr err = cape_err_new ();
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "new request on fd [%lu]", handle);
+    
+    while (qwave_conctx_read_next (self, handle, err))
+    {
+        
+    }
+    
+    cape_err_del (&err);
+}
 
 //-----------------------------------------------------------------------------

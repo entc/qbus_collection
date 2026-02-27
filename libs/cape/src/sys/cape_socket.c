@@ -474,6 +474,43 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int cape_sock__read (void* handle, CapeStream bufdat, number_t buflen, CapeErr err)
+{
+  int res;
+  number_t bytes_read;
+  
+  // reserve 1024 bytes
+  cape_stream_cap (bufdat, buflen);
+    
+  // try to read bytes from FD
+  bytes_read = read ((int)(number_t)handle, cape_stream_pos (bufdat), buflen);
+  if (bytes_read == -1)
+  {
+    if (errno != EAGAIN)
+    {
+      res = cape_err_lastOSError (err);        
+    }
+    else
+    {
+      res = CAPE_ERR_CONTINUE;      
+    }
+  }
+  else if (bytes_read == 0)
+  {
+    res = CAPE_ERR_EOF;
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+    
+  cape_stream_set (bufdat, bytes_read);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_sock__close (void* handle)
 {
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)handle);

@@ -38,6 +38,9 @@ __CAPE_LIBEX     int                qwave_aioctx_next   (QWaveAioctx, number_t t
                                     /* waits until terminatation */
 __CAPE_LIBEX     int                qwave_aioctx_wait   (QWaveAioctx, CapeErr err);
 
+                                    /* terminate waiting */
+__CAPE_LIBEX     int                qwave_aioctx_kill   (QWaveAioctx, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 #endif

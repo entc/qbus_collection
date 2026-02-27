@@ -10,7 +10,7 @@
 #include "qwave_conctx.h"
 //-----------------------------------------------------------------------------
 
-struct QWave_s; typedef struct QWave_s* QWave; // use a simple version
+struct QWave_s; typedef struct QWave_s* QWave;
 
                                     /* constructor: create a new instance of the qwave class */
 __CAPE_LIBEX     QWave              qwave_new           (const CapeString host, number_t port, CapeUdc parameters);
@@ -24,8 +24,8 @@ __CAPE_LIBEX     int                qwave_run           (QWave, CapeErr err);
                                     /* runs the webserver in an extra thread */
 __CAPE_LIBEX     int                qwave_run__d        (QWave, CapeErr err);
 
-                                    /* waits until the extra thread terminates */
-__CAPE_LIBEX     int                qwave_wait          (QWave, CapeErr err);
+                                    /* terminate the extra thread */
+__CAPE_LIBEX     int                qwave_stop          (QWave, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
