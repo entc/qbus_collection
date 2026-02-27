@@ -29,6 +29,9 @@ __CAPE_LIBEX   void*         cape_sock__icmp__new         (CapeErr err);
 
 //-----------------------------------------------------------------------------
 
+                             /* accepts connections and returns new handle */
+__CAPE_LIBEX   void*         cape_sock__accept            (void*, CapeString* p_remote_addr, CapeErr err);
+
 __CAPE_LIBEX   void          cape_sock__close             (void*);
 
 //-----------------------------------------------------------------------------

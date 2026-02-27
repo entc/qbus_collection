@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <errno.h>
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -419,11 +420,65 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void cape_sock__close (void* sock)
+void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)sock);
+  struct sockaddr addr;
+  socklen_t addrlen = 0;
   
-  close ((number_t)sock);
+  const char* remote_addr = NULL;
+  
+  memset (&addr, 0x00, sizeof(addr));
+  
+  number_t sock = accept ((int)(number_t)handle, &addr, &addrlen);
+  if (sock < 0)
+  {
+    if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+    {
+      cape_err_lastOSError (err);
+      
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "accept", "error in accept: %s", cape_err_text (err));
+    }
+    else
+    {
+      cape_err_set (err, CAPE_ERR_CONTINUE, NULL);
+    }
+
+    return NULL;
+  }
+  
+  remote_addr = inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr);
+  
+  // set the socket to none blocking
+  {
+    int flags = fcntl(sock, F_GETFL, 0);
+    if (flags == -1)
+    {
+      
+    }
+    
+    flags |= O_NONBLOCK;
+    
+    if (fcntl(sock, F_SETFL, flags) != 0)
+    {
+      
+    }
+  }
+  
+  if (p_remote_addr)
+  {
+    cape_str_replace_cp (p_remote_addr, remote_addr);
+  }
+  
+  return (void*)sock;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__close (void* handle)
+{
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)handle);
+  
+  close ((number_t)handle);
 }
 
 //-----------------------------------------------------------------------------
