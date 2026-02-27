@@ -311,70 +311,74 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
-int qwave_conctx_read_next (QWaveConctx self, void* handle, CapeErr err)
-{
-    int ret = TRUE;
-        
-    switch (cape_sock__read (handle, self->buffer, 1024, err))
-    {
-        case CAPE_ERR_NONE:
-        {
-            //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
-            http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
-            
-            if (self->parser.http_errno > 0)
-            {
-                CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
-                
-                cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "read", "parser returned an error [%i]: %s", self->parser.http_errno, h);
-                
-                cape_str_del (&h);
-
-                ret = FALSE;
-            }
-            
-            if (http_body_is_final (&(self->parser)))
-            {
-                
-            }
-            
-            break;
-        }
-        case CAPE_ERR_EOF:
-        {
-            ret = FALSE;
-            break;
-        }            
-        case CAPE_ERR_CONTINUE:
-        {            
-            ret =TRUE;
-            break;
-        }
-        default:
-        {
-            ret = FALSE;
-            break;
-        }
-    }
-    
-    return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_read (QWaveConctx self, void* handle)
+int qwave_conctx_read (QWaveConctx self, void* handle)
 {    
+    int ret = TRUE;
+    int con = TRUE;
+    
     // local objects
     CapeErr err = cape_err_new ();
     
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "new request on fd [%lu]", handle);
     
-    while (qwave_conctx_read_next (self, handle, err))
+    while (con)
     {
-        
+        switch (cape_sock__read (handle, self->buffer, 1024, err))
+        {
+            case CAPE_ERR_NONE:
+            {
+                printf ("RECV: %s\n", cape_stream_get (self->buffer));
+                
+                //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+                http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+                
+                if (self->parser.http_errno > 0)
+                {
+                    CapeString h = cape_str_catenate_3 (http_errno_name (self->parser.http_errno), " : ", http_errno_description ((enum http_errno)self->parser.http_errno));
+                    
+                    cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "read", "parser returned an error [%i]: %s", self->parser.http_errno, h);
+                    
+                    cape_str_del (&h);
+                    
+                    con = FALSE;
+                    ret = FALSE;
+                }
+                
+                if (http_body_is_final (&(self->parser)))
+                {
+                    cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
+                    
+                }
+                
+                break;
+            }
+            case CAPE_ERR_EOF:
+            {
+                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected");
+                
+                ret = FALSE;
+                con = FALSE;
+                break;
+            }            
+            case CAPE_ERR_CONTINUE:
+            {            
+                con = FALSE;
+                break;
+            }
+            default:
+            {
+                ret = FALSE;
+                con = FALSE;
+                break;
+            }
+        }
     }
     
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "all data has been read on fd [%lu]", handle);
+    
     cape_err_del (&err);
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------

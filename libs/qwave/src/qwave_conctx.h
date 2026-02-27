@@ -21,7 +21,7 @@ __CAPE_LIBEX     void               qwave_conctx_del    (QWaveConctx*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     void               qwave_conctx_read   (QWaveConctx, void* handle);
+__CAPE_LIBEX     int                qwave_conctx_read   (QWaveConctx, void* handle);
 
 //-----------------------------------------------------------------------------
 

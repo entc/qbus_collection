@@ -483,10 +483,13 @@ int cape_sock__read (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
   cape_stream_cap (bufdat, buflen);
     
   // try to read bytes from FD
-  bytes_read = read ((int)(number_t)handle, cape_stream_pos (bufdat), buflen);
+  bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, MSG_DONTWAIT);
+  
+  printf ("bytes read: %lu\n", bytes_read);
+  
   if (bytes_read == -1)
   {
-    if (errno != EAGAIN)
+    if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
     {
       res = cape_err_lastOSError (err);        
     }

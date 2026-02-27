@@ -66,9 +66,23 @@ void qwave_del (QWave* p_self)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qwave_server__on_request (void* user_ptr, void* handle)
+int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_connection)
 {
-    qwave_conctx_read (user_ptr, handle);
+    QWaveConctx ctx = user_ptr;
+    
+    if (qwave_conctx_read (ctx, handle_remote_connection))
+    {
+        
+    }
+    else
+    {
+        // terminate connection
+        cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "drop connection on fd [%lu]", handle_remote_connection);
+        
+        qwave_conctx_del (&ctx);
+        
+        cape_sock__close (handle_remote_connection);
+    }
     
     return QWAVE_EVENT_RESULT__CONTINUE;
 }
