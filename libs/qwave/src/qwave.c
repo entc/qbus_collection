@@ -4,6 +4,7 @@
 #include <sys/cape_socket.h>
 #include <sys/cape_log.h>
 #include <sys/cape_thread.h>
+#include <sys/cape_queue.h>
 
 // project includes
 #include "qwave_aioctx.h"
@@ -20,6 +21,7 @@ struct QWave_s
     QWaveConfig config;
     
     CapeThread thread;
+    CapeQueue queue;
 };
 
 //-----------------------------------------------------------------------------
@@ -34,7 +36,8 @@ QWave qwave_new (const CapeString host, number_t port, CapeUdc parameters)
     self->aioctx = qwave_aioctx_new ();
     self->config = qwave_config_new ();
     
-    self->thread = NULL;
+    self->thread = NULL;    
+    self->queue = cape_queue_new (10000);  // 10 seconds timeout
     
     return self;
 }
@@ -46,6 +49,8 @@ void qwave_del (QWave* p_self)
     if (*p_self)
     {
         QWave self = *p_self;
+        
+        cape_queue_del (&(self->queue));
         
         if (self->thread)
         {
@@ -72,14 +77,13 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
     
     if (qwave_conctx_read (ctx, handle_remote_connection))
     {
-        
     }
     else
     {
         // terminate connection
         cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "drop connection on fd [%lu]", handle_remote_connection);
         
-        qwave_conctx_del (&ctx);
+        qwave_conctx_dec (&ctx);
         
         cape_sock__close (handle_remote_connection);
     }
@@ -91,7 +95,7 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
 
 void qwave_factory_conctx (QWave self, void* handle_remote_connection, const CapeString remote_address)
 {
-    QWaveConctx conctx = qwave_conctx_new (self->config, remote_address);
+    QWaveConctx conctx = qwave_conctx_new (self->config, self->queue, remote_address);
     
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "new connection from '%s' on fd [%lu]", remote_address, handle_remote_connection);
     
@@ -167,6 +171,8 @@ int qwave_init (QWave self, CapeErr err)
     {
         goto cleanup_and_exit;
     }
+    
+    res = cape_queue_start (self->queue, 4, err);
     
 cleanup_and_exit:
     

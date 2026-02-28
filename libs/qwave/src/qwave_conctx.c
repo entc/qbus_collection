@@ -14,6 +14,9 @@
 struct QWaveConctx_s
 {
     QWaveConfig config;                       // reference
+    CapeQueue queue;                          // reference
+    
+    number_t reference_counter;
     
     CapeString remote_address;
     CapeStream buffer;
@@ -251,11 +254,14 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, const CapeString remote_address)
+QWaveConctx qwave_conctx_new (QWaveConfig config, CapeQueue queue, const CapeString remote_address)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
     self->config = config;
+    self->queue = queue;
+    
+    self->reference_counter = 1;  // always start with 1
     
     self->remote_address = cape_str_cp (remote_address);
     self->buffer = cape_stream_new ();
@@ -311,6 +317,44 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
+QWaveConctx qwave_conctx_inc (QWaveConctx self)
+{
+    self->reference_counter++;
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_dec (QWaveConctx* p_self)
+{
+    if (*p_self)
+    {
+        QWaveConctx self = *p_self;
+
+        self->reference_counter--;
+        
+        if (self->reference_counter == 0)
+        {
+            qwave_conctx_del (p_self);
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_size)
+{
+    QWaveConctx self = ptr;
+
+
+
+    
+    qwave_conctx_dec (&self);
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_conctx_read (QWaveConctx self, void* handle)
 {    
     int ret = TRUE;
@@ -327,8 +371,6 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
         {
             case CAPE_ERR_NONE:
             {
-                printf ("RECV: %s\n", cape_stream_get (self->buffer));
-                
                 //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
                 http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
                 
@@ -347,8 +389,12 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
                 if (http_body_is_final (&(self->parser)))
                 {
                     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
-                    
+
+                    con = FALSE;
+                    ret = TRUE;                    
                 }
+
+                cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, qwave_conctx_inc (self), 0);
                 
                 break;
             }
