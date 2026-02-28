@@ -249,6 +249,7 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
     QWaveConctx self = parser->data;
     
     
+  
     return 0;
 }
 
@@ -371,7 +372,7 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
         {
             case CAPE_ERR_NONE:
             {
-                //int bytes_processed = http_parser_execute (&(self->parser), &(self->settings), bufdat, buflen);
+                // TODO: check how many bytes were parsed
                 http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
                 
                 if (self->parser.http_errno > 0)
@@ -386,6 +387,15 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
                     ret = FALSE;
                 }
                 
+                if (self->parser.upgrade == 1)
+                {
+                  
+                  
+                  
+                }
+              
+                printf ("bytes parsed: %i\n", self->parser.nread);
+              
                 if (http_body_is_final (&(self->parser)))
                 {
                     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
