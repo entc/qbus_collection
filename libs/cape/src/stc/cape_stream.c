@@ -283,6 +283,23 @@ char cape_stream_last_c (CapeStream self)
 
 //-----------------------------------------------------------------------------
 
+void cape_stream_shift_l (CapeStream self, number_t bytes)
+{
+  number_t tail = self->size - bytes;
+  
+  if (tail >= 0)
+  {    
+    char* new_pos = self->pos - bytes;
+    
+    memmove (new_pos, self->buffer + bytes, tail);
+        
+    self->size = tail;
+    self->pos = new_pos;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_stream_mime_set (CapeStream self, const CapeString mime)
 {
   cape_str_replace_cp (&(self->mime_type), mime);

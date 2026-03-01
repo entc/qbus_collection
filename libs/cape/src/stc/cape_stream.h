@@ -50,6 +50,9 @@ __CAPE_LIBEX void              cape_stream_replace_mv (CapeStream*, CapeStream*)
                                /* returns the last byte from the data buffer */
 __CAPE_LIBEX char              cape_stream_last_c (CapeStream);
 
+                               /* shift the content of the stream to the left by an amount of bytes */
+__CAPE_LIBEX void              cape_stream_shift_l (CapeStream, number_t bytes);
+
 //-----------------------------------------------------------------------------
 
                                /* define the mime type of the content */
