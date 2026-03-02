@@ -1,6 +1,7 @@
 #include "qwave_conctx.h"
 #include "qwave.h"
 #include "http_parser.h"
+#include "qwave_reqctx.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -346,12 +347,12 @@ void qwave_conctx_dec (QWaveConctx* p_self)
 
 void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_size)
 {
-    QWaveConctx self = ptr;
+    QWaveReqctx request_context = ptr;
 
 
 
     
-    qwave_conctx_dec (&self);
+    qwave_reqctx_dec (&request_context);
 }
 
 //-----------------------------------------------------------------------------
@@ -400,6 +401,8 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
               
                 printf ("bytes parsed: %i\n", parsed_bytes);
               
+                QWaveReqctx request_context = qwave_reqctx_new (qwave_conctx_inc (self));
+
                 if (http_body_is_final (&(self->parser)))
                 {
                     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
@@ -408,7 +411,10 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
                     ret = TRUE;                    
                 }
 
-                cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, qwave_conctx_inc (self), 0);
+                // TODO: create request object
+
+              
+                cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, request_context, 0);
                 
                 cape_stream_shift_l (self->buffer, parsed_bytes);
                 

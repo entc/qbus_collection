@@ -408,6 +408,13 @@ int qwave_aioctx_open (QWaveAioctx self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int qwave_aioctx_kill (QWaveAioctx self, CapeErr err)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err)
 {
   int res;
@@ -490,6 +497,7 @@ int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
   }
   else
   {
+    /*
     // retrieve the handle object from the userdata of the epoll event
     QWaveAioctxEvent event = (QWaveAioctxEvent)event.udata;
     if (event)
@@ -574,11 +582,10 @@ int qwave_aioctx_next (QWaveAioctx self, number_t timeout_in_ms, CapeErr err)
         //eclog_fmt (LL_TRACE, "ENTC", "signal", "signal seen [%i] -> unknown signal", event.ident);
       }
     }
-    
+     */
+
     return CAPE_ERR_NONE;
   }
-
-  
 }
 
 //-----------------------------------------------------------------------------

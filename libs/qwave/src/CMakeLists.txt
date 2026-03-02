@@ -6,6 +6,7 @@ SET(QWAVE_SOURCES
   qwave.c
   qwave_aioctx.c
   qwave_conctx.c
+  qwave_reqctx.c
   qwave_config.c
   http_parser.c
 )
@@ -14,6 +15,7 @@ SET(QWAVE_HEADERS
   qwave.h
   qwave_aioctx.h
   qwave_conctx.h
+  qwave_reqctx.h
   qwave_config.h
   http_parser.h
 )
