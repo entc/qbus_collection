@@ -677,6 +677,23 @@ void cape_map_clr (CapeMap self)
 
 //-----------------------------------------------------------------------------
 
+CapeMap cape_map_mv (CapeMap* p_self)
+{
+  if (p_self)
+  {
+    CapeMap ret = *p_self;
+    *p_self = NULL;
+    
+    return ret;
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeMapNode cape_map_find (CapeMap self, const void* key)
 {
   return  cape_map_node_find (self->root, key, self->cmp_fct, self->cmp_ptr);

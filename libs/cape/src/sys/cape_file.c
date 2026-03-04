@@ -51,8 +51,15 @@
 
 CapeString cape_fs_path_merge (const char* path1, const char* path2)
 {
-  // use the platform dependant separator
-  return cape_str_catenate_c (path1, CAPE_FS_FOLDER_SEP, path2);
+  if (path1)
+  {
+    // use the platform dependant separator
+    return cape_str_catenate_c (path1, CAPE_FS_FOLDER_SEP, path2);
+  }
+  else
+  {
+    return cape_str_cp (path2);
+  }
 }
 
 //-----------------------------------------------------------------------------

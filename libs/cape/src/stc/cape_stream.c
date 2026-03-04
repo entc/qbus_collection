@@ -58,9 +58,9 @@ void cape_stream_allocate (CapeStream self, unsigned long amount)
 
 void cape_stream_reserve (CapeStream self, number_t amount)
 {
-  number_t diffBytes = cape_stream_size (self) + amount + 1;
-
-  if (diffBytes > self->size)
+  number_t bytes_needed = cape_stream_size (self) + amount + 1;
+  
+  if (bytes_needed > self->size)
   {
     if (amount > self->size)
     {
@@ -285,16 +285,26 @@ char cape_stream_last_c (CapeStream self)
 
 void cape_stream_shift_l (CapeStream self, number_t bytes)
 {
-  number_t tail = self->size - bytes;
+  number_t tail = (self->pos - self->buffer) - bytes;
   
-  if (tail >= 0)
+  if (tail > 0)
   {    
     char* new_pos = self->pos - bytes;
     
-    memmove (new_pos, self->buffer + bytes, tail);
+    memmove (self->buffer, self->pos - tail, tail);
         
     self->size = tail;
     self->pos = new_pos;
+  }
+  else if (tail == 0)
+  {
+    self->pos = self->buffer;
+  }
+  else
+  {
+    self->pos = self->buffer;
+    
+    cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "shift-l overflow");
   }
 }
 

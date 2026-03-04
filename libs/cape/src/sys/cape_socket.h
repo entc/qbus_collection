@@ -33,7 +33,10 @@ __CAPE_LIBEX   void*         cape_sock__icmp__new         (CapeErr err);
 __CAPE_LIBEX   void*         cape_sock__accept            (void*, CapeString* p_remote_addr, CapeErr err);
 
                              /* reads data from the socket, buflen defines the maximum size of data */
-__CAPE_LIBEX   int           cape_sock__read              (void*, CapeStream bufdat, number_t buflen, CapeErr err);
+__CAPE_LIBEX   int           cape_sock__recv              (void*, CapeStream bufdat, number_t buflen, CapeErr err);
+
+                             /* sends data to the socket, bufdat contains all data */
+__CAPE_LIBEX   int           cape_sock__send              (void*, CapeStream bufdat, CapeErr err);
 
 __CAPE_LIBEX   void          cape_sock__close             (void*);
 

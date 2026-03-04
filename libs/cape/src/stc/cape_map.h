@@ -41,6 +41,8 @@ __CAPE_LIBEX   void              cape_map_del               (CapeMap*);
 
 __CAPE_LIBEX   void              cape_map_clr               (CapeMap);
 
+__CAPE_LIBEX   CapeMap           cape_map_mv                (CapeMap*);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeMapNode       cape_map_insert            (CapeMap, void* key, void* data);

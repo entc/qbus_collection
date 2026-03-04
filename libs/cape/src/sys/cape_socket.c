@@ -474,20 +474,18 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__read (void* handle, CapeStream bufdat, number_t buflen, CapeErr err)
+int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr err)
 {
   int res;
   number_t bytes_read;
   
-  // reserve 1024 bytes
+  // reserve bytes
   cape_stream_cap (bufdat, buflen);
     
   // try to read bytes from FD
   bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, MSG_DONTWAIT);
   
-  printf ("bytes read: %lu\n", bytes_read);
-  
-  if (bytes_read == -1)
+  if (-1 == bytes_read)
   {
     if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
     {
@@ -498,16 +496,45 @@ int cape_sock__read (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
       res = CAPE_ERR_CONTINUE;      
     }
   }
-  else if (bytes_read == 0)
+  else if (0 == bytes_read)
   {
     res = CAPE_ERR_EOF;
   }
   else
   {
+    // set new position
+    cape_stream_set (bufdat, bytes_read);
+
     res = CAPE_ERR_NONE;
   }
+      
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_sock__send (void* handle, CapeStream bufdat, CapeErr err)
+{
+  int res;
+  number_t bytes_sent;
     
-  cape_stream_set (bufdat, bytes_read);
+  bytes_sent = send ((int)(number_t)handle, cape_stream_data (bufdat), cape_stream_size (bufdat), MSG_NOSIGNAL);
+  
+  if (-1 == bytes_sent)
+  {
+    if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
+    {
+      res = cape_err_lastOSError (err);        
+    }
+    else
+    {
+      res = CAPE_ERR_CONTINUE;      
+    }
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
   
   return res;
 }
