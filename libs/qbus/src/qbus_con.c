@@ -427,6 +427,9 @@ void qbus_con_sub_next (QBusCon self, const CapeString topic, CapeUdc* p_val)
 {
   QBusFrame frame = qbus_con__frame_from_val (p_val);
 
+  printf ("self = %p\n", self);
+  printf ("con = %p\n", self->con);
+  
   qbus_engine_con_next (self->engine, self->con, topic, frame);
   
   qbus_frame_del (&frame);

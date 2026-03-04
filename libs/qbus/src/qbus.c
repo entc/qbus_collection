@@ -509,13 +509,16 @@ int qbus_unsubscribe (QBus self, const CapeString module, const CapeString ident
 
 void qbus_next (QBus self, const CapeString ident, CapeUdc* p_val)
 {
-  // local objects
-  CapeString topic = cape_str_catenate_c (qbus_config_name (self->config), '_', ident);
-
-  // this will emit the new value to the engine
-  qbus_con_sub_next (self->con, topic, p_val);
-
-  cape_str_del (&topic);
+  if (self->con)
+  {
+    // local objects
+    CapeString topic = cape_str_catenate_c (qbus_config_name (self->config), '_', ident);
+    
+    // this will emit the new value to the engine
+    qbus_con_sub_next (self->con, topic, p_val);
+    
+    cape_str_del (&topic);
+  }
 }
 
 //-----------------------------------------------------------------------------
