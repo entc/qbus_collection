@@ -8,6 +8,7 @@ SET(QWAVE_SOURCES
   qwave_conctx.c
   qwave_reqctx.c
   qwave_config.c
+  qwave_response.c
   http_parser.c
 )
 
@@ -17,6 +18,7 @@ SET(QWAVE_HEADERS
   qwave_conctx.h
   qwave_reqctx.h
   qwave_config.h
+  qwave_response.h
   http_parser.h
 )
 

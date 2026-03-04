@@ -9,6 +9,7 @@
 // project includes
 #include "qwave_aioctx.h"
 #include "qwave_config.h"
+#include "qwave_response.h"
 
 //-----------------------------------------------------------------------------
 
@@ -19,25 +20,40 @@ struct QWave_s
     
     QWaveAioctx aioctx;
     QWaveConfig config;
+    QWaveResponse response;
     
     CapeThread thread;
     CapeQueue queue;
+    
+    QWaveAioctxEvent accept_event_handler;
+    
+    number_t threads;
 };
 
 //-----------------------------------------------------------------------------
 
-QWave qwave_new (const CapeString host, number_t port, CapeUdc parameters)
+QWave qwave_new (CapeUdc parameters)
 {
     QWave self = CAPE_NEW (struct QWave_s);
-    
-    self->host = cape_str_cp (host);
-    self->port = port;
-    
+        
     self->aioctx = qwave_aioctx_new ();
     self->config = qwave_config_new ();
+    self->response = qwave_response_new ();
     
     self->thread = NULL;    
     self->queue = cape_queue_new (10000);  // 10 seconds timeout
+    
+    self->accept_event_handler = NULL;
+    
+    // fetch host and port configuration
+    self->host = cape_str_cp (cape_udc_get_s (parameters, "h", "127.0.0.1"));    
+    self->port = cape_udc_get_n (parameters, "p", 8000);
+    
+    // apply config to config object
+    qwave_config_set (self->config, parameters);
+    
+    // fetch threads from config
+    self->threads = cape_udc_get_n (parameters, "threads", 2);
     
     return self;
 }
@@ -62,6 +78,7 @@ void qwave_del (QWave* p_self)
         
         qwave_config_del (&(self->config));
         qwave_aioctx_del (&(self->aioctx));
+        qwave_response_del (&(self->response));
         
         cape_str_del (&(self->host));
         
@@ -75,8 +92,9 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
 {
     QWaveConctx ctx = user_ptr;
     
-    if (qwave_conctx_read (ctx, handle_remote_connection))
+    if (qwave_conctx_read (ctx))
     {
+        
     }
     else
     {
@@ -94,17 +112,23 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
 //-----------------------------------------------------------------------------
 
 void qwave_factory_conctx (QWave self, void* handle_remote_connection, const CapeString remote_address)
-{
-    QWaveConctx conctx = qwave_conctx_new (self->config, self->queue, remote_address);
-    
+{    
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "new connection from '%s' on fd [%lu]", remote_address, handle_remote_connection);
     
     {
         CapeErr err = cape_err_new();
         
-        int res = qwave_aioctx_add (self->aioctx, &handle_remote_connection, conctx, qwave_server__on_request, err);
-        if (res)
+        QWaveAioctxEvent eh = qwave_aioctx_add (self->aioctx, &handle_remote_connection, err);
+        if (NULL == eh)
         {
+            
+        }
+        else
+        {
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, eh, remote_address);
+        
+            // set the callbacks
+            qwave_aioctx_event_set (eh, conctx, qwave_server__on_request);
             
         }
         
@@ -166,13 +190,19 @@ int qwave_init (QWave self, CapeErr err)
         goto cleanup_and_exit;
     }
     
-    res = qwave_aioctx_add (self->aioctx, &socket_handle, self, qwave_server__on_accept, err);
-    if (res)
+    // attach the socket handle to the AIO controller
+    self->accept_event_handler = qwave_aioctx_add (self->aioctx, &socket_handle, err);
+    
+    // set the callbacks
+    qwave_aioctx_event_set (self->accept_event_handler, self, qwave_server__on_accept);
+        
+    if (NULL == self->accept_event_handler)
     {
+        res = cape_err_code (err);
         goto cleanup_and_exit;
     }
     
-    res = cape_queue_start (self->queue, 4, err);
+    res = cape_queue_start (self->queue, self->threads, err);
     
 cleanup_and_exit:
     

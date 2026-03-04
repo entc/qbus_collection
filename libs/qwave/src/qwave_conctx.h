@@ -9,20 +9,26 @@
 #include <stc/cape_udc.h>
 
 #include "qwave_config.h"
+#include "qwave_response.h"
+#include "qwave_aioctx.h"
 
 //-----------------------------------------------------------------------------
 
 struct QWaveConctx_s; typedef struct QWaveConctx_s* QWaveConctx; // use a simple version
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LIBEX     QWaveConctx        qwave_conctx_new    (QWaveConfig config, CapeQueue queue, const CapeString remote_address);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new         (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctxEvent event, const CapeString remote_address);
 
                                     /* decrease reference counter */
-__CAPE_LIBEX     void               qwave_conctx_dec    (QWaveConctx*);
+__CAPE_LOCAL     void               qwave_conctx_dec         (QWaveConctx*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     int                qwave_conctx_read   (QWaveConctx, void* handle);
+__CAPE_LOCAL     int                qwave_conctx_read        (QWaveConctx);
+
+__CAPE_LOCAL     void               qwave_conctx_send        (QWaveConctx, CapeStream* p_output);
+
+__CAPE_LOCAL     void               qwave_conctx_send_file   (QWaveConctx, const CapeString site, const CapeString path);
 
 //-----------------------------------------------------------------------------
 

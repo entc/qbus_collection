@@ -2,11 +2,12 @@
 #define __QWAVE_AIOCTX__H 1
 
 // cape includes
-#include "sys/cape_types.h"
+#include <sys/cape_types.h>
 #include <sys/cape_err.h>
 //-----------------------------------------------------------------------------
 
-struct QWaveAioctx_s; typedef struct QWaveAioctx_s* QWaveAioctx; // use a simple version
+struct QWaveAioctxEvent_s; typedef struct QWaveAioctxEvent_s* QWaveAioctxEvent;
+struct QWaveAioctx_s; typedef struct QWaveAioctx_s* QWaveAioctx;
 
                                     /* constructor: create a new instance of the asyncronous IO context */
 __CAPE_LIBEX     QWaveAioctx        qwave_aioctx_new    ();
@@ -25,21 +26,29 @@ typedef int     (__STDCALL *fct_qwave__on_aio_event)      (void* user_ptr, void*
 
 //-----------------------------------------------------------------------------
 
-                                    /* initialize the AIO */
-__CAPE_LIBEX     int                qwave_aioctx_open   (QWaveAioctx, CapeErr err);
+                                       /* initialize the AIO */
+__CAPE_LIBEX     int                   qwave_aioctx_open        (QWaveAioctx, CapeErr err);
 
-__CAPE_LIBEX     int                qwave_aioctx_add    (QWaveAioctx, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err);
+__CAPE_LIBEX     QWaveAioctxEvent      qwave_aioctx_add         (QWaveAioctx, void** p_handle, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
-                                    /* waits until next event or the timeout has been reaced */
-__CAPE_LIBEX     int                qwave_aioctx_next   (QWaveAioctx, number_t timeout_in_ms, CapeErr err);
+                                       /* waits until next event or the timeout has been reaced */
+__CAPE_LIBEX     int                   qwave_aioctx_next        (QWaveAioctx, number_t timeout_in_ms, CapeErr err);
 
-                                    /* waits until terminatation */
-__CAPE_LIBEX     int                qwave_aioctx_wait   (QWaveAioctx, CapeErr err);
+                                       /* waits until terminatation */
+__CAPE_LIBEX     int                   qwave_aioctx_wait        (QWaveAioctx, CapeErr err);
 
-                                    /* terminate waiting */
-__CAPE_LIBEX     int                qwave_aioctx_kill   (QWaveAioctx, CapeErr err);
+                                       /* terminate waiting */
+__CAPE_LIBEX     int                   qwave_aioctx_kill        (QWaveAioctx, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+                                       /* sets the callback method and user pointer for upcoming events */
+__CAPE_LIBEX     void                  qwave_aioctx_event_set   (QWaveAioctxEvent, void* user_ptr, fct_qwave__on_aio_event fct);
+
+                                       /* returns the original handle */
+__CAPE_LIBEX     void*                 qwave_aioctx_event_get   (QWaveAioctxEvent);
 
 //-----------------------------------------------------------------------------
 

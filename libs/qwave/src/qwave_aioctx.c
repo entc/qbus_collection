@@ -23,7 +23,7 @@ struct QWaveAioctxEvent_s
     void* user_ptr;
     fct_qwave__on_aio_event on_event;
     
-}; typedef struct QWaveAioctxEvent_s* QWaveAioctxEvent;
+}; 
 
 //-----------------------------------------------------------------------------
 
@@ -51,6 +51,21 @@ void qwave_aioctx_event_del (QWaveAioctxEvent* p_self)
         
         CAPE_DEL (p_self, struct QWaveAioctxEvent_s);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_aioctx_event_set (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event fct)
+{
+  self->user_ptr = user_ptr;
+  self->on_event = fct;
+}
+
+//-----------------------------------------------------------------------------
+
+void* qwave_aioctx_event_get (QWaveAioctxEvent self)
+{
+  return (void*)self->fd;
 }
 
 //-----------------------------------------------------------------------------
@@ -123,18 +138,21 @@ int qwave_aioctx_open (QWaveAioctx self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err)
+QWaveAioctxEvent qwave_aioctx_add (QWaveAioctx self, void** p_handle, CapeErr err)
 {
-    int res;
+    QWaveAioctxEvent ret;
     
     struct epoll_event event;
     number_t handle_fd = (number_t)*p_handle;
     
     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "add", "append event with fd [%lu]", handle_fd);
 
+    // create a new object for the handler
+    ret = qwave_aioctx_event_new (handle_fd, NULL, NULL);
+    
     // use the data.ptr part of the union to store 
     // a pointer to the QWaveAioctxEvent object
-    event.data.ptr = qwave_aioctx_event_new (handle_fd, user_ptr, fct);
+    event.data.ptr = ret;
     
     // set the events on which the epoll should return
     event.events = EPOLLET | EPOLLIN;
@@ -143,26 +161,26 @@ int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwa
     if (s < 0)
     {
         int errCode = errno;
+        
         if (errCode == EPERM)
         {
-            res = cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");
-            
+            cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");            
             cape_log_msg (CAPE_LL_ERROR, "QWAVE", "add []", cape_err_text (err));
         }
         else
         {
-            res = cape_err_lastOSError (err);
-
+            cape_err_lastOSError (err);
             cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "add []", "can't add fd [%li] to epoll: %s", (number_t)*p_handle, cape_err_text (err));
         }
+        
+        qwave_aioctx_event_del (&ret);
     }
     else
     {
         *p_handle = NULL;
-        res = CAPE_ERR_NONE;
     }
     
-    return res;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -314,13 +332,13 @@ struct QWaveAioctxEvent_s
 
 //-----------------------------------------------------------------------------
 
-QWaveAioctxEvent qwave_aioctx_event_new (number_t fd, void* user_ptr, fct_qwave__on_aio_event fct)
+QWaveAioctxEvent qwave_aioctx_event_new (number_t fd)
 {
     QWaveAioctxEvent self = CAPE_NEW (struct QWaveAioctxEvent_s);
     
     self->fd = fd;
-    self->user_ptr = user_ptr;
-    self->on_event = fct;
+    self->user_ptr = NULL;
+    self->on_event = NULL;
 
     return self;
 }
@@ -338,6 +356,14 @@ void qwave_aioctx_event_del (QWaveAioctxEvent* p_self)
         
         CAPE_DEL (p_self, struct QWaveAioctxEvent_s);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_aioctx_event (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event fct)
+{
+    self->user_ptr = user_ptr;
+    self->on_event = fct;
 }
 
 //-----------------------------------------------------------------------------

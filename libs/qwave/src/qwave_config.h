@@ -17,9 +17,12 @@ __CAPE_LIBEX     QWaveConfig        qwave_config_new    ();
                                     /* destructor: cleans and frees all memory */
 __CAPE_LIBEX     void               qwave_config_del    (QWaveConfig*);
 
+                                    /* sets the config */
+__CAPE_LIBEX     void               qwave_config_set    (QWaveConfig, CapeUdc parameters);
+
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     const CapeString   qwave_config_site   (QWaveConfig, const char *bufdat, size_t buflen, CapeString* url);
+__CAPE_LIBEX     const CapeString   qwave_config_site   (QWaveConfig, CapeString* p_url);
 
 __CAPE_LIBEX     int                qwave_config_route  (QWaveConfig, const CapeString name);
 

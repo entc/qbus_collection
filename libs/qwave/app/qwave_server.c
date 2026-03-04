@@ -10,16 +10,17 @@ int main (int argc, char *argv[])
 
   // local objects
   CapeErr err = cape_err_new ();
+  QWave qwave_instance = NULL;
   CapeUdc parameters = cape_args_from_args (argc, argv, NULL);
-  QWave qwave_instance = qwave_new (cape_udc_get_s (parameters, "h", "127.0.0.1"), cape_udc_get_n (parameters, "p", 8000), parameters);
-
+    
+  qwave_instance = qwave_new (parameters);
+    
   res = qwave_run__d (qwave_instance, err);
   if (res)
   {
     goto cleanup_and_exit;
   }
 
-  
   {
     int i;
     

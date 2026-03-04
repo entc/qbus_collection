@@ -6,6 +6,7 @@
 // cape includes
 #include <sys/cape_log.h>
 #include <sys/cape_socket.h>
+#include <sys/cape_file.h>
 #include <stc/cape_stream.h>
 #include <stc/cape_map.h>
 #include <fmt/cape_tokenizer.h>
@@ -15,45 +16,24 @@
 struct QWaveConctx_s
 {
     QWaveConfig config;                       // reference
+    QWaveResponse response;                   // reference
     CapeQueue queue;                          // reference
     
-    number_t reference_counter;
+    number_t reference_counter;               // the reference counter of this object
     
-    CapeString remote_address;
-    CapeStream buffer;
+    CapeString remote_address;                // remote address as string
+    CapeStream buffer;                        // receive buffer
+    
+    QWaveAioctxEvent connection_handle;       // AIO event handle
 
     // http parser
-    http_parser parser;
-    http_parser_settings settings;
-    
-    // for parsing: temporary string to remember the last header field
-    CapeString last_header_field;
-    
-    CapeString site;
-    CapeString url;
-    CapeString api;
-    
-    CapeMap header_values;
-    CapeMap query_values;
-    
-    CapeList url_values;
-    
+    http_parser parser;                       // external parser instance
+    http_parser_settings settings;            // external parser settings
 };
 
 //-----------------------------------------------------------------------------
 
-static void __STDCALL qwave_conctx__intern__on_headers_del (void* key, void* val)
-{
-    {
-        CapeString h = key; cape_str_del (&h);
-    }
-    {
-        CapeString h = val; cape_str_del (&h);
-    }
-}
-
-//-----------------------------------------------------------------------------
-
+/*
 CapeMap qwave_conctx__internal__convert_query (const CapeString query)
 {
     CapeMap ret = cape_map_new (NULL, qwave_conctx__intern__on_headers_del, NULL);
@@ -84,23 +64,12 @@ CapeMap qwave_conctx__internal__convert_query (const CapeString query)
     cape_list_del (&values);
     return ret;
 }
-
+*/
 //-----------------------------------------------------------------------------
 
 static int qwave_conctx__internal__on_message_begin (http_parser* parser)
 {
-    QWaveConctx self = parser->data;
-    
-    cape_str_del (&(self->last_header_field));
-
-    cape_str_del (&(self->site));
-    cape_str_del (&(self->url));
-    cape_str_del (&(self->api));
-    
-    cape_map_clr (self->header_values);
-    cape_map_del (&(self->query_values));
-    
-    cape_list_del (&(self->url_values));
+    qwave_reqctx_clr (parser->data);
     
     return 0;
 }
@@ -109,78 +78,11 @@ static int qwave_conctx__internal__on_message_begin (http_parser* parser)
 
 static int qwave_conctx__internal__on_url (http_parser* parser, const char *at, size_t length)
 {
-    QWaveConctx self = parser->data;
+    // copy url
+    CapeString url = cape_str_sub (at, length);
     
-    // this will re-write the url
-    // -> checks all sites for re-writing
-    self->site = qwave_config_site (self->config, at, length, &(self->url));
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "parse", "access: %s", self->url);
-    
-    if ('/' == *(self->url))
-    {
-        CapeString url = NULL;
-        CapeString query = NULL;
+    qwave_reqctx_set_url (parser->data, &url);
         
-        if (cape_tokenizer_split (self->url, '?', &url, &query))
-        {
-            cape_str_replace_mv (&(self->url), &url);
-            
-            cape_map_del (&(self->query_values));
-            
-            // parse the options into a map
-            self->query_values = qwave_conctx__internal__convert_query (query);
-            
-            cape_str_del (&query);
-        }
-        
-        // split the url into its parts
-        self->url_values = cape_tokenizer_buf__noempty (self->url + 1, cape_str_size (self->url) - 1, '/');
-        
-        if (cape_list_size (self->url_values) >= 1)
-        {
-            CapeListNode n = cape_list_node_front (self->url_values);
-            
-            // get the first part
-            const CapeString first_part = cape_list_node_data (n);
-            
-            if (qwave_config_route (self->config, first_part))
-            {
-                cape_str_replace_cp (&(self->url), "/index.html");
-            }
-            else if (cape_list_size (self->url_values) >= 2)
-            {
-                // anaylse the URL if we have an API or not
-       //         self->api = qwebs_get_api (self->webs, first_part);
-                
-                if (self->api)
-                {
-                    // reduce the url values by one
-                    {
-                        CapeListNode n = cape_list_node_front (self->url_values);
-                        
-                        cape_list_node_erase (self->url_values, n);
-                    }
-                    
-                   // self->body_value = cape_stream_new ();
-                }
-            }
-            else
-            {
-   //             self->api = qwebs_get_page (self->webs, self->url + 1);
-            }
-        }
-        else
-        {
-            if (cape_str_equal ("/", self->url))
-            {
-                cape_str_replace_cp (&(self->url), "/index.html");
-            }
-            
-   //         self->api = qwebs_get_page (self->webs, self->url);
-        }
-    }
-    
     return 0;
 }
 
@@ -188,14 +90,10 @@ static int qwave_conctx__internal__on_url (http_parser* parser, const char *at, 
 
 static int qwave_conctx__internal__on_header_field (http_parser* parser, const char *at, size_t length)
 {
-    QWaveConctx self = parser->data;
-    
-    if (self->header_values)
-    {
-        CapeString h = cape_str_sub (at, length);
-        
-        cape_str_replace_mv (&(self->last_header_field), &h);
-    }
+    // copy field
+    CapeString field = cape_str_sub (at, length);
+
+    qwave_reqctx_set_ohf (parser->data, &field);
     
     return 0;
 }
@@ -204,20 +102,10 @@ static int qwave_conctx__internal__on_header_field (http_parser* parser, const c
 
 static int qwave_conctx__internal__on_header_value (http_parser* parser, const char *at, size_t length)
 {
-    QWaveConctx self = parser->data;
+    // copy value
+    CapeString value = cape_str_sub (at, length);
     
-    if (self->header_values)
-    {
-        if (self->last_header_field)
-        {
-            CapeString h = cape_str_sub (at, length);
-            // printf ("HEADER VALUE: %s = %s\n", self->last_header_field, h);
-            
-            // transfer ownership to the map
-            cape_map_insert (self->header_values, self->last_header_field, h);
-            self->last_header_field = NULL;
-        }
-    }
+    qwave_reqctx_set_ohv (parser->data, &value);
     
     return 0;
 }
@@ -226,7 +114,7 @@ static int qwave_conctx__internal__on_header_value (http_parser* parser, const c
 
 static int qwave_conctx__internal__on_body (http_parser* parser, const char* at, size_t length)
 {
-    QWaveConctx self = parser->data;
+    QWaveReqctx self = parser->data;
     
     /*
      *  printf ("------ BODY ---------------------------------------------------------------------\n");
@@ -247,26 +135,27 @@ static int qwave_conctx__internal__on_body (http_parser* parser, const char* at,
 
 static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 {
-    QWaveConctx self = parser->data;
-    
-    printf ("message complete %i\n", parser->nread);
-  
+    qwave_reqctx_set_complete (parser->data);
+      
     return 0;
 }
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, CapeQueue queue, const CapeString remote_address)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctxEvent event, const CapeString remote_address)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
     self->config = config;
+    self->response =response;
     self->queue = queue;
     
     self->reference_counter = 1;  // always start with 1
     
     self->remote_address = cape_str_cp (remote_address);
     self->buffer = cape_stream_new ();
+    
+    self->connection_handle = event;
     
     http_parser_init (&(self->parser), HTTP_REQUEST);
     
@@ -285,14 +174,8 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, CapeQueue queue, const CapeStr
     self->settings.on_chunk_header = NULL;
     self->settings.on_chunk_complete = NULL;
     
-    self->parser.data = self;
-    
-    self->site = NULL;
-    self->url = NULL;
-    
-    self->header_values = cape_map_new (NULL, qwave_conctx__intern__on_headers_del, NULL);
-    self->query_values = NULL;
-    
+    self->parser.data = NULL;
+        
     return self;
 }
 
@@ -303,12 +186,6 @@ void qwave_conctx_del (QWaveConctx* p_self)
     if (*p_self)
     {
         QWaveConctx self = *p_self;
-
-        cape_str_del (&(self->site));
-        cape_str_del (&(self->url));
-
-        cape_map_del (&(self->query_values));
-        cape_map_del (&(self->header_values));
         
         cape_stream_del (&(self->buffer));
         cape_str_del (&(self->remote_address));
@@ -349,30 +226,33 @@ void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_s
 {
     QWaveReqctx request_context = ptr;
 
+    qwave_reqctx_exec (request_context);
 
-
-    
     qwave_reqctx_dec (&request_context);
 }
 
 //-----------------------------------------------------------------------------
 
-int qwave_conctx_read (QWaveConctx self, void* handle)
+int qwave_conctx_read (QWaveConctx self)
 {    
     int ret = TRUE;
     int con = TRUE;
     
     // local objects
     CapeErr err = cape_err_new ();
-    
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "new request on fd [%lu]", handle);
-    
+        
     while (con)
     {
-        switch (cape_sock__read (handle, self->buffer, 1024, err))
+        switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
         {
             case CAPE_ERR_NONE:
             {
+                if (NULL == self->parser.data)
+                {
+                    // create a new request object to track this request
+                    self->parser.data = qwave_reqctx_new (qwave_conctx_inc (self), self->config);
+                }
+                
                 size_t parsed_bytes = http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
                 
                 if (self->parser.http_errno > 0)
@@ -386,23 +266,19 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
                     con = FALSE;
                     ret = FALSE;
                 }
-                
-                if (self->parser.upgrade == 1)
+                   
+                if (qwave_reqctx_is_complete (self->parser.data))
                 {
-                  
-                  
-                  
-                }
-                
-                if (http_should_keep_alive (&(self->parser)))
-                {
+                    qwave_reqctx_set (self->parser.data, self->parser.upgrade, http_should_keep_alive (&(self->parser)), http_method_str (self->parser.method));
                     
+                    cape_stream_shift_l (self->buffer, parsed_bytes);
+                                        
+                    cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
+                    
+                    self->parser.data = NULL;
                 }
-              
-                printf ("bytes parsed: %i\n", parsed_bytes);
-              
-                QWaveReqctx request_context = qwave_reqctx_new (qwave_conctx_inc (self));
-
+                   
+                /*
                 if (http_body_is_final (&(self->parser)))
                 {
                     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
@@ -410,15 +286,8 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
                     con = FALSE;
                     ret = TRUE;                    
                 }
+                */
 
-                // TODO: create request object
-
-              
-                cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, request_context, 0);
-                
-                cape_stream_shift_l (self->buffer, parsed_bytes);
-                
-                
                 break;
             }
             case CAPE_ERR_EOF:
@@ -442,12 +311,70 @@ int qwave_conctx_read (QWaveConctx self, void* handle)
             }
         }
     }
-    
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "request", "all data has been read on fd [%lu]", handle);
-    
+        
     cape_err_del (&err);
     
     return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
+{
+    int res;
+    
+    // local objects
+    CapeErr err = cape_err_new ();
+    CapeStream s = cape_stream_mv (p_output);
+    
+    res = cape_sock__send (qwave_aioctx_event_get (self->connection_handle), s, err);
+    if (res)
+    {
+        
+        
+    }
+    
+    cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+
+    cape_stream_del (&s);
+    cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeString path)
+{
+    // local objects
+    CapeErr err = cape_err_new ();
+    CapeString file_absolute = NULL;
+    CapeString file_relative = NULL;
+    
+    // construct the relative path
+    file_relative = cape_fs_path_merge (site, path);
+    
+    // construct the absolute path
+    file_absolute = cape_fs_path_rebuild (file_relative, err);
+    
+    if (NULL == file_absolute)
+    {
+        
+    }
+    else
+    {
+        CapeStream s = cape_stream_new ();
+        
+        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read file", "path: %s", file_absolute);
+        
+        // this will fillup the stream with a valid http response
+        qwave_response_file (self->response, s, file_absolute);
+
+        // send the response to the client (browser)
+        qwave_conctx_send (self, &s);
+    }
+    
+    cape_str_del (&file_relative);
+    cape_str_del (&file_absolute);
+    cape_err_del (&err);    
 }
 
 //-----------------------------------------------------------------------------

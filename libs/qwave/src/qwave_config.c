@@ -1,11 +1,14 @@
 #include "qwave_config.h"
 
+// cape includes
+#include <stc/cape_map.h>
+
 //-----------------------------------------------------------------------------
 
 struct QWaveConfig_s
 {
     CapeUdc route_list;
-    
+    CapeMap sites;
 };
 
 //-----------------------------------------------------------------------------
@@ -15,6 +18,7 @@ QWaveConfig qwave_config_new ()
     QWaveConfig self = CAPE_NEW (struct QWaveConfig_s);
     
     self->route_list = NULL;
+    self->sites = NULL;
     
     return self;
 }
@@ -27,6 +31,7 @@ void qwave_config_del (QWaveConfig* p_self)
     {
         QWaveConfig self = *p_self;
         
+        cape_map_del (&(self->sites));
         cape_udc_del (&(self->route_list));
         
         CAPE_DEL (p_self, struct QWaveConfig_s);
@@ -35,78 +40,128 @@ void qwave_config_del (QWaveConfig* p_self)
 
 //-----------------------------------------------------------------------------
 
-const CapeString qwave_config_site_get (QWaveConfig self, const CapeString part)
+void __STDCALL qwave_config__on_del (void* key, void* val)
 {
-    /*
-    CapeMapNode n = cape_map_find (self->sites, part);
-    if (n)
     {
-        return cape_map_node_value (n);
+        CapeString h = key; cape_str_del (&h);
     }
-    else
     {
-        return NULL;
+        CapeString h = val; cape_str_del (&h);
     }
-    */
-    
-    return NULL;
 }
 
 //-----------------------------------------------------------------------------
 
-const CapeString qwave_config_site (QWaveConfig self, const char *bufdat, size_t buflen, CapeString* p_url)
+void qwave_config_set (QWaveConfig self, CapeUdc parameters)
 {
-    const CapeString ret;
+    CapeUdc sites = cape_udc_get (parameters, "sites");
     
-    // local objects
-    CapeString url = cape_str_sub (bufdat, buflen);
-    
-    if ('/' == *url)
+    // extract route list
+    self->route_list = cape_udc_ext (parameters, "route_list");
+        
+    if (sites)
     {
-        number_t pos;
-        if (cape_str_next (url + 1, '/', &pos))
+        self->sites = cape_map_new (cape_map__compare__s, qwave_config__on_del, NULL);
+        
         {
-            CapeString h = cape_str_sub (url, pos + 1);
-            
-            ret = qwave_config_site_get (self, h);
-            
-            cape_str_del (&h);
-            
-            if (ret)
+            CapeUdcCursor* cursor = cape_udc_cursor_new (sites, CAPE_DIRECTION_FORW);
+                        
+            while (cape_udc_cursor_next (cursor))
             {
-                *p_url = cape_str_sub (url + pos + 1, cape_str_size (url) - pos - 1);
-                goto exit_and_cleanup;
+                cape_map_insert (self->sites, cape_str_cp (cape_udc_name (cursor->item)), cape_str_cp (cape_udc_s (cursor->item, NULL)));
             }
-        }
-        else
-        {
-            ret = qwave_config_site_get (self, url);
-            if (ret)
-            {
-                // this means the whole url is a site
-                // -> re-write to /
-                *p_url = cape_str_cp ("/");
-                goto exit_and_cleanup;
-            }
+            
+            cape_udc_cursor_del (&cursor);
         }
     }
-    
-    ret = qwave_config_site_get (self, "/");
-    *p_url = cape_str_mv (&url);
-    
-exit_and_cleanup:
-    
-    cape_str_del (&url);
-    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 int qwave_config_route (QWaveConfig self, const CapeString name)
 {
-    CapeUdc h = cape_udc_get (self->route_list, name);
+    if (self->route_list)
+    {
+        return cape_udc_get (self->route_list, name) ? TRUE : FALSE;
+    }
+    else
+    {
+        return FALSE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwave_config_site_get (QWaveConfig self, const CapeString part)
+{
+    if (self->sites)
+    {
+        CapeMapNode n = cape_map_find (self->sites, part);
+        if (n)
+        {
+            return cape_map_node_value (n);
+        }
+        else
+        {
+            return NULL;
+        }
+    }
     
-    return h ? TRUE : FALSE;
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qwave_config_site (QWaveConfig self, CapeString* p_url)
+{
+    const CapeString ret;
+    
+    // local objects
+    const CapeString url = *p_url;
+    
+    if ('/' == *url)
+    {
+        number_t pos;
+        
+        // find the next '/' in the url
+        if (cape_str_next (url + 1, '/', &pos))
+        {
+            CapeString url_part = cape_str_sub (url, pos + 1);
+            
+            ret = qwave_config_site_get (self, url_part);
+            
+            cape_str_del (&url_part);
+            
+            if (ret)
+            {
+                CapeString url_new = cape_str_sub (url + pos + 1, cape_str_size (url) - pos - 1);
+
+                // replace current url with the adjusted one
+                cape_str_replace_mv (p_url, &url_new);
+                
+                goto exit_and_cleanup;
+            }
+        }
+        else
+        {
+            ret = qwave_config_site_get (self, url);
+
+            if (ret)
+            {
+                // this means the whole url is a site
+                // -> re-write to /
+                cape_str_replace_cp (p_url, "/");
+                
+                goto exit_and_cleanup;
+            }
+        }
+    }
+    
+    ret = qwave_config_site_get (self, "/");
+    
+exit_and_cleanup:
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
