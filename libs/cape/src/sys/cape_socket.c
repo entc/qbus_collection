@@ -518,7 +518,7 @@ int cape_sock__send (void* handle, CapeStream bufdat, CapeErr err)
   int res;
   number_t bytes_sent;
     
-  bytes_sent = send ((int)(number_t)handle, cape_stream_data (bufdat), cape_stream_size (bufdat), MSG_NOSIGNAL);
+  bytes_sent = send ((int)(number_t)handle, cape_stream_data (bufdat), cape_stream_size (bufdat), MSG_DONTWAIT | MSG_NOSIGNAL);
   
   if (-1 == bytes_sent)
   {

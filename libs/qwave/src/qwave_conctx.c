@@ -327,14 +327,18 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
     CapeErr err = cape_err_new ();
     CapeStream s = cape_stream_mv (p_output);
     
+    printf ("send file #1\n");
+    
     res = cape_sock__send (qwave_aioctx_event_get (self->connection_handle), s, err);
     if (res)
     {
         
         
     }
+
+    printf ("send file #2, %i\n", res);
     
-    cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+//    cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
 
     cape_stream_del (&s);
     cape_err_del (&err);
