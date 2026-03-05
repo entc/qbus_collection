@@ -247,7 +247,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         else
         */
         {
-            qwave_conctx_send_file (self->conctx, site, self->url);
+            qwave_conctx_send_file (self->conctx, site, self->url, !self->keep_alive);
         }
     }
 }

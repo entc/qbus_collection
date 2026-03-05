@@ -319,7 +319,7 @@ int qwave_conctx_read (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
+void qwave_conctx_send (QWaveConctx self, CapeStream* p_output, int close_connection)
 {
     int res;
     
@@ -338,7 +338,10 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
 
     printf ("send file #2, %i\n", res);
     
-//    cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+    if (close_connection)
+    {
+        cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+    }
 
     cape_stream_del (&s);
     cape_err_del (&err);
@@ -346,7 +349,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeString path)
+void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeString path, int close_connection)
 {
     // local objects
     CapeErr err = cape_err_new ();
@@ -373,7 +376,7 @@ void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const Cape
         qwave_response_file (self->response, s, file_absolute);
 
         // send the response to the client (browser)
-        qwave_conctx_send (self, &s);
+        qwave_conctx_send (self, &s, close_connection);
     }
     
     cape_str_del (&file_relative);

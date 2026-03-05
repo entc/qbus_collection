@@ -477,13 +477,15 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
 int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr err)
 {
   int res;
-  number_t bytes_read;
+  ssize_t bytes_read;
   
   // reserve bytes
   cape_stream_cap (bufdat, buflen);
     
   // try to read bytes from FD
   bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, MSG_DONTWAIT);
+  
+  printf ("bytes read [%i]: %li\n", (int)(number_t)handle, bytes_read);
   
   if (-1 == bytes_read)
   {
@@ -498,7 +500,12 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
   }
   else if (0 == bytes_read)
   {
-    res = CAPE_ERR_EOF;
+    // When a stream socket peer has performed an orderly shutdown, the
+    // return value will be 0 (the traditional "end-of-file" return).
+    //
+    // The value 0 may also be returned if the requested number of bytes
+    // to receive from a stream socket was 0.
+    res = CAPE_ERR_CONTINUE;
   }
   else
   {
