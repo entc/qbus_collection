@@ -237,7 +237,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
             qwave_reqctx__parse_parts (self);
         }
 
-        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "reqexec", "process request url = %s, site = %s, method = %s", self->url, site, self->method);
+        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "reqexec", "process request url = %s, site = %s, method = %s, keep-alive = %i", self->url, site, self->method, self->keep_alive);
   
         /*
         if (self->api)
@@ -247,8 +247,17 @@ void qwave_reqctx_exec (QWaveReqctx self)
         else
         */
         {
-            qwave_conctx_send_file (self->conctx, site, self->url, !self->keep_alive);
+            qwave_conctx_send_file (self->conctx, site, self->url, self->keep_alive);
         }
+        
+        if (FALSE == self->keep_alive)
+        {
+            // try to close connection
+            qwave_conctx_close (self->conctx);
+        }
+        
+        // tell the context we don't need it anymore
+        qwave_conctx_reqdec (self->conctx);
     }
 }
 

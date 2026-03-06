@@ -185,6 +185,13 @@ QWaveAioctxEvent qwave_aioctx_add (QWaveAioctx self, void** p_handle, CapeErr er
 
 //-----------------------------------------------------------------------------
 
+void qwave_aioctx_rm (QWaveAioctx self, QWaveAioctxEvent* p_event)
+{
+  
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_aioctx__handle_event (QWaveAioctx self, struct epoll_event* event, CapeErr err)
 {
     QWaveAioctxEvent aio_event = event->data.ptr;

@@ -19,7 +19,8 @@ struct QWaveConctx_s
     QWaveResponse response;                   // reference
     CapeQueue queue;                          // reference
     
-    number_t reference_counter;               // the reference counter of this object
+    number_t reference_counter;               // the reference counter for requests
+    int close_connection;                     // tell the context to close the connection
     
     CapeString remote_address;                // remote address as string
     CapeStream buffer;                        // receive buffer
@@ -150,7 +151,8 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->response =response;
     self->queue = queue;
     
-    self->reference_counter = 1;  // always start with 1
+    self->reference_counter = 0;
+    self->close_connection = FALSE;
     
     self->remote_address = cape_str_cp (remote_address);
     self->buffer = cape_stream_new ();
@@ -196,7 +198,7 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_inc (QWaveConctx self)
+QWaveConctx qwave_conctx_reqinc (QWaveConctx self)
 {
     self->reference_counter++;
     
@@ -205,19 +207,36 @@ QWaveConctx qwave_conctx_inc (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_dec (QWaveConctx* p_self)
+void qwave_conctx_shutdown (QWaveConctx self)
 {
-    if (*p_self)
+    if ((self->reference_counter == 0) && (self->close_connection))
     {
-        QWaveConctx self = *p_self;
-
-        self->reference_counter--;
+        QWaveConctx h = self;
         
-        if (self->reference_counter == 0)
-        {
-            qwave_conctx_del (p_self);
-        }
+        cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+
+   //     qwave_aioctx_rm (QWaveAioctx, self->connection_handle);
+                
+        qwave_conctx_del (&h);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_reqdec (QWaveConctx self)
+{
+    self->reference_counter--;
+
+    qwave_conctx_shutdown (self);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_close (QWaveConctx self)
+{
+    self->close_connection = TRUE;
+
+    qwave_conctx_shutdown (self);
 }
 
 //-----------------------------------------------------------------------------
@@ -250,7 +269,7 @@ int qwave_conctx_read (QWaveConctx self)
                 if (NULL == self->parser.data)
                 {
                     // create a new request object to track this request
-                    self->parser.data = qwave_reqctx_new (qwave_conctx_inc (self), self->config);
+                    self->parser.data = qwave_reqctx_new (qwave_conctx_reqinc (self), self->config);
                 }
                 
                 size_t parsed_bytes = http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
@@ -319,7 +338,7 @@ int qwave_conctx_read (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_send (QWaveConctx self, CapeStream* p_output, int close_connection)
+void qwave_conctx_send (QWaveConctx self, CapeStream* p_output, int keep_alive)
 {
     int res;
     
@@ -338,18 +357,13 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output, int close_connec
 
     printf ("send file #2, %i\n", res);
     
-    if (close_connection)
-    {
-        cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
-    }
-
     cape_stream_del (&s);
     cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeString path, int close_connection)
+void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeString path, int keep_alive)
 {
     // local objects
     CapeErr err = cape_err_new ();
@@ -373,10 +387,10 @@ void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const Cape
         cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read file", "path: %s", file_absolute);
         
         // this will fillup the stream with a valid http response
-        qwave_response_file (self->response, s, file_absolute);
+        qwave_response_file (self->response, s, file_absolute, keep_alive);
 
         // send the response to the client (browser)
-        qwave_conctx_send (self, &s, close_connection);
+        qwave_conctx_send (self, &s, keep_alive);
     }
     
     cape_str_del (&file_relative);

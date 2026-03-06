@@ -100,10 +100,8 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
     {
         // terminate connection
         cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "drop connection on fd [%lu]", handle_remote_connection);
-        
-        qwave_conctx_dec (&ctx);
-        
-        cape_sock__close (handle_remote_connection);
+
+        qwave_conctx_close (ctx);
     }
     
     return QWAVE_EVENT_RESULT__CONTINUE;
@@ -129,7 +127,6 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         
             // set the callbacks
             qwave_aioctx_event_set (eh, conctx, qwave_server__on_request);
-            
         }
         
         cape_err_del (&err);        

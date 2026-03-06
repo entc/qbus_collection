@@ -31,6 +31,8 @@ __CAPE_LIBEX     int                   qwave_aioctx_open        (QWaveAioctx, Ca
 
 __CAPE_LIBEX     QWaveAioctxEvent      qwave_aioctx_add         (QWaveAioctx, void** p_handle, CapeErr err);
 
+__CAPE_LIBEX     void                  qwave_aioctx_rm          (QWaveAioctx, QWaveAioctxEvent*);
+
 //-----------------------------------------------------------------------------
 
                                        /* waits until next event or the timeout has been reaced */

@@ -85,7 +85,37 @@ int __STDCALL qwave_response__file__on_load (void* ptr, const char* bufdat, numb
 
 //-----------------------------------------------------------------------------
 
-void qwave_response_file (QWaveResponse self, CapeStream stream_message, const CapeString path)
+void qwave_response__connection (CapeStream stream_message, int keep_alive)
+{
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_response__header_default (QWaveResponse self, CapeStream stream_message, CapeStream stream_content, const CapeString path, int keep_alive)
+{
+    {
+        cape_stream_append_str (stream_message, "Connection: ");
+        cape_stream_append_str (stream_message, keep_alive ? "keep-alive" : "close");
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+    
+    {
+        cape_stream_append_str (stream_message, "Content-Type: ");
+        cape_stream_append_str (stream_message, qwave_response__fetch_mime (self, cape_fs_extension (path)));
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+    
+    // content length
+    {
+        cape_stream_append_str (stream_message, "Content-Length: ");
+        cape_stream_append_n (stream_message, cape_stream_size (stream_content));
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_response_file (QWaveResponse self, CapeStream stream_message, const CapeString path, int keep_alive)
 {
     int res;
     
@@ -99,7 +129,11 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
     res = cape_fs_file_load (NULL, path, stream_content, qwave_response__file__on_load, err);
     if (res)
     {
+        cape_stream_clr (stream_content);
+        
         cape_stream_append_str (stream_message, "HTTP/1.1 404 Not Found\r\n");
+        
+        qwave_response__header_default (self, stream_message, stream_content, path, keep_alive);
         
         // start with content
         cape_stream_append_str (stream_message, "\r\n");
@@ -108,12 +142,7 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
     {        
         cape_stream_append_str (stream_message, "HTTP/1.1 200 OK\r\n");
         
-        // mime type
-        {
-            cape_stream_append_str (stream_message, "Content-Type: ");
-            cape_stream_append_str (stream_message, qwave_response__fetch_mime (self, cape_fs_extension (path)));
-            cape_stream_append_str (stream_message, "\r\n");
-        }
+        qwave_response__header_default (self, stream_message, stream_content, path, keep_alive);
         
         // name (this is important to open the file directly in the browser)
         {
@@ -124,17 +153,14 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
             cape_stream_append_str (stream_message, "\"\r\n");
         }
         
-        // content length
-        {
-            cape_stream_append_str (stream_message, "Content-Length: ");
-            cape_stream_append_n (stream_message, cape_stream_size (stream_content));
-            cape_stream_append_str (stream_message, "\r\n");
-        }
 
         // start with content
         cape_stream_append_str (stream_message, "\r\n");
         
         cape_stream_append_stream (stream_message, stream_content);
+
+        // start with content
+        cape_stream_append_str (stream_message, "\r\n");
     }
     
     cape_stream_del (&stream_content);

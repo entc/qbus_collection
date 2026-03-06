@@ -20,7 +20,7 @@ __CAPE_LIBEX     void              qwave_response_del         (QWaveResponse*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL     void              qwave_response_file        (QWaveResponse, CapeStream, const CapeString path);
+__CAPE_LOCAL     void              qwave_response_file        (QWaveResponse, CapeStream, const CapeString path, int keep_alive);
 
 //-----------------------------------------------------------------------------
 
