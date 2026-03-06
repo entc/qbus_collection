@@ -2,6 +2,7 @@
 
 // cape includes
 #include "sys/cape_log.h"
+#include "sys/cape_thread.h"
 
 //-----------------------------------------------------------------------------
 
@@ -520,27 +521,41 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__send (void* handle, CapeStream bufdat, CapeErr err)
+int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
 {
   int res;
   number_t bytes_sent;
-    
-  bytes_sent = send ((int)(number_t)handle, cape_stream_data (bufdat), cape_stream_size (bufdat), MSG_DONTWAIT | MSG_NOSIGNAL);
+  number_t total_sent = 0;
+  number_t buflen = cape_stream_size (buffer);
   
-  if (-1 == bytes_sent)
+  while (total_sent < buflen)
   {
-    if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
+    bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, MSG_NOSIGNAL);
+    
+    if (-1 == bytes_sent)
     {
-      res = cape_err_lastOSError (err);        
+      if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
+      {
+        res = cape_err_lastOSError (err);
+        
+        // exit
+        break;
+      }
+      else
+      {
+        // wait a bit
+        cape_thread_sleep (10);
+        
+        res = CAPE_ERR_CONTINUE;
+      }
     }
     else
     {
-      res = CAPE_ERR_CONTINUE;      
+      // calculate the new position
+      total_sent = total_sent + bytes_sent;
+      
+      res = CAPE_ERR_NONE;
     }
-  }
-  else
-  {
-    res = CAPE_ERR_NONE;
   }
   
   return res;
