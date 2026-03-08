@@ -158,9 +158,6 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
         cape_stream_append_str (stream_message, "\r\n");
         
         cape_stream_append_stream (stream_message, stream_content);
-
-        // start with content
-        cape_stream_append_str (stream_message, "\r\n");
     }
     
     cape_stream_del (&stream_content);

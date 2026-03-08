@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
+#include <sys/eventfd.h>
 
 #define QWAVE_EPOLL_INVALID_FD           -1
 #define QWAVE_EPOLL_MAX_EVENTS            10
@@ -21,20 +22,23 @@ struct QWaveAioctxEvent_s
 {
     number_t fd;
     void* user_ptr;
-    fct_qwave__on_aio_event on_event;
     
+    fct_qwave__on_aio_event on_recv;
+    fct_qwave__on_aio_event on_done;    
 }; 
 
 //-----------------------------------------------------------------------------
 
-QWaveAioctxEvent qwave_aioctx_event_new (number_t fd, void* user_ptr, fct_qwave__on_aio_event fct)
+QWaveAioctxEvent qwave_aioctx_event_new (number_t fd)
 {
     QWaveAioctxEvent self = CAPE_NEW (struct QWaveAioctxEvent_s);
     
     self->fd = fd;
-    self->user_ptr = user_ptr;
-    self->on_event = fct;
-
+    self->user_ptr = NULL;
+    
+    self->on_recv = NULL;
+    self->on_done = NULL;
+    
     return self;
 }
 
@@ -46,35 +50,39 @@ void qwave_aioctx_event_del (QWaveAioctxEvent* p_self)
     {
         QWaveAioctxEvent self = *p_self;
         
-        
-        
-        
+        if (self->on_done)
+        {
+            self->on_done (self->user_ptr, (void*)(self->fd));
+        }
+                
         CAPE_DEL (p_self, struct QWaveAioctxEvent_s);
     }
 }
 
 //-----------------------------------------------------------------------------
 
-void qwave_aioctx_event_set (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event fct)
+void qwave_aioctx_event_set (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event on_recv, fct_qwave__on_aio_event on_done)
 {
-  self->user_ptr = user_ptr;
-  self->on_event = fct;
+    self->user_ptr = user_ptr;
+
+    self->on_recv = on_recv;
+    self->on_done = on_done;
 }
 
 //-----------------------------------------------------------------------------
 
 void* qwave_aioctx_event_get (QWaveAioctxEvent self)
 {
-  return (void*)self->fd;
+    return (void*)self->fd;
 }
 
 //-----------------------------------------------------------------------------
 
-int qwave_aioctx_handle (QWaveAioctxEvent self)
+int qwave_aioctx_handle__recv (QWaveAioctxEvent self)
 {
-    if (self->on_event)
+    if (self->on_recv)
     {
-        return self->on_event (self->user_ptr, (void*)(self->fd));
+        return self->on_recv (self->user_ptr, (void*)(self->fd));
     }
     else
     {
@@ -88,6 +96,7 @@ struct QWaveAioctx_s
 {
         
     int epoll_fd;         // epoll file descriptor
+    int event_fd;         // eventfd file descriptior
     long sfd;             // eventfd file descriptor
     int smap[32];         // map for signal handling
 };
@@ -99,6 +108,7 @@ QWaveAioctx qwave_aioctx_new ()
     QWaveAioctx self = CAPE_NEW (struct QWaveAioctx_s);
     
     self->epoll_fd = QWAVE_EPOLL_INVALID_FD;
+    self->event_fd = QWAVE_EPOLL_INVALID_FD;
     
     return self;
 }
@@ -116,14 +126,111 @@ void qwave_aioctx_del (QWaveAioctx* p_self)
             close (self->epoll_fd);
         }
                 
+        if (QWAVE_EPOLL_INVALID_FD != self->event_fd)
+        {
+          close (self->event_fd);
+        }
+                
         CAPE_DEL (p_self, struct QWaveAioctx_s);
     }
 }
 
 //-----------------------------------------------------------------------------
 
+int qwave_aioctx_epoll_ctl (QWaveAioctx self, int mode, int fd, int flags, void* data, CapeErr err)
+{
+    struct epoll_event event;
+    
+    // use the data.ptr part of the union to store 
+    // a pointer to the QWaveAioctxEvent object
+    event.data.ptr = data;
+    
+    // set the events on which the epoll should return
+    event.events = flags;
+    
+    int s = epoll_ctl (self->epoll_fd, mode, fd, &event);
+    if (s < 0)
+    {
+        int errCode = errno;
+        
+        if (errCode == EPERM)
+        {
+            cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");            
+            cape_log_msg (CAPE_LL_ERROR, "QWAVE", "epoll", cape_err_text (err));
+        }
+        else
+        {
+            cape_err_lastOSError (err);
+            cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "epoll", "can't use fd [%li] in epoll: %s", fd, cape_err_text (err));
+        }
+        
+        return FALSE;
+    }
+    else
+    {
+        return TRUE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qwave_aioctx__on_event (void* user_ptr, void* handle)
+{
+    QWaveAioctx self = user_ptr;
+  
+    uint64_t u;
+    
+    ssize_t read_bytes = read (self->event_fd, &u, sizeof(uint64_t));
+    
+    if (read_bytes != sizeof(uint64_t))
+    {      
+        cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "event", "error on internal event, not enough bytes");
+    }
+    else
+    {
+        QWaveAioctxEvent aio_event = (QWaveAioctxEvent)u;
+      
+        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "event", "shutdown event received {%p}", aio_event);
+        
+        // remove handle from epoll
+        {
+          CapeErr err = cape_err_new ();
+          
+          // try to remove the handle from the epoll
+          if (qwave_aioctx_epoll_ctl (self, EPOLL_CTL_DEL, aio_event->fd, 0, NULL, err))
+          {
+            
+          }
+          else
+          {
+            
+            
+          }
+          
+          cape_err_del (&err);
+        }
+
+        // call user defined shutdown function and
+        // cleanup handle event
+        qwave_aioctx_event_del (&aio_event);
+    }
+    
+    return QWAVE_EVENT_RESULT__CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_aioctx_open (QWaveAioctx self, CapeErr err)
 {
+    // create an event fd
+    self->event_fd = eventfd (0, 0);
+
+    // check if the open was successful
+    if (self->event_fd == -1)
+    {
+      return cape_err_lastOSError (err);
+    }
+  
     // create a new epoll
     self->epoll_fd = epoll_create1 (0);
     
@@ -131,6 +238,19 @@ int qwave_aioctx_open (QWaveAioctx self, CapeErr err)
     if (self->epoll_fd == -1)
     {
         return cape_err_lastOSError (err);
+    }
+    
+    {
+        void* handle = (void*)(number_t)self->event_fd;
+      
+        QWaveAioctxEvent event = qwave_aioctx_add (self, &handle, err);
+        
+        if (NULL == event)
+        {
+            return cape_err_code (err);          
+        }
+        
+        qwave_aioctx_event_set (event, self, qwave_aioctx__on_event, NULL);
     }
     
     return CAPE_ERR_NONE;
@@ -142,42 +262,16 @@ QWaveAioctxEvent qwave_aioctx_add (QWaveAioctx self, void** p_handle, CapeErr er
 {
     QWaveAioctxEvent ret;
     
-    struct epoll_event event;
-    number_t handle_fd = (number_t)*p_handle;
-    
-    cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "add", "append event with fd [%lu]", handle_fd);
-
     // create a new object for the handler
-    ret = qwave_aioctx_event_new (handle_fd, NULL, NULL);
+    ret = qwave_aioctx_event_new ((number_t)*p_handle);
     
-    // use the data.ptr part of the union to store 
-    // a pointer to the QWaveAioctxEvent object
-    event.data.ptr = ret;
-    
-    // set the events on which the epoll should return
-    event.events = EPOLLET | EPOLLIN;
-        
-    int s = epoll_ctl (self->epoll_fd, EPOLL_CTL_ADD, handle_fd, &event);
-    if (s < 0)
+    if (qwave_aioctx_epoll_ctl (self, EPOLL_CTL_ADD, (number_t)*p_handle, EPOLLET | EPOLLIN, ret, err))
     {
-        int errCode = errno;
-        
-        if (errCode == EPERM)
-        {
-            cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");            
-            cape_log_msg (CAPE_LL_ERROR, "QWAVE", "add []", cape_err_text (err));
-        }
-        else
-        {
-            cape_err_lastOSError (err);
-            cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "add []", "can't add fd [%li] to epoll: %s", (number_t)*p_handle, cape_err_text (err));
-        }
-        
-        qwave_aioctx_event_del (&ret);
+        *p_handle = NULL;
     }
     else
     {
-        *p_handle = NULL;
+        qwave_aioctx_event_del (&ret);
     }
     
     return ret;
@@ -187,7 +281,48 @@ QWaveAioctxEvent qwave_aioctx_add (QWaveAioctx self, void** p_handle, CapeErr er
 
 void qwave_aioctx_rm (QWaveAioctx self, QWaveAioctxEvent* p_event)
 {
+    QWaveAioctxEvent aio_event = *p_event;
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "event", "shutdown event received {%p}", aio_event);
+    
+    // remove handle from epoll
+    {
+      CapeErr err = cape_err_new ();
+      
+      // try to remove the handle from the epoll
+      if (qwave_aioctx_epoll_ctl (self, EPOLL_CTL_DEL, aio_event->fd, 0, NULL, err))
+      {
+        
+      }
+      else
+      {
+        
+        
+      }
+      
+      cape_err_del (&err);
+    }
+    
+    // call user defined shutdown function and
+    // cleanup handle event
+    qwave_aioctx_event_del (p_event);
   
+  /*
+  
+    uint64_t u = (uint64_t)(*p_event);
+  
+    // to avoid race conditions, we trigger an internal event
+    // this event will be handled by the same thread responsible to handle all input events
+    ssize_t written_bytes = write (self->event_fd, &u, sizeof(uint64_t));
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "event", "shutdown event added {%p}", *p_event);
+    
+    if (written_bytes != sizeof(uint64_t))
+    {
+        
+      
+    }
+  */
 }
 
 //-----------------------------------------------------------------------------
@@ -196,7 +331,7 @@ int qwave_aioctx__handle_event (QWaveAioctx self, struct epoll_event* event, Cap
 {
     QWaveAioctxEvent aio_event = event->data.ptr;
 
-    switch (qwave_aioctx_handle (aio_event))
+    switch (qwave_aioctx_handle__recv (aio_event))
     {
         case QWAVE_EVENT_RESULT__CONTINUE:
         {

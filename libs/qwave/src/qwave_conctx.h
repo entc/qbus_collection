@@ -17,7 +17,9 @@
 struct QWaveConctx_s; typedef struct QWaveConctx_s* QWaveConctx; // use a simple version
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_new         (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctxEvent event, const CapeString remote_address);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new         (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address);
+
+__CAPE_LOCAL     void               qwave_conctx_del         (QWaveConctx*);
 
 //-----------------------------------------------------------------------------
 

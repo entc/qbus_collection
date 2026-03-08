@@ -430,7 +430,7 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
   
   memset (&addr, 0x00, sizeof(addr));
   
-  number_t sock = accept ((int)(number_t)handle, &addr, &addrlen);
+  int sock = accept ((int)(number_t)handle, &addr, &addrlen);
   if (sock < 0)
   {
     if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
@@ -457,9 +457,19 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
       
     }
     
-    flags |= O_NONBLOCK;
-    
+    flags |= O_NONBLOCK | O_NDELAY;
+        
     if (fcntl(sock, F_SETFL, flags) != 0)
+    {
+      
+    }
+  }
+  
+  // set socket options
+  {
+    int opt = 0;
+    
+    if (setsockopt (sock, SOL_SOCKET, SO_LINGER, (char*)&opt, sizeof(opt)) < 0)
     {
       
     }
@@ -470,7 +480,7 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
     cape_str_replace_cp (p_remote_addr, remote_addr);
   }
   
-  return (void*)sock;
+  return (void*)(number_t)sock;
 }
 
 //-----------------------------------------------------------------------------
@@ -506,7 +516,7 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
     //
     // The value 0 may also be returned if the requested number of bytes
     // to receive from a stream socket was 0.
-    res = CAPE_ERR_CONTINUE;
+    res = CAPE_ERR_EOF;
   }
   else
   {
@@ -563,11 +573,91 @@ int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void cape_sock__close (void* handle)
+int cape_sock__touch (void* handle, CapeErr err)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)handle);
+  send ((int)(number_t)handle, NULL, 0, MSG_NOSIGNAL);
   
-  close ((number_t)handle);
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__close (void* handle)
+{  
+  if (-1 == close ((number_t)handle))
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "error on closing socket [%lu]: %s", (number_t)handle, cape_err_text (err));
+    
+    cape_err_del (&err);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket closed <- fd [%lu]", (number_t)handle);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__shutdown (void* handle)
+{
+  if (-1 == shutdown ((number_t)handle, SHUT_RDWR))
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "error on shutdown socket [%lu]: %s", (number_t)handle, cape_err_text (err));
+    
+    cape_err_del (&err);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket shutdown [rdwr] <- fd [%lu]", (number_t)handle);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__shutdown__rd (void* handle)
+{
+  if (-1 == shutdown ((number_t)handle, SHUT_RD))
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "error on shutdown socket [%lu]: %s", (number_t)handle, cape_err_text (err));
+    
+    cape_err_del (&err);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket shutdown [rd] <- fd [%lu]", (number_t)handle);
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_sock__shutdown__wr (void* handle)
+{
+  if (-1 == shutdown ((number_t)handle, SHUT_WR))
+  {
+    CapeErr err = cape_err_new ();
+    
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "error on shutdown socket [%lu]: %s", (number_t)handle, cape_err_text (err));
+    
+    cape_err_del (&err);
+  }
+  else
+  {
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket shutdown [wr] <- fd [%lu]", (number_t)handle);
+  }
 }
 
 //-----------------------------------------------------------------------------

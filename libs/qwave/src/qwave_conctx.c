@@ -18,6 +18,7 @@ struct QWaveConctx_s
     QWaveConfig config;                       // reference
     QWaveResponse response;                   // reference
     CapeQueue queue;                          // reference
+    QWaveAioctx aioctx;                       // reference
     
     number_t reference_counter;               // the reference counter for requests
     int close_connection;                     // tell the context to close the connection
@@ -143,13 +144,14 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctxEvent event, const CapeString remote_address)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
     self->config = config;
     self->response =response;
     self->queue = queue;
+    self->aioctx = aio;
     
     self->reference_counter = 0;
     self->close_connection = FALSE;
@@ -211,13 +213,13 @@ void qwave_conctx_shutdown (QWaveConctx self)
 {
     if ((self->reference_counter == 0) && (self->close_connection))
     {
-        QWaveConctx h = self;
-        
-        cape_sock__close (qwave_aioctx_event_get (self->connection_handle));
+        QWaveAioctxEvent event = self->connection_handle;
 
-   //     qwave_aioctx_rm (QWaveAioctx, self->connection_handle);
-                
-        qwave_conctx_del (&h);
+        // close write part of the socket
+        cape_sock__shutdown (qwave_aioctx_event_get (self->connection_handle));
+
+        // self will be destroyed in the process
+        qwave_aioctx_rm (self->aioctx, &event);
     }
 }
 
@@ -227,7 +229,7 @@ void qwave_conctx_reqdec (QWaveConctx self)
 {
     self->reference_counter--;
 
-    qwave_conctx_shutdown (self);
+    cape_sock__touch (qwave_aioctx_event_get (self->connection_handle), NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -235,7 +237,9 @@ void qwave_conctx_reqdec (QWaveConctx self)
 void qwave_conctx_close (QWaveConctx self)
 {
     self->close_connection = TRUE;
-
+    
+    //cape_sock__shutdown__rd (qwave_aioctx_event_get (self->connection_handle));
+    
     qwave_conctx_shutdown (self);
 }
 
@@ -311,7 +315,7 @@ int qwave_conctx_read (QWaveConctx self)
             }
             case CAPE_ERR_EOF:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected");
+                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", qwave_aioctx_event_get (self->connection_handle));
                 
                 ret = FALSE;
                 con = FALSE;

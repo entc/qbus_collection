@@ -98,11 +98,24 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
     }
     else
     {
-        // terminate connection
-        cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "drop connection on fd [%lu]", handle_remote_connection);
-
         qwave_conctx_close (ctx);
     }
+    
+    return QWAVE_EVENT_RESULT__CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qwave_server__on_drop (void* user_ptr, void* handle_remote_connection)
+{
+    QWaveConctx ctx = user_ptr;
+
+    // close physical tcp connection
+    cape_sock__close (handle_remote_connection);
+    
+    qwave_conctx_del (&ctx);
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
     
     return QWAVE_EVENT_RESULT__CONTINUE;
 }
@@ -123,10 +136,10 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         }
         else
         {
-            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, eh, remote_address);
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aioctx, eh, remote_address);
         
             // set the callbacks
-            qwave_aioctx_event_set (eh, conctx, qwave_server__on_request);
+            qwave_aioctx_event_set (eh, conctx, qwave_server__on_request, qwave_server__on_drop);
         }
         
         cape_err_del (&err);        
@@ -166,6 +179,17 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
 
 //-----------------------------------------------------------------------------
 
+int __STDCALL qwave_server__on_shutdown (void* user_ptr, void* handle)
+{
+    QWave self = user_ptr;
+    
+    
+    
+    return QWAVE_EVENT_RESULT__CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_init (QWave self, CapeErr err)
 {
     int res;
@@ -191,7 +215,7 @@ int qwave_init (QWave self, CapeErr err)
     self->accept_event_handler = qwave_aioctx_add (self->aioctx, &socket_handle, err);
     
     // set the callbacks
-    qwave_aioctx_event_set (self->accept_event_handler, self, qwave_server__on_accept);
+    qwave_aioctx_event_set (self->accept_event_handler, self, qwave_server__on_accept, qwave_server__on_shutdown);
         
     if (NULL == self->accept_event_handler)
     {

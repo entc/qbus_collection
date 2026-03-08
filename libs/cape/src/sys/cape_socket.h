@@ -38,7 +38,16 @@ __CAPE_LIBEX   int           cape_sock__recv              (void*, CapeStream buf
                              /* sends data to the socket, bufdat contains all data */
 __CAPE_LIBEX   int           cape_sock__send              (void*, CapeStream bufdat, CapeErr err);
 
+                             /* sends no data to the socket */
+__CAPE_LIBEX   int           cape_sock__touch             (void*, CapeErr err);
+
 __CAPE_LIBEX   void          cape_sock__close             (void*);
+
+__CAPE_LIBEX   void          cape_sock__shutdown          (void*);
+
+__CAPE_LIBEX   void          cape_sock__shutdown__rd      (void*);
+
+__CAPE_LIBEX   void          cape_sock__shutdown__wr      (void*);
 
 //-----------------------------------------------------------------------------
 

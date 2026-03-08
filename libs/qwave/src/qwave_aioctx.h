@@ -47,7 +47,7 @@ __CAPE_LIBEX     int                   qwave_aioctx_kill        (QWaveAioctx, Ca
 //-----------------------------------------------------------------------------
 
                                        /* sets the callback method and user pointer for upcoming events */
-__CAPE_LIBEX     void                  qwave_aioctx_event_set   (QWaveAioctxEvent, void* user_ptr, fct_qwave__on_aio_event fct);
+__CAPE_LIBEX     void                  qwave_aioctx_event_set   (QWaveAioctxEvent, void* user_ptr, fct_qwave__on_aio_event on_recv, fct_qwave__on_aio_event on_done);
 
                                        /* returns the original handle */
 __CAPE_LIBEX     void*                 qwave_aioctx_event_get   (QWaveAioctxEvent);
