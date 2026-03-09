@@ -126,10 +126,15 @@ void qwave_response__header_default (QWaveResponse self, CapeStream stream_messa
     }
     
     // content length
+    if (stream_content)
     {
         cape_stream_append_str (stream_message, "Content-Length: ");
         cape_stream_append_n (stream_message, cape_stream_size (stream_content));
         cape_stream_append_str (stream_message, "\r\n");
+    }
+    else
+    {
+        cape_stream_append_str (stream_message, "Content-Length: 0\r\n");
     }
 }
 
@@ -142,18 +147,16 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
     // local objects
     CapeErr err = cape_err_new ();
     CapeStream stream_content = cape_stream_new ();
-
+    
     // BEGIN
     cape_stream_clr (stream_message);
 
     res = cape_fs_file_load (NULL, path, stream_content, qwave_response__file__on_load, err);
     if (res)
     {
-        cape_stream_clr (stream_content);
-        
         cape_stream_append_str (stream_message, "HTTP/1.1 404 Not Found\r\n");
         
-        qwave_response__header_default (self, stream_message, stream_content, path, keep_alive);
+        qwave_response__header_default (self, stream_message, NULL, path, keep_alive);
         
         // start with content
         cape_stream_append_str (stream_message, "\r\n");
@@ -180,6 +183,7 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
         cape_stream_append_str (stream_message, "\r\n");
         
         cape_stream_append_stream (stream_message, stream_content);
+
     }
     
     cape_stream_del (&stream_content);

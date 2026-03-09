@@ -307,6 +307,8 @@ int qwave_conctx_read (QWaveConctx self)
         {
             case CAPE_ERR_NONE:
             {
+                printf ("%s\n", cape_stream_get (self->buffer));
+                
                 if (NULL == self->parser.data)
                 {
                     // create a new request object to track this request
@@ -332,8 +334,11 @@ int qwave_conctx_read (QWaveConctx self)
                     qwave_reqctx_set (self->parser.data, self->parser.upgrade, http_should_keep_alive (&(self->parser)), http_method_str (self->parser.method));
                     
                     cape_stream_shift_l (self->buffer, parsed_bytes);
-                                        
-                    cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
+                      
+                    // TODO: add in queue
+                    qwave_conctx__on_event (self->parser.data, 0, 0);
+                    
+                    //cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
                     
                     self->parser.data = NULL;
                 }
@@ -387,7 +392,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
     CapeErr err = cape_err_new ();
     CapeStream s = cape_stream_mv (p_output);
     
-    printf ("send file #1\n");
+    printf ("send file #1 [%i]\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle));
     
     res = cape_sock__send (qwave_aioctx_event_get (self->connection_handle), s, err);
     if (res)
@@ -396,7 +401,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
         
     }
 
-    printf ("send file #2, %i\n", res);
+    printf ("send file #2 [%i], %i -> %li\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle), res, cape_stream_size (s));
     
     cape_stream_del (&s);
     cape_err_del (&err);
