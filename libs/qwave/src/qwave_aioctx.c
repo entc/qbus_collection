@@ -468,8 +468,10 @@ struct QWaveAioctxEvent_s
 {
     number_t fd;
     void* user_ptr;
-    fct_qwave__on_aio_event on_event;
-    
+  
+    fct_qwave__on_aio_event on_recv;
+    fct_qwave__on_aio_event on_done;
+
 }; typedef struct QWaveAioctxEvent_s* QWaveAioctxEvent;
 
 //-----------------------------------------------------------------------------
@@ -480,7 +482,9 @@ QWaveAioctxEvent qwave_aioctx_event_new (number_t fd)
     
     self->fd = fd;
     self->user_ptr = NULL;
-    self->on_event = NULL;
+  
+    self->on_recv = NULL;
+    self->on_done = NULL;
 
     return self;
 }
@@ -502,19 +506,36 @@ void qwave_aioctx_event_del (QWaveAioctxEvent* p_self)
 
 //-----------------------------------------------------------------------------
 
+void qwave_aioctx_event_set (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event on_recv, fct_qwave__on_aio_event on_done)
+{
+    self->user_ptr = user_ptr;
+
+    self->on_recv = on_recv;
+    self->on_done = on_done;
+}
+
+//-----------------------------------------------------------------------------
+
+void* qwave_aioctx_event_get (QWaveAioctxEvent self)
+{
+    return (void*)self->fd;
+}
+
+//-----------------------------------------------------------------------------
+
 void qwave_aioctx_event (QWaveAioctxEvent self, void* user_ptr, fct_qwave__on_aio_event fct)
 {
     self->user_ptr = user_ptr;
-    self->on_event = fct;
+    self->on_recv = fct;
 }
 
 //-----------------------------------------------------------------------------
 
 int qwave_aioctx_handle (QWaveAioctxEvent self)
 {
-    if (self->on_event)
+    if (self->on_recv)
     {
-        return self->on_event (self->user_ptr, (void*)(self->fd));
+        return self->on_recv (self->user_ptr, (void*)(self->fd));
     }
     else
     {
@@ -583,34 +604,42 @@ int qwave_aioctx_kill (QWaveAioctx self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qwave_aioctx_add (QWaveAioctx self, void** p_handle, void* user_ptr, fct_qwave__on_aio_event fct, CapeErr err)
+QWaveAioctxEvent qwave_aioctx_add (QWaveAioctx self, void** p_handle, CapeErr err)
 {
+  QWaveAioctxEvent ret;
+
   int res;
   int i = 0;
   
   void* handle = *p_handle;
   struct kevent change_event;
-  
-  // local objects
-  QWaveAioctxEvent event = qwave_aioctx_event_new (handle, user_ptr, fct);
+    
+  // create a new object for the handler
+  ret = qwave_aioctx_event_new ((number_t)*p_handle);
 
-  EV_SET (&change_event, (number_t)handle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, event);
+  EV_SET (&change_event, (number_t)handle, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ret);
   
   if (-1 == kevent (self->kevent_fd, &change_event, 1, NULL, 0, NULL))
   {
-    
+    qwave_aioctx_event_del (&ret);
+
     
   }
 
-  event = NULL;
   *p_handle = NULL;
   
   res = CAPE_ERR_NONE;
   
 cleanup_and_exit:
   
-  qwave_aioctx_event_del (&event);
-  return res;
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_aioctx_rm (QWaveAioctx self, QWaveAioctxEvent* p_event)
+{
+  
 }
 
 //-----------------------------------------------------------------------------

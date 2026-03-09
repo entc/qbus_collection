@@ -11,7 +11,8 @@ struct QWaveResponse_s
 {
     CapeMap mime_types;
     
-    
+    CapeString server_identifier;
+    CapeString provider;
 };
 
 //-----------------------------------------------------------------------------
@@ -22,7 +23,7 @@ static void __STDCALL qwave_response__mime_types__on_del (void* key, void* val)
 
 //-----------------------------------------------------------------------------
 
-QWaveResponse qwave_response_new ()
+QWaveResponse qwave_response_new (const CapeString server_identifier, const CapeString provider)
 {
     QWaveResponse self = CAPE_NEW (struct QWaveResponse_s);
     
@@ -41,6 +42,9 @@ QWaveResponse qwave_response_new ()
     cape_map_insert (self->mime_types, "json",  "application/json; charset=utf-8");
     cape_map_insert (self->mime_types, "pdf",   "application/pdf");
     
+    self->server_identifier = cape_str_cp (server_identifier);
+    self->provider = cape_str_cp (provider);
+  
     return self;
 }
 
@@ -52,6 +56,8 @@ void qwave_response_del (QWaveResponse* p_self)
     {
         QWaveResponse self = *p_self;
                 
+        cape_str_del (&(self->provider));
+        cape_str_del (&(self->server_identifier));
         cape_map_del (&(self->mime_types));
         
         CAPE_DEL (p_self, struct QWaveResponse_s);
@@ -93,6 +99,20 @@ void qwave_response__connection (CapeStream stream_message, int keep_alive)
 
 void qwave_response__header_default (QWaveResponse self, CapeStream stream_message, CapeStream stream_content, const CapeString path, int keep_alive)
 {
+    {
+        cape_stream_append_str (stream_message, "Server: ");
+        cape_stream_append_str (stream_message, self->server_identifier);
+        cape_stream_append_str (stream_message, "\r\nx-powered-by: ");
+        cape_stream_append_str (stream_message, self->provider);
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+  
+    // some extra fields
+    cape_stream_append_str (stream_message, "tk: N\r\n");
+
+    // tell the browser not to sniff for the correct mime type
+    cape_stream_append_str (stream_message, "x-content-type-options: nosniff\r\n");
+
     {
         cape_stream_append_str (stream_message, "Connection: ");
         cape_stream_append_str (stream_message, keep_alive ? "keep-alive" : "close");
