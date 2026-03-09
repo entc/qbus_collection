@@ -22,6 +22,8 @@ __CAPE_LIBEX     void              qwave_response_del         (QWaveResponse*);
 
 __CAPE_LOCAL     void              qwave_response_file        (QWaveResponse, CapeStream, const CapeString path, int keep_alive);
 
+__CAPE_LOCAL     void              qwave_response_upgrade     (QWaveResponse, CapeStream, const CapeString accept_key);
+
 //-----------------------------------------------------------------------------
 
 #endif

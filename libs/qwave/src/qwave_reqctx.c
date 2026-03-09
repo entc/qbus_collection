@@ -221,8 +221,37 @@ void qwave_reqctx_exec (QWaveReqctx self)
 {
     if (self->upgrade)
     {
+        cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "reqexec", "connection upgrade");
         
+        // try to find the appropriate header entry
+        {
+            const CapeString key;
+            CapeMapNode n = cape_map_find (self->header_values, (void*)"Sec-WebSocket-Key");
+            
+            if (NULL == n)
+            {
+                cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "request has no 'Sec-WebSocket-Key'");
+                
+                return;
+            }
+            
+            key = cape_map_node_value (n);
+            if (NULL == key)
+            {
+                cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "header entry 'Sec-WebSocket-Key' is invalid");
+
+                return;
+            }
+            
+                        
+            qwave_conctx_upgrade (self->conctx, key);                        
+        }
         
+        // try to close connection
+        qwave_conctx_close (self->conctx);
+        
+        // tell the context we don't need it anymore
+        qwave_conctx_reqdec (self->conctx);
     }
     else
     {

@@ -10,6 +10,26 @@
 #include <stc/cape_stream.h>
 #include <stc/cape_map.h>
 #include <fmt/cape_tokenizer.h>
+#include <stc/cape_cursor.h>
+
+// qcrypt includes
+#include <qcrypt.h>
+
+//-----------------------------------------------------------------------------
+
+#define RFC_WEBSOCKET_FRAME__CONTINUATION    0x0
+#define RFC_WEBSOCKET_FRAME__TEXT            0x1
+#define RFC_WEBSOCKET_FRAME__BINARY          0x2
+#define RFC_WEBSOCKET_FRAME__CLOSED          0x8
+#define RFC_WEBSOCKET_FRAME__PING            0x9
+#define RFC_WEBSOCKET_FRAME__PONG            0xa
+
+//-----------------------------------------------------------------------------
+
+#define QWAVE_PROT_WEBSOCKET_RECV__NONE      0
+#define QWAVE_PROT_WEBSOCKET_RECV__HEADER1   1
+#define QWAVE_PROT_WEBSOCKET_RECV__LENGTH    2
+#define QWAVE_PROT_WEBSOCKET_RECV__PAYLOAD   3
 
 //-----------------------------------------------------------------------------
 
@@ -31,6 +51,18 @@ struct QWaveConctx_s
     // http parser
     http_parser parser;                       // external parser instance
     http_parser_settings settings;            // external parser settings
+    
+    fct_qwave__on_upgrade on_upgrade;         // callback for upgrade
+    int ws_state;                             // websockets protocol state
+    number_t ws_data_size;                    // websocket packet size
+    cape_uint8 ws_opcode;
+    CapeString ws_masking_key;
+    
+    int ws_fin;
+    int ws_rsv1;
+    int ws_rsv2;
+    int ws_rsv3;
+    int ws_mask;
 };
 
 //-----------------------------------------------------------------------------
@@ -144,7 +176,7 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address, fct_qwave__on_upgrade on_upgrade)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
@@ -160,6 +192,10 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->buffer = cape_stream_new ();
     
     self->connection_handle = event;
+
+    self->on_upgrade = on_upgrade;
+    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
+    self->ws_masking_key = NULL;
     
     http_parser_init (&(self->parser), HTTP_REQUEST);
     
@@ -191,6 +227,7 @@ void qwave_conctx_del (QWaveConctx* p_self)
     {
         QWaveConctx self = *p_self;
         
+        cape_str_del (&(self->ws_masking_key));
         cape_stream_del (&(self->buffer));
         cape_str_del (&(self->remote_address));
         
@@ -342,7 +379,7 @@ int qwave_conctx_read (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_send (QWaveConctx self, CapeStream* p_output, int keep_alive)
+void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
 {
     int res;
     
@@ -394,12 +431,363 @@ void qwave_conctx_send_file (QWaveConctx self, const CapeString site, const Cape
         qwave_response_file (self->response, s, file_absolute, keep_alive);
 
         // send the response to the client (browser)
-        qwave_conctx_send (self, &s, keep_alive);
+        qwave_conctx_send (self, &s);
     }
     
     cape_str_del (&file_relative);
     cape_str_del (&file_absolute);
     cape_err_del (&err);    
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_upgrade (QWaveConctx self, const CapeString key)
+{
+    // local objects
+    CapeErr err = cape_err_new ();
+    CapeString accept_key__text = NULL;
+    CapeStream accept_key__hash = NULL;
+    CapeString accept_key = NULL;
+    
+    // see RFC, concat the defined UUID as accept key
+    accept_key__text = cape_str_catenate_2 (key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    
+    // hash the accept key
+    accept_key__hash = qcrypt__hash_sha__bin_o  (accept_key__text, cape_str_size (accept_key__text), err);
+    
+    if (NULL == accept_key__hash)
+    {
+        cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "can't create hash for the accept-key");
+        
+    }
+    
+    accept_key = qcrypt__encode_base64_m (accept_key__hash);
+    
+    {
+        CapeStream s = cape_stream_new ();
+        
+        qwave_response_upgrade (self->response, s, accept_key);
+        
+        // send the response to the client (browser)
+        qwave_conctx_send (self, &s);
+    }
+
+    // reset values
+    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
+    cape_stream_clr (self->buffer);
+    
+    // reset the callbacks
+    if (self->on_upgrade)
+    {
+        self->on_upgrade (self, self->connection_handle);
+    }
+    
+    cape_str_del (&accept_key);
+    cape_stream_del (&accept_key__hash);
+    cape_str_del (&accept_key__text);
+    cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws__decode_header1 (QWaveConctx self, CapeCursor cursor)
+{
+    {
+        cape_uint8 bits01 = cape_cursor_scan_08 (cursor);
+        
+        self->ws_fin  = (bits01 & 0B10000000) == 0B10000000;
+        self->ws_rsv1 = (bits01 & 0B01000000) == 0B01000000;
+        self->ws_rsv2 = (bits01 & 0B00100000) == 0B00100000;
+        self->ws_rsv3 = (bits01 & 0B00010000) == 0B00010000;
+        
+        self->ws_opcode = (bits01 << 4);
+        self->ws_opcode = self->ws_opcode >> 4;
+    }
+    {
+        cape_uint8 bits02 = cape_cursor_scan_08 (cursor);
+        
+        self->ws_mask = (bits02 & 0B10000000) == 0B10000000;
+        self->ws_data_size = bits02 & ~0B10000000;
+    }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->ws_fin, self->ws_rsv1, self->ws_rsv2, self->ws_rsv3, self->ws_opcode);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws__send_frame (QWaveConctx self, number_t opcode, const char* bufdat, number_t buflen)
+{
+    // local objects
+    CapeStream s = cape_stream_new ();
+    number_t size_type = 0;
+    
+    /* the server is not allowed to send masked payload
+     * -> mask was set to 0
+     */
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "send frame", "buflen = %lu", buflen);
+    
+    {
+        cape_uint8 bits01 = opcode;  // opcode text
+        
+        bits01 |= 0B10000000;   // fin
+        
+        cape_stream_append_08 (s, bits01);
+    }
+    {
+        cape_uint8 bits02 = 0;
+        
+        if (buflen < 126)
+        {
+            bits02 = buflen;
+        }
+        else if (buflen < 65535)
+        {
+            bits02 = 126;
+            size_type = 1;
+        }
+        else
+        {
+            bits02 = 127;
+            size_type = 2;
+        }
+        
+        cape_stream_append_08 (s, bits02);
+    }
+    
+    switch (size_type)
+    {
+        case 1:
+        {
+            cape_stream_append_16 (s, buflen, TRUE);
+            break;
+        }
+        case 2:
+        {
+            cape_stream_append_64 (s, buflen, TRUE);
+            break;
+        }
+    }
+    
+    // add the message to the buffer
+    cape_stream_append_buf (s, bufdat, buflen);
+    
+    qwave_conctx_send (self, &s);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws__decode_payload (QWaveConctx self, CapeCursor cursor)
+{
+    number_t i;
+    
+    CapeString h = cape_cursor_scan_s (cursor, self->ws_data_size);
+    
+    // handle some opcodes
+    switch (self->ws_opcode)
+    {
+        case RFC_WEBSOCKET_FRAME__TEXT:   // text frame
+        {
+            if (self->ws_masking_key)
+            {
+                for (i = 0; i < self->ws_data_size; i++)
+                {
+                    h[i] = h[i] ^ self->ws_masking_key[i % 4];
+                }
+            }
+            
+            // TODO: run this in a queue
+            /*
+            if (self->ws->on_msg)
+            {
+                self->ws->on_msg (self->conn_ptr, h);
+            }
+            */
+            
+            break;
+        }
+        case RFC_WEBSOCKET_FRAME__CLOSED:   // connection close frame
+        {
+            cape_log_msg (CAPE_LL_DEBUG, "QWEBS", "payload", "retrieved connection closed");
+            // TODO: close connection
+            
+            break;
+        }
+        case RFC_WEBSOCKET_FRAME__PING:   // ping
+        {
+            cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
+            
+            qwave_conctx_ws__send_frame (self, RFC_WEBSOCKET_FRAME__PONG, h, self->ws_data_size);
+            
+            break;
+        }
+    }
+    
+    cape_str_del (&h);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws__adjust_buffer (QWaveConctx self, CapeCursor cursor)
+{
+    // local objects
+    CapeStream h = NULL;
+    
+    {
+        // returns the bytes which had not been used for parsing
+        number_t bytes_left_to_scan = cape_cursor_tail (cursor);
+        
+        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "adjust buffer = %lu", bytes_left_to_scan);
+        
+        if (bytes_left_to_scan > 0)
+        {
+            h = cape_stream_new ();
+            
+            // shift the buffer
+            // travers the cursor (to the end)
+            cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+        }
+    }
+    
+    // replace the buffer
+    cape_stream_replace_mv (&(self->buffer), &h);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
+{
+    int has_enogh_bytes_for_parsing = TRUE;
+    
+    while (has_enogh_bytes_for_parsing)
+    {
+        switch (self->ws_state)
+        {
+            case QWAVE_PROT_WEBSOCKET_RECV__NONE:
+            {
+                if (cape_cursor__has_data (cursor, 2))
+                {
+                    qwave_conctx_ws__decode_header1 (self, cursor);
+                    
+                    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__HEADER1;
+                    
+                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->ws_data_size);
+                }
+                else
+                {
+                    has_enogh_bytes_for_parsing = FALSE;
+                }
+                
+                break;
+            }
+            case QWAVE_PROT_WEBSOCKET_RECV__HEADER1:
+            {
+                if (self->ws_data_size == 126)
+                {
+                    if (cape_cursor__has_data (cursor, 2))
+                    {
+                        self->ws_data_size = cape_cursor_scan_16 (cursor, TRUE);
+                        
+                        self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__LENGTH;
+                    }
+                    else
+                    {
+                        has_enogh_bytes_for_parsing = FALSE;
+                    }
+                }
+                else if (self->ws_data_size == 127)
+                {
+                    if (cape_cursor__has_data (cursor, 8))
+                    {
+                        self->ws_data_size = cape_cursor_scan_64 (cursor, TRUE);
+                        
+                        self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__LENGTH;
+                    }
+                    else
+                    {
+                        has_enogh_bytes_for_parsing = FALSE;
+                    }
+                }
+                else
+                {
+                    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__LENGTH;
+                }
+                
+                break;
+            }
+            case QWAVE_PROT_WEBSOCKET_RECV__LENGTH:
+            {
+                if (self->ws_mask)
+                {
+                    if (cape_cursor__has_data (cursor, 4))
+                    {
+                        cape_str_del (&(self->ws_masking_key));
+                        self->ws_masking_key = cape_cursor_scan_s (cursor, 4);
+                        
+                        self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__PAYLOAD;
+                    }
+                    else
+                    {
+                        has_enogh_bytes_for_parsing = FALSE;
+                    }
+                }
+                else
+                {
+                    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__PAYLOAD;
+                }
+                
+                break;
+            }
+            case QWAVE_PROT_WEBSOCKET_RECV__PAYLOAD:
+            {        
+                if (cape_cursor__has_data (cursor, self->ws_data_size))
+                {
+                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> decode payload", self->ws_data_size);
+                    
+                    // travers the cursor by self->data_size
+                    qwave_conctx_ws__decode_payload (self, cursor);
+                    
+                    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
+                }
+                else
+                {
+                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> continue", self->ws_data_size);
+                    
+                    has_enogh_bytes_for_parsing = FALSE;
+                }
+                
+                break;
+            }
+        }
+    }
+
+    qwave_conctx_ws__adjust_buffer (self, cursor);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws_read (QWaveConctx self)
+{
+    // local objects
+    CapeErr err = cape_err_new ();
+    CapeCursor cursor = cape_cursor_new ();
+    
+    switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
+    {
+        case CAPE_ERR_NONE:
+        {
+            // use the current buffer for the cursor
+            cape_cursor_set (cursor, cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+ 
+            // use the cursor to handle the protocol
+            qwave_conctx_ws__handle_protocol (self, cursor);
+            
+            break;
+        }
+    }
+
+    cape_cursor_del (&cursor);
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------

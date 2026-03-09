@@ -46,8 +46,8 @@ QWave qwave_new (CapeUdc parameters)
     self->accept_event_handler = NULL;
     
     // fetch host and port configuration
-    self->host = cape_str_cp (cape_udc_get_s (parameters, "h", "127.0.0.1"));    
-    self->port = cape_udc_get_n (parameters, "p", 8000);
+    self->host = cape_str_cp (cape_udc_get_s (parameters, "host", "127.0.0.1"));    
+    self->port = cape_udc_get_n (parameters, "port", 8000);
     
     // apply config to config object
     qwave_config_set (self->config, parameters);
@@ -84,6 +84,38 @@ void qwave_del (QWave* p_self)
         
         CAPE_DEL (p_self, struct QWave_s);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qwave_server__ws_recv (void* user_ptr, void* handle_remote_connection)
+{
+    QWaveConctx ctx = user_ptr;
+    
+    qwave_conctx_ws_read (ctx);
+
+    return QWAVE_EVENT_RESULT__CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qwave_server__ws_done (void* user_ptr, void* handle_remote_connection)
+{
+    QWaveConctx ctx = user_ptr;
+    
+    
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, QWaveAioctxEvent aioevent)
+{
+    
+    qwave_aioctx_event_set (aioevent, (void*)ctx, qwave_server__ws_recv, qwave_server__ws_done);
+    
+    
+
+    
 }
 
 //-----------------------------------------------------------------------------
@@ -136,7 +168,7 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         }
         else
         {
-            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aioctx, eh, remote_address);
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aioctx, eh, remote_address, qwave_server__on_upgrade);
         
             // set the callbacks
             qwave_aioctx_event_set (eh, conctx, qwave_server__on_request, qwave_server__on_drop);

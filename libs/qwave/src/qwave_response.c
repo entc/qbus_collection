@@ -145,6 +145,7 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
         qwave_response__header_default (self, stream_message, stream_content, path, keep_alive);
         
         // name (this is important to open the file directly in the browser)
+        /*
         {
             cape_stream_append_str (stream_message, "Content-Disposition: inline; filename=\"");
             cape_stream_append_str (stream_message, path);
@@ -152,6 +153,7 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
             cape_stream_append_str (stream_message, path);
             cape_stream_append_str (stream_message, "\"\r\n");
         }
+        */
         
 
         // start with content
@@ -162,6 +164,32 @@ void qwave_response_file (QWaveResponse self, CapeStream stream_message, const C
     
     cape_stream_del (&stream_content);
     cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_response_upgrade (QWaveResponse self, CapeStream stream_message, const CapeString accept_key)
+{
+    // BEGIN
+    cape_stream_clr (stream_message);
+    
+    // start with the header
+    cape_stream_append_str (stream_message, "HTTP/1.1 101 Switching Protocols\r\n");
+    
+    {
+        cape_stream_append_str (stream_message, "Upgrade: ");
+        cape_stream_append_str (stream_message, "websocket");
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+
+    {
+        cape_stream_append_str (stream_message, "Sec-WebSocket-Accept: ");
+        cape_stream_append_str (stream_message, accept_key);
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+    
+    cape_stream_append_str (stream_message, "Connection: keep-alive, Upgrade\r\n");
+    cape_stream_append_str (stream_message, "\r\n");
 }
 
 //-----------------------------------------------------------------------------
