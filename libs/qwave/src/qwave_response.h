@@ -13,7 +13,7 @@ struct QWaveResponse_s; typedef struct QWaveResponse_s* QWaveResponse; // use a 
 //-----------------------------------------------------------------------------
 
                                    /* constructor: create a new instance of the qwave class */
-__CAPE_LIBEX     QWaveResponse     qwave_response_new         (void);
+__CAPE_LIBEX     QWaveResponse     qwave_response_new         (const CapeString server_identifier, const CapeString provider);
 
                                    /* destructor */
 __CAPE_LIBEX     void              qwave_response_del         (QWaveResponse*);

@@ -38,7 +38,7 @@ QWave qwave_new (CapeUdc parameters)
         
     self->aioctx = qwave_aioctx_new ();
     self->config = qwave_config_new ();
-    self->response = qwave_response_new ();
+    self->response = qwave_response_new (cape_udc_get_s (parameters, "identifier", "qwave"), cape_udc_get_s (parameters, "provider", "cape"));
     
     self->thread = NULL;    
     self->queue = cape_queue_new (10000);  // 10 seconds timeout
