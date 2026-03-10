@@ -38,6 +38,7 @@ SET(CAPE_SYS_SOURCES
   sys/cape_mutex.c
   sys/cape_thread.c
   sys/cape_net.c
+  sys/cape_aio.c
   sys/cape_socket.c
   sys/cape_pipe.c
   sys/cape_exec.c
@@ -56,6 +57,7 @@ SET(CAPE_SYS_HEADERS
   sys/cape_mutex.h
   sys/cape_thread.h
   sys/cape_net.h
+  sys/cape_aio.h
   sys/cape_socket.h
   sys/cape_pipe.h
   sys/cape_exec.h
