@@ -307,8 +307,6 @@ int qwave_conctx_read (QWaveConctx self)
         {
             case CAPE_ERR_NONE:
             {
-                printf ("%s\n", cape_stream_get (self->buffer));
-                
                 if (NULL == self->parser.data)
                 {
                     // create a new request object to track this request
@@ -338,9 +336,9 @@ int qwave_conctx_read (QWaveConctx self)
                     cape_stream_shift_l (self->buffer, parsed_bytes);
                       
                     // TODO: add in queue
-                    qwave_conctx__on_event (self->parser.data, 0, 0);
+//                    qwave_conctx__on_event (self->parser.data, 0, 0);
                     
-                    //cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
+                    cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
                     
                     self->parser.data = NULL;
                 }

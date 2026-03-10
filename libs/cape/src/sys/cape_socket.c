@@ -432,8 +432,6 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
   
   int sock = accept ((int)(number_t)handle, &addr, &addrlen);
   
-  printf ("accept socket: %i\n", sock);
-  
   if (sock < 0)
   {
     if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
@@ -472,9 +470,7 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
     
   // try to read bytes from FD
   bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, 0);
-  
-  printf ("bytes read [%i]: %li\n", (int)(number_t)handle, bytes_read);
-  
+    
   if (-1 == bytes_read)
   {
     if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
@@ -514,15 +510,9 @@ int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
   number_t total_sent = 0;
   number_t buflen = cape_stream_size (buffer);
   
-  printf ("%s\n", cape_stream_get (buffer));
-  
   while (total_sent < buflen)
   {
-    printf ("socket sent left: %li\n", buflen - total_sent);
-    
     bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, 0);
-    
-    printf ("socket sent bytes: %li\n", bytes_sent);
     
     if (-1 == bytes_sent)
     {

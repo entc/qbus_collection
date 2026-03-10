@@ -84,8 +84,6 @@ const CapeString qwave_response__fetch_mime (QWaveResponse self, const CapeStrin
 
 int __STDCALL qwave_response__file__on_load (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
 {
-    printf ("load file: %lu\n", buflen);
-    
     cape_stream_append_buf (ptr, bufdat, buflen);
     
     return CAPE_ERR_NONE;

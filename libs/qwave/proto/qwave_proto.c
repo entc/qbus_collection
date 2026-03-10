@@ -214,6 +214,13 @@ int main (int argc, char *argv[])
     goto cleanup_and_exit;
   }
 
+  res = cape_aio_wait (aio, err);
+  if (res)
+  {
+      goto cleanup_and_exit;
+  }
+  
+  /*
   while (1)
   {
       int n = epoll_wait (epoll_fd, events, MAX_EVENTS, -1);
@@ -242,7 +249,7 @@ int main (int argc, char *argv[])
           }
       }
   }
-
+*/
 cleanup_and_exit:
   
   cape_udc_del (&parameters);

@@ -190,8 +190,6 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
     
     while (TRUE)
     {
-        printf ("wait for accept\n");
-        
         // try to gather a new connection handle
         void* handle_remote_connection = cape_sock__accept (handle, &remote_address, err);
         
