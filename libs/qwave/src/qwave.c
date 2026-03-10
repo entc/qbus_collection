@@ -182,31 +182,31 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
 
 int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
 {
-    int ret;
     QWave self = user_ptr;
 
     // local objects
     CapeErr err = cape_err_new ();
     CapeString remote_address = NULL;
     
-    // try to gather a new connection handle
-    void* handle_remote_connection = cape_sock__accept (handle, &remote_address, err);
-
-    if (NULL == handle_remote_connection)
+    while (TRUE)
     {
-        ret = (cape_err_code (err) == CAPE_ERR_CONTINUE) ? QWAVE_EVENT_RESULT__TRYAGAIN : QWAVE_EVENT_RESULT__ERROR_CLOSED;
-    }
-    else
-    {
-        qwave_factory_conctx (self, handle_remote_connection, remote_address);
+        printf ("wait for accept\n");
         
-        ret = QWAVE_EVENT_RESULT__CONTINUE;
+        // try to gather a new connection handle
+        void* handle_remote_connection = cape_sock__accept (handle, &remote_address, err);
+        
+        if (NULL == handle_remote_connection)
+        {
+            break;
+        }
+        else
+        {
+            qwave_factory_conctx (self, handle_remote_connection, remote_address);
+        }
     }
-
+    
     cape_err_del (&err);
     cape_str_del (&remote_address);
-    
-    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -240,6 +240,12 @@ int qwave_init (QWave self, CapeErr err)
     socket_handle = cape_sock__tcp__srv_new (self->host, self->port, err);
     if (NULL == socket_handle)
     {        
+        goto cleanup_and_exit;
+    }
+    
+    res = cape_sock__noneblocking (socket_handle, err);
+    if (res)
+    {
         goto cleanup_and_exit;
     }
     

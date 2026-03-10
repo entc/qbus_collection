@@ -301,7 +301,7 @@ int qwave_conctx_read (QWaveConctx self)
     // local objects
     CapeErr err = cape_err_new ();
         
-    while (con)
+    //while (con)
     {
         switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
         {
@@ -331,7 +331,9 @@ int qwave_conctx_read (QWaveConctx self)
                    
                 if (qwave_reqctx_is_complete (self->parser.data))
                 {
-                    qwave_reqctx_set (self->parser.data, self->parser.upgrade, http_should_keep_alive (&(self->parser)), http_method_str (self->parser.method));
+                    int keep_alive = FALSE; // http_should_keep_alive (&(self->parser));
+                    
+                    qwave_reqctx_set (self->parser.data, self->parser.upgrade, keep_alive, http_method_str (self->parser.method));
                     
                     cape_stream_shift_l (self->buffer, parsed_bytes);
                       
@@ -651,11 +653,11 @@ void qwave_conctx_ws__adjust_buffer (QWaveConctx self, CapeCursor cursor)
             // shift the buffer
             // travers the cursor (to the end)
             cape_stream_append_buf (h, cape_cursor_tpos (cursor, bytes_left_to_scan), bytes_left_to_scan);
+
+            // replace the buffer
+            cape_stream_replace_mv (&(self->buffer), &h);
         }
-    }
-    
-    // replace the buffer
-    cape_stream_replace_mv (&(self->buffer), &h);
+    }    
 }
 
 //-----------------------------------------------------------------------------

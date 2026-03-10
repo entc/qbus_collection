@@ -431,6 +431,9 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
   memset (&addr, 0x00, sizeof(addr));
   
   int sock = accept ((int)(number_t)handle, &addr, &addrlen);
+  
+  printf ("accept socket: %i\n", sock);
+  
   if (sock < 0)
   {
     if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
@@ -448,33 +451,7 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
   }
   
   remote_addr = inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr);
-  
-  // set the socket to none blocking
-  {
-    int flags = fcntl(sock, F_GETFL, 0);
-    if (flags == -1)
-    {
-      
-    }
     
-    flags |= O_NONBLOCK | O_NDELAY;
-        
-    if (fcntl(sock, F_SETFL, flags) != 0)
-    {
-      
-    }
-  }
-  
-  // set socket options
-  {
-    int opt = 0;
-    
-    if (setsockopt (sock, SOL_SOCKET, SO_LINGER, (char*)&opt, sizeof(opt)) < 0)
-    {
-      
-    }
-  }
-  
   if (p_remote_addr)
   {
     cape_str_replace_cp (p_remote_addr, remote_addr);
@@ -494,7 +471,7 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
   cape_stream_cap (bufdat, buflen);
     
   // try to read bytes from FD
-  bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, MSG_DONTWAIT);
+  bytes_read = recv ((int)(number_t)handle, cape_stream_pos (bufdat), buflen, 0);
   
   printf ("bytes read [%i]: %li\n", (int)(number_t)handle, bytes_read);
   
@@ -533,42 +510,41 @@ int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr e
 
 int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
 {
-  int res;
-  number_t bytes_sent;
+  ssize_t bytes_sent;
   number_t total_sent = 0;
   number_t buflen = cape_stream_size (buffer);
   
+  printf ("%s\n", cape_stream_get (buffer));
+  
   while (total_sent < buflen)
   {
-    bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, MSG_NOSIGNAL);
+    printf ("socket sent left: %li\n", buflen - total_sent);
+    
+    bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, 0);
+    
+    printf ("socket sent bytes: %li\n", bytes_sent);
     
     if (-1 == bytes_sent)
     {
       if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
       {
-        res = cape_err_lastOSError (err);
-        
         // exit
-        break;
+        return cape_err_lastOSError (err);
       }
       else
       {
         // wait a bit
         cape_thread_sleep (10);
-        
-        res = CAPE_ERR_CONTINUE;
       }
     }
     else
     {
       // calculate the new position
       total_sent = total_sent + bytes_sent;
-      
-      res = CAPE_ERR_NONE;
     }
   }
   
-  return res;
+  return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

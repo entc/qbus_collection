@@ -49,6 +49,9 @@ __CAPE_LIBEX   void          cape_sock__shutdown__rd      (void*);
 
 __CAPE_LIBEX   void          cape_sock__shutdown__wr      (void*);
 
+__CAPE_LIBEX   int           cape_sock__noneblocking      (void*, CapeErr err);
+
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeString    cape_net__resolve            (const CapeString host, int ipv6, CapeErr err);

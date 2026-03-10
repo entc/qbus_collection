@@ -84,6 +84,8 @@ const CapeString qwave_response__fetch_mime (QWaveResponse self, const CapeStrin
 
 int __STDCALL qwave_response__file__on_load (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
 {
+    printf ("load file: %lu\n", buflen);
+    
     cape_stream_append_buf (ptr, bufdat, buflen);
     
     return CAPE_ERR_NONE;
@@ -106,7 +108,19 @@ void qwave_response__header_default (QWaveResponse self, CapeStream stream_messa
         cape_stream_append_str (stream_message, self->provider);
         cape_stream_append_str (stream_message, "\r\n");
     }
-  
+
+    // content length
+    if (stream_content)
+    {
+        cape_stream_append_str (stream_message, "Content-Length: ");
+        cape_stream_append_n (stream_message, cape_stream_size (stream_content));
+        cape_stream_append_str (stream_message, "\r\n");
+    }
+    else
+    {
+        cape_stream_append_str (stream_message, "Content-Length: 0\r\n");
+    }
+    
     // some extra fields
     cape_stream_append_str (stream_message, "tk: N\r\n");
 
@@ -123,18 +137,6 @@ void qwave_response__header_default (QWaveResponse self, CapeStream stream_messa
         cape_stream_append_str (stream_message, "Content-Type: ");
         cape_stream_append_str (stream_message, qwave_response__fetch_mime (self, cape_fs_extension (path)));
         cape_stream_append_str (stream_message, "\r\n");
-    }
-    
-    // content length
-    if (stream_content)
-    {
-        cape_stream_append_str (stream_message, "Content-Length: ");
-        cape_stream_append_n (stream_message, cape_stream_size (stream_content));
-        cape_stream_append_str (stream_message, "\r\n");
-    }
-    else
-    {
-        cape_stream_append_str (stream_message, "Content-Length: 0\r\n");
     }
 }
 

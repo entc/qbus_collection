@@ -14,7 +14,7 @@
 #include <sys/eventfd.h>
 
 #define QWAVE_EPOLL_INVALID_FD           -1
-#define QWAVE_EPOLL_MAX_EVENTS            10
+#define QWAVE_EPOLL_MAX_EVENTS            1
 
 //-----------------------------------------------------------------------------
 
