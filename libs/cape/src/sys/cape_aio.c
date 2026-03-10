@@ -16,6 +16,7 @@
 #elif defined __BSD_OS
 
 #include <sys/event.h>
+#include <errno.h>
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -83,6 +84,13 @@ void cape_aio_item_set (CapeAioItem self, void* user_ptr, fct_cape_aio_item__on_
 void* cape_aio_item_get (CapeAioItem self)
 {
   
+  
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_item__on_event (CapeAioItem self)
+{
   
 }
 
@@ -159,12 +167,121 @@ int cape_aio_init (CapeAio self, CapeErr err)
 
   self->kq = kqueue();
 
+  // check if the open was successful
+  if (self->kq == -1)
+  {
+    return cape_err_lastOSError (err);
+  }
+
 #elif defined _WIN64 || defined _WIN32
 
 
 #endif
   
   return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+#if defined __LINUX_OS
+
+int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, CapeErr err)
+{
+  struct epoll_event event;
+  
+  // use the data.ptr part of the union to store
+  // a pointer to the QWaveAioctxEvent object
+  event.data.ptr = data;
+  
+  // set the events on which the epoll should return
+  event.events = flags;
+  
+  int s = epoll_ctl (self->epoll_fd, mode, fd, &event);
+  if (s < 0)
+  {
+    int errCode = errno;
+    
+    if (errCode == EPERM)
+    {
+      cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");
+      cape_log_msg (CAPE_LL_ERROR, "QWAVE", "epoll", cape_err_text (err));
+    }
+    else
+    {
+      cape_err_lastOSError (err);
+      cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "epoll", "can't use fd [%li] in epoll: %s", fd, cape_err_text (err));
+    }
+    
+    return FALSE;
+  }
+  else
+  {
+    return TRUE;
+  }
+}
+
+#elif defined __BSD_OS
+
+int cape_aio__kevent_set (CapeAio self, int mode, int fd, int flags, void* data, CapeErr err)
+{
+  int res;
+  struct kevent change;
+  
+  // set all options
+  EV_SET (&change, fd, flags, mode, 0, 0, data);
+  
+  // apply the set by the systemcall to the kevent subsystem
+  res = kevent (self->kq, &change, 1, NULL, 0, NULL);
+
+  if (res < 0)
+  {
+    cape_err_lastOSError (err);
+    return FALSE;
+  }
+  else
+  {
+    return TRUE;
+  }
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+
+CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
+{
+  CapeAioItem ret;
+  
+  // create a new object for the handler
+  ret = cape_aio_item_new ((number_t)handle);
+  
+#if defined __LINUX_OS
+
+  if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)handle, EPOLLET | EPOLLIN, ret, err))
+  {
+    cape_aio_item_del (&ret);
+  }
+  
+#elif defined __BSD_OS
+
+  if (FALSE == cape_aio__kevent_set (self, EV_ADD, (int)(number_t)handle, EVFILT_READ, ret, err))
+  {
+    cape_aio_item_del (&ret);
+  }
+
+#elif defined _WIN64 || defined _WIN32
+
+
+#endif
+
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
+{
+  
 }
 
 //-----------------------------------------------------------------------------
@@ -207,13 +324,8 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
     {
       cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
       
-      /*
-      res = qwave_aioctx__handle_event (self, &(events[i]), err);
-      if (res)
-      {
-        goto cleanup_and_exit;
-      }
-      */
+      // this handles the event
+      cape_aio_item__on_event (events[i].data.ptr);
     }
   }
   
@@ -225,50 +337,48 @@ cleanup_and_exit:
 
   struct kevent events[MAX_EVENTS];
   
-  int nevents = kevent (self->kq, NULL, 0, events, MAX_EVENTS, NULL);
-
-  for (int i = 0; i < nevents; i++)
   {
+    int i;
     
-    
-        int fd = (int)events[i].ident;
+    // wait for the next event
+    int number_of_events = kevent (self->kq, NULL, 0, events, MAX_EVENTS, NULL);
 
-        if (fd == server_fd) {
-            // Neue Verbindungen
-            while (1) {
-                int client = accept(server_fd, NULL, NULL);
-                if (client < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                        break;
-                    perror("accept");
-                    break;
-                }
-
-                set_nonblocking(client);
-                EV_SET(&change, client, EVFILT_READ, EV_ADD, 0, 0, NULL);
-                kevent(kq, &change, 1, NULL, 0, NULL);
-            }
-        } else {
-            // Client-Daten lesen
-            char buffer[BUFFER_SIZE];
-            ssize_t n = read(fd, buffer, sizeof(buffer));
-            if (n <= 0) {
-                close(fd);
-                continue;
-            }
-
-            char response[] =
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: text/plain\r\n"
-                "Content-Length: 12\r\n"
-                "\r\n"
-                "Hello World";
-
-            write(fd, response, sizeof(response)-1);
-            close(fd);
-        }
+    if (number_of_events == -1)
+    {
+      if (errno == EINTR)
+      {
+        return CAPE_ERR_NONE;
+      }
+      
+      res = cape_err_lastOSError (err);
+      
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+      
+      return res;
     }
-  
+    
+    for (i = 0; i < number_of_events; i++)
+    {
+      struct kevent* event = &(events[i]);
+      
+      if (event->flags & EV_ERROR)
+      {
+        res = cape_err_lastOSError (err);
+        
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+        
+        return res;
+      }
+      else
+      {
+        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
+
+        // this handles the event
+        cape_aio_item__on_event (event->udata);
+      }
+    }
+  }
+    
 #elif defined _WIN64 || defined _WIN32
 
 
@@ -284,87 +394,6 @@ int cape_aio_wait (CapeAio self, CapeErr err)
   while (cape_aio_next (self, -1, err) == CAPE_ERR_NONE);
   
   return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-#if defined __LINUX_OS
-
-int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, CapeErr err)
-{
-  struct epoll_event event;
-  
-  // use the data.ptr part of the union to store 
-  // a pointer to the QWaveAioctxEvent object
-  event.data.ptr = data;
-  
-  // set the events on which the epoll should return
-  event.events = flags;
-  
-  int s = epoll_ctl (self->epoll_fd, mode, fd, &event);
-  if (s < 0)
-  {
-    int errCode = errno;
-    
-    if (errCode == EPERM)
-    {
-      cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");            
-      cape_log_msg (CAPE_LL_ERROR, "QWAVE", "epoll", cape_err_text (err));
-    }
-    else
-    {
-      cape_err_lastOSError (err);
-      cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "epoll", "can't use fd [%li] in epoll: %s", fd, cape_err_text (err));
-    }
-    
-    return FALSE;
-  }
-  else
-  {
-    return TRUE;
-  }
-}
-
-#elif defined __BSD_OS
-
-#endif
-
-//-----------------------------------------------------------------------------
-
-CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
-{
-  CapeAioItem ret;
-  
-  // create a new object for the handler
-  ret = cape_aio_item_new ((number_t)handle);
-  
-#if defined __LINUX_OS
-
-  if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)handle, EPOLLET | EPOLLIN, ret, err))
-  {
-    cape_aio_item_del (&ret);
-  }
-  
-#elif defined __BSD_OS
-
-  struct kevent change;
-  
-  EV_SET (&change, (int)(number_t)handle, EVFILT_READ, EV_ADD, 0, 0, NULL);
-  kevent (self->kq, &change, 1, NULL, 0, NULL);
-
-#elif defined _WIN64 || defined _WIN32
-
-
-#endif
-
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
-{
-  
 }
 
 //-----------------------------------------------------------------------------
