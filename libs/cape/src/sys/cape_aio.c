@@ -34,23 +34,23 @@
 
 struct CapeAioItem_s
 {
-  number_t fd;
+  void* handle;
   void* user_ptr;
   
-  fct_cape_aio_item__on_event on_recv;
+  fct_cape_aio_item__on_event on_event;
   fct_cape_aio_item__on_event on_done;
 };
 
 //-----------------------------------------------------------------------------
 
-CapeAioItem cape_aio_item_new (number_t fd)
+CapeAioItem cape_aio_item_new (void* handle)
 {
   CapeAioItem self = CAPE_NEW (struct CapeAioItem_s);
   
-  self->fd = fd;
+  self->handle = handle;
   self->user_ptr = NULL;
   
-  self->on_recv = NULL;
+  self->on_event = NULL;
   self->on_done = NULL;
   
   return self;
@@ -64,8 +64,10 @@ void cape_aio_item_del (CapeAioItem* p_self)
   {
     CapeAioItem self = *p_self;
     
-    
-    
+    if (self->on_done)
+    {
+      self->on_done (self->user_ptr, self->handle);
+    }
     
     CAPE_DEL (p_self, struct CapeAioItem_s);
   }
@@ -73,25 +75,29 @@ void cape_aio_item_del (CapeAioItem* p_self)
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_item_set (CapeAioItem self, void* user_ptr, fct_cape_aio_item__on_event on_recv, fct_cape_aio_item__on_event on_done)
+void cape_aio_item_set (CapeAioItem self, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_event on_done)
 {
+  self->user_ptr = user_ptr;
   
-  
+  self->on_event = on_event;
+  self->on_done = on_done;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_aio_item_get (CapeAioItem self)
 {
-  
-  
+  return self->handle;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_aio_item__on_event (CapeAioItem self)
 {
-  
+  if (self->on_event)
+  {
+    self->on_event (self->user_ptr, self->handle);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -253,7 +259,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
   CapeAioItem ret;
   
   // create a new object for the handler
-  ret = cape_aio_item_new ((number_t)handle);
+  ret = cape_aio_item_new (handle);
   
 #if defined __LINUX_OS
 
