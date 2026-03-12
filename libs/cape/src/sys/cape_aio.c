@@ -92,7 +92,7 @@ void* cape_aio_item_get (CapeAioItem self)
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_item__on_event (CapeAioItem self)
+void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 {
   if (self->on_event)
   {
@@ -114,6 +114,7 @@ struct CapeAio_s
 
 #elif defined _WIN64 || defined _WIN32
 
+  HANDLE iocp;
 
 #endif
 };
@@ -134,6 +135,7 @@ CapeAio cape_aio_new (void)
   
 #elif defined _WIN64 || defined _WIN32
   
+  self->iocp = NULL;
   
 #endif
   
@@ -181,6 +183,12 @@ int cape_aio_init (CapeAio self, CapeErr err)
 
 #elif defined _WIN64 || defined _WIN32
 
+  // initialize windows io completion port
+  self->iocp = CreateIoCompletionPort (INVALID_HANDLE_VALUE, NULL, 0, 0);
+  if (self->iocp  == NULL)
+  {
+    return cape_err_lastOSError (err);
+  }
 
 #endif
   
@@ -277,6 +285,19 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #elif defined _WIN64 || defined _WIN32
 
+  // add the handle to the overlapping completion port
+  HANDLE iocp_handle = CreateIoCompletionPort (handle, self->iocp, 0, 0);
+
+  // cportHandle must return a value
+  if (NULL == iocp_handle)
+  {
+    cape_err_lastOSError (err);
+    
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio add", "can't add fd [%li] to completion port: %s", (long)handle, cape_err_text (err));
+
+    cape_aio_item_del (&ret);
+  }
+
 
 #endif
 
@@ -331,7 +352,7 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
       cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
       
       // this handles the event
-      cape_aio_item__on_event (events[i].data.ptr);
+      cape_aio_item__on_event (events[i].data.ptr, 0);
     }
   }
   
@@ -380,13 +401,27 @@ cleanup_and_exit:
         cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
 
         // this handles the event
-        cape_aio_item__on_event (event->udata);
+        cape_aio_item__on_event (event->udata, 0);
       }
     }
   }
     
 #elif defined _WIN64 || defined _WIN32
 
+  OVERLAPPED_ENTRY overlappeds[MAX_EVENTS];
+  ULONG count;
+
+  // wait for any event on the completion port
+  if (GetQueuedCompletionStatusEx (self->iocp, overlappeds, MAX_EVENTS, &count, timeout_in_ms, TRUE))
+  {
+    ULONG i;
+
+    for (i = 0; i < count; i++)
+    {
+      // this handles the event
+      cape_aio_item__on_event (overlappeds[i].lpOverlapped, overlappeds[i].dwNumberOfBytesTransferred);
+    }
+  }
 
 #endif
 
