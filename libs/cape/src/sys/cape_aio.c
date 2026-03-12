@@ -126,11 +126,11 @@ CapeAio cape_aio_new (void)
   
 #if defined __LINUX_OS
   
-  self->epoll_fd = 0;
+  self->epoll_fd = -1;
   
 #elif defined __BSD_OS
   
-  self->kq = 0;
+  self->kq = -1;
   
 #elif defined _WIN64 || defined _WIN32
   
@@ -148,9 +148,25 @@ void cape_aio_del (CapeAio* p_self)
   {
     CapeAio self = *p_self;
     
+#if defined __LINUX_OS
+    
+    if (self->epoll_fd != -1)
+    {
+        close (self->epoll_fd);
+    }
+    
+#elif defined __BSD_OS
+    
+    if (self->kq != -1)
+    {
+        close (self->kq);
+    }
+    
+#elif defined _WIN64 || defined _WIN32
     
     
-    
+#endif
+        
     CAPE_DEL (p_self, struct CapeAio_s);
   }
 }
@@ -287,7 +303,39 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
 {
+  CapeAioItem hitem = *p_hitem;
   
+  // remove handle from epoll
+  {
+    CapeErr err = cape_err_new ();
+    
+#if defined __LINUX_OS
+        
+    if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_DEL, (int)(number_t)cape_aio_item_get (hitem), 0, NULL, err))
+    {
+      
+    }
+
+#elif defined __BSD_OS
+  
+    if (FALSE == cape_aio__kevent_set (self, EV_DELETE, (int)(number_t)cape_aio_item_get (hitem), 0, NULL, err))
+    {
+    
+    }
+  
+#elif defined _WIN64 || defined _WIN32
+
+#endif
+  
+    else
+    {
+      // call user defined shutdown function and
+      // cleanup handle event
+      cape_aio_item_del (p_hitem);
+    }
+        
+    cape_err_del (&err);
+  }
 }
 
 //-----------------------------------------------------------------------------

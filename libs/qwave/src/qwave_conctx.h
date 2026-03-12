@@ -21,7 +21,7 @@ typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, QWaveAioc
 //-----------------------------------------------------------------------------
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address, fct_qwave__on_upgrade);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, fct_qwave__on_upgrade);
 
 __CAPE_LOCAL     void               qwave_conctx_del            (QWaveConctx*);
 
@@ -39,7 +39,21 @@ __CAPE_LOCAL     void               qwave_conctx_send_file      (QWaveConctx, co
 
 __CAPE_LOCAL     void               qwave_conctx_upgrade        (QWaveConctx, const CapeString accept_key);
 
+//-----------------------------------------------------------------------------
+
+                                    /* this function shall return a user pointer related to this connection */
+typedef void*   (__STDCALL *fct_qwave__on_ws_upgrade)        (void* user_ptr, QWaveConctx, const CapeString remote);
+
+                                    /* this function shall handle the websocket messages */
+typedef void    (__STDCALL *fct_qwave__on_ws_message)        (void* conn_ptr, const char* bufdat, number_t buflen);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL     void               qwave_conctx_ws_cb          (QWaveConctx, void* user_ptr, fct_qwave__on_ws_upgrade, fct_qwave__on_ws_message, const CapeString remote_address);
+
 __CAPE_LOCAL     void               qwave_conctx_ws_read        (QWaveConctx);
+
+__CAPE_LOCAL     void               qwave_conctx_ws_send        (QWaveConctx, const char* bufdat, number_t buflen);
 
 //-----------------------------------------------------------------------------
 
