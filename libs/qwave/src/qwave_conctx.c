@@ -43,7 +43,6 @@ struct QWaveConctx_s
     number_t reference_counter;               // the reference counter for requests
     int close_connection;                     // tell the context to close the connection
     
-    CapeString remote_address;                // remote address as string
     CapeStream buffer;                        // receive buffer
     
     QWaveAioctxEvent connection_handle;       // AIO event handle
@@ -63,6 +62,9 @@ struct QWaveConctx_s
     int ws_rsv2;
     int ws_rsv3;
     int ws_mask;
+    
+    void* ws_user_ptr;
+    fct_qwave__on_ws_message ws_on_message;
 };
 
 //-----------------------------------------------------------------------------
@@ -176,7 +178,7 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, const CapeString remote_address, fct_qwave__on_upgrade on_upgrade)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, fct_qwave__on_upgrade on_upgrade)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
@@ -188,7 +190,6 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->reference_counter = 0;
     self->close_connection = FALSE;
     
-    self->remote_address = cape_str_cp (remote_address);
     self->buffer = cape_stream_new ();
     
     self->connection_handle = event;
@@ -216,6 +217,9 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     
     self->parser.data = NULL;
         
+    self->ws_user_ptr = NULL;
+    self->ws_on_message = NULL;
+    
     return self;
 }
 
@@ -229,7 +233,6 @@ void qwave_conctx_del (QWaveConctx* p_self)
         
         cape_str_del (&(self->ws_masking_key));
         cape_stream_del (&(self->buffer));
-        cape_str_del (&(self->remote_address));
         
         CAPE_DEL (p_self, struct QWaveConctx_s);
     }
@@ -301,7 +304,7 @@ int qwave_conctx_read (QWaveConctx self)
     // local objects
     CapeErr err = cape_err_new ();
         
-    //while (con)
+    while (con)
     {
         switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
         {
@@ -329,15 +332,12 @@ int qwave_conctx_read (QWaveConctx self)
                    
                 if (qwave_reqctx_is_complete (self->parser.data))
                 {
-                    int keep_alive = FALSE; // http_should_keep_alive (&(self->parser));
+                    int keep_alive = http_should_keep_alive (&(self->parser));
                     
                     qwave_reqctx_set (self->parser.data, self->parser.upgrade, keep_alive, http_method_str (self->parser.method));
                     
                     cape_stream_shift_l (self->buffer, parsed_bytes);
-                      
-                    // TODO: add in queue
-//                    qwave_conctx__on_event (self->parser.data, 0, 0);
-                    
+                                          
                     cape_queue_add (self->queue, NULL, qwave_conctx__on_event, NULL, NULL, self->parser.data, 0);
                     
                     self->parser.data = NULL;
@@ -392,7 +392,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
     CapeErr err = cape_err_new ();
     CapeStream s = cape_stream_mv (p_output);
     
-    printf ("send file #1 [%i]\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle));
+    //printf ("send file #1 [%i]\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle));
     
     res = cape_sock__send (qwave_aioctx_event_get (self->connection_handle), s, err);
     if (res)
@@ -401,7 +401,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
         
     }
 
-    printf ("send file #2 [%i], %i -> %li\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle), res, cape_stream_size (s));
+    //printf ("send file #2 [%i], %i -> %li\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle), res, cape_stream_size (s));
     
     cape_stream_del (&s);
     cape_err_del (&err);
@@ -515,7 +515,7 @@ void qwave_conctx_ws__decode_header1 (QWaveConctx self, CapeCursor cursor)
         self->ws_data_size = bits02 & ~0B10000000;
     }
     
-    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->ws_fin, self->ws_rsv1, self->ws_rsv2, self->ws_rsv3, self->ws_opcode);
+    //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "websocket", "frame header: fin = %i, rsv1 = %i, rsv2 = %i, rsv3 = %i, opcode = %i", self->ws_fin, self->ws_rsv1, self->ws_rsv2, self->ws_rsv3, self->ws_opcode);
 }
 
 //-----------------------------------------------------------------------------
@@ -530,7 +530,7 @@ void qwave_conctx_ws__send_frame (QWaveConctx self, number_t opcode, const char*
      * -> mask was set to 0
      */
     
-    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "send frame", "buflen = %lu", buflen);
+    //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "send frame", "buflen = %lu", buflen);
     
     {
         cape_uint8 bits01 = opcode;  // opcode text
@@ -602,13 +602,12 @@ void qwave_conctx_ws__decode_payload (QWaveConctx self, CapeCursor cursor)
             }
             
             // TODO: run this in a queue
-            /*
-            if (self->ws->on_msg)
+            if (self->ws_on_message)
             {
-                self->ws->on_msg (self->conn_ptr, h);
+                // call the user defined on message method
+                self->ws_on_message (self->ws_user_ptr, h, self->ws_data_size);
             }
-            */
-            
+                        
             break;
         }
         case RFC_WEBSOCKET_FRAME__CLOSED:   // connection close frame
@@ -620,7 +619,7 @@ void qwave_conctx_ws__decode_payload (QWaveConctx self, CapeCursor cursor)
         }
         case RFC_WEBSOCKET_FRAME__PING:   // ping
         {
-            cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
+            //cape_log_msg (CAPE_LL_TRACE, "QWEBS", "payload", "retrieved PING request");
             
             qwave_conctx_ws__send_frame (self, RFC_WEBSOCKET_FRAME__PONG, h, self->ws_data_size);
             
@@ -642,7 +641,7 @@ void qwave_conctx_ws__adjust_buffer (QWaveConctx self, CapeCursor cursor)
         // returns the bytes which had not been used for parsing
         number_t bytes_left_to_scan = cape_cursor_tail (cursor);
         
-        cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "adjust buffer = %lu", bytes_left_to_scan);
+        //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "adjust buffer = %lu", bytes_left_to_scan);
         
         if (bytes_left_to_scan > 0)
         {
@@ -654,6 +653,10 @@ void qwave_conctx_ws__adjust_buffer (QWaveConctx self, CapeCursor cursor)
 
             // replace the buffer
             cape_stream_replace_mv (&(self->buffer), &h);
+        }
+        else
+        {
+            cape_stream_clr (self->buffer);
         }
     }    
 }
@@ -676,7 +679,7 @@ void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
                     
                     self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__HEADER1;
                     
-                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->ws_data_size);
+                    //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length from header = %lu", self->ws_data_size);
                 }
                 else
                 {
@@ -747,7 +750,7 @@ void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
             {        
                 if (cape_cursor__has_data (cursor, self->ws_data_size))
                 {
-                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> decode payload", self->ws_data_size);
+                    //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> decode payload", self->ws_data_size);
                     
                     // travers the cursor by self->data_size
                     qwave_conctx_ws__decode_payload (self, cursor);
@@ -756,7 +759,7 @@ void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
                 }
                 else
                 {
-                    cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> continue", self->ws_data_size);
+                    //cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "on recv", "payload length = %lu -> continue", self->ws_data_size);
                     
                     has_enogh_bytes_for_parsing = FALSE;
                 }
@@ -771,28 +774,70 @@ void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
 
 //-----------------------------------------------------------------------------
 
+void qwave_conctx_ws_cb (QWaveConctx self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message, const CapeString remote_address)
+{
+    if (on_upgrade)
+    {
+        // the method will return the connection user pointer
+        self->ws_user_ptr = on_upgrade (user_ptr, self, remote_address);
+    }
+
+    self->ws_on_message = on_message;
+}
+
+//-----------------------------------------------------------------------------
+
 void qwave_conctx_ws_read (QWaveConctx self)
 {
+    int read = TRUE;
+    
     // local objects
     CapeErr err = cape_err_new ();
     CapeCursor cursor = cape_cursor_new ();
     
-    switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
+    while (read)
     {
-        case CAPE_ERR_NONE:
+        switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
         {
-            // use the current buffer for the cursor
-            cape_cursor_set (cursor, cape_stream_data (self->buffer), cape_stream_size (self->buffer));
- 
-            // use the cursor to handle the protocol
-            qwave_conctx_ws__handle_protocol (self, cursor);
-            
-            break;
+            case CAPE_ERR_NONE:
+            {
+                // use the current buffer for the cursor
+                cape_cursor_set (cursor, cape_stream_data (self->buffer), cape_stream_size (self->buffer));
+                
+                // use the cursor to handle the protocol
+                qwave_conctx_ws__handle_protocol (self, cursor);
+                
+                break;
+            }
+            case CAPE_ERR_EOF:
+            {
+                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", qwave_aioctx_event_get (self->connection_handle));
+                
+                read = FALSE;
+                break;
+            }            
+            case CAPE_ERR_CONTINUE:
+            {
+                read = FALSE;
+                break;
+            }
+            default:
+            {
+                read = FALSE;
+                break;
+            }
         }
     }
 
     cape_cursor_del (&cursor);
     cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_ws_send (QWaveConctx self, const char* bufdat, number_t buflen)
+{
+    qwave_conctx_ws__send_frame (self, RFC_WEBSOCKET_FRAME__TEXT, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------

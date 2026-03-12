@@ -28,6 +28,10 @@ struct QWave_s
     QWaveAioctxEvent accept_event_handler;
     
     number_t threads;
+    
+    fct_qwave__on_ws_message ws_on_message;
+    fct_qwave__on_ws_upgrade ws_on_upgrade;
+    void* ws_user_ptr;
 };
 
 //-----------------------------------------------------------------------------
@@ -54,6 +58,9 @@ QWave qwave_new (CapeUdc parameters)
     
     // fetch threads from config
     self->threads = cape_udc_get_n (parameters, "threads", 2);
+    
+    self->ws_on_message = NULL;
+    self->ws_user_ptr = NULL;
     
     return self;
 }
@@ -168,10 +175,13 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         }
         else
         {
-            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aioctx, eh, remote_address, qwave_server__on_upgrade);
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aioctx, eh, qwave_server__on_upgrade);
         
             // set the callbacks
             qwave_aioctx_event_set (eh, conctx, qwave_server__on_request, qwave_server__on_drop);
+            
+            // set the callbacks
+            qwave_conctx_ws_cb (conctx, self->ws_user_ptr, self->ws_on_upgrade, self->ws_on_message, remote_address);
         }
         
         cape_err_del (&err);        
@@ -199,7 +209,15 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
         }
         else
         {
-            qwave_factory_conctx (self, handle_remote_connection, remote_address);
+            // set none blocking
+            if (cape_sock__noneblocking (handle_remote_connection, err))
+            {
+                // error
+            }
+            else
+            {
+                qwave_factory_conctx (self, handle_remote_connection, remote_address);
+            }
         }
     }
     
@@ -342,6 +360,16 @@ int qwave_stop (QWave self, CapeErr err)
 void qwave_reg__path (QWave self, const CapeString path, void* user_ptr, fct_qwave__on_http_request fct)
 {
     
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_reg__ws (QWave self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message)
+{
+    self->ws_user_ptr = user_ptr;
+    
+    self->ws_on_upgrade = on_upgrade;
+    self->ws_on_message = on_message;
 }
 
 //-----------------------------------------------------------------------------

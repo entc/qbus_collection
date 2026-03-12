@@ -37,4 +37,8 @@ __CAPE_LIBEX     void               qwave_reg__path     (QWave, const CapeString
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX     void               qwave_reg__ws       (QWave, void* user_ptr, fct_qwave__on_ws_upgrade, fct_qwave__on_ws_message);
+
+//-----------------------------------------------------------------------------
+
 #endif
