@@ -21,6 +21,8 @@ __CAPE_LIBEX   int               cape_aio_wait         (CapeAio, CapeErr);
 
 __CAPE_LIBEX   int               cape_aio_next         (CapeAio, number_t timeout, CapeErr);
 
+__CAPE_LIBEX   void              cape_aio_kill         (CapeAio);
+
 //-----------------------------------------------------------------------------
 
 struct CapeAioItem_s; typedef struct CapeAioItem_s* CapeAioItem;
@@ -44,6 +46,3 @@ __CAPE_LIBEX     void*           cape_aio_item_get     (CapeAioItem);
 //-----------------------------------------------------------------------------
 
 #endif
-
-
-

@@ -3,6 +3,7 @@
 
 // cape includes
 #include <sys/cape_types.h>
+#include <sys/cape_aio.h>
 #include <sys/cape_err.h>
 #include <sys/cape_queue.h>
 #include <stc/cape_str.h>
@@ -10,18 +11,17 @@
 
 #include "qwave_config.h"
 #include "qwave_response.h"
-#include "qwave_aioctx.h"
 
 //-----------------------------------------------------------------------------
 
 struct QWaveConctx_s; typedef struct QWaveConctx_s* QWaveConctx; // use a simple version
 
-typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, QWaveAioctxEvent);
+typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, CapeAioItem);
 
 //-----------------------------------------------------------------------------
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, fct_qwave__on_upgrade);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, fct_qwave__on_upgrade);
 
 __CAPE_LOCAL     void               qwave_conctx_del            (QWaveConctx*);
 

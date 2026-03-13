@@ -25,8 +25,7 @@ __CAPE_LIBEX     int                qwave_run           (QWave, CapeErr err);
 __CAPE_LIBEX     int                qwave_run__d        (QWave, CapeErr err);
 
                                     /* terminate the extra thread */
-__CAPE_LIBEX     int                qwave_stop          (QWave, CapeErr err);
-
+__CAPE_LIBEX     void               qwave_stop          (QWave);
 
 //-----------------------------------------------------------------------------
 

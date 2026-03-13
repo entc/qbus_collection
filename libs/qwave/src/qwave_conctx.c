@@ -38,14 +38,14 @@ struct QWaveConctx_s
     QWaveConfig config;                       // reference
     QWaveResponse response;                   // reference
     CapeQueue queue;                          // reference
-    QWaveAioctx aioctx;                       // reference
+    CapeAio aio;                              // reference
     
     number_t reference_counter;               // the reference counter for requests
     int close_connection;                     // tell the context to close the connection
     
     CapeStream buffer;                        // receive buffer
     
-    QWaveAioctxEvent connection_handle;       // AIO event handle
+    CapeAioItem connection_aio_item;          // AIO event handle
 
     // http parser
     http_parser parser;                       // external parser instance
@@ -178,21 +178,21 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, QWaveAioctx aio, QWaveAioctxEvent event, fct_qwave__on_upgrade on_upgrade)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem event, fct_qwave__on_upgrade on_upgrade)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
     self->config = config;
     self->response =response;
     self->queue = queue;
-    self->aioctx = aio;
+    self->aio = aio;
     
     self->reference_counter = 0;
     self->close_connection = FALSE;
     
     self->buffer = cape_stream_new ();
     
-    self->connection_handle = event;
+    self->connection_aio_item = event;
 
     self->on_upgrade = on_upgrade;
     self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
@@ -253,13 +253,13 @@ void qwave_conctx_shutdown (QWaveConctx self)
 {
     if ((self->reference_counter == 0) && (self->close_connection))
     {
-        QWaveAioctxEvent event = self->connection_handle;
+        CapeAioItem aio_item = self->connection_aio_item;
 
         // close write part of the socket
-        cape_sock__shutdown (qwave_aioctx_event_get (self->connection_handle));
+        cape_sock__shutdown (cape_aio_item_get (aio_item));
 
         // self will be destroyed in the process
-        qwave_aioctx_rm (self->aioctx, &event);
+        cape_aio_rm (self->aio, &aio_item);
     }
 }
 
@@ -269,7 +269,7 @@ void qwave_conctx_reqdec (QWaveConctx self)
 {
     self->reference_counter--;
 
-    cape_sock__touch (qwave_aioctx_event_get (self->connection_handle), NULL);
+    cape_sock__touch (cape_aio_item_get (self->connection_aio_item), NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -306,7 +306,7 @@ int qwave_conctx_read (QWaveConctx self)
         
     while (con)
     {
-        switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
+        switch (cape_sock__recv (cape_aio_item_get (self->connection_aio_item), self->buffer, 1024, err))
         {
             case CAPE_ERR_NONE:
             {
@@ -357,7 +357,7 @@ int qwave_conctx_read (QWaveConctx self)
             }
             case CAPE_ERR_EOF:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", qwave_aioctx_event_get (self->connection_handle));
+                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->connection_aio_item));
                 
                 ret = FALSE;
                 con = FALSE;
@@ -394,7 +394,7 @@ void qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
     
     //printf ("send file #1 [%i]\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle));
     
-    res = cape_sock__send (qwave_aioctx_event_get (self->connection_handle), s, err);
+    res = cape_sock__send (cape_aio_item_get (self->connection_aio_item), s, err);
     if (res)
     {
         
@@ -484,7 +484,7 @@ void qwave_conctx_upgrade (QWaveConctx self, const CapeString key)
     // reset the callbacks
     if (self->on_upgrade)
     {
-        self->on_upgrade (self, self->connection_handle);
+        self->on_upgrade (self, self->connection_aio_item);
     }
     
     cape_str_del (&accept_key);
@@ -797,7 +797,7 @@ void qwave_conctx_ws_read (QWaveConctx self)
     
     while (read)
     {
-        switch (cape_sock__recv (qwave_aioctx_event_get (self->connection_handle), self->buffer, 1024, err))
+        switch (cape_sock__recv (cape_aio_item_get (self->connection_aio_item), self->buffer, 1024, err))
         {
             case CAPE_ERR_NONE:
             {
@@ -811,7 +811,7 @@ void qwave_conctx_ws_read (QWaveConctx self)
             }
             case CAPE_ERR_EOF:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", qwave_aioctx_event_get (self->connection_handle));
+                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->connection_aio_item));
                 
                 read = FALSE;
                 break;

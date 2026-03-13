@@ -4,7 +4,6 @@ INCLUDE_DIRECTORIES("." "../../cape/src"  "../../qcrypt/src")
 
 SET(QWAVE_SOURCES
   qwave.c
-  qwave_aioctx.c
   qwave_conctx.c
   qwave_reqctx.c
   qwave_config.c
@@ -14,7 +13,6 @@ SET(QWAVE_SOURCES
 
 SET(QWAVE_HEADERS
   qwave.h
-  qwave_aioctx.h
   qwave_conctx.h
   qwave_reqctx.h
   qwave_config.h
