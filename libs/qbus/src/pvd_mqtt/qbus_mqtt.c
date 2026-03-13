@@ -26,11 +26,11 @@ struct QbusPvdConnection_s
   QbusPvdCtx ctx;
 
   void* user_ptr;
-  
+
   // callbacks
   fct_qbus_pvd__on_con on_con;
   fct_qbus_pvd__on_snd on_snd;
-  
+
 };
 
 //-----------------------------------------------------------------------------
@@ -110,7 +110,7 @@ int __STDCALL qbus_pvd_init (CapeErr err)
 
 void __STDCALL qbus_pvd_done (void)
 {
-  
+
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -120,9 +120,9 @@ struct QbusPvdCtx_s
   CapeAioContext aio;
   CapeString cid;              // client id
   CapeString name;             // name of the module
-  
+
   CapeMutex mutex;             // a standard mutex
-  
+
   CapeList reconnect_pool;     // a list to store reconnect items
   CapeList connection_pool;    // a list to store all connection
 };
@@ -150,28 +150,28 @@ CapeStream qbus_pvd_ctx__internal__generate_payload (QbusPvdCtx self, number_t e
 void qbus_pvd_ctx__internal__publish_connection (QbusPvdCtx self, QbusPvdConnection connection, char pre, const CapeString cid)
 {
   int res;
-  
+
   // local objects
   CapeStream payload_stream = qbus_pvd_ctx__internal__generate_payload (self, 1);
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", pre, cid);
 
   MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
   MQTTClient_deliveryToken token;
-  
+
   mqtt_msg.payload = (void*)cape_stream_data (payload_stream);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload_stream);
   mqtt_msg.qos = 1;
   mqtt_msg.retained = 0;
 
   //printf ("publish message to %s\n", subscriber_topic);
-  
+
   // send away
   res = MQTTClient_publishMessage (connection->client, subscriber_topic, &mqtt_msg, &token);
   if (MQTTCLIENT_SUCCESS != res)
   {
     cape_log_msg (CAPE_LL_ERROR, "MQTT", "public message", MQTTClient_strerror (res));
   }
-  
+
   cape_stream_del (&payload_stream);
   cape_str_del (&subscriber_topic);
 }
@@ -184,17 +184,17 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
 
   // debug output
   //printf ("on message [%s]: %s\n", topicName, message->payload);
-  
+
   switch (topicName[0])
   {
     case MQTT_TOPIC_PRE__MQTT_ALL:
     {
       // parse into a json object
       CapeUdc payload_node = cape_json_from_buf (message->payload, message->payloadlen, NULL);
-      
+
       number_t type = cape_udc_get_n (payload_node, "type", 0);
       const CapeString src_cid = cape_udc_get_s (payload_node, "cid", NULL);
-      
+
       if (FALSE == cape_str_equal (src_cid, self->ctx->cid))
       {
         if (payload_node && self->on_con)
@@ -208,7 +208,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
           qbus_pvd_ctx__internal__publish_connection (self->ctx, self, MQTT_TOPIC_PRE__MQTT_CID, src_cid);
         }
       }
-            
+
       cape_udc_del (&payload_node);
       break;
     }
@@ -216,10 +216,10 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
     {
       // parse into a json object
       CapeUdc payload_node = cape_json_from_buf (message->payload, message->payloadlen, NULL);
-      
+
       number_t type = cape_udc_get_n (payload_node, "type", 0);
       const CapeString src_cid = cape_udc_get_s (payload_node, "cid", NULL);
-      
+
       if (payload_node && self->on_con)
       {
         self->on_con (self->user_ptr, src_cid, cape_udc_get_s (payload_node, "name", NULL), type);
@@ -233,9 +233,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
       if (self->on_snd)
       {
         QBusFrame frame = qbus_frame_new (NULL);   // create empty frame
-        
+
         number_t written = 0;
-        
+
         if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
         {
           self->on_snd (self->user_ptr, frame, NULL);
@@ -247,7 +247,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
 
         qbus_frame_del (&frame);
       }
-      
+
       break;
     }
     case MQTT_TOPIC_PRE__VALUE:
@@ -255,9 +255,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
       if (self->on_snd)
       {
         QBusFrame frame = qbus_frame_new (NULL);   // create empty frame
-        
+
         number_t written = 0;
-        
+
         if (qbus_frame_deserialize (frame, message->payload, message->payloadlen, &written))
         {
           self->on_snd (self->user_ptr, frame, topicName + 2);
@@ -282,9 +282,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
 void qbus_pvd_ctx__internal__schedule_connection (QbusPvdCtx self, QbusPvdConnection connection)
 {
   cape_mutex_lock (self->mutex);
-  
+
   cape_list_push_back (self->reconnect_pool, connection);
-  
+
   cape_mutex_unlock (self->mutex);
 }
 
@@ -293,7 +293,7 @@ void qbus_pvd_ctx__internal__schedule_connection (QbusPvdCtx self, QbusPvdConnec
 void on_connection_lost (void* user_ptr, char* cause)
 {
   QbusPvdConnection self = user_ptr;
-  
+
   cape_log_fmt (CAPE_LL_ERROR, "QBUS", "mqtt", "connection lost = %s", cause);
 
   qbus_pvd_ctx__internal__schedule_connection (self->ctx, self);
@@ -311,7 +311,7 @@ void qbus_pvd_con_reg (QbusPvdConnection self)
     CapeString subscriber_topic = cape_str_fmt ("%c/ALL", MQTT_TOPIC_PRE__MQTT_ALL);
 
     cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "subscribe to %s", subscriber_topic);
-    
+
     MQTTClient_subscribe (self->client, subscriber_topic, 1);
 
     cape_str_del (&subscriber_topic);
@@ -325,7 +325,7 @@ void qbus_pvd_con_reg (QbusPvdConnection self)
 
     cape_str_del (&subscriber_topic);
   }
-  
+
   {
     CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__BY_ID, self->ctx->cid);
 
@@ -351,11 +351,11 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
   last_will.topicName = subscriber_topic;
   last_will.qos = 1;
   last_will.message = cape_stream_get (payload_stream);
-    
+
   conn_opts.username = "test";
   conn_opts.password = "1234";
   conn_opts.keepAliveInterval = 120;     // give the server more time to respond
-  
+
   conn_opts.will = &last_will;
 
   if (MQTTCLIENT_SUCCESS == MQTTClient_connect (connection->client, &conn_opts))
@@ -372,7 +372,7 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
   {
     // cape_log_fmt (CAPE_LL_ERROR, "QBUS", "mqtt", "can't connected as %s", self->cid);
   }
-  
+
   cape_stream_del (&payload_stream);
   cape_str_del (&subscriber_topic);
 
@@ -384,12 +384,12 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
 int __STDCALL qbus_pvd_ctx__on_timer (void* user_ptr)
 {
   QbusPvdCtx self = user_ptr;
-  
+
   cape_mutex_lock (self->mutex);
-  
+
   {
     CapeListCursor* cursor = cape_list_cursor_new (self->reconnect_pool, CAPE_DIRECTION_FORW);
-    
+
     while (cape_list_cursor_next (cursor))
     {
       // try to connect
@@ -399,10 +399,10 @@ int __STDCALL qbus_pvd_ctx__on_timer (void* user_ptr)
         cape_list_cursor_erase (self->reconnect_pool, cursor);
       }
     }
-    
+
     cape_list_cursor_del (&cursor);
   }
-  
+
   cape_mutex_unlock (self->mutex);
 
   return TRUE;
@@ -413,7 +413,7 @@ int __STDCALL qbus_pvd_ctx__on_timer (void* user_ptr)
 int qbus_pvd_ctx__internal__setup_timer (QbusPvdCtx self, CapeUdc options, CapeErr err)
 {
   int res;
-  
+
   // local objects
   CapeAioTimer timer = cape_aio_timer_new ();
 
@@ -422,7 +422,7 @@ int qbus_pvd_ctx__internal__setup_timer (QbusPvdCtx self, CapeUdc options, CapeE
   {
     goto exit_and_cleanup;
   }
-  
+
   res = cape_aio_timer_add (&timer, self->aio);
   if (res)
   {
@@ -445,9 +445,9 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
 
   // try to disconnect first
   MQTTClient_disconnect (self->client, 10000);
-  
+
   MQTTClient_destroy (&(self->client));
-  
+
   CAPE_DEL (&self, struct QbusPvdConnection_s);
 }
 
@@ -460,20 +460,20 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
   // create a seed and initialize with srand
   {
     number_t seed = time(NULL) * (number_t)self;
-    
+
     // initialization of the random generator
     srand (seed);
   }
-    
+
   self->aio = aio;
   self->cid = cape_str_uuid ();
   self->name = cape_udc_ext_s (options, "name");
   self->mutex = cape_mutex_new ();
-  
+
   // create the lists
   self->reconnect_pool = cape_list_new (NULL);
   self->connection_pool = cape_list_new (qbus_pvd_ctx__connections__on_del);
-  
+
   if (qbus_pvd_ctx__internal__setup_timer (self, options, err))
   {
     qbus_pvd_ctx_del (&self);
@@ -482,7 +482,7 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
   {
     cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx new", "create new MQTT context as %s", self->cid);
   }
-  
+
   return self;
 }
 
@@ -493,7 +493,7 @@ void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
   if (*p_self)
   {
     QbusPvdCtx self = *p_self;
-    
+
     cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
 
     cape_list_del (&(self->connection_pool));
@@ -501,7 +501,7 @@ void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
     cape_mutex_del (&(self->mutex));
     cape_str_del (&(self->cid));
     cape_str_del (&(self->name));
-    
+
     CAPE_DEL (p_self, struct QbusPvdCtx_s);
   }
 }
@@ -515,17 +515,17 @@ void __STDCALL qbus_pvd_ctx_add (QbusPvdCtx self, QbusPvdConnection* p_con, Cape
   ret->user_ptr = user_ptr;
   ret->on_con = on_con;
   ret->on_snd = on_snd;
-  
+
   ret->ctx = self;
-  
+
   *p_con = ret;
-  
+
   // fetch host from options
   const CapeString host = cape_udc_get_s (options, "host", "127.0.0.1");
-  
+
   // do some debug output
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "ctx add", "using host = '%s' for client connection", host);
-  
+
   // creates a new client instance
   MQTTClient_create (&(ret->client), host, self->cid, MQTTCLIENT_PERSISTENCE_NONE, NULL);
 
@@ -564,10 +564,10 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
   // local objects
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__BY_ID, cid);
   CapeStream payload = cape_stream_new ();
-    
+
   MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
   MQTTClient_deliveryToken token;
-  
+
   // convert from frame into a byte stream
   qbus_frame_serialize (frame, payload);
 
@@ -578,7 +578,7 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
 
   // send away
   MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
-  
+
   cape_stream_del (&payload);
   cape_str_del(&subscriber_topic);
 }
@@ -590,7 +590,7 @@ void __STDCALL qbus_pvd_con_subscribe (QbusPvdConnection self, const CapeString 
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
 
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "subscribe to %s", subscriber_topic);
-  
+
   MQTTClient_subscribe (self->client, subscriber_topic, 1);
 
   cape_str_del (&subscriber_topic);
@@ -603,7 +603,7 @@ void __STDCALL qbus_pvd_con_unsubscribe (QbusPvdConnection self, const CapeStrin
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
 
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "unsubscribe to %s", subscriber_topic);
-  
+
   MQTTClient_unsubscribe (self->client, subscriber_topic);
 
   cape_str_del (&subscriber_topic);
@@ -620,20 +620,22 @@ void __STDCALL qbus_pvd_con_next (QbusPvdConnection self, const CapeString topic
   MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
   MQTTClient_deliveryToken token;
 
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "commit value to %s", subscriber_topic);
+
   // convert from frame into a byte stream
   qbus_frame_serialize (frame, payload);
 
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
   mqtt_msg.qos = 1;
-  
+
   // if we want to store the last message, even if there are no subscribers
   // turn on retained
   mqtt_msg.retained = TRUE;
 
   // send away
   MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
-  
+
   cape_stream_del (&payload);
   cape_str_del(&subscriber_topic);
 }
