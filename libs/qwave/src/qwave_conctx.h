@@ -21,7 +21,7 @@ typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, CapeAioIt
 //-----------------------------------------------------------------------------
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, fct_qwave__on_upgrade);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, const CapeString remote_address, fct_qwave__on_upgrade);
 
 __CAPE_LOCAL     void               qwave_conctx_del            (QWaveConctx*);
 
@@ -47,9 +47,12 @@ typedef void*   (__STDCALL *fct_qwave__on_ws_upgrade)        (void* user_ptr, QW
                                     /* this function shall handle the websocket messages */
 typedef void    (__STDCALL *fct_qwave__on_ws_message)        (void* conn_ptr, const char* bufdat, number_t buflen);
 
+                                    /* this function shall handle the websocket messages */
+typedef void    (__STDCALL *fct_qwave__on_ws_destroy)        (void* conn_ptr);
+
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL     void               qwave_conctx_ws_cb          (QWaveConctx, void* user_ptr, fct_qwave__on_ws_upgrade, fct_qwave__on_ws_message, const CapeString remote_address);
+__CAPE_LOCAL     void               qwave_conctx_ws_cb          (QWaveConctx, void* user_ptr, fct_qwave__on_ws_upgrade, fct_qwave__on_ws_message, fct_qwave__on_ws_destroy);
 
 __CAPE_LOCAL     void               qwave_conctx_ws_read        (QWaveConctx);
 

@@ -46,6 +46,7 @@ struct QWaveConctx_s
     CapeStream buffer;                        // receive buffer
     
     CapeAioItem connection_aio_item;          // AIO event handle
+    CapeString remote_address;                // the remote address
 
     // http parser
     http_parser parser;                       // external parser instance
@@ -64,7 +65,11 @@ struct QWaveConctx_s
     int ws_mask;
     
     void* ws_user_ptr;
+    fct_qwave__on_ws_upgrade ws_on_upgrade;
+
+    void* ws_conn_ptr;
     fct_qwave__on_ws_message ws_on_message;
+    fct_qwave__on_ws_destroy ws_on_destroy; 
 };
 
 //-----------------------------------------------------------------------------
@@ -178,7 +183,7 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem event, fct_qwave__on_upgrade on_upgrade)
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem event, const CapeString remote_address, fct_qwave__on_upgrade on_upgrade)
 {
     QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
     
@@ -193,6 +198,7 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->buffer = cape_stream_new ();
     
     self->connection_aio_item = event;
+    self->remote_address = cape_str_cp (remote_address);
 
     self->on_upgrade = on_upgrade;
     self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
@@ -218,7 +224,11 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->parser.data = NULL;
         
     self->ws_user_ptr = NULL;
+    self->ws_on_upgrade = NULL;
+    
+    self->ws_conn_ptr = NULL;
     self->ws_on_message = NULL;
+    self->ws_on_destroy = NULL;
     
     return self;
 }
@@ -231,6 +241,12 @@ void qwave_conctx_del (QWaveConctx* p_self)
     {
         QWaveConctx self = *p_self;
         
+        if (self->ws_on_destroy)
+        {
+            self->ws_on_destroy (self->ws_conn_ptr);
+        }
+        
+        cape_str_del (&(self->remote_address));        
         cape_str_del (&(self->ws_masking_key));
         cape_stream_del (&(self->buffer));
         
@@ -477,6 +493,13 @@ void qwave_conctx_upgrade (QWaveConctx self, const CapeString key)
         qwave_conctx_send (self, &s);
     }
 
+    // call the user defined upgrade function to set a connection pointer
+    if (self->ws_on_upgrade)
+    {
+        // the method will return the connection user pointer
+        self->ws_conn_ptr = self->ws_on_upgrade (self->ws_user_ptr, self, self->remote_address);
+    }
+    
     // reset values
     self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
     cape_stream_clr (self->buffer);
@@ -605,7 +628,7 @@ void qwave_conctx_ws__decode_payload (QWaveConctx self, CapeCursor cursor)
             if (self->ws_on_message)
             {
                 // call the user defined on message method
-                self->ws_on_message (self->ws_user_ptr, h, self->ws_data_size);
+                self->ws_on_message (self->ws_conn_ptr, h, self->ws_data_size);
             }
                         
             break;
@@ -774,15 +797,14 @@ void qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_ws_cb (QWaveConctx self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message, const CapeString remote_address)
+void qwave_conctx_ws_cb (QWaveConctx self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message, fct_qwave__on_ws_destroy on_destroy)
 {
-    if (on_upgrade)
-    {
-        // the method will return the connection user pointer
-        self->ws_user_ptr = on_upgrade (user_ptr, self, remote_address);
-    }
-
+    self->ws_user_ptr = user_ptr;
+    self->ws_on_upgrade = on_upgrade;
+    
+    self->ws_conn_ptr = NULL;
     self->ws_on_message = on_message;
+    self->ws_on_destroy = on_destroy;
 }
 
 //-----------------------------------------------------------------------------

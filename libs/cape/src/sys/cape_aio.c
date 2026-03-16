@@ -2,6 +2,7 @@
 
 // cape includes
 #include <sys/cape_log.h>
+#include <stc/cape_map.h>
 
 //-----------------------------------------------------------------------------
 
@@ -104,6 +105,7 @@ void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 struct CapeAio_s
 {
   int running;          // indicates the running status
+  CapeMap items;        // map of all added AIO items
   
 #if defined __LINUX_OS
 
@@ -126,11 +128,21 @@ struct CapeAio_s
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL cape_aio__items__on_del (void* key, void* val)
+{
+  CapeAioItem item = key;
+  
+  cape_aio_item_del (&item);
+}
+
+//-----------------------------------------------------------------------------
+
 CapeAio cape_aio_new (void)
 {
   CapeAio self = CAPE_NEW (struct CapeAio_s);
 
   self->running = TRUE;
+  self->items = cape_map_new (cape_map__compare__n, cape_aio__items__on_del, NULL);
   
 #if defined __LINUX_OS
 
@@ -167,6 +179,8 @@ void cape_aio_del (CapeAio* p_self)
   {
     CapeAio self = *p_self;
 
+    cape_map_del (&(self->items));
+    
 #if defined __LINUX_OS
 
     if (self->signal_fd != -1)
@@ -433,6 +447,11 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #endif
 
+  if (ret)
+  {
+    cape_map_insert (self->items, (void*)ret, NULL);
+  }
+
   cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %i", ret, (long)handle);
 
   return ret;
@@ -445,6 +464,9 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
   CapeAioItem hitem = *p_hitem;
 
   // remove handle from epoll
+  CapeMapNode n = cape_map_find (self->items, (void*)hitem);
+  
+  if (n)
   {
     CapeErr err = cape_err_new ();
 
@@ -470,7 +492,10 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
     {
       // call user defined shutdown function and
       // cleanup handle event
-      cape_aio_item_del (p_hitem);
+      cape_map_erase (self->items, n);
+      
+      // set the return value to NULL
+      *p_hitem = NULL;
     }
 
     cape_err_del (&err);
