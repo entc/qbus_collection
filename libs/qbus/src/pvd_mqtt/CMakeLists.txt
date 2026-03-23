@@ -1,4 +1,5 @@
 INCLUDE_DIRECTORIES(".." "paho.mqtt.c/src" "../../../cape/src" "../pvd_common")
+set(CMAKE_C_STANDARD 90)
 
 # external libs
 SUBDIRS(paho.mqtt.c)

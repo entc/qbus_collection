@@ -232,7 +232,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
     {
       if (self->on_snd)
       {
-        QBusFrame frame = qbus_frame_new (NULL);   // create empty frame
+        QBusFrame frame = qbus_frame_new ();   // create empty frame
 
         number_t written = 0;
 
@@ -254,7 +254,7 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
     {
       if (self->on_snd)
       {
-        QBusFrame frame = qbus_frame_new (NULL);   // create empty frame
+        QBusFrame frame = qbus_frame_new ();   // create empty frame
 
         number_t written = 0;
 
