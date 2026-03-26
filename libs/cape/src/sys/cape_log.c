@@ -180,6 +180,10 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
   {
     cape_fs_writeln_msg (CAPE_LOG_OUT_FD, buffer, len);
   }
+  else if (lvl == CAPE_LL_TRACE)
+  {
+    printf("%s\n", buffer);
+  }
   else
   {
     printf("\033[%sm%s\033[0m\n", clr_matrix[lvl], buffer);
