@@ -440,10 +440,6 @@ void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
       
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "accept", "error in accept: %s", cape_err_text (err));
     }
-    else
-    {
-      cape_err_set (err, CAPE_ERR_CONTINUE, NULL);
-    }
 
     return NULL;
   }
@@ -550,7 +546,7 @@ int cape_sock__touch (void* handle, CapeErr err)
 
 void cape_sock__close (void* handle)
 {  
-  if (-1 == close ((number_t)handle))
+  if (-1 == close ((int)(number_t)handle))
   {
     CapeErr err = cape_err_new ();
     
@@ -570,7 +566,7 @@ void cape_sock__close (void* handle)
 
 void cape_sock__shutdown (void* handle)
 {
-  if (-1 == shutdown ((number_t)handle, SHUT_RDWR))
+  if (-1 == shutdown ((int)(number_t)handle, SHUT_RDWR))
   {
     CapeErr err = cape_err_new ();
     
@@ -590,7 +586,7 @@ void cape_sock__shutdown (void* handle)
 
 void cape_sock__shutdown__rd (void* handle)
 {
-  if (-1 == shutdown ((number_t)handle, SHUT_RD))
+  if (-1 == shutdown ((int)(number_t)handle, SHUT_RD))
   {
     CapeErr err = cape_err_new ();
     
@@ -610,7 +606,7 @@ void cape_sock__shutdown__rd (void* handle)
 
 void cape_sock__shutdown__wr (void* handle)
 {
-  if (-1 == shutdown ((number_t)handle, SHUT_WR))
+  if (-1 == shutdown ((int)(number_t)handle, SHUT_WR))
   {
     CapeErr err = cape_err_new ();
     
@@ -631,7 +627,7 @@ void cape_sock__shutdown__wr (void* handle)
 int cape_sock__noneblocking (void* sock, CapeErr err)
 {
   // save the current flags
-  int flags = fcntl ((long)sock, F_GETFL, 0);
+  int flags = fcntl ((int)(number_t)sock, F_GETFL, 0);
   if (flags == -1)
   {
     return cape_err_lastOSError (err);
@@ -641,7 +637,7 @@ int cape_sock__noneblocking (void* sock, CapeErr err)
   flags |= O_NONBLOCK;
 
   // apply the flags
-  if (fcntl ((long)sock, F_SETFL, flags) != 0)
+  if (fcntl ((int)(number_t)sock, F_SETFL, flags) != 0)
   {
     return cape_err_lastOSError (err);
   }

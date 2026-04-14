@@ -15,8 +15,10 @@
 
 #elif defined __BSD_OS
 
+#include <unistd.h>
 #include <sys/event.h>
 #include <errno.h>
+#include <signal.h>
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -290,13 +292,13 @@ int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, 
 
 //-----------------------------------------------------------------------------
 
-int cape_aio__kevent_set (CapeAio self, int mode, int fd, int flags, void* data, CapeErr err)
+int cape_aio__kevent_set (CapeAio self, int flags, int fd, int filter, void* udata, CapeErr err)
 {
   int res;
   struct kevent change;
 
   // set all options
-  EV_SET (&change, fd, flags, mode, 0, 0, data);
+  EV_SET (&change, fd, filter, flags, 0, 0, udata);
 
   // apply the set by the systemcall to the kevent subsystem
   res = kevent (self->kq, &change, 1, NULL, 0, NULL);
@@ -370,10 +372,47 @@ int cape_aio_init (CapeAio self, CapeErr err)
   
 #elif defined __BSD_OS
 
+  int res;
+  sigset_t sigset;
+
+  // null the sigset
+  res = sigemptyset (&sigset);
+  if (res == -1)
+  {
+    return cape_err_lastOSError (err);
+  }
+
   self->kq = kqueue();
 
   // check if the open was successful
   if (self->kq == -1)
+  {
+    return cape_err_lastOSError (err);
+  }
+
+  {
+    // create a new object for the handler
+    CapeAioItem aio_item = cape_aio_item_new (SIGTERM);
+
+    // add handler for term signal
+    if (cape_aio__kevent_set (self, EV_ADD, SIGTERM, EVFILT_SIGNAL, aio_item, err))
+    {
+      cape_aio_item_del (&aio_item);
+      
+      return cape_err_code (err);
+    }
+  }
+
+  // add this signal to the sigset
+  res = sigaddset (&sigset, SIGTERM);
+  if (res < 0)
+  {
+    return cape_err_lastOSError (err);
+  }
+
+  // we must block the signals in order for signals for event to receive them
+  res = sigprocmask (SIG_BLOCK, &sigset, NULL);
+  if (res)
   {
     return cape_err_lastOSError (err);
   }
@@ -433,7 +472,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #endif
 
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %i", ret, (long)handle);
+  //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %i", ret, (long)handle);
 
   return ret;
 }
@@ -448,6 +487,8 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
   {
     CapeErr err = cape_err_new ();
 
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio rm", "remove aio item {%p} -> %i", hitem, (long)cape_aio_item_get(hitem));
+
 #if defined __LINUX_OS
 
     if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_DEL, (int)(number_t)cape_aio_item_get (hitem), 0, NULL, err))
@@ -457,9 +498,9 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
 
 #elif defined __BSD_OS
 
-    if (FALSE == cape_aio__kevent_set (self, EV_DELETE, (int)(number_t)cape_aio_item_get (hitem), 0, NULL, err))
+    if (FALSE == cape_aio__kevent_set (self, EV_DELETE, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, NULL, err))
     {
-
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio rm", "can't remove kevent item: %s", cape_err_text (err));
     }
 
 #elif defined _WIN64 || defined _WIN32
@@ -554,13 +595,15 @@ cleanup_and_exit:
       }
       else
       {
-        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
+        //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
 
         // this handles the event
         cape_aio_item__on_event (event->udata, 0);
       }
     }
   }
+
+  res = CAPE_ERR_NONE;
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -606,6 +649,10 @@ void cape_aio_kill (CapeAio self)
 
 #elif defined __BSD_OS
 
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "stop loop");
+  
+  // trigger the terminate signal
+  kill (getpid(), SIGTERM);
 
 #elif defined _WIN64 || defined _WIN32
 

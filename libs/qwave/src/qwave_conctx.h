@@ -27,7 +27,7 @@ __CAPE_LOCAL     void               qwave_conctx_del            (QWaveConctx*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL     void               qwave_conctx_close          (QWaveConctx);
+__CAPE_LOCAL     void               qwave_conctx_close          (QWaveConctx, int shutdown);
 
 __CAPE_LOCAL     void               qwave_conctx_reqdec         (QWaveConctx);
 

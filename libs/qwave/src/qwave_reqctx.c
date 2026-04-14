@@ -248,7 +248,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         }
         
         // try to close connection
-        qwave_conctx_close (self->conctx);
+        qwave_conctx_close (self->conctx, TRUE);
         
         // tell the context we don't need it anymore
         qwave_conctx_reqdec (self->conctx);
@@ -282,7 +282,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         if (FALSE == self->keep_alive)
         {
             // try to close connection
-            qwave_conctx_close (self->conctx);
+            qwave_conctx_close (self->conctx, TRUE);
         }
         
         // tell the context we don't need it anymore

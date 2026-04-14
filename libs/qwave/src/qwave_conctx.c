@@ -249,14 +249,17 @@ QWaveConctx qwave_conctx_reqinc (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_shutdown (QWaveConctx self)
+void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
 {
     if ((self->reference_counter == 0) && (self->close_connection))
     {
         CapeAioItem aio_item = self->connection_aio_item;
 
-        // close write part of the socket
-        cape_sock__shutdown (cape_aio_item_get (aio_item));
+        if (shutdown_socket)
+        {
+            // close write part of the socket
+            cape_sock__shutdown (cape_aio_item_get (aio_item));
+        }
 
         // self will be destroyed in the process
         cape_aio_rm (self->aio, &aio_item);
@@ -274,13 +277,11 @@ void qwave_conctx_reqdec (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_close (QWaveConctx self)
+void qwave_conctx_close (QWaveConctx self, int shutdown_socket)
 {
     self->close_connection = TRUE;
     
-    //cape_sock__shutdown__rd (qwave_aioctx_event_get (self->connection_handle));
-    
-    qwave_conctx_shutdown (self);
+    qwave_conctx_shutdown (self, shutdown_socket);
 }
 
 //-----------------------------------------------------------------------------
@@ -359,6 +360,8 @@ int qwave_conctx_read (QWaveConctx self)
             {
                 cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->connection_aio_item));
                 
+                // we don't need to shutdown from our side
+              
                 ret = FALSE;
                 con = FALSE;
                 break;
@@ -376,7 +379,7 @@ int qwave_conctx_read (QWaveConctx self)
             }
         }
     }
-        
+      
     cape_err_del (&err);
     
     return ret;
@@ -797,6 +800,9 @@ void qwave_conctx_ws_read (QWaveConctx self)
     
     while (read)
     {
+      printf ("socket recv\n");
+      
+      
         switch (cape_sock__recv (cape_aio_item_get (self->connection_aio_item), self->buffer, 1024, err))
         {
             case CAPE_ERR_NONE:
@@ -811,7 +817,7 @@ void qwave_conctx_ws_read (QWaveConctx self)
             }
             case CAPE_ERR_EOF:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->connection_aio_item));
+                //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->connection_aio_item));
                 
                 read = FALSE;
                 break;

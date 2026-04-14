@@ -141,7 +141,8 @@ void __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_con
     }
     else
     {
-        qwave_conctx_close (ctx);
+        // if read failed we don't need a shutdown
+        qwave_conctx_close (ctx, FALSE);
     }
 }
 
