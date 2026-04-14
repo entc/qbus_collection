@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MYSQLDUMP="mysqldump"
+MYSQLDUMP="mariadb-dump --ssl=FALSE"
 #MYSQLDUMP="/opt/local/lib/mariadb/bin/mysqldump"
 
 #$MYSQLDUMP --set-gtid-purged=off -u $1 -p $2 \

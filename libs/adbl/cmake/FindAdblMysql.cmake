@@ -2,7 +2,7 @@ if (NOT MYSQL_FOUND)
 
   ## try the default way
   find_package(MySQL QUIET)
-  
+
   if (NOT MYSQL_FOUND)
 
     ##____________________________________________________________________________
@@ -10,12 +10,12 @@ if (NOT MYSQL_FOUND)
 
     find_path (MYSQL_INCLUDES
       NAMES mysql.h
-      HINTS "/opt/local/include/mariadb/mysql/" "C:\\Program Files\\MariaDB 10.4\\include\\mysql"
+      HINTS "/usr/include/mariadb/" "/opt/local/include/mariadb/mysql/" "C:\\Program Files\\MariaDB 10.4\\include\\mysql"
       PATH_SUFFIXES mariadb
     )
-    
+
     if (MYSQL_INCLUDES)
-    
+
     else ()
 
       find_path (MYSQL_INCLUDES
@@ -23,22 +23,22 @@ if (NOT MYSQL_FOUND)
         HINTS "/opt/local/include/mariadb/mysql/"
         PATH_SUFFIXES mysql
       )
-    
+
     endif ()
 
     ##____________________________________________________________________________
     ## Check for the library
 
-    find_library (MYSQL_LIBRARY_01 mysqlclient 
-      HINTS "/opt/local/lib/mariadb/mysql/" "/usr/lib/"
+    find_library (MYSQL_LIBRARY_01 mysqlclient
+      HINTS "/usr/lib/" "/usr/lib64/" "/opt/local/lib/mariadb/mysql/"
     )
 
     if (MYSQL_LIBRARY_01)
-    
+
     else ()
-    
-    find_library (MYSQL_LIBRARY_01 mariadbclient 
-      HINTS "/opt/local/lib/mariadb/mysql/" "/usr/lib/" "C:\\Program Files\\MariaDB 10.4\\lib" "/usr/lib/x86_64-linux-gnu"
+
+    find_library (MYSQL_LIBRARY_01 mariadbclient
+      HINTS "/usr/lib/" "/usr/lib64/" "/opt/local/lib/mariadb/mysql/" "C:\\Program Files\\MariaDB 10.4\\lib" "/usr/lib/x86_64-linux-gnu"
     )
 
     endif ()
@@ -69,6 +69,9 @@ if (NOT MYSQL_FOUND)
     else (MYSQL_FOUND)
       if (MYSQL_FIND_REQUIRED)
         message (FATAL_ERROR "Could not find MYSQL!")
+      else (MYSQL_FIND_REQUIRED)
+        message (STATUS "MYSQL_INCLUDES  = ${MYSQL_INCLUDES}")
+        message (STATUS "MYSQL_LIBRARIES = ${MYSQL_LIBRARIES}")
       endif (MYSQL_FIND_REQUIRED)
     endif (MYSQL_FOUND)
 
@@ -78,6 +81,5 @@ if (NOT MYSQL_FOUND)
     mark_as_advanced (MYSQL_ROOT_DIR MYSQL_INCLUDES MYSQL_LIBRARIES)
 
   endif (NOT MYSQL_FOUND)
-    
-endif (NOT MYSQL_FOUND)
 
+endif (NOT MYSQL_FOUND)

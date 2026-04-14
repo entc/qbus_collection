@@ -32,6 +32,7 @@ struct QWave_s
     
     fct_qwave__on_ws_message ws_on_message;
     fct_qwave__on_ws_upgrade ws_on_upgrade;
+    fct_qwave__on_ws_destroy ws_on_destroy;
     void* ws_user_ptr;
 };
 
@@ -114,19 +115,19 @@ void __STDCALL qwave_server__ws_done (void* user_ptr, void* handle_remote_connec
 {
     QWaveConctx ctx = user_ptr;
     
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
     
+    // close physical tcp connection
+    cape_sock__close (handle_remote_connection);
+    
+    qwave_conctx_del (&ctx);
 }
 
 //-----------------------------------------------------------------------------
 
 void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
 {
-    
     cape_aio_item_set (aio_item, (void*)ctx, qwave_server__ws_recv, qwave_server__ws_done);
-    
-    
-
-    
 }
 
 //-----------------------------------------------------------------------------
@@ -152,12 +153,12 @@ void __STDCALL qwave_server__on_drop (void* user_ptr, void* handle_remote_connec
 {
     QWaveConctx ctx = user_ptr;
 
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
+
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_del (&ctx);
-    
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
+    qwave_conctx_del (&ctx);    
 }
 
 //-----------------------------------------------------------------------------
@@ -177,13 +178,15 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         }
         else
         {
-            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aio, aio_item, qwave_server__on_upgrade);
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aio, aio_item, remote_address, qwave_server__on_upgrade);
         
             // set the callbacks
+            // transfer the responsiblity of the ownership of conctx to
+            // the AIO system, qwave_server__on_drop will be called
             cape_aio_item_set (aio_item, conctx, qwave_server__on_request, qwave_server__on_drop);
             
             // set the callbacks
-            qwave_conctx_ws_cb (conctx, self->ws_user_ptr, self->ws_on_upgrade, self->ws_on_message, remote_address);
+            qwave_conctx_ws_cb (conctx, self->ws_user_ptr, self->ws_on_upgrade, self->ws_on_message, self->ws_on_destroy);
         }
         
         cape_err_del (&err);        
@@ -368,12 +371,13 @@ void qwave_reg__path (QWave self, const CapeString path, void* user_ptr, fct_qwa
 
 //-----------------------------------------------------------------------------
 
-void qwave_reg__ws (QWave self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message)
+void qwave_reg__ws (QWave self, void* user_ptr, fct_qwave__on_ws_upgrade on_upgrade, fct_qwave__on_ws_message on_message, fct_qwave__on_ws_destroy on_destroy)
 {
     self->ws_user_ptr = user_ptr;
     
     self->ws_on_upgrade = on_upgrade;
     self->ws_on_message = on_message;
+    self->ws_on_destroy = on_destroy;
 }
 
 //-----------------------------------------------------------------------------

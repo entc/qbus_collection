@@ -47,7 +47,7 @@ struct CapeAioTimer_s
 
 //-----------------------------------------------------------------------------
 
-CapeAioTimer cape_aio_timer_new (void* handle)
+CapeAioTimer cape_aio_timer_new ()
 {
   CapeAioTimer self = CAPE_NEW(struct CapeAioTimer_s);
   
