@@ -14,8 +14,6 @@ add_executable          (qbus_app ${APP_SOURCES})
 target_link_libraries   (qbus_app qbus)
 set_target_properties   (qbus_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
-add_custom_command (TARGET qbus_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/*.html ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
-
 #----------------------------------------------------------------------------------
 
 if (PVD_QBUS_DIR)
