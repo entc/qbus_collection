@@ -455,7 +455,7 @@ int qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeS
     {
         CapeStream s = cape_stream_new ();
         
-        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read file", "path: %s", file_absolute);
+        //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read file", "path: %s", file_absolute);
         
         // this will fillup the stream with a valid http response
         qwave_response_file (self->response, s, file_absolute, keep_alive);

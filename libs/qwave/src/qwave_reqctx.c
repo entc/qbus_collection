@@ -266,7 +266,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
             qwave_reqctx__parse_parts (self);
         }
 
-        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "reqexec", "process request url = %s, site = %s, method = %s, keep-alive = %i", self->url, site, self->method, self->keep_alive);
+        //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "reqexec", "process request url = %s, site = %s, method = %s, keep-alive = %i", self->url, site, self->method, self->keep_alive);
   
         /*
         if (self->api)

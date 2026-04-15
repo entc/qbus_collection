@@ -508,14 +508,13 @@ int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
   
   while (total_sent < buflen)
   {
-    bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, 0);
+    bytes_sent = send ((int)(number_t)handle, cape_stream_data (buffer) + total_sent, buflen - total_sent, MSG_NOSIGNAL);
     
     if (-1 == bytes_sent)
     {
-      if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+      if ((errno == EAGAIN) || (errno == EWOULDBLOCK) || (errno == EINTR))
       {
-        // wait a bit
-        cape_thread_sleep (10);
+        continue;
       }
       else if (errno == EPIPE)
       {
@@ -526,6 +525,10 @@ int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
         // exit
         return cape_err_lastOSError (err);
       }
+    }
+    else if (0 == bytes_sent)
+    {
+      return CAPE_ERR_EOF;
     }
     else
     {
