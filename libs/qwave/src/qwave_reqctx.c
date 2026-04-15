@@ -275,16 +275,12 @@ void qwave_reqctx_exec (QWaveReqctx self)
         }
         else
         */
-        {
-            qwave_conctx_send_file (self->conctx, site, self->url, self->keep_alive);
-        }
-        
-        if (FALSE == self->keep_alive)
+        if ((FALSE == qwave_conctx_send_file (self->conctx, site, self->url, self->keep_alive)) || (FALSE == self->keep_alive))
         {
             // try to close connection
             qwave_conctx_close (self->conctx, TRUE);
         }
-        
+
         // tell the context we don't need it anymore
         qwave_conctx_reqdec (self->conctx);
     }

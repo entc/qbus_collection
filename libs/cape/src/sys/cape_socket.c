@@ -512,15 +512,19 @@ int cape_sock__send (void* handle, CapeStream buffer, CapeErr err)
     
     if (-1 == bytes_sent)
     {
-      if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
-      {
-        // exit
-        return cape_err_lastOSError (err);
-      }
-      else
+      if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
       {
         // wait a bit
         cape_thread_sleep (10);
+      }
+      else if (errno == EPIPE)
+      {
+        return CAPE_ERR_EOF;
+      }
+      else
+      {
+        // exit
+        return cape_err_lastOSError (err);
       }
     }
     else

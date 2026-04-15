@@ -33,9 +33,9 @@ __CAPE_LOCAL     void               qwave_conctx_reqdec         (QWaveConctx);
 
 __CAPE_LOCAL     int                qwave_conctx_read           (QWaveConctx);
 
-__CAPE_LOCAL     void               qwave_conctx_send           (QWaveConctx, CapeStream* p_output);
+__CAPE_LOCAL     int                qwave_conctx_send           (QWaveConctx, CapeStream* p_output);
 
-__CAPE_LOCAL     void               qwave_conctx_send_file      (QWaveConctx, const CapeString site, const CapeString path, int keep_alive);
+__CAPE_LOCAL     int                qwave_conctx_send_file      (QWaveConctx, const CapeString site, const CapeString path, int keep_alive);
 
 __CAPE_LOCAL     void               qwave_conctx_upgrade        (QWaveConctx, const CapeString accept_key);
 

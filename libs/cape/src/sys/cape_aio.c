@@ -570,7 +570,7 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
     for (i = 0; i < number_of_events; i++)
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
+      //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
 
       // this handles the event
       cape_aio_item__on_event (events[i].data.ptr, 0);
