@@ -474,11 +474,11 @@ int main (int argc, char *argv[])
   struct TriggerContext ctx;
   
   CapeErr err = cape_err_new ();
-  
-  // local objects
-  QBus qbus = qbus_new ("test");
-  CapeThread trigger_thread = cape_thread_new ();
   CapeUdc args = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+  // local objects
+  QBus qbus = qbus_new ("test", &args);
+  CapeThread trigger_thread = cape_thread_new ();
   
   qbus_register (qbus, "main"        , NULL, qbus_test1, NULL, err);
   qbus_register (qbus, "simple"      , NULL, qbus_test2, NULL, err);
@@ -495,7 +495,7 @@ int main (int argc, char *argv[])
   
   cape_udc_add_n (args, "threads", 30);
   
-  qbus_wait (qbus, &args, err);
+  qbus_wait (qbus, err);
   
   g_running = FALSE;
   

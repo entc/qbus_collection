@@ -10,9 +10,12 @@
 
 jlong JNICALL Java_QBus_qbnew (JNIEnv* env, jobject o, jstring name)
 {
+  // local objects
+  CapeUdc arguments = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
   const char* name_text = (*env)->GetStringUTFChars (env, name, 0);
   
-  jlong java_void_ptr = (jlong)qbus_new (name_text);
+  jlong java_void_ptr = (jlong)qbus_new (name_text, &arguments);
     
   //jclass cls = (*env)->GetObjectClass(env, o);
     
@@ -23,6 +26,8 @@ jlong JNICALL Java_QBus_qbnew (JNIEnv* env, jobject o, jstring name)
  // printf ("FID: %p\n", fid);
 
   //(*env)->SetLongField (env, o, fid, java_void_ptr);
+  
+  cape_udc_del (&arguments);
   
   return java_void_ptr;
 }
@@ -68,7 +73,7 @@ void JNICALL Java_QBus_qbwait (JNIEnv* env, jobject o, jlong ptr, jstring bind, 
   }
   
   // use 4 workers
-  qbus_wait (qbus, &arguments, err);
+  qbus_wait (qbus, err);
   
   cape_udc_del (&bind_udc);
   cape_udc_del (&remote_udc);

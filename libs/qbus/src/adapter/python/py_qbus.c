@@ -10,45 +10,103 @@
 
 PyObject* py_object_qbus_new (PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
-  PyObject_QBus* self = (PyObject_QBus*)type->tp_alloc(type, 0);
+    PyObject* pyo_name;
+    PyObject* pyo_args;
+        
+    if (!PyArg_ParseTuple (args, "OO", &pyo_name, &pyo_args))
+    {
+        return NULL;  // Exception was already set
+    }
 
-  self->qbus = NULL;
+    if (!PYOBJECT_IS_STRING (pyo_name))
+    {
+        PyErr_SetString (PyExc_ValueError, "parameter name must be a string value");
+        return NULL;
+    }
 
-  return (PyObject*) self;
+    if (!PyDict_Check (pyo_args))
+    {
+        PyErr_SetString (PyExc_ValueError, "parameter args must be an object");
+        return NULL;
+    }
+    
+    CapeUdc cape_args = py_transform_to_udc (pyo_args);
+    if (NULL == cape_args)
+    {
+        PyErr_SetString (PyExc_ValueError, "parameter args are not valid arguments");
+        return NULL;
+    }
+
+    {
+        PyObject_QBus* self = (PyObject_QBus*)type->tp_alloc(type, 0);
+
+        self->qbus = qbus_new (PYOBJECT_AS_STRING (pyo_name), &cape_args);
+
+        return (PyObject*) self;
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void py_object_qbus_del (PyObject_QBus* self)
 {
-  if (self->qbus)
-  {
-    qbus_del (&(self->qbus));
-  }
+    if (self->qbus)
+    {
+        qbus_del (&(self->qbus));
+    }
 
-  Py_TYPE(self)->tp_free((PyObject *) self);
+    Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
 //-----------------------------------------------------------------------------
 
-int py_object_qbus_init (PyObject_QBus* self, PyObject *args, PyObject *kwds)
+PyObject* py_object_qbus_run (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
-  PyObject* name;
+    PyObject* ret = Py_None;
 
-  if (!PyArg_ParseTuple (args, "O", &name))
-  {
-    return -1;
-  }
+    // local objects
+    CapeErr err = cape_err_new ();
 
-  if (!PYOBJECT_IS_STRING (name))
-  {
-    return -1;
-  }
+    if (qbus_run (self->qbus, err))
+    {
+        PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
+        
+        ret = NULL; // tell python an error as occoured
+    }
 
-  // create a new qbus object
-  self->qbus = qbus_new (PYOBJECT_AS_STRING(name));
+    cape_err_del (&err);
 
-  return 0;
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+PyObject* py_object_qbus_run_d (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+    PyObject* ret = Py_None;
+
+    // local objects
+    CapeErr err = cape_err_new ();
+
+    if (qbus_run__d (self->qbus, err))
+    {
+        PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
+        
+        ret = NULL; // tell python an error as occoured
+    }
+
+    cape_err_del (&err);
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+PyObject* py_object_qbus_stop (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+    qbus_stop (self->qbus);
+
+    return Py_None;
 }
 
 //-----------------------------------------------------------------------------
@@ -96,7 +154,7 @@ PyObject* py_object_qbus_wait (PyObject_QBus* self, PyObject* args, PyObject* kw
   }
 
   {
-    int res = qbus_wait (self->qbus, &cape_argument, err);
+    int res = qbus_wait (self->qbus, err);
     if (res)
     {
       printf ("ERROR: %s\n", cape_err_text (err));

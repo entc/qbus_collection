@@ -121,9 +121,33 @@ static int __STDCALL app_on_done (QBus qbus, void* ptr, CapeErr err)
 
 int main (int argc, char *argv[])
 {
-  qbus_instance ("TEST", NULL, app_on_init, app_on_done, argc, argv);
+    // local objects
+    CapeErr err = cape_err_new ();
+    
+    // create main thread qbus instance
+    QBus qbus_test1 = qbus_new ("test1", NULL);
 
-  return 0;
+    // create the daemonized version
+    QBus qbus_test2 = qbus_new ("test2", NULL);
+
+    qbus_set_cb (qbus_test1, NULL, app_on_init, app_on_done);
+
+    // run in background
+    qbus_run__d (qbus_test2, err);
+    
+    // run infinite loop
+    qbus_run (qbus_test1, err);
+    
+    qbus_del (&qbus_test1);
+    
+    // stop background thread
+    qbus_stop (qbus_test2);
+    
+    qbus_del (&qbus_test2);
+    
+    cape_err_del (&err);
+    
+    return 0;
 }
 
 //-----------------------------------------------------------------------------

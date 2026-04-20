@@ -5,9 +5,10 @@
 #include <stdio.h>
 
 // cape includes
-#include "stc/cape_udc.h"
-#include "fmt/cape_json.h"
-#include "sys/cape_log.h"
+#include <sys/cape_log.h>
+#include <stc/cape_udc.h>
+#include <fmt/cape_json.h>
+#include <fmt/cape_args.h>
 
 //-----------------------------------------------------------------------------
 
@@ -170,13 +171,31 @@ static PyObject* py_qbus_instance (PyObject* self, PyObject* args, PyObject* kwd
   }
   
   {
-    PyInstanceContext* ctx = CAPE_NEW (PyInstanceContext);
-    
-    ctx->on_init = on_init;
-    ctx->on_done = on_done;
-    ctx->obj = NULL;
-    
-    qbus_instance (PYOBJECT_AS_STRING (name), ctx, py_qbus_instance__on_init, py_qbus_instance__on_done, argc, (char**)argv);
+      // convert program arguments into a node with parameters
+      CapeUdc args = cape_args_from_args (argc, (char**)argv, NULL);
+
+      // local objects
+      CapeErr err = cape_err_new ();
+      QBus self = qbus_new (PYOBJECT_AS_STRING (name), &args);
+      
+      {
+          PyInstanceContext* ctx = CAPE_NEW (PyInstanceContext);
+          
+          ctx->on_init = on_init;
+          ctx->on_done = on_done;
+          ctx->obj = NULL;
+
+          // set callbacks: ctx will be destroyed in the on_done method
+          qbus_set_cb (self, ctx, py_qbus_instance__on_init, py_qbus_instance__on_done);
+      }
+      
+      if (qbus_run (self, err))
+      {
+          // TODO: handle error
+      }
+
+      qbus_del (&self);
+      cape_err_del (&err);
   }
   
   CAPE_FREE(argv);

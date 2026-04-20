@@ -8,6 +8,7 @@
 // cape includes
 #include <stc/cape_str.h>
 #include <sys/cape_log.h>
+#include <sys/cape_thread.h>
 #include <fmt/cape_args.h>
 #include <fmt/cape_json.h>
 
@@ -30,56 +31,82 @@
 
 struct QBus_s
 {
-  CapeAioContext aio;         // asyncronous IO context
+    CapeAioContext aio;         // asyncronous IO context
 
-  QBusRouter router;          // owned
-  QBusEngines engines;        // owned
-  QBusConfig config;          // owned
-  QBusAgent agent;            // owned
+    QBusRouter router;          // owned
+    QBusEngines engines;        // owned
+    QBusConfig config;          // owned
+    QBusAgent agent;            // owned
 
-  QBusCon con;                // owned
-  QBusMethods methods;
+    QBusCon con;                // owned
+    QBusMethods methods;
+
+    CapeThread thread;
+    
+    void* on_init_ptr;
+    fct_qbus_on_init on_init;
+
+    void* on_done_ptr;
+    fct_qbus_on_done on_done;
 };
 
 //-----------------------------------------------------------------------------
 
-QBus qbus_new (const CapeString module)
+QBus qbus_new (const CapeString module, CapeUdc* p_args)
 {
-  QBus self = CAPE_NEW (struct QBus_s);
+    QBus self = CAPE_NEW (struct QBus_s);
 
-  self->aio = cape_aio_context_new ();
+    self->aio = cape_aio_context_new ();
 
-  self->router = qbus_router_new ();
-  self->engines = qbus_engines_new ("qbus");   // always use this path
-  self->config = qbus_config_new (module);
-  self->agent = qbus_agent_new (self->router);
-  self->methods = qbus_methods_new (self);
+    self->router = qbus_router_new ();
+    self->engines = qbus_engines_new ("qbus");   // always use this path
+    self->config = qbus_config_new (module);
+    self->agent = qbus_agent_new (self->router);
+    self->methods = qbus_methods_new (self);
 
-  self->con = NULL;
+    self->con = NULL;
+    self->thread = NULL;
+    
+    self->on_init_ptr = NULL;
+    self->on_init = NULL;
+    
+    self->on_done_ptr = NULL;
+    self->on_done = NULL;
 
-  return self;
+    // parse arguments and load config
+    qbus_config_init (self->config, p_args);
+
+    return self;
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_del (QBus* p_self)
 {
-  if (*p_self)
-  {
-    QBus self = *p_self;
+    if (*p_self)
+    {
+        QBus self = *p_self;
 
-    qbus_con_del (&(self->con));
+        qbus_con_del (&(self->con));
 
-    qbus_methods_del (&(self->methods));
-    qbus_agent_del (&(self->agent));
-    qbus_config_del (&(self->config));
-    qbus_engines_del (&(self->engines));
-    qbus_router_del (&(self->router));
+        if (self->thread)
+        {
+            // wait until the thread terminates
+            cape_thread_join (self->thread);
 
-    cape_aio_context_del (&(self->aio));
+            cape_thread_del (&(self->thread));
+        }
 
-    CAPE_DEL (p_self, struct QBus_s);
-  }
+        qbus_methods_del (&(self->methods));
+        qbus_agent_del (&(self->agent));
+        qbus_config_del (&(self->config));
+        qbus_engines_del (&(self->engines));
+        qbus_router_del (&(self->router));
+
+        cape_aio_context_del (&(self->aio));
+
+        CAPE_DEL (p_self, struct QBus_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -116,13 +143,10 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 
 //-----------------------------------------------------------------------------
 
-int qbus_init__preconditions (QBus self, CapeUdc* p_args, CapeErr err)
+int qbus_init__preconditions (QBus self, CapeErr err)
 {
   int res;
-  
-  // parse arguments and load config
-  qbus_config_init (self->config, p_args);
-  
+    
   // open the operating system AIO/event subsystem
   res = cape_aio_context_open (self->aio, err);
   if (res)
@@ -173,18 +197,43 @@ int qbus_init__submodules (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qbus_init (QBus self, CapeUdc* p_args, CapeErr err)
+int qbus_init (QBus self, CapeErr err)
 {
   int res;
   
-  res = qbus_init__preconditions (self, p_args, err);
+#if defined __WINDOWS_OS
+  
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
+  
+#else
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization [%i:%i]", getuid(), getgid());
+  
+#endif
+
+  res = qbus_init__preconditions (self, err);
   if (res)
   {
-    return res;
+    goto exit_and_cleanup;
   }
   
+  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- user initialization --------------------------------------------------");
+
+  if (self->on_init)
+  {
+    res = self->on_init (self, self->on_init_ptr, &(self->on_done_ptr), err);
+    if (res)
+    {
+      goto exit_and_cleanup;
+    }
+  }
+
+  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- submodules -----------------------------------------------------------");
+    
   res = qbus_init__submodules (self, err);
-  
+
+exit_and_cleanup:
+    
   return res;
 }
 
@@ -207,42 +256,161 @@ int qbus_wait__intern (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-/*
-void qbus__intern__no_route (QBus self, const char* skey)
+int qbus_wait (QBus self, CapeErr err)
 {
-  // log
-  cape_log_fmt (CAPE_LL_WARN, "QBUS", "msg forward", "no route to module %s", module);
+  int res;
 
-  if (on_msg)
+  res = qbus_init (self, err);
+  if (res)
   {
-    if (msg->err)
-    {
-      cape_err_del (&(msg->err));
-    }
-
-    // create a new error object
-    msg->err = cape_err_new ();
-
-    // set the error
-    cape_err_set_fmt (msg->err, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module);
-
-    {
-      // create a temporary error object
-      CapeErr err = cape_err_new ();
-
-      // TODO: add this to queue
-      int res = on_msg (self, ptr, msg, NULL, err);
-      if (res)
-      {
-        // TODO: handle error
-
-      }
-
-      cape_err_del (&err);
-    }
+    return res;
   }
+
+  return qbus_wait__intern (self, err);
 }
-*/
+
+//-----------------------------------------------------------------------------
+
+int qbus_loop__intern (QBus self, CapeErr err)
+{
+    cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
+  
+#if defined __WINDOWS_OS
+
+    // TODO: nice to have
+    {
+
+
+    }
+
+#else
+
+    // disable console echoing
+    {
+        struct termios saved;
+        struct termios attributes;
+
+        tcgetattr(STDIN_FILENO, &saved);
+        tcgetattr(STDIN_FILENO, &attributes);
+
+        attributes.c_lflag &= ~ ECHO;
+        tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);
+
+        // *** main loop ***
+        qbus_wait__intern (self, err);
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &saved);
+    }
+
+#endif
+
+    if (self->on_done)
+    {
+        self->on_done (self, self->on_done_ptr, err);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_run (QBus self, CapeErr err)
+{
+    int res;
+
+    res = qbus_init (self, err);
+    if (res)
+    {
+        return res;
+    }
+
+    // start and run main loop
+    return qbus_loop__intern (self, err);
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qbus__worker (void* ptr)
+{
+    QBus self = ptr;
+    
+    // local objects
+    CapeErr err = cape_err_new ();
+
+    if (qbus_loop__intern (self, err))
+    {
+        
+    }
+
+    cape_err_del (&err);
+    
+    // terminate thread
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_run__d (QBus self, CapeErr err)
+{
+    // initialize qbus
+    {
+        int res;
+        
+        res = qbus_init (self, err);
+        if (res)
+        {
+            return res;
+        }
+    }
+    
+    // allocate memory for the thread
+    self->thread = cape_thread_new ();
+    
+    // start the thread
+    cape_thread_start (self->thread, qbus__worker, self);
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_stop (QBus self)
+{
+    cape_thread_signal (self->thread);
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_set_cb (QBus self, void* user_ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done)
+{
+    self->on_init_ptr = user_ptr;
+    self->on_done_ptr = NULL;
+    
+    self->on_init = on_init;
+    self->on_done = on_done;
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, number_t argc, char *argv[])
+{
+    int res;
+
+    // convert program arguments into a node with parameters
+    CapeUdc args = cape_args_from_args (argc, argv, NULL);
+
+    // local objects
+    CapeErr err = cape_err_new ();
+    QBus self = qbus_new (name, &args);
+
+    // set callbacks
+    qbus_set_cb (self, ptr, on_init, on_done);
+    
+    res = qbus_run (self, err);
+
+exit_and_cleanup:
+
+    qbus_del (&self);
+    cape_err_del (&err);
+}
 
 //-----------------------------------------------------------------------------
 
@@ -567,114 +735,6 @@ void qbus_log_fmt (QBus self, const CapeString remote, const char* format, ...)
   }
 
   va_end(ptr);
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_wait (QBus self, CapeUdc* p_args, CapeErr err)
-{
-  int res;
-
-  res = qbus_init (self, p_args, err);
-  if (res)
-  {
-    return res;
-  }
-
-  return qbus_wait__intern (self, err);
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done, number_t argc, char *argv[])
-{
-  int res;
-
-  // local objects
-  CapeErr err = cape_err_new ();
-  QBus self = qbus_new (name);
-  CapeUdc args = NULL;
-
-#if defined __WINDOWS_OS
-  
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
-  
-#else
-
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization [%i:%i]", getuid(), getgid());
-  
-#endif
-
-  // convert program arguments into a node with parameters
-  args = cape_args_from_args (argc, argv, NULL);
-
-  res = qbus_init__preconditions (self, &args, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- user initialization --------------------------------------------------");
-
-  if (on_init)
-  {
-    res = on_init (self, ptr, &ptr, err);
-    if (res)
-    {
-      goto exit_and_cleanup;
-    }
-  }
-
-  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- submodules -----------------------------------------------------------");
-    
-  res = qbus_init__submodules (self, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
-  
-#if defined __WINDOWS_OS
-
-  // TODO: nice to have
-  {
-
-
-  }
-
-#else
-
-  // disable console echoing
-  {
-    struct termios saved;
-    struct termios attributes;
-
-    tcgetattr(STDIN_FILENO, &saved);
-    tcgetattr(STDIN_FILENO, &attributes);
-
-    attributes.c_lflag &= ~ ECHO;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &attributes);
-
-    // *** main loop ***
-    qbus_wait__intern (self, err);
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &saved);
-  }
-
-#endif
-
-  if (on_done)
-  {
-    on_done (self, ptr, err);
-  }
-
-  res = CAPE_ERR_NONE;
-
-exit_and_cleanup:
-
-  qbus_del (&self);
-  cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------

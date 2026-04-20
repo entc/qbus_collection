@@ -21,9 +21,9 @@ int __STDCALL client02_create_thread (void* ptr)
   
   CapeErr err = cape_err_new ();
   CapeUdc args = cape_udc_new (CAPE_UDC_NODE, NULL);
-  QBus qbus = qbus_new ("NODE2");
+  QBus qbus = qbus_new ("NODE2", &args);
   
-  res = qbus_init (qbus, &args, err);
+  res = qbus_init (qbus, err);
   if (res)
   {
     
@@ -45,9 +45,9 @@ int __STDCALL client01_create_thread (void* ptr)
   
   CapeErr err = cape_err_new ();
   CapeUdc args = cape_udc_new (CAPE_UDC_NODE, NULL);
-  QBus qbus = qbus_new ("NODE1");
+  QBus qbus = qbus_new ("NODE1", &args);
   
-  res = qbus_init (qbus, &args, err);
+  res = qbus_init (qbus, err);
   if (res)
   {
     
@@ -69,9 +69,9 @@ int __STDCALL server_create_thread (void* ptr)
   
   CapeErr err = cape_err_new ();
   CapeUdc args = cape_udc_new (CAPE_UDC_NODE, NULL);
-  QBus qbus = qbus_new ("NODE0");
+  QBus qbus = qbus_new ("NODE0", &args);
 
-  res = qbus_init (qbus, &args, err);
+  res = qbus_init (qbus, err);
   if (res)
   {
     

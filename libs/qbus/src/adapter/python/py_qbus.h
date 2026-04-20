@@ -26,11 +26,15 @@ PyObject*   py_object_qbus_new        (PyTypeObject* type, PyObject* args, PyObj
 
 void        py_object_qbus_del        (PyObject_QBus*);
 
-int         py_object_qbus_init       (PyObject_QBus*, PyObject *args, PyObject *kwds);
-
 void        py_object_qbus_del_e      (PyObject_QBus*);
 
 //-----------------------------------------------------------------------------
+
+PyObject*   py_object_qbus_run        (PyObject_QBus*, PyObject* args, PyObject* kwds);
+
+PyObject*   py_object_qbus_run_d      (PyObject_QBus*, PyObject* args, PyObject* kwds);
+
+PyObject*   py_object_qbus_stop       (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
 PyObject*   py_object_qbus_wait       (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
@@ -48,13 +52,16 @@ PyObject*   py_object_qbus_once       (PyObject_QBus*, PyObject* args, PyObject*
 
 static PyMethodDef PyMethodDef_QBus [] = 
 {
-  {"wait",        (PyCFunction)py_object_qbus_wait,        METH_VARARGS, "wait"},
-  {"register",    (PyCFunction)py_object_qbus_register,    METH_VARARGS, "register a callback method"},
-  {"config",      (PyCFunction)py_object_qbus_config,      METH_VARARGS, "set / get config parameters"},
-  {"send",        (PyCFunction)py_object_qbus_send,        METH_VARARGS, "send a message to another module"},
-  {"timer",       (PyCFunction)py_object_qbus_timer,       METH_VARARGS, "add a timer"},
-  {"once",        (PyCFunction)py_object_qbus_once,        METH_VARARGS, "add a timer which is called once"},
-  {NULL}
+    {"run",         (PyCFunction)py_object_qbus_run,         METH_VARARGS, "runs qbus in blocking mode"},
+    {"run_d",       (PyCFunction)py_object_qbus_run_d,       METH_VARARGS, "runs qbus in background mode"},
+    {"stop",        (PyCFunction)py_object_qbus_stop,        METH_VARARGS, "stops backround process"},
+    {"wait",        (PyCFunction)py_object_qbus_wait,        METH_VARARGS, "wait"},
+    {"register",    (PyCFunction)py_object_qbus_register,    METH_VARARGS, "register a callback method"},
+    {"config",      (PyCFunction)py_object_qbus_config,      METH_VARARGS, "set / get config parameters"},
+    {"send",        (PyCFunction)py_object_qbus_send,        METH_VARARGS, "send a message to another module"},
+    {"timer",       (PyCFunction)py_object_qbus_timer,       METH_VARARGS, "add a timer"},
+    {"once",        (PyCFunction)py_object_qbus_once,        METH_VARARGS, "add a timer which is called once"},
+    {NULL}
 };
 
 //-----------------------------------------------------------------------------
@@ -68,7 +75,7 @@ static PyTypeObject PyTypeObject_QBus =
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
   .tp_new = py_object_qbus_new,
-  .tp_init = (initproc) py_object_qbus_init,
+  .tp_init = NULL,
   .tp_dealloc = (destructor) py_object_qbus_del,
   .tp_members = NULL,
   .tp_methods = PyMethodDef_QBus,
