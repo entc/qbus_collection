@@ -665,9 +665,9 @@ static int __STDCALL cape_queue__observer__thread (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-int cape_queue_start  (CapeQueue self, int amount_of_threads, CapeErr err)
+int cape_queue_start  (CapeQueue self, number_t amount_of_threads, CapeErr err)
 {
-  int i;
+  number_t i;
   
   for (i = 0; i < amount_of_threads; i++)
   {
