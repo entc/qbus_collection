@@ -111,9 +111,20 @@ PyObject* py_object_qbus_stop (PyObject_QBus* self, PyObject* args, PyObject* kw
 
 //-----------------------------------------------------------------------------
 
+PyObject* py_object_qbus_new_e (PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    PyObject_QBus* self = (PyObject_QBus*)type->tp_alloc(type, 0);
+    
+    self->qbus = NULL;
+    
+    return (PyObject*)self;
+}
+
+//-----------------------------------------------------------------------------
+
 void py_object_qbus_del_e (PyObject_QBus* self)
 {
-  Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 //-----------------------------------------------------------------------------

@@ -26,8 +26,6 @@ PyObject*   py_object_qbus_new        (PyTypeObject* type, PyObject* args, PyObj
 
 void        py_object_qbus_del        (PyObject_QBus*);
 
-void        py_object_qbus_del_e      (PyObject_QBus*);
-
 //-----------------------------------------------------------------------------
 
 PyObject*   py_object_qbus_run        (PyObject_QBus*, PyObject* args, PyObject* kwds);
@@ -125,6 +123,12 @@ static PyTypeObject PyTypeObject_QBusMsg =
 
 //-----------------------------------------------------------------------------
 
+PyObject*   py_object_qbus_new_e      (PyTypeObject* type, PyObject* args, PyObject* kwds);
+
+void        py_object_qbus_del_e      (PyObject_QBus*);
+
+//-----------------------------------------------------------------------------
+
 static PyTypeObject PyTypeObject_QBusIntern = 
 {
   PyVarObject_HEAD_INIT(NULL, 0)
@@ -133,7 +137,7 @@ static PyTypeObject PyTypeObject_QBusIntern =
   .tp_basicsize = sizeof(PyObject_QBus),
   .tp_itemsize = 0,
   .tp_flags = Py_TPFLAGS_DEFAULT,
-  .tp_new = py_object_qbus_new,
+  .tp_new = py_object_qbus_new_e,
   .tp_init = (initproc) NULL,
   .tp_dealloc = (destructor) py_object_qbus_del_e,
   .tp_members = NULL,
