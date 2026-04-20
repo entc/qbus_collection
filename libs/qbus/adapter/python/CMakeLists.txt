@@ -4,7 +4,7 @@ find_package (PythonTarget)
 IF(PYTHON_TARGET_FOUND)
 
   # abstract operation-system layer
-  INCLUDE_DIRECTORIES("../../../cape/src" "../.." ${PYTHON_TARGET_INCLUDES})
+  INCLUDE_DIRECTORIES("../../src" "../../../cape/src" ${PYTHON_TARGET_INCLUDES})
 
   set(ADAPTER_PYTHON_SOURCES
     py_adapter.c

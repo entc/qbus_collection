@@ -4,11 +4,6 @@ INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src" "pvd_common")
 SUBDIRS(pvd_common)
 SUBDIRS(pvd_mqtt)
 
-# adapters and examples
-SUBDIRS(adapter/java)
-SUBDIRS(adapter/python)
-SUBDIRS(adapter_example)
-
 #----------------------------------------------------------------------------------------
 
 SET (QBUS_LIBRARY_SOURCES
