@@ -50,11 +50,13 @@ PyObject* py_object_qbus_new (PyTypeObject* type, PyObject* args, PyObject* kwds
 
 void py_object_qbus_del (PyObject_QBus* self)
 {
-    if (self->qbus)
-    {
-        qbus_del (&(self->qbus));
-    }
+    // increase refcounter to avoid that Py_DECREF will call again the destructor
+    Py_INCREF (self);
+    
+    qbus_del (&(self->qbus));
 
+  //  Py_DECREF (self);
+    
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
@@ -106,6 +108,135 @@ PyObject* py_object_qbus_stop (PyObject_QBus* self, PyObject* args, PyObject* kw
 {
     qbus_stop (self->qbus);
 
+    return Py_None;
+}
+
+//-----------------------------------------------------------------------------
+
+typedef struct {
+  
+    PyObject_QBus* self;
+    
+    PyObject* on_init;
+    PyObject* on_done;
+  
+    PyObject* object;
+    
+} PyObjectCallbacks;
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL py_object_qbus__on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
+{
+    PyObjectCallbacks* callbacks_ctx = ptr;
+
+    // return object
+    PyObject* res;
+    
+    // use the same ptr
+    *p_ptr = callbacks_ctx;
+    
+    // call the python on_init method
+    {
+        PyObject* arglist = Py_BuildValue ("(O)", callbacks_ctx->self);
+
+        res = PyObject_Call (callbacks_ctx->on_init, arglist, NULL);
+
+        Py_DECREF (arglist);
+    }
+
+    if (NULL == res)
+    {
+        PyErr_Print();  // python error handling
+        
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "runtime error");
+    }
+    else
+    {
+        callbacks_ctx->object = res;
+        
+        return CAPE_ERR_NONE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL py_object_qbus__on_done (QBus qbus, void* ptr, CapeErr err)
+{
+    PyObjectCallbacks* callbacks_ctx = ptr;
+
+    // return object
+    PyObject* res;
+
+    // call the python on_done method
+    {
+        PyObject* arglist = Py_BuildValue ("(OO)", callbacks_ctx->self, callbacks_ctx->object);
+        
+        res = PyObject_Call (callbacks_ctx->on_done, arglist, NULL);
+
+        Py_DECREF (arglist);
+    }
+
+    Py_DECREF (callbacks_ctx->on_init);
+    Py_DECREF (callbacks_ctx->on_done);
+
+    if (callbacks_ctx->object)
+    {
+        Py_DECREF (callbacks_ctx->object);
+    }
+
+    CAPE_DEL(&callbacks_ctx, PyObjectCallbacks);
+
+    if (NULL == res)
+    {
+        PyErr_Print();  // python error handling
+
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "runtime error");
+    }
+    else
+    {
+        Py_DECREF (res);
+
+        return CAPE_ERR_NONE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+PyObject* py_object_qbus_set_cb (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+    PyObject* on_init;
+    PyObject* on_done;
+
+    if (!PyArg_ParseTuple (args, "OO", &on_init, &on_done))
+    {
+        return NULL;  // Exception was already set
+    }
+
+    if (!PyCallable_Check (on_init))
+    {
+        PyErr_SetString (PyExc_ValueError, "parameter 1 must be an function");
+        return NULL;
+    }
+    
+    if (!PyCallable_Check (on_done))
+    {
+        PyErr_SetString (PyExc_ValueError, "parameter 2 must be an function");
+        return NULL;
+    }
+
+    {
+        PyObjectCallbacks* callbacks_ctx = CAPE_NEW (PyObjectCallbacks);
+        
+        callbacks_ctx->self = self;
+        callbacks_ctx->on_init = on_init;
+        callbacks_ctx->on_done = on_done;
+        
+        qbus_set_cb (self->qbus, callbacks_ctx, py_object_qbus__on_init, py_object_qbus__on_done);
+    }
+        
+exit_and_error:
+    
     return Py_None;
 }
 

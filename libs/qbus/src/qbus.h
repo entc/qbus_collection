@@ -45,7 +45,7 @@ typedef void     (__STDCALL     *fct_qbus_on_val)  (void* ptr, CapeUdc val);
 //-----------------------------------------------------------------------------
 
                                   /* set callbacks for init and done situation */
-__CAPE_LIBEX     void             qbus_set_cb            (QBus, void* user_ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done);
+__CAPE_LIBEX   void               qbus_set_cb            (QBus, void* user_ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done);
 
                                   /* register a method callback */
 __CAPE_LIBEX   int                qbus_register          (QBus, const CapeString method, void* user_ptr, fct_qbus_on_msg, fct_qbus_on_rm, CapeErr);

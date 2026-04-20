@@ -997,7 +997,7 @@ int cape_aio_context_set_interupts (CapeAioContext self, int sigint, int term, C
   }
 
   // we must block the signals in order for signals for event to receive them
-  res = sigprocmask (SIG_BLOCK, &sigset, NULL);
+  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
   if (res)
   {
     return cape_err_lastOSError (err);    
@@ -1032,7 +1032,7 @@ int cape_aio_context_set_interupts (CapeAioContext self, int sigint, int term, C
   }
   
   // we must block the signals in order for signalfd to receive them
-  res = sigprocmask (SIG_BLOCK, &sigset, NULL);
+  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
   if (res)
   {
     return cape_err_lastOSError (err);    

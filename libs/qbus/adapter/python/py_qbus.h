@@ -34,6 +34,8 @@ PyObject*   py_object_qbus_run_d      (PyObject_QBus*, PyObject* args, PyObject*
 
 PyObject*   py_object_qbus_stop       (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
+PyObject*   py_object_qbus_set_cb     (PyObject_QBus*, PyObject* args, PyObject* kwds);
+
 PyObject*   py_object_qbus_wait       (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
 PyObject*   py_object_qbus_register   (PyObject_QBus*, PyObject* args, PyObject* kwds);
@@ -53,6 +55,7 @@ static PyMethodDef PyMethodDef_QBus [] =
     {"run",         (PyCFunction)py_object_qbus_run,         METH_VARARGS, "runs qbus in blocking mode"},
     {"run_d",       (PyCFunction)py_object_qbus_run_d,       METH_VARARGS, "runs qbus in background mode"},
     {"stop",        (PyCFunction)py_object_qbus_stop,        METH_VARARGS, "stops backround process"},
+    {"set_cb",      (PyCFunction)py_object_qbus_set_cb,      METH_VARARGS, "set callbacks"},
     {"wait",        (PyCFunction)py_object_qbus_wait,        METH_VARARGS, "wait"},
     {"register",    (PyCFunction)py_object_qbus_register,    METH_VARARGS, "register a callback method"},
     {"config",      (PyCFunction)py_object_qbus_config,      METH_VARARGS, "set / get config parameters"},

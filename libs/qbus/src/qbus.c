@@ -86,7 +86,7 @@ void qbus_del (QBus* p_self)
     if (*p_self)
     {
         QBus self = *p_self;
-
+        
         qbus_con_del (&(self->con));
 
         if (self->thread)
@@ -95,6 +95,15 @@ void qbus_del (QBus* p_self)
             cape_thread_join (self->thread);
 
             cape_thread_del (&(self->thread));
+        }
+
+        if (self->on_done)
+        {
+            CapeErr err = cape_err_new ();
+
+            self->on_done (self, self->on_done_ptr, err);
+            
+            cape_err_del (&err);
         }
 
         qbus_methods_del (&(self->methods));
@@ -145,20 +154,12 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 
 int qbus_init__preconditions (QBus self, CapeErr err)
 {
-  int res;
-    
-  // open the operating system AIO/event subsystem
-  res = cape_aio_context_open (self->aio, err);
-  if (res)
-  {
-    return res;
-  }
-  
-  // activate signal handling strategy
-  // avoid that other threads got terminated by sigint
-  res = cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err);
+    int res;
+      
+    // open the operating system AIO/event subsystem
+    res = cape_aio_context_open (self->aio, err);
 
-  return res;
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -197,7 +198,7 @@ int qbus_init__submodules (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qbus_init (QBus self, CapeErr err)
+int qbus_init__intern (QBus self, CapeErr err)
 {
   int res;
   
@@ -239,6 +240,13 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+int qbus_init (QBus self, CapeErr err)
+{
+    return qbus_init__intern (self, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int qbus_wait__intern (QBus self, CapeErr err)
 {
   int res;
@@ -260,7 +268,7 @@ int qbus_wait (QBus self, CapeErr err)
 {
   int res;
 
-  res = qbus_init (self, err);
+  res = qbus_init__intern (self, err);
   if (res)
   {
     return res;
@@ -273,6 +281,13 @@ int qbus_wait (QBus self, CapeErr err)
 
 int qbus_loop__intern (QBus self, CapeErr err)
 {
+    // activate signal handling strategy
+    // avoid that other threads got terminated by sigint
+    if (cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err))
+    {
+        return cape_err_code (err);
+    }
+
     cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
   
 #if defined __WINDOWS_OS
@@ -304,10 +319,6 @@ int qbus_loop__intern (QBus self, CapeErr err)
 
 #endif
 
-    if (self->on_done)
-    {
-        self->on_done (self, self->on_done_ptr, err);
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -316,7 +327,7 @@ int qbus_run (QBus self, CapeErr err)
 {
     int res;
 
-    res = qbus_init (self, err);
+    res = qbus_init__intern (self, err);
     if (res)
     {
         return res;
@@ -337,7 +348,7 @@ int __STDCALL qbus__worker (void* ptr)
 
     if (qbus_loop__intern (self, err))
     {
-        
+        // TODO: handle error
     }
 
     cape_err_del (&err);
@@ -354,7 +365,7 @@ int qbus_run__d (QBus self, CapeErr err)
     {
         int res;
         
-        res = qbus_init (self, err);
+        res = qbus_init__intern (self, err);
         if (res)
         {
             return res;
@@ -374,7 +385,12 @@ int qbus_run__d (QBus self, CapeErr err)
 
 void qbus_stop (QBus self)
 {
-    cape_thread_signal (self->thread);
+    // local objects
+    CapeErr err = cape_err_new ();
+    
+    cape_aio_context_close (self->aio, err);
+    
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
