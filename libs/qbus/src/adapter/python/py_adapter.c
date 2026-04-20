@@ -26,39 +26,45 @@ typedef struct {
 
 static int __STDCALL py_qbus_instance__on_init (QBus qbus, void* ptr, void** p_ptr, CapeErr err)
 {
-  PyInstanceContext* ctx = ptr;
-  
-  // use the same ptr
-  *p_ptr = ctx;
-
-  // create a new object
-  PyObject_QBus* qbus_pyobj = (PyObject_QBus*)PyObject_CallObject((PyObject*)&PyTypeObject_QBusIntern, NULL);
-
-  // assign object
-  qbus_pyobj->qbus = qbus;
-  
-  {
-    PyObject* arglist = Py_BuildValue ("(O)", qbus_pyobj);
+    PyInstanceContext* ctx = ptr;
     
-    ctx->obj = PyObject_Call (ctx->on_init, arglist, NULL);
+    // use the same ptr
+    *p_ptr = ctx;
+
+    // create temporary object
+    PyObject_QBus* qbus_pyobj = (PyObject_QBus*)PyObject_CallObject((PyObject*)&PyTypeObject_QBusIntern, NULL);
+
+    if (NULL == qbus_pyobj)
+    {
+        // print exception
+        PyErr_Print();
+        
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "can't create temporary QBUS object");
+    }
     
-   // ctx->obj = PyEval_CallObject (ctx->on_init, arglist);
-  
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "return object: %p", ctx->obj);
+    // assign object
+    qbus_pyobj->qbus = qbus;
 
-    Py_DECREF(arglist);
-  }
+    {
+        PyObject* arglist = Py_BuildValue ("(O)", qbus_pyobj);
 
-  Py_DECREF(qbus_pyobj);
-  
-  if (ctx->obj == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_RUNTIME, "runtime error");
-  }
-  else
-  {
-    return CAPE_ERR_NONE;
-  }
+        ctx->obj = PyObject_Call (ctx->on_init, arglist, NULL);
+
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "return object: %p", ctx->obj);
+
+        Py_DECREF(arglist);
+    }
+
+    Py_DECREF(qbus_pyobj);
+    
+    if (ctx->obj == NULL)
+    {
+        return cape_err_set (err, CAPE_ERR_RUNTIME, "runtime error");
+    }
+    else
+    {
+        return CAPE_ERR_NONE;
+    }
 }
 
 //-----------------------------------------------------------------------------
