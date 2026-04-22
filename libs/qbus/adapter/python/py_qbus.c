@@ -449,6 +449,19 @@ exit_and_error:
 
 //-----------------------------------------------------------------------------
 
+PyObject* py_object_qbus_modules (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+    CapeUdc list_of_modules = qbus_modules (self->qbus);
+
+    PyObject* ret = py_transform_to_pyo (list_of_modules);
+
+    cape_udc_del (&list_of_modules);
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;
