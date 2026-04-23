@@ -13,7 +13,7 @@ int main (int argc, char *argv[])
 
     // local objects
     CapeErr err = cape_err_new ();
-    QWave qwave_instance = qwave_new (parameters);
+    QWave qwave_instance = qwave_new (&parameters);
     CapeAio aio_main = cape_aio_new();
 
     // initialize main AIO event handler

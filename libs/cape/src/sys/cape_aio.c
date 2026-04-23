@@ -363,7 +363,17 @@ int cape_aio_block_signals (CapeAio self, CapeErr err)
 {
 #if defined __LINUX_OS
 
-    
+    int res;
+
+    // we must block the signals for the current thread in order for signals for event to receive them
+    res = pthread_sigmask (SIG_BLOCK, &(self->sigset), NULL);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    return CAPE_ERR_NONE;
+
 #elif defined __BSD_OS
 
     int res;
@@ -411,52 +421,44 @@ int cape_aio_init (CapeAio self, CapeErr err)
 {
 #if defined __LINUX_OS
   
-  self->epoll_fd = epoll_create1 (0);
+    self->epoll_fd = epoll_create1 (0);
 
-  // check if the open was successful
-  if (self->epoll_fd == -1)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  // set sigset for handling signals
-  self->smap[SIGTERM] = TRUE;
-  
-  if (cape_aio__sigmask (self, err))
-  {
-    return cape_err_code (err);
-  }
-  
-  // create the signalfd
-  self->signal_fd = signalfd(-1, &(self->sigset), 0);
-
-  if (self->signal_fd == -1)
-  {
-    close (self->epoll_fd);
-    
-    return cape_err_lastOSError (err);
-  }
-
-  {
-    CapeAioItem aio_item = cape_aio_add (self, (void*)(number_t)self->signal_fd, err);
-
-    if (NULL == aio_item)
+    // check if the open was successful
+    if (self->epoll_fd == -1)
     {
-      // TODO: cleanup file descriptors
+        return cape_err_lastOSError (err);
     }
-    
-    cape_aio_item_set (aio_item, self, cape_aio__signal__on_event, cape_aio__signal__on_done);
-  }
 
-  // set sigset to ignore handling signals for epoll
-  self->smap[SIGTERM] = TRUE;
-  self->smap[SIGINT] = TRUE;
-  
-  if (cape_aio__sigmask (self, err))
-  {
-    return cape_err_code (err);
-  }
-  
+    // set sigset for handling signals
+    self->smap[SIGTERM] = TRUE;
+    self->smap[SIGINT] = TRUE;
+
+    if (cape_aio__sigmask (self, err))
+    {
+        return cape_err_code (err);
+    }
+
+    // create the signalfd
+    self->signal_fd = signalfd(-1, &(self->sigset), 0);
+
+    if (self->signal_fd == -1)
+    {
+        close (self->epoll_fd);
+
+        return cape_err_lastOSError (err);
+    }
+
+    {
+        CapeAioItem aio_item = cape_aio_add (self, (void*)(number_t)self->signal_fd, err);
+
+        if (NULL == aio_item)
+        {
+          // TODO: cleanup file descriptors
+        }
+
+        cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
+    }
+
 #elif defined __BSD_OS
 
     self->kq = kqueue();

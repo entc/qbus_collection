@@ -38,8 +38,10 @@ struct QWave_s
 
 //-----------------------------------------------------------------------------
 
-QWave qwave_new (CapeUdc parameters)
+QWave qwave_new (CapeUdc* p_parameters)
 {
+    CapeUdc parameters = *p_parameters;
+
     QWave self = CAPE_NEW (struct QWave_s);
         
     self->aio = cape_aio_new ();
@@ -63,6 +65,8 @@ QWave qwave_new (CapeUdc parameters)
     
     self->ws_on_message = NULL;
     self->ws_user_ptr = NULL;
+
+    cape_udc_del (p_parameters);
     
     return self;
 }

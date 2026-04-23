@@ -13,7 +13,7 @@
 struct QWave_s; typedef struct QWave_s* QWave;
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LIBEX     QWave              qwave_new           (CapeUdc parameters);
+__CAPE_LIBEX     QWave              qwave_new           (CapeUdc* p_parameters);
 
                                     /* destructor: cleans and frees all memory */
 __CAPE_LIBEX     void               qwave_del           (QWave*);
