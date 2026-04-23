@@ -31,6 +31,7 @@
 #endif
 
 #define MAX_EVENTS 64
+#define EVENT_IDENT_STOP 1
 
 //-----------------------------------------------------------------------------
 
@@ -96,10 +97,17 @@ void* cape_aio_item_get (CapeAioItem self)
 
 void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 {
-  if (self->on_event)
-  {
-    self->on_event (self->user_ptr, self->handle);
-  }
+    if (self)
+    {
+        if (self->on_event)
+        {
+            self->on_event (self->user_ptr, self->handle);
+        }
+    }
+    else
+    {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "aio event", "aio item is NULL");
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -119,7 +127,8 @@ struct CapeAio_s
 
 #elif defined __BSD_OS
 
-  int kq;
+    int kq;
+    CapeAioItem stop_item;    // fix a BUG in macosx kevent for NOTE_TRIGGER
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -162,7 +171,8 @@ CapeAio cape_aio_new (void)
   
 #elif defined __BSD_OS
 
-  self->kq = -1;
+    self->kq = -1;
+    self->stop_item = NULL;
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -213,6 +223,18 @@ void cape_aio_del (CapeAio* p_self)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, void* handle)
+{
+    CapeAio self = user_ptr;
+  
+    // turn of the running status -> terminate wait loop
+    self->running = FALSE;
+  
+    cape_log_msg (CAPE_LL_DEBUG, "CAPE", "aio", "stop AIO loop");
+}
+
+//-----------------------------------------------------------------------------
+
 #if defined __LINUX_OS
 
 //-----------------------------------------------------------------------------
@@ -242,25 +264,6 @@ int cape_aio__sigmask (CapeAio self, CapeErr err)
     }
 
     return 0;
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL cape_aio__signal__on_event (void* user_ptr, void* handle)
-{
-  CapeAio self = user_ptr;
-  
-  // turn of the running status -> terminate wait loop
-  self->running = FALSE;
-  
-  cape_log_msg (CAPE_LL_DEBUG, "CAPE", "aio", "stop AIO loop");
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL cape_aio__signal__on_done (void* user_ptr, void* handle)
-{
-  
 }
 
 //-----------------------------------------------------------------------------
@@ -306,31 +309,101 @@ int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, 
 
 //-----------------------------------------------------------------------------
 
-int cape_aio__kevent_set (CapeAio self, int flags, int fd, int filter, void* udata, CapeErr err)
+int cape_aio__kevent_set (CapeAio self, int fd, int filter, int flags, void* udata, CapeErr err)
 {
-  int res;
-  struct kevent change;
+    int res;
+    struct kevent change;
 
-  // set all options
-  EV_SET (&change, fd, filter, flags, 0, 0, udata);
+    // set all options
+    EV_SET (&change, fd, filter, flags, 0, 0, udata);
 
-  // apply the set by the systemcall to the kevent subsystem
-  res = kevent (self->kq, &change, 1, NULL, 0, NULL);
+    // apply the set by the systemcall to the kevent subsystem
+    res = kevent (self->kq, &change, 1, NULL, 0, NULL);
 
-  if (res < 0)
-  {
-    cape_err_lastOSError (err);
-    return FALSE;
-  }
-  else
-  {
-    return TRUE;
-  }
+    if (res < 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+    else
+    {
+        return CAPE_ERR_NONE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio__kevent_trigger (CapeAio self, int fd, int filter, void* udata, CapeErr err)
+{
+    int res;
+    struct kevent change;
+
+    // set all options
+    EV_SET (&change, fd, filter, 0, NOTE_TRIGGER, 0, udata);
+
+    // apply the set by the systemcall to the kevent subsystem
+    res = kevent (self->kq, &change, 1, NULL, 0, NULL);
+
+    if (res < 0)
+    {
+      return cape_err_lastOSError (err);
+    }
+    else
+    {
+      return CAPE_ERR_NONE;
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 #endif
+
+//-----------------------------------------------------------------------------
+
+int cape_aio_block_signals (CapeAio self, CapeErr err)
+{
+#if defined __LINUX_OS
+
+    
+#elif defined __BSD_OS
+
+    int res;
+    sigset_t sigset;
+
+    // null the sigset
+    res = sigemptyset (&sigset);
+    if (res == -1)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGTERM);
+    if (res < 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGINT);
+    if (res < 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // we must block the signals for the current thread in order for signals for event to receive them
+    res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
+    
+    return CAPE_ERR_NONE;
+
+#elif defined _WIN64 || defined _WIN32
+
+    
+#endif
+}
 
 //-----------------------------------------------------------------------------
 
@@ -386,50 +459,71 @@ int cape_aio_init (CapeAio self, CapeErr err)
   
 #elif defined __BSD_OS
 
-  int res;
-  sigset_t sigset;
+    self->kq = kqueue();
 
-  // null the sigset
-  res = sigemptyset (&sigset);
-  if (res == -1)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  self->kq = kqueue();
-
-  // check if the open was successful
-  if (self->kq == -1)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  {
-    // create a new object for the handler
-    CapeAioItem aio_item = cape_aio_item_new (SIGTERM);
-
-    // add handler for term signal
-    if (cape_aio__kevent_set (self, EV_ADD, SIGTERM, EVFILT_SIGNAL, aio_item, err))
+    // check if the open was successful
+    if (self->kq == -1)
     {
-      cape_aio_item_del (&aio_item);
-      
-      return cape_err_code (err);
+        return cape_err_lastOSError (err);
     }
-  }
 
-  // add this signal to the sigset
-  res = sigaddset (&sigset, SIGTERM);
-  if (res < 0)
-  {
-    return cape_err_lastOSError (err);
-  }
+    // add user defined events
+    {
+        // create a new object for the handler
+        self->stop_item = cape_aio_item_new (1);
+        
+        // add for user defined filter
+        if (cape_aio__kevent_set (self, EVENT_IDENT_STOP, EVFILT_USER, EV_ADD | EV_CLEAR, self->stop_item, err))
+        {
+            cape_aio_item_del (&(self->stop_item));
+            
+            return cape_err_code (err);
+        }
 
-  // we must block the signals in order for signals for event to receive them
-  res = sigprocmask (SIG_BLOCK, &sigset, NULL);
-  if (res)
-  {
-    return cape_err_lastOSError (err);
-  }
+        // set callbacks
+        cape_aio_item_set (self->stop_item, self, cape_aio__internal_event_stop__on_event, NULL);
+        
+        // register in map
+        cape_map_insert (self->items, (void*)self->stop_item, NULL);
+    }
+    
+    // add signal handling
+    {
+        // create a new object for the handler
+        CapeAioItem aio_item = cape_aio_item_new (SIGTERM);
+
+        // add handler for term signal
+        if (cape_aio__kevent_set (self, SIGTERM, EVFILT_SIGNAL, EV_ADD, aio_item, err))
+        {
+            cape_aio_item_del (&aio_item);
+            
+            return cape_err_code (err);
+        }
+
+        cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
+        
+        // register in map
+        cape_map_insert (self->items, (void*)aio_item, NULL);
+    }
+
+    // add signal handling
+    {
+        // create a new object for the handler
+        CapeAioItem aio_item = cape_aio_item_new (SIGINT);
+
+        // add handler for term signal
+        if (cape_aio__kevent_set (self, SIGINT, EVFILT_SIGNAL, EV_ADD, aio_item, err))
+        {
+            cape_aio_item_del (&aio_item);
+            
+            return cape_err_code (err);
+        }
+
+        cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
+        
+        // register in map
+        cape_map_insert (self->items, (void*)aio_item, NULL);
+    }
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -463,7 +557,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #elif defined __BSD_OS
 
-  if (FALSE == cape_aio__kevent_set (self, EV_ADD, (int)(number_t)handle, EVFILT_READ, ret, err))
+  if (cape_aio__kevent_set (self, (int)(number_t)handle, EVFILT_READ, EV_ADD, ret, err))
   {
     cape_aio_item_del (&ret);
   }
@@ -519,7 +613,7 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
 
 #elif defined __BSD_OS
 
-    if (FALSE == cape_aio__kevent_set (self, EV_DELETE, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, NULL, err))
+    if (cape_aio__kevent_set (self, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, EV_DELETE, NULL, err))
     {
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio rm", "can't remove kevent item: %s", cape_err_text (err));
     }
@@ -655,9 +749,39 @@ cleanup_and_exit:
 
 int cape_aio_wait (CapeAio self, CapeErr err)
 {
-  while (self->running && (cape_aio_next (self, -1, err) == CAPE_ERR_NONE));
+    // deactivate signals
+    if (cape_aio_block_signals (self, err))
+    {
+        return cape_err_code (err);
+    }
 
-  return CAPE_ERR_NONE;
+    while (self->running && (cape_aio_next (self, -1, err) == CAPE_ERR_NONE));
+
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_stop (CapeAio self)
+{
+    CapeErr err = cape_err_new ();
+    
+    // trigger event
+#if defined __LINUX_OS
+
+    
+#elif defined __BSD_OS
+
+    if (cape_aio__kevent_trigger (self, EVENT_IDENT_STOP, EVFILT_USER, self->stop_item, err))
+    {
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio stop", "can't trigger kevent item: %s", cape_err_text (err));
+    }
+
+#elif defined _WIN64 || defined _WIN32
+
+#endif
+    
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------

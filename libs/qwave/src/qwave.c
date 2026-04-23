@@ -75,12 +75,14 @@ void qwave_del (QWave* p_self)
     {
         QWave self = *p_self;
         
-        cape_aio_rm (self->aio, &(self->accept_aio_item));
+        //cape_aio_rm (self->aio, &(self->accept_aio_item));
         
         qwave_stop (self);
         
         if (self->thread)
         {
+            cape_log_msg (CAPE_LL_TRACE, "QWAVE", "del", "wait for background process ...");
+            
             // wait until the thread terminates
             cape_thread_join (self->thread);
 
@@ -359,7 +361,7 @@ int qwave_run__d (QWave self, CapeErr err)
 
 void qwave_stop (QWave self)
 {
-    cape_aio_kill (self->aio);
+    cape_aio_stop (self->aio);
 }
 
 //-----------------------------------------------------------------------------
