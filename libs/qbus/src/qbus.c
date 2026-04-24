@@ -386,18 +386,6 @@ int qbus_run__d (QBus self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-void qbus_stop (QBus self)
-{
-    // local objects
-    CapeErr err = cape_err_new ();
-    
-    cape_aio_context_close (self->aio, err);
-    
-    cape_err_del (&err);
-}
-
-//-----------------------------------------------------------------------------
-
 void qbus_set_cb (QBus self, void* user_ptr, fct_qbus_on_init on_init, fct_qbus_on_done on_done)
 {
     self->on_init_ptr = user_ptr;

@@ -242,6 +242,116 @@ void cape_aio_context_del (CapeAioContext* p_self)
 
 //-----------------------------------------------------------------------------
 
+int cape_aio_context__add_signal_handlers (CapeAioContext self, CapeErr err)
+{
+#if defined __BSD_OS
+
+  int res;
+  sigset_t sigset;
+
+  // null the sigset
+  res = sigemptyset (&sigset);
+  if (res == -1)
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+  {
+    struct kevent kev;
+    memset (&kev, 0x0, sizeof (struct kevent));
+    
+    EV_SET (&kev, SIGINT, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    
+    // register SIGINT signal
+    res = kevent (self->kq, &kev, 1, NULL, 0, NULL);
+    if (res < 0)
+    {
+      return cape_err_lastOSError (err);
+    }
+    
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGINT);
+    if (res < 0)
+    {
+      return cape_err_lastOSError (err);
+    }
+
+    cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio", "set SIGINT interupt");
+  }
+
+  {
+    struct kevent kev;
+    memset (&kev, 0x0, sizeof (struct kevent));
+    
+    EV_SET (&kev, SIGTERM, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    
+    // register SIGTERM signal
+    res = kevent (self->kq, &kev, 1, NULL, 0, NULL);
+    if (res < 0)
+    {
+      return cape_err_lastOSError (err);
+    }
+
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGTERM);
+    if (res < 0)
+    {
+      return cape_err_lastOSError (err);
+    }
+
+    cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio", "set SIGTERM interupt");
+  }
+
+#else
+  
+  int res;
+  sigset_t sigset;
+  
+  if (self->sfd != -1)
+  {
+    return cape_err_set (err, CAPE_ERR_NO_OBJECT, "file-descriptor is not set");
+  }
+
+  cape_aio_context_signal_map (self, SIGUSR1, CAPE_AIO_ABORT);
+
+  if (sigint)
+  {
+    cape_aio_context_signal_map (self, SIGINT, CAPE_AIO_ABORT);
+  }
+  
+  if (term)
+  {
+    cape_aio_context_signal_map (self, SIGTERM, CAPE_AIO_ABORT);
+  }
+  
+  res = cape_aio_context_sigmask (self, &sigset);
+  if (res)
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+  // we must block the signals in order for signalfd to receive them
+  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
+  if (res)
+  {
+    return cape_err_lastOSError (err);
+  }
+  
+  // create the signalfd
+  self->sfd = signalfd(-1, &sigset, 0);
+  
+  CapeAioHandle aioh = cape_aio_handle_new (CAPE_AIO_READ, self, cape_aio_context_signal_onEvent, cape_aio_context_signal_onUnref);
+  
+  // add the signalfd to the event context
+  cape_aio_context_add (self, aioh, (void*)self->sfd, 0);
+  
+#endif
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_aio_context_open (CapeAioContext self, CapeErr err)
 {
 #if defined __BSD_OS
@@ -267,8 +377,8 @@ int cape_aio_context_open (CapeAioContext self, CapeErr err)
   }
 
 #endif
-  
-  return CAPE_ERR_NONE;
+    
+    return cape_aio_context__add_signal_handlers (self, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -289,11 +399,75 @@ int cape_aio_context_close (CapeAioContext self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+int cape_aio_context__block_signals (CapeAioContext self, CapeErr err)
+{
+#if defined __LINUX_OS
+
+    int res;
+
+    // we must block the signals for the current thread in order for signals for event to receive them
+    res = pthread_sigmask (SIG_BLOCK, &(self->sigset), NULL);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    return CAPE_ERR_NONE;
+
+#elif defined __BSD_OS
+
+    int res;
+    sigset_t sigset;
+
+    // null the sigset
+    res = sigemptyset (&sigset);
+    if (res == -1)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGTERM);
+    if (res < 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // add this signal to the sigset
+    res = sigaddset (&sigset, SIGINT);
+    if (res < 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // we must block the signals for the current thread in order for signals for event to receive them
+    res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
+    
+    return CAPE_ERR_NONE;
+
+#elif defined _WIN64 || defined _WIN32
+
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_aio_context_wait (CapeAioContext self, CapeErr err)
 {
-  while (cape_aio_context_next (self, -1, err) == CAPE_ERR_NONE);
+    // deactivate signals
+    if (cape_aio_context__block_signals (self, err))
+    {
+        return cape_err_code (err);
+    }
+
+    while (cape_aio_context_next (self, -1, err) == CAPE_ERR_NONE);
   
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -932,119 +1106,7 @@ static void __STDCALL cape_aio_context_signal_onUnref (void* ptr, CapeAioHandle 
 
 int cape_aio_context_set_interupts (CapeAioContext self, int sigint, int term, CapeErr err)
 {
-#if defined __BSD_OS
-
-  int res;
-  sigset_t sigset;
-
-  // null the sigset
-  res = sigemptyset (&sigset);
-  if (res == -1)
-  {
-    return cape_err_lastOSError (err);
-  }
-  
-  if (sigint)
-  {
-    struct kevent kev;
-    memset (&kev, 0x0, sizeof (struct kevent));
-    
-    EV_SET (&kev, SIGINT, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, NULL);
-    
-    // register SIGINT signal
-    res = kevent (self->kq, &kev, 1, NULL, 0, NULL);
-    if (res < 0)
-    {
-      return cape_err_lastOSError (err);
-    }
-    
-    // add this signal to the sigset
-    res = sigaddset (&sigset, SIGINT);
-    if (res < 0)
-    {
-      return cape_err_lastOSError (err);
-    }
-
-    cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio", "set SIGINT interupt");
-  }
-
-  if (term)
-  {
-    struct kevent kev;
-    memset (&kev, 0x0, sizeof (struct kevent));
-    
-    EV_SET (&kev, SIGTERM, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, NULL);
-    
-    // register SIGTERM signal
-    res = kevent (self->kq, &kev, 1, NULL, 0, NULL);
-    if (res < 0)
-    {
-      return cape_err_lastOSError (err);
-    }
-
-    // add this signal to the sigset
-    res = sigaddset (&sigset, SIGTERM);
-    if (res < 0)
-    {
-      return cape_err_lastOSError (err);
-    }
-
-    cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio", "set SIGTERM interupt");
-  }
-
-  // we must block the signals in order for signals for event to receive them
-  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
-  if (res)
-  {
-    return cape_err_lastOSError (err);    
-  }
-
-#else
-  
-  int res;
-  sigset_t sigset;
-  
-  if (self->sfd != -1)
-  {
-    return cape_err_set (err, CAPE_ERR_NO_OBJECT, "file-descriptor is not set");
-  }
-
-  cape_aio_context_signal_map (self, SIGUSR1, CAPE_AIO_ABORT);
-
-  if (sigint)
-  {
-    cape_aio_context_signal_map (self, SIGINT, CAPE_AIO_ABORT);
-  }
-  
-  if (term)
-  {
-    cape_aio_context_signal_map (self, SIGTERM, CAPE_AIO_ABORT);
-  }
-  
-  res = cape_aio_context_sigmask (self, &sigset);
-  if (res)
-  {
-    return cape_err_lastOSError (err);    
-  }
-  
-  // we must block the signals in order for signalfd to receive them
-  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
-  if (res)
-  {
-    return cape_err_lastOSError (err);    
-  }
-  
-  // create the signalfd
-  self->sfd = signalfd(-1, &sigset, 0);
-  
-  CapeAioHandle aioh = cape_aio_handle_new (CAPE_AIO_READ, self, cape_aio_context_signal_onEvent, cape_aio_context_signal_onUnref);
-  
-  // add the signalfd to the event context
-  cape_aio_context_add (self, aioh, (void*)self->sfd, 0);
-  
-#endif
-
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //*****************************************************************************

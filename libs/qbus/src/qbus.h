@@ -30,9 +30,6 @@ __CAPE_LIBEX     int              qbus_run               (QBus, CapeErr err);
                                   /* runs qbus in an extra thread */
 __CAPE_LIBEX     int              qbus_run__d            (QBus, CapeErr err);
 
-                                  /* terminate the extra thread */
-__CAPE_LIBEX     void             qbus_stop              (QBus);
-
 //-----------------------------------------------------------------------------
 
 typedef int      (__STDCALL     *fct_qbus_on_init) (QBus, void* ptr, void** p_ptr, CapeErr);
