@@ -139,10 +139,7 @@ int main (int argc, char *argv[])
     qbus_run (qbus_test1, err);
     
     qbus_del (&qbus_test1);
-    
-    // stop background thread
-    qbus_stop (qbus_test2);
-    
+        
     qbus_del (&qbus_test2);
     
     cape_err_del (&err);

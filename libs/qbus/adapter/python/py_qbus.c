@@ -104,15 +104,6 @@ PyObject* py_object_qbus_run_d (PyObject_QBus* self, PyObject* args, PyObject* k
 
 //-----------------------------------------------------------------------------
 
-PyObject* py_object_qbus_stop (PyObject_QBus* self, PyObject* args, PyObject* kwds)
-{
-    qbus_stop (self->qbus);
-
-    return Py_None;
-}
-
-//-----------------------------------------------------------------------------
-
 typedef struct {
   
     PyObject_QBus* self;
