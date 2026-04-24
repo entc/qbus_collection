@@ -345,12 +345,59 @@ int cape_aio__kevent_trigger (CapeAio self, int fd, int filter, void* udata, Cap
 
     if (res < 0)
     {
-      return cape_err_lastOSError (err);
+        return cape_err_lastOSError (err);
     }
     else
     {
-      return CAPE_ERR_NONE;
+        return CAPE_ERR_NONE;
     }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio__kevent_add_userevt_handler (CapeAio self, CapeErr err)
+{
+    // create a new object for the handler
+    self->stop_item = cape_aio_item_new (EVENT_IDENT_STOP);
+    
+    // add for user defined filter
+    if (cape_aio__kevent_set (self, EVENT_IDENT_STOP, EVFILT_USER, EV_ADD | EV_CLEAR, self->stop_item, err))
+    {
+        cape_aio_item_del (&(self->stop_item));
+        
+        return cape_err_code (err);
+    }
+
+    // set callbacks
+    cape_aio_item_set (self->stop_item, self, cape_aio__internal_event_stop__on_event, NULL);
+    
+    // register in map
+    cape_map_insert (self->items, (void*)self->stop_item, NULL);
+
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio__kevent_add_signal_handler (CapeAio self, int signal, CapeErr err)
+{
+    // create a new object for the handler
+    CapeAioItem aio_item = cape_aio_item_new (signal);
+
+    // add handler for term signal
+    if (cape_aio__kevent_set (self, signal, EVFILT_SIGNAL, EV_ADD, aio_item, err))
+    {
+        cape_aio_item_del (&aio_item);
+        
+        return cape_err_code (err);
+    }
+
+    cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
+    
+    // register in map
+    cape_map_insert (self->items, (void*)aio_item, NULL);
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -470,61 +517,21 @@ int cape_aio_init (CapeAio self, CapeErr err)
     }
 
     // add user defined events
+    if (cape_aio__kevent_add_userevt_handler (self, err))
     {
-        // create a new object for the handler
-        self->stop_item = cape_aio_item_new (1);
-        
-        // add for user defined filter
-        if (cape_aio__kevent_set (self, EVENT_IDENT_STOP, EVFILT_USER, EV_ADD | EV_CLEAR, self->stop_item, err))
-        {
-            cape_aio_item_del (&(self->stop_item));
-            
-            return cape_err_code (err);
-        }
-
-        // set callbacks
-        cape_aio_item_set (self->stop_item, self, cape_aio__internal_event_stop__on_event, NULL);
-        
-        // register in map
-        cape_map_insert (self->items, (void*)self->stop_item, NULL);
+        return cape_err_code (err);
     }
     
     // add signal handling
+    if (cape_aio__kevent_add_signal_handler (self, SIGTERM, err))
     {
-        // create a new object for the handler
-        CapeAioItem aio_item = cape_aio_item_new (SIGTERM);
-
-        // add handler for term signal
-        if (cape_aio__kevent_set (self, SIGTERM, EVFILT_SIGNAL, EV_ADD, aio_item, err))
-        {
-            cape_aio_item_del (&aio_item);
-            
-            return cape_err_code (err);
-        }
-
-        cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
-        
-        // register in map
-        cape_map_insert (self->items, (void*)aio_item, NULL);
+        return cape_err_code (err);
     }
 
     // add signal handling
+    if (cape_aio__kevent_add_signal_handler (self, SIGINT, err))
     {
-        // create a new object for the handler
-        CapeAioItem aio_item = cape_aio_item_new (SIGINT);
-
-        // add handler for term signal
-        if (cape_aio__kevent_set (self, SIGINT, EVFILT_SIGNAL, EV_ADD, aio_item, err))
-        {
-            cape_aio_item_del (&aio_item);
-            
-            return cape_err_code (err);
-        }
-
-        cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
-        
-        // register in map
-        cape_map_insert (self->items, (void*)aio_item, NULL);
+        return cape_err_code (err);
     }
 
 #elif defined _WIN64 || defined _WIN32
