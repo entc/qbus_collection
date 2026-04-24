@@ -91,6 +91,8 @@ void qbus_del (QBus* p_self)
 
         if (self->thread)
         {
+
+
             // wait until the thread terminates
             cape_thread_join (self->thread);
 
@@ -106,13 +108,13 @@ void qbus_del (QBus* p_self)
             cape_err_del (&err);
         }
 
+        cape_aio_context_del (&(self->aio));
+
         qbus_methods_del (&(self->methods));
         qbus_agent_del (&(self->agent));
         qbus_config_del (&(self->config));
         qbus_engines_del (&(self->engines));
         qbus_router_del (&(self->router));
-
-        cape_aio_context_del (&(self->aio));
 
         CAPE_DEL (p_self, struct QBus_s);
     }
@@ -249,38 +251,8 @@ int qbus_init (QBus self, CapeErr err)
 
 int qbus_wait__intern (QBus self, CapeErr err)
 {
-  int res;
+    int res;
 
-  // wait infinite and let the AIO subsystem handle all events
-  res = cape_aio_context_wait (self->aio, err);
-
-  if (res)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "QBUS", "wait", "runtime error: %s", cape_err_text (err));
-  }
-
-  return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_wait (QBus self, CapeErr err)
-{
-  int res;
-
-  res = qbus_init__intern (self, err);
-  if (res)
-  {
-    return res;
-  }
-
-  return qbus_wait__intern (self, err);
-}
-
-//-----------------------------------------------------------------------------
-
-int qbus_loop__intern (QBus self, CapeErr err)
-{
     // activate signal handling strategy
     // avoid that other threads got terminated by sigint
     if (cape_aio_context_set_interupts (self->aio, TRUE, TRUE, err))
@@ -288,6 +260,36 @@ int qbus_loop__intern (QBus self, CapeErr err)
         return cape_err_code (err);
     }
 
+    // wait infinite and let the AIO subsystem handle all events
+    res = cape_aio_context_wait (self->aio, err);
+
+    if (res)
+    {
+        cape_log_fmt (CAPE_LL_ERROR, "QBUS", "wait", "runtime error: %s", cape_err_text (err));
+    }
+
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_wait (QBus self, CapeErr err)
+{
+    int res;
+
+    res = qbus_init__intern (self, err);
+    if (res)
+    {
+        return res;
+    }
+
+    return qbus_wait__intern (self, err);
+}
+
+//-----------------------------------------------------------------------------
+
+int qbus_loop__intern (QBus self, CapeErr err)
+{
     cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
   
 #if defined __WINDOWS_OS
@@ -319,6 +321,7 @@ int qbus_loop__intern (QBus self, CapeErr err)
 
 #endif
 
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

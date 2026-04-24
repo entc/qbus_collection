@@ -283,7 +283,6 @@ int cape_aio_context_close (CapeAioContext self, CapeErr err)
   
   //close (self->efd);
   
-  kill (getpid(), SIGTERM);
   
   return CAPE_ERR_NONE;
 }
@@ -903,11 +902,8 @@ static int __STDCALL cape_aio_context_signal_onEvent (void* ptr, int hflags, uns
   {
     int sig = info.ssi_signo;
     
-    //printf ("SIGNAL SEEN %i\n", sig);
-    
-    // send again (otherwise other signal handlers will not be triggered)
-    kill (getpid(), sig);
-    
+    printf ("SIGNAL SEEN %i\n", sig);
+
     if (sig > 0 && sig < 32)
     {
       return self->smap[sig] | CAPE_AIO_READ;
