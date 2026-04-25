@@ -113,8 +113,9 @@ exit_and_cleanup:
 
 static int __STDCALL app_on_done (QBus qbus, void* ptr, CapeErr err)
 {
+    cape_log_msg (CAPE_LL_DEBUG, "APP", "on done", "on done function called");
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -124,22 +125,14 @@ int main (int argc, char *argv[])
     // local objects
     CapeErr err = cape_err_new ();
     
-    // create main thread qbus instance
-    QBus qbus_test1 = qbus_new ("test1", NULL);
-
     // create the daemonized version
     QBus qbus_test2 = qbus_new ("test2", NULL);
-
-    qbus_set_cb (qbus_test1, NULL, app_on_init, app_on_done);
 
     // run in background
     qbus_run__d (qbus_test2, err);
     
-    // run infinite loop
-    qbus_run (qbus_test1, err);
-    
-    qbus_del (&qbus_test1);
-        
+    qbus_instance ("TEST1", NULL, app_on_init, app_on_done, argc, argv);
+
     qbus_del (&qbus_test2);
     
     cape_err_del (&err);

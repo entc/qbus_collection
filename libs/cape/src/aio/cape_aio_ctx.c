@@ -242,6 +242,87 @@ void cape_aio_context_del (CapeAioContext* p_self)
 
 //-----------------------------------------------------------------------------
 
+#if defined __LINUX_OS
+
+//-----------------------------------------------------------------------------
+
+int cape_aio_context_signal_map (CapeAioContext self, int signal, int status)
+{
+    if (signal > 0 && signal < 32)
+    {
+        self->smap[signal] = status;
+
+        return 0;
+    }
+
+    return -1;
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL cape_aio_context_signal_onEvent (void* ptr, int hflags, unsigned long events, unsigned long param1)
+{
+    CapeAioContext self = ptr;
+
+    struct signalfd_siginfo info;
+
+    ssize_t bytes = read ((long)self->sfd, &info, sizeof(info));
+
+    if (bytes == sizeof(info))
+    {
+        int sig = info.ssi_signo;
+
+        printf ("SIGNAL SEEN %i\n", sig);
+
+        kill (0, sig);
+
+        if (sig > 0 && sig < 32)
+        {
+            return self->smap[sig] | CAPE_AIO_READ;
+        }
+    }
+
+    return CAPE_AIO__INTERNAL_NO_CHANGE;
+}
+
+//-----------------------------------------------------------------------------
+
+static void __STDCALL cape_aio_context_signal_onUnref (void* ptr, CapeAioHandle aioh, int force_close)
+{
+    CapeAioContext self = ptr;
+
+    //printf ("close signalfs\n");
+
+    close ((long)(self->sfd));
+
+    cape_aio_handle_del (&aioh);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio_context_sigmask (CapeAioContext self, sigset_t* sigset)
+{
+    int i;
+
+    // null the sigset
+    int res = sigemptyset (sigset);
+
+    for (i = 0; i < 32; i++)
+    {
+        if (self->smap[i])
+        {
+            // add this signal to the sigset
+            res = sigaddset (sigset, i);
+        }
+    }
+
+    return 0;
+}
+
+#endif
+
+//-----------------------------------------------------------------------------
+
 int cape_aio_context__add_signal_handlers (CapeAioContext self, CapeErr err)
 {
 #if defined __BSD_OS
@@ -304,50 +385,36 @@ int cape_aio_context__add_signal_handlers (CapeAioContext self, CapeErr err)
 
 #else
   
-  int res;
-  sigset_t sigset;
-  
-  if (self->sfd != -1)
-  {
-    return cape_err_set (err, CAPE_ERR_NO_OBJECT, "file-descriptor is not set");
-  }
+    int res;
+    sigset_t sigset;
 
-  cape_aio_context_signal_map (self, SIGUSR1, CAPE_AIO_ABORT);
-
-  if (sigint)
-  {
     cape_aio_context_signal_map (self, SIGINT, CAPE_AIO_ABORT);
-  }
-  
-  if (term)
-  {
     cape_aio_context_signal_map (self, SIGTERM, CAPE_AIO_ABORT);
-  }
-  
-  res = cape_aio_context_sigmask (self, &sigset);
-  if (res)
-  {
-    return cape_err_lastOSError (err);
-  }
-  
-  // we must block the signals in order for signalfd to receive them
-  res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
-  if (res)
-  {
-    return cape_err_lastOSError (err);
-  }
-  
-  // create the signalfd
-  self->sfd = signalfd(-1, &sigset, 0);
-  
-  CapeAioHandle aioh = cape_aio_handle_new (CAPE_AIO_READ, self, cape_aio_context_signal_onEvent, cape_aio_context_signal_onUnref);
-  
-  // add the signalfd to the event context
-  cape_aio_context_add (self, aioh, (void*)self->sfd, 0);
-  
+
+    // set the sigset
+    res = cape_aio_context_sigmask (self, &sigset);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // create the signalfd
+    self->sfd = signalfd(-1, &sigset, 0);
+    if (-1 == self->sfd)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    {
+        CapeAioHandle aioh = cape_aio_handle_new (CAPE_AIO_READ, self, cape_aio_context_signal_onEvent, cape_aio_context_signal_onUnref);
+
+        // add the signalfd to the event context
+        cape_aio_context_add (self, aioh, (void*)self->sfd, 0);
+    }
+
 #endif
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -404,9 +471,16 @@ int cape_aio_context__block_signals (CapeAioContext self, CapeErr err)
 #if defined __LINUX_OS
 
     int res;
+    sigset_t sigset;
+
+    res = cape_aio_context_sigmask (self, &sigset);
+    if (res)
+    {
+        return cape_err_lastOSError (err);
+    }
 
     // we must block the signals for the current thread in order for signals for event to receive them
-    res = pthread_sigmask (SIG_BLOCK, &(self->sigset), NULL);
+    res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
     if (res)
     {
         return cape_err_lastOSError (err);
@@ -659,27 +733,6 @@ void cape_aio_update_events (struct epoll_event* event, int hflags)
     //cape_log_msg (CAPE_LL_TRACE, "CAPE", "update events", "set ERROR");
     event->events |= EPOLLERR;
   }
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_aio_context_sigmask (CapeAioContext self, sigset_t* sigset)
-{
-  int res, i;
-  
-  // null the sigset
-  res = sigemptyset (sigset);
-  
-  for (i = 0; i < 32; i++)
-  {
-    if (self->smap[i])
-    {
-      // add this signal to the sigset
-      res = sigaddset (sigset, i);
-    }
-  }
-  
-  return 0;
 }
 
 #endif
@@ -1045,62 +1098,6 @@ int cape_aio_context_add (CapeAioContext self, CapeAioHandle aioh, void* handle,
 
   return TRUE;
 }
-
-#if defined __LINUX_OS
-
-//-----------------------------------------------------------------------------
-
-int cape_aio_context_signal_map (CapeAioContext self, int signal, int status)
-{
-  if (signal > 0 && signal < 32)
-  {
-    self->smap[signal] = status;
-    
-    return 0;
-  }
-  
-  return -1;
-}
-
-//-----------------------------------------------------------------------------
-
-static int __STDCALL cape_aio_context_signal_onEvent (void* ptr, int hflags, unsigned long events, unsigned long param1)
-{
-  CapeAioContext self = ptr;
-  
-  struct signalfd_siginfo info;
-  
-  ssize_t bytes = read ((long)self->sfd, &info, sizeof(info));
-  
-  if (bytes == sizeof(info))
-  {
-    int sig = info.ssi_signo;
-    
-    printf ("SIGNAL SEEN %i\n", sig);
-
-    if (sig > 0 && sig < 32)
-    {
-      return self->smap[sig] | CAPE_AIO_READ;
-    }
-  }
-  
-  return CAPE_AIO__INTERNAL_NO_CHANGE;
-}
-
-//-----------------------------------------------------------------------------
-
-static void __STDCALL cape_aio_context_signal_onUnref (void* ptr, CapeAioHandle aioh, int force_close)
-{
-  CapeAioContext self = ptr;
-  
-  //printf ("close signalfs\n");
-  
-  close ((long)(self->sfd));
-  
-  cape_aio_handle_del (&aioh);
-}
-
-#endif
 
 //-----------------------------------------------------------------------------
 

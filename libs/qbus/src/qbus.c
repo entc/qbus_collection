@@ -91,8 +91,6 @@ void qbus_del (QBus* p_self)
 
         if (self->thread)
         {
-
-
             // wait until the thread terminates
             cape_thread_join (self->thread);
 
@@ -413,7 +411,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
     
     res = qbus_run (self, err);
 
-exit_and_cleanup:
+    cape_log_msg (CAPE_LL_DEBUG, "qbus", "instance", "shutting down ...");
 
     qbus_del (&self);
     cape_err_del (&err);
