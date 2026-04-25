@@ -3,6 +3,7 @@ set(CMAKE_C_STANDARD 90)
 
 # external libs
 SUBDIRS(paho.mqtt.c)
+SUBDIRS(tests)
 
 SET (PVD_MQTT_SOURCES
   qbus_mqtt.c
