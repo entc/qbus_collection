@@ -384,6 +384,9 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
   {
     cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "mqtt", "successfull connected as %s", self->cid);
 
+      // add connection to connection pool
+      cape_list_push_back (self->connection_pool, connection);
+      
     qbus_pvd_con_reg (connection);
 
     qbus_pvd_ctx__internal__publish_connection (self, connection, MQTT_TOPIC_PRE__MQTT_ALL, "ALL");
