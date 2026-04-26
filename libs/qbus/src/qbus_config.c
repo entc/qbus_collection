@@ -65,6 +65,7 @@ void qbus_config_del (QBusConfig* p_self)
     cape_str_del (&(self->config_file));
     cape_str_del (&(self->module_name));
     
+    // disable and free memory for UDP logging
     cape_log_disable_syslog ();
 
     CAPE_DEL (p_self, struct QBusConfig_s);

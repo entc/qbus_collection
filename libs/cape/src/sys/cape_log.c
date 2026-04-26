@@ -58,6 +58,9 @@ void cape_log_enable_syslog (const CapeString host, number_t port)
   // local objects
   CapeErr err = cape_err_new ();
   
+  // cleanup old address
+  cape_net__resolve_del (&g_sockaddr);
+
   // this will resolve the incoming host & port
   g_sockaddr = cape_net__resolve_os (host, port, FALSE, err);
   if (NULL == g_sockaddr)

@@ -114,6 +114,8 @@ void qbus_del (QBus* p_self)
         qbus_engines_del (&(self->engines));
         qbus_router_del (&(self->router));
 
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "del", "qbus stopped and released");
+
         CAPE_DEL (p_self, struct QBus_s);
     }
 }

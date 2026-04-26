@@ -264,25 +264,7 @@ static int __STDCALL cape_aio_context_signal_onEvent (void* ptr, int hflags, uns
 {
     CapeAioContext self = ptr;
 
-    struct signalfd_siginfo info;
-
-    ssize_t bytes = read ((long)self->sfd, &info, sizeof(info));
-
-    if (bytes == sizeof(info))
-    {
-        int sig = info.ssi_signo;
-
-        printf ("SIGNAL SEEN %i\n", sig);
-
-        kill (0, sig);
-
-        if (sig > 0 && sig < 32)
-        {
-            return self->smap[sig] | CAPE_AIO_READ;
-        }
-    }
-
-    return CAPE_AIO__INTERNAL_NO_CHANGE;
+    return CAPE_AIO_ABORT;
 }
 
 //-----------------------------------------------------------------------------

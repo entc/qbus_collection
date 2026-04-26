@@ -102,7 +102,7 @@ CapeSockaddr cape_net__resolve_os (const CapeString host, u_short port, int ipv6
 
     if (addr_current)
     {
-      ret = CAPE_ALLOC(sizeof(struct sockaddr_in));
+      ret = CAPE_NEW (struct sockaddr_in);
 
       {
         char address[64];

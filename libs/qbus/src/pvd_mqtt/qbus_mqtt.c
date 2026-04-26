@@ -102,30 +102,37 @@ void __attribute__ ((destructor)) library_fini (void)
 
 //------------------------------------------------------------------------------------------------------
 
-static void handle_sigint(int sig)
+static void handle_sigint (int sig)
 {
     (void)sig;   // avoid unused warning
-
-    printf ("HEY!\n");
 }
 
 //------------------------------------------------------------------------------------------------------
 
 int __STDCALL qbus_pvd_init (CapeErr err)
 {
+#if defined __LINUX_OS || defined __BSD_OS
+
     struct sigaction sa;
+
+    // initialize the sigaction struct
     memset(&sa, 0, sizeof(sa));
+
+    // set custom signal handler function
     sa.sa_handler = handle_sigint;
+
+    // reset options
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
 
-    if (sigaction(SIGINT, &sa, NULL) == -1 || sigaction(SIGTERM, &sa, NULL) == -1)
+    if ((-1 == sigaction(SIGINT, &sa, NULL)) || (-1 == sigaction(SIGTERM, &sa, NULL)))
     {
-        perror("sigaction");
-        return EXIT_FAILURE;
+        return cape_err_lastOSError (err);
     }
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
+
+#endif
 }
 
 //------------------------------------------------------------------------------------------------------
