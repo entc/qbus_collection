@@ -84,6 +84,7 @@ extern "C" BOOL WINAPI DllMain (HINSTANCE const instance, DWORD const reason, LP
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <signal.h>
 
 //------------------------------------------------------------------------------------------------------
 
@@ -101,8 +102,29 @@ void __attribute__ ((destructor)) library_fini (void)
 
 //------------------------------------------------------------------------------------------------------
 
+static void handle_sigint(int sig)
+{
+    (void)sig;   // avoid unused warning
+
+    printf ("HEY!\n");
+}
+
+//------------------------------------------------------------------------------------------------------
+
 int __STDCALL qbus_pvd_init (CapeErr err)
 {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sa, NULL) == -1 || sigaction(SIGTERM, &sa, NULL) == -1)
+    {
+        perror("sigaction");
+        return EXIT_FAILURE;
+    }
+
   return CAPE_ERR_NONE;
 }
 
@@ -442,6 +464,9 @@ exit_and_cleanup:
 void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
 {
   QbusPvdConnection self = user_ptr;
+
+  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "disconnect from MQTT");
+
 
   // try to disconnect first
   MQTTClient_disconnect (self->client, 10000);
