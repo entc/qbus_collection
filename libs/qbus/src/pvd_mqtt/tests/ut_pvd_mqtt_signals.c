@@ -4,7 +4,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/epoll.h>
 
 #include "MQTTClient.h"
 
@@ -96,6 +95,8 @@ int main(void)
 
     printf("Running. Press Ctrl+C to exit.\n");
 
+#if defined __LINUX_OS
+
             /* --- epoll setup --- */
             int epfd = epoll_create1(0);
             if (epfd == -1) {
@@ -127,13 +128,15 @@ int main(void)
                 }
             }
 
+    close(epfd);
+
+#endif    
             /* --- shutdown --- */
             printf("Shutting down...\n");
 
             MQTTClient_disconnect(client, 1000);
             MQTTClient_destroy(&client);
 
-            close(epfd);
 
             return EXIT_SUCCESS;
 }

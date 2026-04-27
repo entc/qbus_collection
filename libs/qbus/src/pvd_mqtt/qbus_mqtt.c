@@ -9,6 +9,7 @@
 #include <fmt/cape_json.h>
 
 #include <MQTTClient.h>
+#define MQTT_TIMEOUT 5000L  // 10 seconds
 
 //------------------------------------------------------------------------------------------------------
 
@@ -473,17 +474,43 @@ exit_and_cleanup:
 
 void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
 {
-  QbusPvdConnection self = user_ptr;
+    QbusPvdConnection self = user_ptr;
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "disconnect from MQTT");
+    // local objects
+    CapeStream payload_stream = qbus_pvd_ctx__internal__generate_payload (self->ctx, 2);
+    CapeString subscriber_topic = cape_str_fmt ("%c/ALL", MQTT_TOPIC_PRE__MQTT_ALL);
 
+    MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
 
-  // try to disconnect first
-  MQTTClient_disconnect (self->client, 10000);
+    mqtt_msg.payload = (void*)cape_stream_data (payload_stream);
+    mqtt_msg.payloadlen = (int)cape_stream_size (payload_stream);
+    mqtt_msg.qos = 1;
+    mqtt_msg.retained = 0;
 
-  MQTTClient_destroy (&(self->client));
+    // send away
+    {
+        int res = MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
+        if (res)
+        {
+            cape_log_msg (CAPE_LL_ERROR, "MQTT", "message", MQTTClient_strerror (res));
+        }
+    }
 
-  CAPE_DEL (&self, struct QbusPvdConnection_s);
+    cape_stream_del (&payload_stream);
+    cape_str_del (&subscriber_topic);
+
+    // Wait until the message is actually delivered
+    MQTTClient_waitForCompletion (self->client, token, MQTT_TIMEOUT);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "disconnect from MQTT");
+
+    // try to disconnect first
+    MQTTClient_disconnect (self->client, MQTT_TIMEOUT);
+
+    MQTTClient_destroy (&(self->client));
+
+    CAPE_DEL (&self, struct QbusPvdConnection_s);
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -497,7 +524,7 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
     number_t seed = time(NULL) * (number_t)self;
 
     // initialization of the random generator
-    srand (seed);
+    srand ((int)seed);
   }
 
   self->aio = aio;
