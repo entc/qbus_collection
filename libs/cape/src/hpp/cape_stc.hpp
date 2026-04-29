@@ -601,6 +601,20 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void add (const char* name, char* value)
+    {
+        if (m_obj == NULL)
+        {
+            std::string error_message = "UDC object has no content: {add} name = " + std::string(name) + ", values = " + std::string(value);
+
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+        }
+
+        cape_udc_add_s_cp (m_obj, name, value);
+    }
+
+    //-----------------------------------------------------------------------------
+
     void add (const char* name, CapeString* p_value)
     {
       if (m_obj == NULL)
@@ -695,6 +709,34 @@ namespace cape
       }
 
       UdcTransType<T>::add_mv (m_obj, NULL, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> void put (const char* name, T &val)
+    {
+        if (m_obj == NULL)
+        {
+            std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+        }
+
+        UdcTransType<T>::put_cp (m_obj, name, val);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    template <typename T> void put (const char* name, T&& val)
+    {
+        if (m_obj == NULL)
+        {
+            std::string error_message = "UDC object has no content: {add} name = " + std::string(name);
+
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+        }
+
+        UdcTransType<T>::put_mv (m_obj, name, val);
     }
 
     //-----------------------------------------------------------------------------
@@ -1281,11 +1323,35 @@ namespace cape
 
   template <> struct UdcTransType<int>
   {
-    static void add_cp (CapeUdc obj, const char* name, const int& value) { cape_udc_add_n (obj, name, value); }
-    static void add_mv (CapeUdc obj, const char* name, int& value) { cape_udc_add_n (obj, name, value); }
-    static int as (CapeUdc obj, int dv = 0) { return (int)cape_udc_n (obj, dv); }
-    static void put (CapeUdc obj, const char* name, const int& value) { cape_udc_put_n (obj, name, value); }
-    static void set (CapeUdc obj, const int& value) { cape_udc_set_n (obj, value); }
+    static void add_cp (CapeUdc obj, const char* name, const int& value)
+    {
+        cape_udc_add_n (obj, name, value);
+    }
+
+    static void add_mv (CapeUdc obj, const char* name, int& value)
+    {
+        cape_udc_add_n (obj, name, value);
+    }
+
+    static void put_cp (CapeUdc obj, const char* name, const int& value)
+    {
+        cape_udc_put_n (obj, name, value);
+    }
+
+    static void put_mv (CapeUdc obj, const char* name, int& value)
+    {
+        cape_udc_put_n (obj, name, value);
+    }
+
+    static void set (CapeUdc obj, const int& value)
+    {
+        cape_udc_set_n (obj, value);
+    }
+
+    static int as (CapeUdc obj, int dv = 0)
+    {
+        return (int)cape_udc_n (obj, dv);
+    }
   };
 
   //-----------------------------------------------------------------------------------------------------
@@ -1299,12 +1365,38 @@ namespace cape
 
   template <> struct UdcTransType<number_t>
   {
-    static void add_cp (CapeUdc obj, const char* name, const long& value) { cape_udc_add_n (obj, name, value); }
-    static void add_mv (CapeUdc obj, const char* name, number_t& value) { cape_udc_add_n (obj, name, value); }
-    static long as (CapeUdc obj, long dv = 0) { return cape_udc_n (obj, dv); }
-    static void put (CapeUdc obj, const char* name, const number_t& value) { cape_udc_put_n (obj, name, value); }
-    static void set (CapeUdc obj, const number_t value) { cape_udc_set_n (obj, value); }
+    static void add_cp (CapeUdc obj, const char* name, const long& value)
+    {
+        cape_udc_add_n (obj, name, value);
+    }
+
+    static void add_mv (CapeUdc obj, const char* name, number_t& value)
+    {
+        cape_udc_add_n (obj, name, value);
+    }
+
+    static void put_cp (CapeUdc obj, const char* name, const number_t& value)
+    {
+        cape_udc_put_n (obj, name, value);
+    }
+
+    static void put_mv (CapeUdc obj, const char* name, number_t& value)
+    {
+        cape_udc_put_n (obj, name, value);
+    }
+
+    static void set (CapeUdc obj, const number_t value)
+    {
+        cape_udc_set_n (obj, value);
+    }
+
+    static long as (CapeUdc obj, long dv = 0)
+    {
+        return cape_udc_n (obj, dv);
+    }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<number_t&>
   {
@@ -1315,12 +1407,16 @@ namespace cape
     static void set (CapeUdc obj, const number_t& value) { cape_udc_set_n (obj, value); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<unsigned int&>
   {
     static void add_cp (CapeUdc obj, const char* name, const unsigned int value) { cape_udc_add_n (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, unsigned int value) { cape_udc_add_n (obj, name, value); }
     static long as (CapeUdc obj, long dv = 0) { return cape_udc_n (obj, dv); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<unsigned int>
   {
@@ -1329,12 +1425,16 @@ namespace cape
     static unsigned int as (CapeUdc obj, unsigned int dv = 0) { return (unsigned int)cape_udc_n (obj, dv); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<double>
   {
     static void add_cp (CapeUdc obj, const char* name, const double& value) { cape_udc_add_f (obj, name, value); }
     static void add_mv (CapeUdc obj, const char* name, double& value) { cape_udc_add_f (obj, name, value); }
     static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<double&>
   {
@@ -1343,12 +1443,16 @@ namespace cape
 //    static double as (CapeUdc obj, double dv = .0) { return cape_udc_f (obj, dv); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<float>
   {
     static void add_cp (CapeUdc obj, const char* name, float const& value) { cape_udc_add_f (obj, name, (double)value); }
     static void add_mv (CapeUdc obj, const char* name, float& value) { cape_udc_add_f (obj, name, (double&)value); }
     static float as (CapeUdc obj, float dv = .0) { return (float)cape_udc_f (obj, dv); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<bool>
   {
@@ -1359,11 +1463,15 @@ namespace cape
     static void set (CapeUdc obj, const bool& value) { cape_udc_set_b (obj, value ? TRUE : FALSE); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<const CapeDatetime*>
   {
     static void add_cp (CapeUdc obj, const char* name, const CapeDatetime* value) { cape_udc_add_d (obj, name, value); }
     static const CapeDatetime* as (CapeUdc obj, const CapeDatetime* dv = NULL) { return cape_udc_d (obj, dv); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<std::string>
   {
@@ -1372,6 +1480,8 @@ namespace cape
     static std::string as (CapeUdc obj, const char* dv = "") { return std::string (cape_udc_s (obj, dv)); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<std::string&>
   {
     static void add_cp (CapeUdc obj, const char* name, const std::string& value) { cape_udc_add_s_cp (obj, name, value.c_str()); }
@@ -1379,18 +1489,44 @@ namespace cape
     static std::string as (CapeUdc obj, const char* dv = "") { return std::string (cape_udc_s (obj, dv)); }
   };
 
+  //-----------------------------------------------------------------------------------------------------
+
   template <> struct UdcTransType<cape::String>
   {
-    static void add_cp (CapeUdc obj, const char* name, const cape::String& value) { cape_udc_add_s_cp (obj, name, value.m_obj); }
-    static void add_mv (CapeUdc obj, const char* name, cape::String& value) { cape_udc_add_s_mv (obj, name, &(value.m_obj)); }
-    static cape::String as (CapeUdc obj, const char* dv = "") { return cape::String (cape_str_cp (cape_udc_s (obj, dv))); }
+    static void add_cp (CapeUdc obj, const char* name, const cape::String& value)
+    {
+        cape_udc_add_s_cp (obj, name, value.m_obj);
+    }
+
+    static void add_mv (CapeUdc obj, const char* name, cape::String& value)
+    {
+        cape_udc_add_s_mv (obj, name, &(value.m_obj));
+    }
+
+    static void put_cp (CapeUdc obj, const char* name, const cape::String& value)
+    {
+        cape_udc_put_s_cp (obj, name, value.m_obj);
+    }
+    static void put_mv (CapeUdc obj, const char* name, cape::String& value)
+    {
+        cape_udc_put_s_mv (obj, name, &(value.m_obj));
+    }
+
+    static cape::String as (CapeUdc obj, const char* dv = "")
+    {
+        return cape::String (cape_str_cp (cape_udc_s (obj, dv)));
+    }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<cape::Stream>
   {
     static void add_cp (CapeUdc obj, const char* name, const cape::Stream& value) { cape_udc_add_m_cp (obj, name, value.obj()); }
     static void add_mv (CapeUdc obj, const char* name, cape::Stream&& value) { CapeStream h = value.release(); cape_udc_add_m_mv (obj, name, &h); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<Udc>
   {
@@ -1407,6 +1543,7 @@ namespace cape
         cape_udc_add (obj, &h);
       }
     }
+
     static void add_mv (CapeUdc obj, const char* name, Udc& value)
     {
       CapeUdc h = value.clone_or_release ();
@@ -1420,8 +1557,23 @@ namespace cape
         cape_udc_add (obj, &h);
       }
     }
+
+    static void put_cp (CapeUdc obj, const char* name, const Udc& value)
+    {
+        cape_udc_put_node_cp (obj, name, value.obj());
+    }
+
+    static void put_mv (CapeUdc obj, const char* name, Udc& value)
+    {
+        CapeUdc h = value.release ();
+
+        cape_udc_put_node_mv (obj, name, &h);
+    }
+
     static Udc as (CapeUdc obj) { return Udc (obj); }
   };
+
+  //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<Udc&>
   {
