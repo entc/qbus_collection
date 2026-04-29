@@ -453,6 +453,50 @@ PyObject* py_object_qbus_modules (PyObject_QBus* self, PyObject* args, PyObject*
 
 //-----------------------------------------------------------------------------
 
+PyObject* py_object_qbus_methods (PyObject_QBus* self, PyObject* args, PyObject* kwds)
+{
+    PyObject* ret;  // return value
+    PyObject* cid;  // borrowed object
+
+    if (!PyArg_ParseTuple (args, "O", &cid))
+    {
+        return NULL;  // Exception was already set
+    }
+
+    if (cid == Py_None)
+    {
+        {
+            // create the methods of the own module
+            CapeUdc list_of_methods = qbus_methods (self->qbus, NULL);
+
+            ret = py_transform_to_pyo (list_of_methods);
+
+            cape_udc_del (&list_of_methods);
+        }
+    }
+    else
+    {
+        if (!PYOBJECT_IS_STRING (cid))
+        {
+            PyErr_SetString (PyExc_ValueError, "parameter name must be a string value");
+            return NULL;
+        }
+
+        {
+            // create the methods of a remote module identified by cid
+            CapeUdc list_of_methods = qbus_methods (self->qbus, PYOBJECT_AS_STRING (cid));
+
+            ret = py_transform_to_pyo (list_of_methods);
+
+            cape_udc_del (&list_of_methods);
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 PyObject* py_object_qbus_config (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
   PyObject* ret = Py_None;

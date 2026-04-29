@@ -40,6 +40,8 @@ PyObject*   py_object_qbus_register   (PyObject_QBus*, PyObject* args, PyObject*
 
 PyObject*   py_object_qbus_modules    (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
+PyObject*   py_object_qbus_methods    (PyObject_QBus*, PyObject* args, PyObject* kwds);
+
 PyObject*   py_object_qbus_config     (PyObject_QBus*, PyObject* args, PyObject* kwds);
 
 PyObject*   py_object_qbus_send       (PyObject_QBus*, PyObject* args, PyObject* kwds);
@@ -58,6 +60,7 @@ static PyMethodDef PyMethodDef_QBus [] =
     {"wait",        (PyCFunction)py_object_qbus_wait,        METH_VARARGS, "wait"},
     {"register",    (PyCFunction)py_object_qbus_register,    METH_VARARGS, "register a callback method"},
     {"modules",     (PyCFunction)py_object_qbus_modules,     METH_VARARGS, "returns a list of known modules"},
+    {"methods",     (PyCFunction)py_object_qbus_methods,     METH_VARARGS, "returns a list of known methods"},
     {"config",      (PyCFunction)py_object_qbus_config,      METH_VARARGS, "set / get config parameters"},
     {"send",        (PyCFunction)py_object_qbus_send,        METH_VARARGS, "send a message to another module"},
     {"timer",       (PyCFunction)py_object_qbus_timer,       METH_VARARGS, "add a timer"},

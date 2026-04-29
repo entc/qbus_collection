@@ -572,20 +572,21 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
 
 void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 {
-  if (*p_self)
-  {
-    QbusPvdCtx self = *p_self;
+    if (*p_self)
+    {
+        QbusPvdCtx self = *p_self;
 
-    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
+        cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
 
-    cape_list_del (&(self->connection_pool));
-    cape_list_del (&(self->reconnect_pool));
-    cape_mutex_del (&(self->mutex));
-    cape_str_del (&(self->cid));
-    cape_str_del (&(self->name));
+        cape_udc_del (&(self->methods));
+        cape_list_del (&(self->connection_pool));
+        cape_list_del (&(self->reconnect_pool));
+        cape_mutex_del (&(self->mutex));
+        cape_str_del (&(self->cid));
+        cape_str_del (&(self->name));
 
-    CAPE_DEL (p_self, struct QbusPvdCtx_s);
-  }
+        CAPE_DEL (p_self, struct QbusPvdCtx_s);
+    }
 }
 
 //------------------------------------------------------------------------------------------------------

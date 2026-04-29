@@ -29,7 +29,7 @@ __CAPE_LIBEX   const CapeString     qbus_router_get       (QBusRouter, const Cap
 
 __CAPE_LIBEX   CapeUdc              qbus_router_modules   (QBusRouter);
 
-__CAPE_LIBEX   CapeUdc              qbus_router_methods   (QBusRouter, const CapeString module_name);
+__CAPE_LIBEX   CapeUdc              qbus_router_methods   (QBusRouter, const CapeString cid);
 
 //-----------------------------------------------------------------------------
 
