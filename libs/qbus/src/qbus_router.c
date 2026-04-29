@@ -259,7 +259,7 @@ CapeUdc qbus_router_methods (QBusRouter self, const CapeString module_name)
 {
     CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
 
-    CapeMapNode* n = cape_map_find (self->routes, (void*)module_name);
+    CapeMapNode n = cape_map_find (self->routes, (void*)module_name);
     
     if (n)
     {
