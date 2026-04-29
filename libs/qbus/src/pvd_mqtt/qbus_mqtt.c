@@ -682,14 +682,14 @@ void __STDCALL qbus_pvd_con_next (QbusPvdConnection self, const CapeString topic
   MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
   MQTTClient_deliveryToken token;
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "commit value to %s", subscriber_topic);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "commit value to %s", subscriber_topic);
 
   // convert from frame into a byte stream
   qbus_frame_serialize (frame, payload);
 
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
-  mqtt_msg.qos = 1;
+  mqtt_msg.qos = 0;
 
   // if we want to store the last message, even if there are no subscribers
   // turn on retained
