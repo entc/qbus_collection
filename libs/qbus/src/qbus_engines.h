@@ -22,7 +22,7 @@ __CAPE_LIBEX   void                 qbus_engine_del       (QBusEngine*);
 //-----------------------------------------------------------------------------
 // context methods
 
-__CAPE_LIBEX   QbusPvdCtx           qbus_engine_ctx_new   (QBusEngine, CapeAioContext aio, const CapeString name, CapeErr err);
+__CAPE_LIBEX   QbusPvdCtx           qbus_engine_ctx_new   (QBusEngine, CapeAioContext aio, CapeUdc options, CapeErr err);
 
 __CAPE_LIBEX   void                 qbus_engine_ctx_add   (QBusEngine, QbusPvdCtx, QbusPvdConnection*, CapeUdc options, void* user_ptr, fct_qbus_pvd__on_con, fct_qbus_pvd__on_snd);
 

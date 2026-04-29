@@ -74,6 +74,8 @@ __CAPE_LIBEX   CapeAioContext     qbus_aio               (QBus);
 
 __CAPE_LIBEX   CapeUdc            qbus_modules           (QBus);
 
+__CAPE_LIBEX   CapeUdc            qbus_methods           (QBus, const CapeString optional_module);
+
 __CAPE_LIBEX   QBusConfig         qbus_config            (QBus);
 
 //-----------------------------------------------------------------------------

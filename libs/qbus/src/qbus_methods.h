@@ -56,6 +56,8 @@ __CAPE_LIBEX   QBusMethodItem       qbus_methods_load         (QBusMethods, cons
 
 __CAPE_LIBEX   const CapeString     qbus_methods_save         (QBusMethods, void* user_ptr, fct_qbus_on_msg, const CapeString saves_key, const CapeString cid_src, CapeUdc rinfo, const CapeString cid_dst);
 
+__CAPE_LIBEX   CapeUdc              qbus_methods__rpc_list    (QBusMethods);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   int                  qbus_methods__sub_add     (QBusMethods, const CapeString topic, void* user_ptr, fct_qbus_on_val, CapeErr err);

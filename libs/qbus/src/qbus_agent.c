@@ -243,7 +243,7 @@ void __STDCALL qbus_agent__on_request (void* user_ptr, cape_uint32 opcode, const
   {
     case 101:
     {
-      CapeUdc known_modules = qbus_router_list (self->router);
+      CapeUdc known_modules = qbus_router_modules (self->router);
       CapeString h = cape_json_to_s (known_modules);
 
       CapeStream s = cape_stream_new ();

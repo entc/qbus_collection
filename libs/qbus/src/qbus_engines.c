@@ -237,24 +237,12 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, const CapeString name, CapeErr err)
+QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, CapeUdc options, CapeErr err)
 {
   QbusPvdCtx self = NULL;
 
   if (engine->functions.pvd_ctx_new)
   {
-    CapeUdc options = cape_udc_new (CAPE_UDC_NODE, NULL);
-
-    if (name)
-    {
-      CapeString name_engine = cape_str_cp (name);
-
-      cape_str_to_upper (name_engine);
-
-      // always send the name in the options
-      cape_udc_add_s_mv (options, "name", &name_engine);
-    }
-
     // create a new engine context
     // -> might use the AIO for event handling
     // -> might use the options for config
@@ -266,8 +254,6 @@ QbusPvdCtx qbus_engine_ctx_new (QBusEngine engine, CapeAioContext aio, const Cap
       // can be destroyed later with the whole engine
       cape_list_push_back (engine->ctxs, qbus_engine_ctx_item_new (engine, self));
     }
-
-    cape_udc_del (&options);
   }
   else
   {

@@ -323,65 +323,91 @@ void __STDCALL qbus_con__on_snd (void* user_ptr, QBusFrame frame, const CapeStri
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qbus_con__on_con (void* user_ptr, const CapeString cid, const CapeString name, number_t type)
+void __STDCALL qbus_con__on_con (void* user_ptr, const CapeString cid, const CapeString name, number_t type, CapeUdc* p_methods)
 {
-  QBusCon self = user_ptr;
+    QBusCon self = user_ptr;
 
-  switch (type)
-  {
-    case 1:
+    switch (type)
     {
-      // append a new router connection
-      qbus_router_add (self->router, cid, name);
-      break;
+      case 1:
+      {
+        // append a new router connection
+        qbus_router_add (self->router, cid, name, p_methods);
+        break;
+      }
+      case 2:
+      {
+        // abort all ongoing requests
+        qbus_methods_abort (self->methods, cid, name);
+        
+        // remove this connection
+        qbus_router_rm (self->router, cid, name);
+        break;
+      }
     }
-    case 2:
-    {
-      // abort all ongoing requests
-      qbus_methods_abort (self->methods, cid, name);
-      
-      // remove this connection
-      qbus_router_rm (self->router, cid, name);
-      break;
-    }
-  }
+
+    cape_udc_del (p_methods);
 }
 
 //-----------------------------------------------------------------------------
 
 int qbus_con_init (QBusCon self, QBusEngines engines, CapeAioContext aio, const CapeString host, CapeErr err)
 {
-  int res;
-  
-  // local objects
-  CapeUdc options = cape_udc_new (CAPE_UDC_NODE, NULL);
-  
-  self->engine = qbus_engines_add (engines, "mqtt", err);
-  if (self->engine == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  self->engine_context = qbus_engine_ctx_new (self->engine, aio, self->module, err);
-  if (self->engine_context == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  if (host)
-  {
-    cape_udc_add_s_cp (options, "host", host);
-  }
-  
-  qbus_engine_ctx_add (self->engine, self->engine_context, &(self->con), options, self, qbus_con__on_con, qbus_con__on_snd);
-  res = CAPE_ERR_NONE;
-  
-exit_and_cleanup:
+    int res;
     
-  cape_udc_del (&options);
-  return res;
+    // local objects
+    CapeUdc options_ctx = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc options_con = cape_udc_new (CAPE_UDC_NODE, NULL);
+
+    // this will load the engine library and assigns function pointers
+    self->engine = qbus_engines_add (engines, "mqtt", err);
+    if (self->engine == NULL)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+        
+    if (self->module)
+    {
+        CapeString name_engine = cape_str_cp (self->module);
+
+        // only use upper case names to identify the modules
+        cape_str_to_upper (name_engine);
+
+        // always send the name in the options
+        cape_udc_add_s_mv (options_ctx, "name", &name_engine);
+    }
+    
+    // add methods to the options
+    {
+        // generate a list of methods of this module
+        CapeUdc methods_list = qbus_methods__rpc_list (self->methods);
+        
+        cape_udc_add_name (options_ctx, &methods_list, "methods");
+    }
+
+    // this creates a new context within the engine library
+    self->engine_context = qbus_engine_ctx_new (self->engine, aio, options_ctx, err);
+    if (self->engine_context == NULL)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (host)
+    {
+        cape_udc_add_s_cp (options_con, "host", host);
+    }
+    
+    // this will create a new connection
+    qbus_engine_ctx_add (self->engine, self->engine_context, &(self->con), options_con, self, qbus_con__on_con, qbus_con__on_snd);
+    res = CAPE_ERR_NONE;
+    
+exit_and_cleanup:
+      
+    cape_udc_del (&options_ctx);
+    cape_udc_del (&options_con);
+    return res;
 }
 
 //-----------------------------------------------------------------------------

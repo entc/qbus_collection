@@ -19,7 +19,7 @@ typedef struct QbusPvdConnection_s* QbusPvdConnection;
 //-----------------------------------------------------------------------------
 
                        /* callback after a new connection was established */
-typedef void           (__STDCALL *fct_qbus_pvd__on_con) (void* user_ptr, const CapeString cid, const CapeString name, number_t type);
+typedef void           (__STDCALL *fct_qbus_pvd__on_con) (void* user_ptr, const CapeString cid, const CapeString name, number_t type, CapeUdc* p_methods);
 
 typedef void           (__STDCALL *fct_qbus_pvd__on_snd) (void* user_ptr, QBusFrame frame, const CapeString topic);
 
@@ -55,18 +55,18 @@ typedef void               (__STDCALL *fct_qbus_pvd_con_next)         (QbusPvdCo
 
 typedef struct
 {
-  fct_qbus_pvd_init              pvd_init;
-  fct_qbus_pvd_done              pvd_done;
+    fct_qbus_pvd_init              pvd_init;
+    fct_qbus_pvd_done              pvd_done;
 
-  fct_qbus_pvd_ctx_new           pvd_ctx_new;
-  fct_qbus_pvd_ctx_del           pvd_ctx_del;
-  fct_qbus_pvd_ctx_add           pvd_ctx_add;
+    fct_qbus_pvd_ctx_new           pvd_ctx_new;
+    fct_qbus_pvd_ctx_del           pvd_ctx_del;
+    fct_qbus_pvd_ctx_add           pvd_ctx_add;
 
-  fct_qbus_pvd_con_cid           pvd_con_cid;
-  fct_qbus_pvd_con_snd           pvd_con_snd;
-  fct_qbus_pvd_con_subscribe     pvd_con_subscribe;
-  fct_qbus_pvd_con_unsubscribe   pvd_con_unsubscribe;
-  fct_qbus_pvd_con_next          pvd_con_next;
+    fct_qbus_pvd_con_cid           pvd_con_cid;
+    fct_qbus_pvd_con_snd           pvd_con_snd;
+    fct_qbus_pvd_con_subscribe     pvd_con_subscribe;
+    fct_qbus_pvd_con_unsubscribe   pvd_con_unsubscribe;
+    fct_qbus_pvd_con_next          pvd_con_next;
 
 } QbusPvd;
 

@@ -6,15 +6,22 @@
 #include <sys/cape_log.h>
 #include <sys/cape_file.h>
 #include <sys/cape_dl.h>
+#include <fmt/cape_json.h>
+
+//-----------------------------------------------------------------------------
+
+struct QBusRouteItem_s
+{
+    CapeUdc cids;
+    CapeUdc methods;
+    
+}; typedef struct QBusRouteItem_s* QBusRouteItem;
 
 //-----------------------------------------------------------------------------
 
 struct QBusRouter_s
 {
   CapeMap routes;
-  
-  
-  
 };
 
 //-----------------------------------------------------------------------------
@@ -97,35 +104,44 @@ void qbus_router_dump (QBusRouter self)
 
 //-----------------------------------------------------------------------------
 
-void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString name)
+void qbus_router_add (QBusRouter self, const CapeString cid, const CapeString name, CapeUdc* p_methods)
 {
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module ADD", "connection change detected, cid = %s, name = %s", cid, name);
-  
-  CapeList cids;
-  
-  CapeMapNode n = cape_map_find (self->routes, (void*)name);
-  
-  if (n)
-  {
-    cids = cape_map_node_value (n);
-  }
-  else
-  {
-    cids = cape_list_new (qbus_router__route_item__on_del);
-    
-    // use uppercase module names only
     {
-      CapeString module_name = cape_str_cp (name);
-      
-      cape_str_to_upper (module_name);
-      
-      cape_map_insert (self->routes, (void*)module_name, cids);
-    }
-  }
+        number_t nmb_methods = 0;
+        
+        if (*p_methods)
+        {
+            nmb_methods = cape_udc_size (*p_methods);
+        }
 
-  cape_list_push_back (cids, (void*)cape_str_cp (cid));
-  
-  //qbus_router_dump (self);
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module ADD", "connection change detected, cid = %s, name = %s, methods = %li", cid, name, nmb_methods);
+    }
+    
+    CapeList cids;
+    
+    CapeMapNode n = cape_map_find (self->routes, (void*)name);
+
+    if (n)
+    {
+      cids = cape_map_node_value (n);
+    }
+    else
+    {
+      cids = cape_list_new (qbus_router__route_item__on_del);
+      
+      // use uppercase module names only
+      {
+        CapeString module_name = cape_str_cp (name);
+        
+        cape_str_to_upper (module_name);
+        
+        cape_map_insert (self->routes, (void*)module_name, cids);
+      }
+    }
+
+    cape_list_push_back (cids, (void*)cape_str_cp (cid));
+    
+    //qbus_router_dump (self);
 }
 
 //-----------------------------------------------------------------------------
@@ -208,7 +224,14 @@ void qbus_router_list__add_cids (CapeUdc cids_node, CapeList cids)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc qbus_router_list (QBusRouter self)
+void qbus_router_list__add_methods (CapeUdc methods_list)
+{
+    
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_router_modules (QBusRouter self)
 {
   CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
   
@@ -228,6 +251,22 @@ CapeUdc qbus_router_list (QBusRouter self)
   cape_map_cursor_del (&cursor);
   
   return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc qbus_router_methods (QBusRouter self, const CapeString module_name)
+{
+    CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
+
+    CapeMapNode* n = cape_map_find (self->routes, (void*)module_name);
+    
+    if (n)
+    {
+        
+    }
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
