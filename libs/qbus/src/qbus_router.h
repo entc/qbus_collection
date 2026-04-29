@@ -21,13 +21,15 @@ __CAPE_LIBEX   void                 qbus_router_del       (QBusRouter*);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void                 qbus_router_add       (QBusRouter, const CapeString cid, const CapeString name);
+__CAPE_LIBEX   void                 qbus_router_add       (QBusRouter, const CapeString cid, const CapeString name, CapeUdc* p_methods);
 
 __CAPE_LIBEX   void                 qbus_router_rm        (QBusRouter, const CapeString cid, const CapeString name);
 
 __CAPE_LIBEX   const CapeString     qbus_router_get       (QBusRouter, const CapeString name);
 
-__CAPE_LIBEX   CapeUdc              qbus_router_list      (QBusRouter);
+__CAPE_LIBEX   CapeUdc              qbus_router_modules   (QBusRouter);
+
+__CAPE_LIBEX   CapeUdc              qbus_router_methods   (QBusRouter, const CapeString module_name);
 
 //-----------------------------------------------------------------------------
 

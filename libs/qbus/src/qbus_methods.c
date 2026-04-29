@@ -316,6 +316,28 @@ void qbus_methods_send (QBusMethods self, const CapeString saves_key, CapeErr er
 
 //-----------------------------------------------------------------------------
 
+CapeUdc qbus_methods__rpc_list (QBusMethods self)
+{
+    CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
+    
+    CapeMapCursor* cursor = cape_map_cursor_new (self->methods, CAPE_DIRECTION_FORW);
+    
+    while (cape_map_cursor_next (cursor))
+    {
+      CapeUdc list_node = cape_udc_new (CAPE_UDC_NODE, NULL);
+      
+      cape_udc_add_s_cp (list_node, "name", cape_map_node_key (cursor->node));
+      
+      cape_udc_add (ret, &list_node);
+    }
+    
+    cape_map_cursor_del (&cursor);
+    
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 struct QBusMethodRpcQueueItem_s
 {
   QBusM qin;

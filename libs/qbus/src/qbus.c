@@ -431,7 +431,7 @@ int qbus_register (QBus self, const CapeString method, void* user_ptr, fct_qbus_
 int __STDCALL qbus_request__on_modules_get (QBus self, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   // local objects
-  CapeUdc modules = qbus_router_list (self->router);
+  CapeUdc modules = qbus_router_modules (self->router);
   
   cape_udc_replace_mv (&(qout->cdata), &modules);
   
@@ -705,9 +705,23 @@ CapeAioContext qbus_aio (QBus self)
 
 //-----------------------------------------------------------------------------
 
+CapeUdc qbus_methods (QBus self, const CapeString optional_module)
+{
+    if (optional_module)
+    {
+        
+    }
+    else
+    {
+        return qbus_methods__rpc_list (self->methods);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeUdc qbus_modules (QBus self)
 {
-  return qbus_router_list (self->router);
+  return qbus_router_modules (self->router);
 }
 
 //-----------------------------------------------------------------------------

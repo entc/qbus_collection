@@ -147,32 +147,47 @@ void __STDCALL qbus_pvd_done (void)
 
 struct QbusPvdCtx_s
 {
-  CapeAioContext aio;
-  CapeString cid;              // client id
-  CapeString name;             // name of the module
+    CapeAioContext aio;
+    CapeString cid;              // client id
+    CapeString name;             // name of the module
+    CapeUdc methods;             // a list of all methods of the module
 
-  CapeMutex mutex;             // a standard mutex
+    CapeMutex mutex;             // a standard mutex
 
-  CapeList reconnect_pool;     // a list to store reconnect items
-  CapeList connection_pool;    // a list to store all connection
+    CapeList reconnect_pool;     // a list to store reconnect items
+    CapeList connection_pool;    // a list to store all connection
 };
 
 //------------------------------------------------------------------------------------------------------
 
 CapeStream qbus_pvd_ctx__internal__generate_payload (QbusPvdCtx self, number_t event_type)
 {
-  CapeStream ret = NULL;
-  CapeUdc payload_node = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeStream ret = NULL;
+    CapeUdc payload_node = cape_udc_new (CAPE_UDC_NODE, NULL);
 
-  cape_udc_add_s_cp (payload_node, "cid", self->cid);
-  cape_udc_add_s_cp (payload_node, "name", self->name);
-  cape_udc_add_b (payload_node, "direct", TRUE);
-  cape_udc_add_n (payload_node, "type", event_type);
+    cape_udc_add_s_cp (payload_node, "cid", self->cid);
+    cape_udc_add_s_cp (payload_node, "name", self->name);
+    cape_udc_add_b (payload_node, "direct", TRUE);
+    cape_udc_add_n (payload_node, "type", event_type);
+    
+    switch (event_type)
+    {
+        case 1:  // new module
+        {
+            if (self->methods)
+            {
+                CapeUdc h = cape_udc_cp (self->methods);
+                cape_udc_add_name (payload_node, &h, "methods");
+            }
+            
+            break;
+        }
+    }
+    
+    ret = cape_json_to_stream (payload_node);
 
-  ret = cape_json_to_stream (payload_node);
-
-  cape_udc_del (&payload_node);
-  return ret;
+    cape_udc_del (&payload_node);
+    return ret;
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -229,7 +244,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
       {
         if (payload_node && self->on_con)
         {
-          self->on_con (self->user_ptr, src_cid, cape_udc_get_s (payload_node, "name", NULL), type);
+            CapeUdc methods_list = cape_udc_ext (payload_node, "methods");
+            
+            self->on_con (self->user_ptr, src_cid, cape_udc_get_s (payload_node, "name", NULL), type, &methods_list);
         }
 
         if (type == 1)
@@ -252,7 +269,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
 
       if (payload_node && self->on_con)
       {
-        self->on_con (self->user_ptr, src_cid, cape_udc_get_s (payload_node, "name", NULL), type);
+          CapeUdc methods_list = cape_udc_ext (payload_node, "methods");
+
+          self->on_con (self->user_ptr, src_cid, cape_udc_get_s (payload_node, "name", NULL), type, &methods_list);
       }
 
       cape_udc_del (&payload_node);
@@ -517,35 +536,36 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
 
 QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, CapeErr err)
 {
-  QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
+    QbusPvdCtx self = CAPE_NEW (struct QbusPvdCtx_s);
 
-  // create a seed and initialize with srand
-  {
-    number_t seed = time(NULL) * (number_t)self;
+    // create a seed and initialize with srand
+    {
+        number_t seed = time(NULL) * (number_t)self;
 
-    // initialization of the random generator
-    srand ((int)seed);
-  }
+        // initialization of the random generator
+        srand ((int)seed);
+    }
 
-  self->aio = aio;
-  self->cid = cape_str_uuid ();
-  self->name = cape_udc_ext_s (options, "name");
-  self->mutex = cape_mutex_new ();
+    self->aio = aio;
+    self->cid = cape_str_uuid ();
+    self->name = cape_udc_ext_s (options, "name");
+    self->methods = cape_udc_ext (options, "methods");
+    self->mutex = cape_mutex_new ();
 
-  // create the lists
-  self->reconnect_pool = cape_list_new (NULL);
-  self->connection_pool = cape_list_new (qbus_pvd_ctx__connections__on_del);
+    // create the lists
+    self->reconnect_pool = cape_list_new (NULL);
+    self->connection_pool = cape_list_new (qbus_pvd_ctx__connections__on_del);
 
-  if (qbus_pvd_ctx__internal__setup_timer (self, options, err))
-  {
-    qbus_pvd_ctx_del (&self);
-  }
-  else
-  {
-    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx new", "create new MQTT context as %s", self->cid);
-  }
+    if (qbus_pvd_ctx__internal__setup_timer (self, options, err))
+    {
+        qbus_pvd_ctx_del (&self);
+    }
+    else
+    {
+        cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx new", "create new MQTT context as %s", self->cid);
+    }
 
-  return self;
+    return self;
 }
 
 //------------------------------------------------------------------------------------------------------
