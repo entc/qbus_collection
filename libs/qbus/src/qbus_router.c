@@ -34,7 +34,7 @@ QBusRouteItem qbus_router_item_new (const CapeString cid, CapeUdc* p_methods, co
             nmb_methods = cape_udc_size (self->methods);
         }
 
-        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module ADD", "connection change detected, cid = %s, name = %s, methods = %li", cid, name, nmb_methods);
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "module ADD", "cid = %s, methods = %03li, name = %s", cid, nmb_methods, name);
     }
     
     return self;
@@ -303,16 +303,11 @@ void qbus_router_list__add_methods (CapeUdc methods_list)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc qbus_router_methods (QBusRouter self, const CapeString module_name)
+CapeUdc qbus_router_methods (QBusRouter self, const CapeString cid)
 {
     CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
 
-    CapeMapNode* n = cape_map_find (self->routes, (void*)module_name);
-    
-    if (n)
-    {
-        
-    }
+
     
     return ret;
 }

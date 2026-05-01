@@ -572,20 +572,21 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
 
 void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
 {
-  if (*p_self)
-  {
-    QbusPvdCtx self = *p_self;
+    if (*p_self)
+    {
+        QbusPvdCtx self = *p_self;
 
-    cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
+        cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
 
-    cape_list_del (&(self->connection_pool));
-    cape_list_del (&(self->reconnect_pool));
-    cape_mutex_del (&(self->mutex));
-    cape_str_del (&(self->cid));
-    cape_str_del (&(self->name));
+        cape_udc_del (&(self->methods));
+        cape_list_del (&(self->connection_pool));
+        cape_list_del (&(self->reconnect_pool));
+        cape_mutex_del (&(self->mutex));
+        cape_str_del (&(self->cid));
+        cape_str_del (&(self->name));
 
-    CAPE_DEL (p_self, struct QbusPvdCtx_s);
-  }
+        CAPE_DEL (p_self, struct QbusPvdCtx_s);
+    }
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -702,14 +703,14 @@ void __STDCALL qbus_pvd_con_next (QbusPvdConnection self, const CapeString topic
   MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
   MQTTClient_deliveryToken token;
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "commit value to %s", subscriber_topic);
+  //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "commit value to %s", subscriber_topic);
 
   // convert from frame into a byte stream
   qbus_frame_serialize (frame, payload);
 
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
-  mqtt_msg.qos = 1;
+  mqtt_msg.qos = 0;
 
   // if we want to store the last message, even if there are no subscribers
   // turn on retained
