@@ -56,6 +56,13 @@ const CapeString qbus_router_item_cid (QBusRouteItem self)
 
 //-----------------------------------------------------------------------------
 
+const CapeUdc qbus_router_item_methods (QBusRouteItem self)
+{
+    return self->methods;
+}
+
+//-----------------------------------------------------------------------------
+
 void qbus_router_item_del (QBusRouteItem* p_self)
 {
     if (*p_self)
@@ -258,13 +265,26 @@ const CapeString qbus_router_get (QBusRouter self, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
-void qbus_router_modules__add_cids (CapeUdc cids_node, CapeList cids)
+void qbus_router_modules__add_cids (CapeUdc cids_list, CapeList cids)
 {
     CapeListCursor* cursor = cape_list_cursor_new (cids, CAPE_DIRECTION_FORW);
 
     while (cape_list_cursor_next (cursor))
     {
-        cape_udc_add_s_cp (cids_node, NULL, qbus_router_item_cid (cape_list_node_data (cursor->node)));
+        QBusRouteItem item = cape_list_node_data (cursor->node);
+        
+        CapeUdc cid_node = cape_udc_new (CAPE_UDC_NODE, NULL);
+        
+        cape_udc_add_s_cp (cid_node, "cid", qbus_router_item_cid (item));
+        
+        // methods
+        {
+            CapeUdc methods = cape_udc_cp (qbus_router_item_methods (item));
+
+            cape_udc_add_name (cid_node, &methods, "methods");
+        }
+        
+        cape_udc_add (cids_list, &cid_node);
     }
 
     cape_list_cursor_del (&cursor);
@@ -274,41 +294,50 @@ void qbus_router_modules__add_cids (CapeUdc cids_node, CapeList cids)
 
 CapeUdc qbus_router_modules (QBusRouter self)
 {
-    CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
+    CapeUdc ret = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     CapeMapCursor* cursor = cape_map_cursor_new (self->routes, CAPE_DIRECTION_FORW);
     
     while (cape_map_cursor_next (cursor))
     {
-        CapeUdc list_node = cape_udc_new (CAPE_UDC_NODE, NULL);
-        
-        cape_udc_add_s_cp (list_node, "name", cape_map_node_key (cursor->node));
-        
-        qbus_router_modules__add_cids (cape_udc_add_list (list_node, "cids"), cape_map_node_value (cursor->node));
-        
-        cape_udc_add (ret, &list_node);
+        qbus_router_modules__add_cids (cape_udc_add_list (ret, cape_map_node_key (cursor->node)), cape_map_node_value (cursor->node));
     }
     
     cape_map_cursor_del (&cursor);
-    
     return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void qbus_router_list__add_methods (CapeUdc methods_list)
-{
-    
 }
 
 //-----------------------------------------------------------------------------
 
 CapeUdc qbus_router_methods (QBusRouter self, const CapeString cid)
 {
-    CapeUdc ret = cape_udc_new (CAPE_UDC_LIST, NULL);
+    CapeUdc ret = NULL;
 
-
+    CapeMapCursor* cursor = cape_map_cursor_new (self->routes, CAPE_DIRECTION_FORW);
     
+    while (cape_map_cursor_next (cursor))
+    {
+        CapeList cids = cape_map_node_value (cursor->node);
+        
+        {
+            CapeListCursor* cursor = cape_list_cursor_new (cids, CAPE_DIRECTION_FORW);
+            
+            while (cape_list_cursor_next (cursor))
+            {
+                QBusRouteItem item = cape_list_node_data (cursor->node);
+
+                if (qbus_router_item_is_cid (item, cid))
+                {
+                    cape_udc_del (&ret);
+                    ret = cape_udc_cp (qbus_router_item_methods (item));
+                }
+            }
+            
+            cape_list_cursor_del (&cursor);
+        }
+    }
+    
+    cape_map_cursor_del (&cursor);
     return ret;
 }
 
