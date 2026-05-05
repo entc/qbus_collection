@@ -26,6 +26,8 @@ __CAPE_LIBEX   QbusPvdCtx           qbus_engine_ctx_new   (QBusEngine, CapeAioCo
 
 __CAPE_LIBEX   void                 qbus_engine_ctx_add   (QBusEngine, QbusPvdCtx, QbusPvdConnection*, CapeUdc options, void* user_ptr, fct_qbus_pvd__on_con, fct_qbus_pvd__on_snd);
 
+__CAPE_LIBEX   void                 qbus_engine_ctx_rm    (QBusEngine, QbusPvdCtx, QbusPvdConnection);
+
 //-----------------------------------------------------------------------------
 // connection methods
 

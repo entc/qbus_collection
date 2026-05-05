@@ -180,6 +180,12 @@ int qbus_engine_load (QBusEngine self, const CapeString path, const CapeString e
     goto exit_and_cleanup;
   }
 
+  self->functions.pvd_ctx_rm = cape_dl_funct (self->hlib, "qbus_pvd_ctx_rm", err);
+  if (self->functions.pvd_ctx_rm == NULL)
+  {
+      goto exit_and_cleanup;
+  }
+
   self->functions.pvd_con_cid = cape_dl_funct (self->hlib, "qbus_pvd_con_cid", err);
   if (self->functions.pvd_con_cid == NULL)
   {
@@ -272,6 +278,17 @@ void qbus_engine_ctx_add (QBusEngine engine, QbusPvdCtx self, QbusPvdConnection*
     // create a new connection
     engine->functions.pvd_ctx_add (self, p_con, options, user_ptr, on_con, on_snd);
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void qbus_engine_ctx_rm (QBusEngine engine, QbusPvdCtx self, QbusPvdConnection con)
+{
+    if (engine->functions.pvd_ctx_rm)
+    {
+        // remove this connection
+        engine->functions.pvd_ctx_rm (self, con);
+    }
 }
 
 //-----------------------------------------------------------------------------

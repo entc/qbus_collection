@@ -502,6 +502,8 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
     MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
 
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "send disconnect message");
+
     mqtt_msg.payload = (void*)cape_stream_data (payload_stream);
     mqtt_msg.payloadlen = (int)cape_stream_size (payload_stream);
     mqtt_msg.qos = 1;
@@ -528,6 +530,8 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
     MQTTClient_disconnect (self->client, MQTT_TIMEOUT);
 
     MQTTClient_destroy (&(self->client));
+
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "client destroyed");
 
     CAPE_DEL (&self, struct QbusPvdConnection_s);
 }
@@ -627,10 +631,23 @@ void __STDCALL qbus_pvd_ctx_add (QbusPvdCtx self, QbusPvdConnection* p_con, Cape
 
 void __STDCALL qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdConnection conn)
 {
-  /*
-  if ((rc = MQTTClient_disconnect(client, 10000)) != MQTTCLIENT_SUCCESS)
-    printf("Failed to disconnect, return code %d\n", rc);
-*/
+    // find conn in connection pool
+    CapeListCursor* cursor = cape_list_cursor_new (self->connection_pool, CAPE_DIRECTION_FORW);
+
+    // do some debug output
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "ctx rm", "remove client connection = %p", conn);
+
+    while (cape_list_cursor_next (cursor))
+    {
+        QbusPvdConnection conn_cursor = cape_list_node_data (cursor->node);
+
+        if (conn_cursor == conn)
+        {
+            cape_list_cursor_erase (self->connection_pool, cursor);
+        }
+    }
+
+    cape_list_cursor_del (&cursor);
 }
 
 //------------------------------------------------------------------------------------------------------

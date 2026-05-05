@@ -39,6 +39,8 @@ typedef void               (__STDCALL *fct_qbus_pvd_ctx_del)          (QbusPvdCt
 
 typedef void               (__STDCALL *fct_qbus_pvd_ctx_add)          (QbusPvdCtx, QbusPvdConnection*, CapeUdc options, void* user_ptr, fct_qbus_pvd__on_con, fct_qbus_pvd__on_snd);
 
+typedef void               (__STDCALL *fct_qbus_pvd_ctx_rm)           (QbusPvdCtx, QbusPvdConnection);
+
 //-----------------------------------------------------------------------------
 // connection functions
 typedef const CapeString   (__STDCALL *fct_qbus_pvd_con_cid)          (QbusPvdConnection);
@@ -61,6 +63,7 @@ typedef struct
     fct_qbus_pvd_ctx_new           pvd_ctx_new;
     fct_qbus_pvd_ctx_del           pvd_ctx_del;
     fct_qbus_pvd_ctx_add           pvd_ctx_add;
+    fct_qbus_pvd_ctx_rm            pvd_ctx_rm;
 
     fct_qbus_pvd_con_cid           pvd_con_cid;
     fct_qbus_pvd_con_snd           pvd_con_snd;

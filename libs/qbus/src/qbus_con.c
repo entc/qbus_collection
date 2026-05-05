@@ -51,6 +51,17 @@ void qbus_con_del (QBusCon* p_self)
   {
     QBusCon self = *p_self;
     
+    if (self->con)
+    {
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con del", "remove connection from engine");
+
+        qbus_engine_ctx_rm (self->engine, self->engine_context, self->con);
+    }
+    else
+    {
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "con del", "no connection to delete");
+    }
+
     cape_str_del (&(self->module));
     
     CAPE_DEL (p_self, struct QBusCon_s);

@@ -86,7 +86,9 @@ void qbus_del (QBus* p_self)
     if (*p_self)
     {
         QBus self = *p_self;
-        
+
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "del", "start release process ...");
+
         qbus_con_del (&(self->con));
 
         if (self->thread)
