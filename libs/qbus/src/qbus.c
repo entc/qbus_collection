@@ -111,10 +111,11 @@ void qbus_del (QBus* p_self)
         cape_aio_context_del (&(self->aio));
 
         qbus_methods_del (&(self->methods));
-        qbus_agent_del (&(self->agent));
         qbus_config_del (&(self->config));
-        qbus_engines_del (&(self->engines));
         qbus_router_del (&(self->router));
+        qbus_engines_del (&(self->engines));
+
+        qbus_agent_del (&(self->agent));
 
         cape_log_fmt (CAPE_LL_TRACE, "QBUS", "del", "qbus stopped and released");
 
