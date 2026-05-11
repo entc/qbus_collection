@@ -502,7 +502,7 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
     MQTTClient_message mqtt_msg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
 
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "send disconnect message");
+    cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "conn del", "send disconnect message");
 
     mqtt_msg.payload = (void*)cape_stream_data (payload_stream);
     mqtt_msg.payloadlen = (int)cape_stream_size (payload_stream);
@@ -524,14 +524,14 @@ void __STDCALL qbus_pvd_ctx__connections__on_del (void* user_ptr)
     // Wait until the message is actually delivered
     MQTTClient_waitForCompletion (self->client, token, MQTT_TIMEOUT);
     
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "disconnect from MQTT");
+    cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "conn del", "disconnect from MQTT");
 
     // try to disconnect first
     MQTTClient_disconnect (self->client, MQTT_TIMEOUT);
 
     MQTTClient_destroy (&(self->client));
 
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "conn del", "client destroyed");
+    cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "conn del", "client destroyed");
 
     CAPE_DEL (&self, struct QbusPvdConnection_s);
 }
@@ -566,7 +566,7 @@ QbusPvdCtx __STDCALL qbus_pvd_ctx_new (CapeAioContext aio, CapeUdc options, Cape
     }
     else
     {
-        cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx new", "create new MQTT context as %s", self->cid);
+        cape_log_fmt (CAPE_LL_DEBUG, "PVD_MQTT", "ctx new", "create new MQTT context as %s", self->cid);
     }
 
     return self;
@@ -580,7 +580,7 @@ void __STDCALL qbus_pvd_ctx_del (QbusPvdCtx* p_self)
     {
         QbusPvdCtx self = *p_self;
 
-        cape_log_fmt (CAPE_LL_DEBUG, "QBUS", "ctx del", "destroy MQTT context as %s", self->cid);
+        cape_log_fmt (CAPE_LL_DEBUG, "PVD_MQTT", "ctx del", "destroy MQTT context as %s", self->cid);
 
         cape_udc_del (&(self->methods));
         cape_list_del (&(self->connection_pool));
@@ -611,7 +611,7 @@ void __STDCALL qbus_pvd_ctx_add (QbusPvdCtx self, QbusPvdConnection* p_con, Cape
   const CapeString host = cape_udc_get_s (options, "host", "127.0.0.1");
 
   // do some debug output
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "ctx add", "using host = '%s' for client connection", host);
+  cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "ctx add", "using host = '%s' for client connection", host);
 
   // creates a new client instance
   MQTTClient_create (&(ret->client), host, self->cid, MQTTCLIENT_PERSISTENCE_NONE, NULL);
@@ -635,7 +635,7 @@ void __STDCALL qbus_pvd_ctx_rm (QbusPvdCtx self, QbusPvdConnection conn)
     CapeListCursor* cursor = cape_list_cursor_new (self->connection_pool, CAPE_DIRECTION_FORW);
 
     // do some debug output
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "ctx rm", "remove client connection = %p", conn);
+    cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "ctx rm", "remove client connection = %p", conn);
 
     while (cape_list_cursor_next (cursor))
     {
@@ -689,7 +689,7 @@ void __STDCALL qbus_pvd_con_subscribe (QbusPvdConnection self, const CapeString 
 {
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "subscribe to %s", subscriber_topic);
+  cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "reg", "subscribe to %s", subscriber_topic);
 
   MQTTClient_subscribe (self->client, subscriber_topic, 1);
 
@@ -702,7 +702,7 @@ void __STDCALL qbus_pvd_con_unsubscribe (QbusPvdConnection self, const CapeStrin
 {
   CapeString subscriber_topic = cape_str_fmt ("%c/%s", MQTT_TOPIC_PRE__VALUE, topic);
 
-  cape_log_fmt (CAPE_LL_TRACE, "QBUS", "reg", "unsubscribe to %s", subscriber_topic);
+  cape_log_fmt (CAPE_LL_TRACE, "PVD_MQTT", "reg", "unsubscribe to %s", subscriber_topic);
 
   MQTTClient_unsubscribe (self->client, subscriber_topic);
 
