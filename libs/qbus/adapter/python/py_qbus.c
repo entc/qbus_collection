@@ -13,6 +13,8 @@ PyObject* py_object_qbus_new (PyTypeObject* type, PyObject* args, PyObject* kwds
     PyObject* pyo_name;
     PyObject* pyo_args;
         
+    printf("Py_None ref BEFORE=%ld\n", Py_REFCNT(Py_None));
+
     if (!PyArg_ParseTuple (args, "OO", &pyo_name, &pyo_args))
     {
         return NULL;  // Exception was already set
@@ -127,6 +129,10 @@ int __STDCALL py_object_qbus__on_init (QBus qbus, void* ptr, void** p_ptr, CapeE
     // use the same ptr
     *p_ptr = callbacks_ctx;
     
+    printf("Py_None ref BEFORE=%ld\n", Py_REFCNT(Py_None));
+
+
+
     // call the python on_init method
     {
         PyObject* arglist = Py_BuildValue ("(O)", callbacks_ctx->self);
@@ -567,26 +573,31 @@ exit_and_error:
 
 int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
-  PythonCallbackData* pcd = ptr;
+    int res;
+    PythonCallbackData* pcd = ptr;
 
-  PyObject* arglist;
-  PyObject* result;
+    // local objects
+    PyObject* arglist;
+    PyObject* result;
+    PyObject* py_qin;
 
-  PyObject* py_qin = Py_None;
+    // IMPORTANT: start thread safe monitor
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    
+    if (qin->cdata)
+    {
+        py_qin = py_transform_to_pyo (qin->cdata);
+    }
+    else
+    {
+        py_qin = Py_None;
+    }
 
-  if (qin->cdata)
-  {
-    py_qin = py_transform_to_pyo (qin->cdata);
-  }
+    arglist = Py_BuildValue ("(OOO)", pcd->qbus, py_qin, Py_None);
 
-  arglist = Py_BuildValue ("(OOO)", pcd->qbus, py_qin, Py_None);
+    result = PyObject_Call (pcd->fct, arglist, NULL);
 
-  // depricated
-  //result = PyEval_CallObject (pcd->fct, arglist);
-
-  result = PyObject_Call (pcd->fct, arglist, NULL);
-  /*
+    /*
   if (result)
   {
     qout->cdata = py_transform_to_udc (result);
@@ -604,117 +615,132 @@ int __STDCALL py_object_qbus_send__on_event (QBus qbus, void* ptr, QBusM qin, QB
   }
   */
 
-  // cleanup
-  Py_XDECREF (py_qin);
-  Py_DECREF (arglist);
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "cleanup from message");
 
-  //Py_DECREF (pcd->fct);
-  CAPE_DEL(&pcd, PythonCallbackData);
+    // cleanup
+    Py_DECREF (py_qin);
+    Py_DECREF (arglist);
 
-  return CAPE_ERR_NONE;
+    //Py_DECREF (pcd->fct);
+    CAPE_DEL(&pcd, PythonCallbackData);
+
+    PyGILState_Release(gstate);
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
 
 PyObject* py_object_qbus_send (PyObject_QBus* self, PyObject* args, PyObject* kwds)
 {
-  PyObject* ret = Py_None;
+    PyObject* ret = Py_None;
 
-  // local objects
-  CapeErr err = cape_err_new ();
-  QBusM qin = NULL;
+    // local objects
+    CapeErr err = cape_err_new ();
+    QBusM qin = NULL;
 
-  PyObject* module;
-  PyObject* method;
-  PyObject* clist;
-  PyObject* cdata;
-  PyObject* cbfct;
+    PyObject* module;
+    PyObject* method;
+    PyObject* clist;
+    PyObject* cdata;
+    PyObject* cbfct;
 
-  if (!PyArg_ParseTuple (args, "OOOOO", &module, &method, &clist, &cdata, &cbfct))
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
-    goto exit_and_error;
-  }
+    // IMPORTANT: start thread safe monitor
+    PyGILState_STATE gstate = PyGILState_Ensure();
 
-  if (!PYOBJECT_IS_STRING (module))
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "1. parameter is not a string");
-    goto exit_and_error;
-  }
-
-  if (!PYOBJECT_IS_STRING (method))
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "2. parameter is not a string");
-    goto exit_and_error;
-  }
-
-  // optional
-  if (clist != Py_None)
-  {
-    if (!PyList_Check (clist))
+    if (!PyArg_ParseTuple (args, "OOOOO", &module, &method, &clist, &cdata, &cbfct))
     {
-      cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
-      goto exit_and_error;
+        ret = NULL;  // Exception was already set
+        goto exit_and_error;
     }
-  }
 
-  // optional
-  if (cdata != Py_None)
-  {
-    if (!PyDict_Check (cdata))
+    if (!PYOBJECT_IS_STRING (module))
     {
-      cape_err_set (err, CAPE_ERR_MISSING_PARAM, "3. parameter is not an object");
-      goto exit_and_error;
+        PyErr_SetString (PyExc_ValueError, "1. parameter is not a string");
+        
+        ret = NULL;
+        goto exit_and_error;
     }
-  }
 
-  if (!PyCallable_Check (cbfct))
-  {
-    cape_err_set (err, CAPE_ERR_MISSING_PARAM, "4. parameter is not a callback");
-    goto exit_and_error;
-  }
-
-  qin = qbus_message_new (NULL, NULL);
-
-  if (clist != Py_None)
-  {
-    qin->clist = py_transform_to_udc (clist);
-  }
-
-  if (cdata != Py_None)
-  {
-    qin->cdata = py_transform_to_udc (cdata);
-  }
-
-  {
-    PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
-
-    pcd->fct = cbfct;
-    pcd->qbus = self;
-
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "send message to %s", PYOBJECT_AS_STRING (module));
-
-    int res = qbus_send (self->qbus, PYOBJECT_AS_STRING (module), PYOBJECT_AS_STRING (method), qin, pcd, py_object_qbus_send__on_event, err);
-    if (res && res != CAPE_ERR_CONTINUE)
+    if (!PYOBJECT_IS_STRING (method))
     {
+        PyErr_SetString (PyExc_ValueError, "2. parameter is not a string");
 
+        ret = NULL;
+        goto exit_and_error;
     }
-  }
 
+    // optional
+    if ((clist != Py_None) && (!PyList_Check (clist)))
+    {
+        PyErr_SetString (PyExc_ValueError, "3. parameter is not an object");
+
+        ret = NULL;
+        goto exit_and_error;
+    }
+
+    // optional
+    if ((cdata != Py_None) && (!PyDict_Check (cdata)))
+    {
+        PyErr_SetString (PyExc_ValueError, "4. parameter is not an object");
+
+        ret = NULL;
+        goto exit_and_error;
+    }
+
+    // optional
+    if ((cbfct != Py_None) && (!PyCallable_Check (cbfct)))
+    {
+        PyErr_SetString (PyExc_ValueError, "5. parameter is not a callback");
+
+        ret = NULL;
+        goto exit_and_error;
+    }
+    
+    qin = qbus_message_new (NULL, NULL);
+
+    if (clist != Py_None)
+    {
+        qin->clist = py_transform_to_udc (clist);
+    }
+
+    if (cdata != Py_None)
+    {
+        qin->cdata = py_transform_to_udc (cdata);
+    }
+
+    if (cbfct == Py_None)
+    {
+        int res = qbus_send (self->qbus, PYOBJECT_AS_STRING (module), PYOBJECT_AS_STRING (method), qin, NULL, NULL, err);
+        if (res && res != CAPE_ERR_CONTINUE)
+        {
+
+        }
+    }
+    else
+    {
+        PythonCallbackData* pcd = CAPE_NEW (PythonCallbackData);
+
+        pcd->fct = cbfct;
+        pcd->qbus = self;
+
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "py adapter", "send message to %s", PYOBJECT_AS_STRING (module));
+
+        int res = qbus_send (self->qbus, PYOBJECT_AS_STRING (module), PYOBJECT_AS_STRING (method), qin, pcd, py_object_qbus_send__on_event, err);
+        if (res && res != CAPE_ERR_CONTINUE)
+        {
+
+        }
+    }
+  
 exit_and_error:
 
-  if (cape_err_code (err) && (cape_err_code (err) != CAPE_ERR_CONTINUE))
-  {
-//    PyErr_SetString(PyExc_RuntimeError, cape_err_text (err));
+    PyGILState_Release(gstate);
 
-    // tell python an error occoured
-//    ret = NULL;
-  }
+    qbus_message_del (&qin);
+    cape_err_del (&err);
 
-  qbus_message_del (&qin);
-  cape_err_del (&err);
-
-  return ret;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------

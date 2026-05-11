@@ -4,7 +4,7 @@
 
 PyObject* py_transform_to_pyo (CapeUdc o)
 {
-  PyObject* ret = Py_None;
+  PyObject* ret = NULL;
   
   switch (cape_udc_type(o))
   {
@@ -77,6 +77,8 @@ PyObject* py_transform_to_pyo (CapeUdc o)
       ret = PyBool_FromLong (cape_udc_b (o, FALSE));
       break;
     }
+    default:
+          Py_RETURN_NONE;
   }
   
   return ret;

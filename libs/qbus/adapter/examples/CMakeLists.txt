@@ -52,4 +52,25 @@ if (TARGET qbus_adapter_python)
   # remove the local file
   file (REMOVE "qbus_py_background.sh")
 
+  # ---------------------------------------------------------------------------
+
+  # use this to trigger the make
+  add_custom_target (qbus_mod_python_send ALL COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
+
+  # set some symlinks for direct starting
+  add_custom_command (TARGET qbus_mod_python_send POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/module_send.py ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
+  add_custom_command (TARGET qbus_mod_python_send POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/qbus_py_send.sh ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR})
+
+  # write the bash script
+  file (WRITE  "qbus_py_send.sh" "#!/usr/bin/env bash\n")
+  file (APPEND "qbus_py_send.sh" ${PYTHON_TARGET_EXEC})
+  file (APPEND "qbus_py_send.sh" " module_send.py\n")
+
+  # set permissions and copy the script to the build folder
+  # we cannot finally copy it, because the traget directory is only available at build time
+  file (COPY "qbus_py_send.sh" DESTINATION ${CMAKE_BINARY_DIR} FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ)
+
+  # remove the local file
+  file (REMOVE "qbus_py_send.sh")
+
 endif()
