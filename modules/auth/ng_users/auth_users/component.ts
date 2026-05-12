@@ -221,7 +221,7 @@ export class AuthUserItem
 
   public open_account_delete ()
   {
-    var holder: QbngOptionHolder = new QbngOptionHolder ('MISC.ACCOUNT_DELETE', 'AUTH.ACCOUNT_DELETE_INFO', 'MISC.ACCOUNT_DELETE');
+    var holder: QbngOptionHolder = new QbngOptionHolder ('AUTH.ACCOUNT_DELETE', 'AUTH.ACCOUNT_DELETE_INFO', 'AUTH.ACCOUNT_DELETE');
 
     this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
 
