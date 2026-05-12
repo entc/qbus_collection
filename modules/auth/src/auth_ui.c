@@ -2286,6 +2286,106 @@ int auth_ui__user__create (AuthUI self, AdblTrx trx, const CapeString pass_hashe
 
 //-----------------------------------------------------------------------------
 
+int auth_ui__user_person__delete (AdblTrx adbl_trx, number_t gpid, CapeErr err)
+{
+  int res;
+  
+  // prepare the insert query
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params, "id", gpid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "glob_persons", &params, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__user_rbac__delete (AdblTrx adbl_trx, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // 1. Delete references to roles
+  
+  // prepare the insert query
+  CapeUdc params_roles = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params_roles, "userid", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "rbac_users_roles", &params_roles, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+    return res;
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  // 2. Delete rbac user
+  
+  // prepare the insert query
+  CapeUdc params_rbac = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params_rbac, "userid", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "rbac_users", &params_rbac, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__user__delete (AdblTrx adbl_trx, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // prepare the insert query
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params, "id", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "q5_users", &params, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -3752,9 +3852,11 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthUI self = *p_self;
 
+  AdblTrx trx = NULL;
   number_t wpid;
   number_t gpid;
   number_t userid;
+  number_t rbac_userid;
   
   // local objects
   CapeUdc query_results = NULL;
@@ -3822,8 +3924,46 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
     goto exit_and_cleanup;
   }
-
   
+  rbac_userid = cape_udc_get_n (first_row, "id", 0);
+  if (0 == rbac_userid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USERID");
+    goto exit_and_cleanup;
+  }
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // delete user in glob_persons
+  res = auth_ui__user_person__delete (trx, gpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // delete user in rbac_users and rbac_users_roles
+  res = auth_ui__user_rbac__delete (trx, userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // delete user in q5_users 
+  res = auth_ui__user__delete (trx, userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+
   
   res = CAPE_ERR_NONE;
   
