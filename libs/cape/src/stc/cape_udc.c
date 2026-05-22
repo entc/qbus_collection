@@ -1886,19 +1886,64 @@ CapeUdc cape_udc_find_n__iterate (CapeUdc self, const CapeString name, number_t 
 
 CapeUdc cape_udc_find_n (CapeUdc self, const CapeString name, number_t value)
 {
-  CapeUdc ret = NULL;
-  
-  switch (self->type)
-  {
-    case CAPE_UDC_LIST:
-    case CAPE_UDC_NODE:
+    CapeUdc ret = NULL;
+
+    switch (self->type)
     {
-      ret = cape_udc_find_n__iterate (self, name, value);
-      break;
+        case CAPE_UDC_LIST:
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_find_n__iterate (self, name, value);
+            break;
+        }
     }
-  }
-  
-  return ret;
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_find_s__iterate (CapeUdc self, const CapeString name, const CapeString value)
+{
+    CapeUdc ret = NULL;
+
+    // local objects
+    CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+
+    while (cape_udc_cursor_next (cursor))
+    {
+        CapeUdc seek_node = cape_udc_get (cursor->item, name);
+        if (seek_node)
+        {
+            if ((seek_node->type == CAPE_UDC_STRING) && cape_str_equal ((CapeString)(seek_node->data), value))
+            {
+                ret = cursor->item;
+                break;
+            }
+        }
+    }
+
+    cape_udc_cursor_del (&cursor);
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_find_s (CapeUdc self, const CapeString name, const CapeString value)
+{
+    CapeUdc ret = NULL;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_find_s__iterate (self, name, value);
+            break;
+        }
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -1935,6 +1980,170 @@ void cape_udc_reduce_s (CapeUdc self, const CapeString name, const CapeString va
       break;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_equal (CapeUdc self, CapeUdc other)
+{
+    int ret = FALSE;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            if (other->type == CAPE_UDC_LIST)
+            {
+                CapeListCursor cursor1; cape_list_cursor_init (self->data, &cursor1, CAPE_DIRECTION_FORW);
+                CapeListCursor cursor2; cape_list_cursor_init (other->data, &cursor2, CAPE_DIRECTION_FORW);
+
+                ret = TRUE;
+
+                while (ret && cape_list_cursor_next (&cursor1))
+                {
+                    if (cape_list_cursor_next (&cursor2))
+                    {
+                        ret = cape_udc_equal (cape_list_node_data (cursor1.node), cape_list_node_data (cursor2.node));
+                    }
+                    else
+                    {
+                        ret = FALSE;
+                    }
+                }
+
+                if (ret && cape_list_cursor_next (&cursor2))
+                {
+                    ret = FALSE;
+                }
+            }
+
+            break;
+        }
+        case CAPE_UDC_NODE:
+        {
+            // TODO: simliar as list
+
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            if (other->type == CAPE_UDC_STRING)
+            {
+                ret = cape_str_equal (self->data, other->data);
+            }
+
+            break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            if (other->type == CAPE_UDC_NUMBER)
+            {
+                ret = ((number_t)(self->data) == (number_t)(other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            if (other->type == CAPE_UDC_FLOAT)
+            {
+                double* d1 = self->data;
+                double* d2 = other->data;
+
+                if (d1 && d2)
+                {
+                    ret = (*d1 == *d2);
+                }
+            }
+
+            break;
+        }
+        case CAPE_UDC_BOOL:
+        {
+            if (other->type == CAPE_UDC_BOOL)
+            {
+                ret = ((number_t)(self->data) == (number_t)(other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            if (other->type == CAPE_UDC_DATETIME)
+            {
+                ret = (0 == cape_datetime_cmp (self->data, other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            // TODO: compare 2 streams
+
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has__iterate (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    CapeUdcCursor* cursor = cape_udc_cursor_new (to_find, CAPE_DIRECTION_FORW);
+
+    while (cape_udc_cursor_next (cursor))
+    {
+        // try to find a node with the same name
+        CapeUdc node_found = cape_udc_get (self, cape_udc_name (cursor->item));
+        if (node_found)
+        {
+            ret = cape_udc_equal (cursor->item, node_found);
+        }
+    }
+
+    cape_udc_cursor_del (&cursor);
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has__node (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    switch (to_find->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_has__iterate (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_has__node (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------

@@ -667,8 +667,16 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
     if (number_of_events < 0)
     {
-      res = cape_err_lastOSError (err);
-      goto cleanup_and_exit;
+        if (errno == EINTR)
+        {
+            res = CAPE_ERR_NONE;
+            goto cleanup_and_exit;
+        }
+        else
+        {
+            res = cape_err_lastOSError (err);
+            goto cleanup_and_exit;
+        }
     }
 
     for (i = 0; i < number_of_events; i++)

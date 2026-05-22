@@ -166,8 +166,17 @@ __CAPE_LIBEX   CapeUdc              cape_udc_get_last         (CapeUdc);
                                     /* iterates through (node | list) searching for an entry with the name and value */
 __CAPE_LIBEX   CapeUdc              cape_udc_find_n           (CapeUdc, const CapeString name, number_t value);
 
+                                    /* iterates through (node | list) searching for an entry with the name and value */
+__CAPE_LIBEX   CapeUdc              cape_udc_find_s           (CapeUdc, const CapeString name, const CapeString value);
+
                                     /* iterates through (node | list) removes entry with the name and value */
 __CAPE_LIBEX   void                 cape_udc_reduce_s         (CapeUdc, const CapeString name, const CapeString value);
+
+                                    /* compares two udc objects, returns TRUE if equal */
+__CAPE_LIBEX   int                  cape_udc_equal            (CapeUdc, CapeUdc);
+
+                                    /* iterates through (node) and try to find the same entry in the to_find node */
+__CAPE_LIBEX   int                  cape_udc_has              (CapeUdc, CapeUdc to_find);
 
 //-----------------------------------------------------------------------------
 
