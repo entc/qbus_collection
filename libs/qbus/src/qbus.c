@@ -142,7 +142,6 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
     // the mitem skey has the original the request context
     const CapeString saves_key = qbus_method_item_skey (mitem);
 
-    /*
     {
       QBusM msg = *p_msg;
       
@@ -150,9 +149,8 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
       cape_str_replace_cp (&(msg->chain_key), saves_key);
       cape_str_del (&(msg->sender));
     }
-     */
 
-    qbus_methods__rpc_queue (self->methods, mitem, p_msg, saves_key);
+    qbus_methods__rpc_queue (self->methods, mitem, p_msg, saves_key, NULL);
   }
 }
 
@@ -475,89 +473,89 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
 
   if (cape_str_compare (module_upper_case, "QBUS"))  // internal methods
   {
-    if (cape_str_equal (method, "modules_get"))
-    {
-        const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
+      if (cape_str_equal (method, "modules_get"))
+      {
+          const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
 
-        // need to clone the qin
-        // TODO: check why we need this
-        QBusM qin = qbus_message_mv (msg);
+          // need to clone the qin
+          // TODO: check why we need this
+          QBusM qin = qbus_message_mv (msg);
 
-        // correct the qin skey environment
-        cape_str_replace_cp (&(qin->chain_key), saves_key);
-        cape_str_del (&(qin->sender));
+          // correct the qin skey environment
+          cape_str_replace_cp (&(qin->chain_key), saves_key);
+          cape_str_del (&(qin->sender));
 
-        {
-            QBusMethodItem mitem = qbus_method_item_new (self, qbus_request__on_modules_get, saves_key, NULL, NULL, qin->rinfo);
+          {
+              QBusMethodItem mitem = qbus_method_item_new (self, qbus_request__on_modules_get, saves_key, NULL, NULL, qin->rinfo);
 
-            qbus_methods__rpc_queue (self->methods, mitem, &qin, saves_key);
+              qbus_methods__rpc_queue (self->methods, mitem, &qin, saves_key, method);
 
-            qbus_method_item_del (&mitem);
-        }
+              qbus_method_item_del (&mitem);
+          }
 
-        res = CAPE_ERR_NONE;
-    }
-    else
-    {
-        res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "command not found");
-    }
+          res = CAPE_ERR_NONE;
+      }
+      else
+      {
+          res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "command not found");
+      }
   }
   else if (cape_str_compare (module_upper_case, qbus_config_name (self->config)))
   {
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s'", module_upper_case);
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "request", "execute local request on '%s' -> save key %s", module_upper_case, msg->chain_key);
 
-    const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
+      const CapeString saves_key = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, NULL);
 
-    // need to clone the qin
-    // TODO: check why we need this
-    QBusM qin = qbus_message_mv (msg);
+      // need to clone the qin
+      // TODO: check why we need this
+      QBusM qin = qbus_message_mv (msg);
 
-    // correct the qin skey environment
-    cape_str_replace_cp (&(qin->chain_key), saves_key);
-    cape_str_del (&(qin->sender));
+      // correct the qin skey environment
+      cape_str_replace_cp (&(qin->chain_key), saves_key);
+      cape_str_del (&(qin->sender));
 
-    res = qbus_methods_run (self->methods, method, saves_key, &qin, err);
-    if (res)
-    {
-      
-    }
+      res = qbus_methods_run (self->methods, method, saves_key, &qin, err);
+      if (res)
+      {
+
+      }
   }
   else
   {
-    const CapeString cid_dst = qbus_router_get (self->router, module_upper_case);
+      const CapeString cid_dst = qbus_router_get (self->router, module_upper_case);
 
-    if (cid_dst)
-    {
-      const CapeString skey = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, cid_dst);
-
-      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC [%s:%s] on %s with skey = %s", module, method, cid_dst, skey);
-
-      qbus_con_snd (self->con, cid_dst, method, skey, QBUS_FRAME_TYPE_MSG_REQ, msg);
-
-      res = CAPE_ERR_NONE;
-    }
-    else
-    {
-      // log
-      cape_log_fmt (CAPE_LL_WARN, "QBUS", "msg forward", "no route to module %s", module);
-
+      if (cid_dst)
       {
-        QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, msg->chain_key, msg->sender, NULL, msg->rinfo);
+          const CapeString skey = qbus_methods_save (self->methods, user_ptr, on_msg, msg->chain_key, msg->sender, msg->rinfo, cid_dst);
 
-        // need to clone the qin
-        // TODO: check why we need this
-        QBusM qin = qbus_message_mv (msg);
+          //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "send", "run RPC [%s:%s] on %s with skey = %s", module, method, cid_dst, skey);
 
-        qin->err = cape_err_new ();
-        cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
-        
-        qbus_methods__rpc_queue (self->methods, mitem, &qin, qin->chain_key);
-        
-        qbus_method_item_del (&mitem);
+          qbus_con_snd (self->con, cid_dst, method, skey, QBUS_FRAME_TYPE_MSG_REQ, msg);
+
+          res = CAPE_ERR_NONE;
       }
-      
-      res = CAPE_ERR_NONE;
-    }
+      else
+      {
+          // log
+          cape_log_fmt (CAPE_LL_WARN, "QBUS", "msg forward", "no route to module %s", module);
+
+          {
+              QBusMethodItem mitem = qbus_method_item_new (user_ptr, on_msg, msg->chain_key, msg->sender, NULL, msg->rinfo);
+
+              // need to clone the qin
+              // TODO: check why we need this
+              QBusM qin = qbus_message_mv (msg);
+
+              qin->err = cape_err_new ();
+              cape_err_set_fmt__i (qin->err, 0, NULL, CAPE_ERR_NOT_FOUND, "no route to module [%s]", module_upper_case);
+
+              qbus_methods__rpc_queue (self->methods, mitem, &qin, qin->chain_key, method);
+
+              qbus_method_item_del (&mitem);
+          }
+
+          res = CAPE_ERR_NONE;
+      }
   }
   
   cape_str_del (&module_upper_case);

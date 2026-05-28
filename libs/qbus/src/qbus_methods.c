@@ -348,42 +348,46 @@ struct QBusMethodRpcQueueItem_s
   
   void* on_msg_user_ptr;
   fct_qbus_on_msg on_msg;
+    
+    CapeString method_name;
 
 }; typedef struct QBusMethodRpcQueueItem_s* QBusMethodRpcQueueItem;
 
 //-----------------------------------------------------------------------------
 
-QBusMethodRpcQueueItem qbus_methods__rpc_queue_item_new (QBusMethods methods, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
+QBusMethodRpcQueueItem qbus_methods__rpc_queue_item_new (QBusMethods methods, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey, const CapeString method_name)
 {
-  QBusMethodRpcQueueItem self = CAPE_NEW (struct QBusMethodRpcQueueItem_s);
-  
-  self->on_msg_user_ptr = mitem->user_ptr;
-  self->on_msg = mitem->on_msg;
-      
-  self->qin = *p_qin;
-  *p_qin = NULL;
-  
-  self->qbus = methods->qbus;
-  self->self = methods;
-  
-  self->saves_key = cape_str_cp (skey);
+    QBusMethodRpcQueueItem self = CAPE_NEW (struct QBusMethodRpcQueueItem_s);
+    
+    self->on_msg_user_ptr = mitem->user_ptr;
+    self->on_msg = mitem->on_msg;
+        
+    self->qin = *p_qin;
+    *p_qin = NULL;
+    
+    self->qbus = methods->qbus;
+    self->self = methods;
+    
+    self->saves_key = cape_str_cp (skey);
+    self->method_name = cape_str_cp (method_name);
 
-  return self;
+    return self;
 }
 
 //-----------------------------------------------------------------------------
 
 void qbus_methods__rpc_queue_item_del (QBusMethodRpcQueueItem* p_self)
 {
-  if (*p_self)
-  {
-    QBusMethodRpcQueueItem self = *p_self;
-    
-    qbus_message_del (&(self->qin));
-    cape_str_del (&(self->saves_key));
-    
-    CAPE_DEL (p_self, struct QBusMethodRpcQueueItem_s);
-  }
+    if (*p_self)
+    {
+        QBusMethodRpcQueueItem self = *p_self;
+        
+        qbus_message_del (&(self->qin));
+        cape_str_del (&(self->saves_key));
+        cape_str_del (&(self->method_name));
+
+        CAPE_DEL (p_self, struct QBusMethodRpcQueueItem_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -401,20 +405,27 @@ void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, 
   }
   
   {
+      int res;
+      
     CapeErr err = cape_err_new ();
     QBusM qout = qbus_message_new (NULL, NULL);
     
     QBusMethodItem mitem = NULL;
-        
-    int res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
-    
+
+    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "------------>>>>>>>>", "%s [%s]", mctx->saves_key, mctx->method_name);
+
+    res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
+
     // check for special case continue
     if (res == CAPE_ERR_CONTINUE)
     {
-      // do nothing, the response is handled on another event
+        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "-----*********------", "%s [%s]: waiting for respond", mctx->saves_key, mctx->method_name);
+        // do nothing, the response is handled on another event
     }
     else
     {
+      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "<<<<<<<<<<<<--------", "%s [%s]: %i", mctx->saves_key, mctx->method_name, res);
+
       if (res)
       {
         cape_log_fmt (CAPE_LL_WARN, "QBUS", "queue", "method returned an error [%lu]: %s", res, cape_err_text (err));
@@ -422,7 +433,8 @@ void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, 
       
       if (mctx->saves_key)
       {
-        mitem = qbus_methods_load (mctx->self, mctx->saves_key);
+          // this removes the skey item from the storage
+          mitem = qbus_methods_load (mctx->self, mctx->saves_key);
       }
       
       // set the error object only in case there was an error
@@ -440,12 +452,12 @@ void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, 
 
 //-----------------------------------------------------------------------------
 
-void qbus_methods__rpc_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey)
+void qbus_methods__rpc_queue (QBusMethods self, QBusMethodItem mitem, QBusM* p_qin, const CapeString skey, const CapeString method_name)
 {
   if (mitem->on_msg)
   {
     // create new queue item
-    QBusMethodRpcQueueItem mqi = qbus_methods__rpc_queue_item_new (self, mitem, p_qin, skey);
+    QBusMethodRpcQueueItem mqi = qbus_methods__rpc_queue_item_new (self, mitem, p_qin, skey, method_name);
    
     // append a new task to the queue
     cape_queue_add (self->queue, NULL, qbus_methods__rpc_queue__on_event, NULL, NULL, mqi, 0);
@@ -467,7 +479,7 @@ int qbus_methods_run (QBusMethods self, const CapeString method_name, const Cape
   
   if (n)
   {
-    qbus_methods__rpc_queue (self, cape_map_node_value (n), p_qin, saves_key);
+    qbus_methods__rpc_queue (self, cape_map_node_value (n), p_qin, saves_key, method_name);
     
     res = CAPE_ERR_NONE;
   }
@@ -504,7 +516,7 @@ void qbus_methods_abort (QBusMethods self, const CapeString cid, const CapeStrin
         cape_err_set_fmt (qbus_message_err_new (qin), CAPE_ERR_PROCESS_ABORT, "module [%s] has terminated", name);
         
         // continue with the user process
-        qbus_methods__rpc_queue (self, mitem, &qin, saves_key);
+        qbus_methods__rpc_queue (self, mitem, &qin, saves_key, NULL);
         
         qbus_method_item_del (&mitem);
         

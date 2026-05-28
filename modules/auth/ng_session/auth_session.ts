@@ -942,7 +942,7 @@ export class AuthWorkspaceGuard implements CanActivate, OnInit {
 
   canActivate (next: ActivatedRouteSnapshot): Promise<boolean | UrlTree> | boolean | UrlTree
   {
-    let rules = next.data.rules;
+    let rules = next.data['rules'];
     let state = next['_routerState'];
 
     if (rules && Array.isArray (rules))

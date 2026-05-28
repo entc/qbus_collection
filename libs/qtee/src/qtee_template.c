@@ -780,7 +780,7 @@ struct CapeTemplate_s
 
 //-----------------------------------------------------------------------------
 
-struct EcTemplateCompiler_s
+struct QTeeTemplateCompiler_s
 {
   
   int state;
@@ -789,13 +789,13 @@ struct EcTemplateCompiler_s
   
   CapeTemplatePart part;   // reference
   
-}; typedef struct EcTemplateCompiler_s* EcTemplateCompiler;
+}; typedef struct QTeeTemplateCompiler_s* QTeeTemplateCompiler;
 
 //-----------------------------------------------------------------------------
 
-EcTemplateCompiler cape_template_compiler_new (CapeTemplatePart part)
+QTeeTemplateCompiler cape_template_compiler_new (CapeTemplatePart part)
 {
-  EcTemplateCompiler self = CAPE_NEW (struct EcTemplateCompiler_s);
+    QTeeTemplateCompiler self = CAPE_NEW (struct QTeeTemplateCompiler_s);
   
   self->state = 0;
   self->sb = cape_stream_new ();
@@ -807,13 +807,16 @@ EcTemplateCompiler cape_template_compiler_new (CapeTemplatePart part)
 
 //-----------------------------------------------------------------------------
 
-void cape_template_compiler_del (EcTemplateCompiler* p_self)
+void cape_template_compiler_del (QTeeTemplateCompiler* p_self)
 {
-  EcTemplateCompiler self = *p_self;
-  
-  cape_stream_del (&(self->sb));
-  
-  CAPE_DEL (p_self, struct EcTemplateCompiler_s);
+    if (*p_self)
+    {
+        QTeeTemplateCompiler self = *p_self;
+      
+        cape_stream_del (&(self->sb));
+      
+        CAPE_DEL (p_self, struct QTeeTemplateCompiler_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -867,7 +870,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-void cape_template_compiler_module (EcTemplateCompiler self, const CapeString raw_name)
+void cape_template_compiler_module (QTeeTemplateCompiler self, const CapeString raw_name)
 {
   // local objects
   CapeString name = NULL;
@@ -892,7 +895,7 @@ void cape_template_compiler_module (EcTemplateCompiler self, const CapeString ra
 
 //-----------------------------------------------------------------------------
 
-int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
+int cape_template_compiler_part (QTeeTemplateCompiler self, int type, CapeErr err)
 {
   switch (type)
   {
@@ -968,202 +971,246 @@ int cape_template_compiler_part (EcTemplateCompiler self, int type, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_compiler_parse (EcTemplateCompiler self, const char* buffer, number_t size, CapeErr err)
+#define QTEE_TEMPLATE_PARSE_TYPE__NONE            0
+#define QTEE_TEMPLATE_PARSE_TYPE__ITEM_PRE        1
+#define QTEE_TEMPLATE_PARSE_TYPE__ITEM            2
+#define QTEE_TEMPLATE_PARSE_TYPE__ITEM_RET        3
+#define QTEE_TEMPLATE_PARSE_TYPE__FILE_PRE        4
+#define QTEE_TEMPLATE_PARSE_TYPE__FILE            5
+#define QTEE_TEMPLATE_PARSE_TYPE__FILE_RET        6
+#define QTEE_TEMPLATE_PARSE_TYPE__ESCS_PRE        7
+#define QTEE_TEMPLATE_PARSE_TYPE__ESCS            8
+#define QTEE_TEMPLATE_PARSE_TYPE__ESCS_RET        9
+#define QTEE_TEMPLATE_PARSE_TYPE__SPECIAL        10
+
+//-----------------------------------------------------------------------------
+
+int qtee_template_compiler_parse (QTeeTemplateCompiler self, const char* buffer, number_t size, CapeErr err)
 {
-  int res;
-  
-  const char* c = buffer;
-  int i;
-  
-  for (i = 0; i < size; i++, c++)
-  {
-    switch (self->state)
+    int res;
+    
+    const char* c = buffer;
+    int i;
+    
+    for (i = 0; i < size; i++, c++)
     {
-      case 0:
-      {
-        if (*c == '{')
+        switch (self->state)
         {
-          self->state = 1;
-        }
-        else if (*c == '[')
-        {
-          self->state = 4;
-        }
-        else
-        {
-          cape_stream_append_c (self->sb, *c);
-        }
+            case QTEE_TEMPLATE_PARSE_TYPE__NONE:
+            {
+                // start with a simple devider
+                if (*c == '{')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ITEM_PRE;
+                }
+                else if (*c == '[')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__FILE_PRE;
+                }
+                else if (*c == '(')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ESCS_PRE;
+                }
+                else
+                {
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 1:
-      {
-        if (*c == '{')
-        {
-          res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
-          if (res)
-          {
-            return res;
-          }
-          
-          self->state = 2;
-        }
-        else
-        {
-          self->state = 0;
-          cape_stream_append_c (self->sb, '{');
-          cape_stream_append_c (self->sb, *c);
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ITEM_PRE:
+            {
+                if (*c == '{')
+                {
+                    res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
+                    if (res)
+                    {
+                        return res;
+                    }
 
-        break;
-      }
-      case 2:
-      {
-        if (*c == '}')
-        {
-          self->state = 3;
-        }
-        else
-        {
-          cape_stream_append_c (self->sb, *c);
-        }
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ITEM;
+                }
+                else
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+                    
+                    // add missing
+                    cape_stream_append_c (self->sb, '{');
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 3:
-      {
-        if (*c == '}')
-        {
-          res = cape_template_compiler_part (self, PART_TYPE_TAG, err);
-          if (res)
-          {
-            return res;
-          }
-          
-          self->state = 7;
-        }
-        else
-        {
-          self->state = 2;
-          cape_stream_append_c (self->sb, '}');
-          cape_stream_append_c (self->sb, *c);
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ITEM:
+            {
+                if (*c == '}')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ITEM_RET;
+                }
+                else
+                {
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 4:
-      {
-        if (*c == '[')
-        {
-          res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
-          if (res)
-          {
-            return res;
-          }
-          
-          self->state = 5;
-        }
-        else
-        {
-          self->state = 0;
-          cape_stream_append_c (self->sb, '[');
-          cape_stream_append_c (self->sb, *c);
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ITEM_RET:
+            {
+                if (*c == '}')
+                {
+                    res = cape_template_compiler_part (self, PART_TYPE_TAG, err);
+                    if (res)
+                    {
+                        return res;
+                    }
+                    
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+                }
+                else
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ITEM;
+                    
+                    // add missing
+                    cape_stream_append_c (self->sb, '}');
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 5:
-      {
-        if (*c == ']')
-        {
-          self->state = 6;
-        }
-        else
-        {
-          cape_stream_append_c (self->sb, *c);
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__FILE_PRE:
+            {
+                if (*c == '[')
+                {
+                    res = cape_template_compiler_part (self, PART_TYPE_TEXT, err);
+                    if (res)
+                    {
+                      return res;
+                    }
+                    
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__FILE;
+                }
+                else
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+                    
+                    // add missing
+                    cape_stream_append_c (self->sb, '[');
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 6:
-      {
-        if (*c == ']')
-        {
-          res = cape_template_compiler_part (self, PART_TYPE_FILE, err);
-          if (res)
-          {
-            return res;
-          }
-          
-          self->state = 7;
-        }
-        else
-        {
-          self->state = 5;
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__FILE:
+            {
+                if (*c == ']')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__FILE_RET;
+                }
+                else
+                {
+                    cape_stream_append_c (self->sb, *c);
+                }
 
-        break;
-      }
-      case 7:   // special state
-      {
-        if ((*c == '\n')||(*c == '\r'))
-        {
-         // cape_stream_append_c (self->sb, *c);
-          
-          /*
-          res = cape_template_compiler_part (self, PART_TYPE_CR, err);
-          if (res)
-          {
-            return res;
-          }
-          */
-          
-          self->state = 0;
-        }
-        else if (*c == '{')
-        {
-          self->state = 1;
-        }
-        else if (*c == '[')
-        {
-          self->state = 4;
-        }
-        else
-        {
-          cape_stream_append_c (self->sb, *c);
-          self->state = 0;
-        }
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__FILE_RET:
+            {
+                if (*c == ']')
+                {
+                    res = cape_template_compiler_part (self, PART_TYPE_FILE, err);
+                    if (res)
+                    {
+                        return res;
+                    }
 
-        break;
-      }
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+                }
+                else
+                {
+                    // add missing
+                    cape_stream_append_c (self->sb, ']');
+                    cape_stream_append_c (self->sb, *c);
+
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__FILE;
+                }
+
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ESCS_PRE:
+            {
+                if (*c == '(')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ESCS;
+                }
+                else
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+
+                    // add missing
+                    cape_stream_append_c (self->sb, '(');
+                    cape_stream_append_c (self->sb, *c);
+                }
+
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ESCS:
+            {
+                if (*c == ')')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ESCS_RET;
+                }
+                else
+                {
+                    cape_stream_append_c (self->sb, *c);
+                }
+
+                break;
+            }
+            case QTEE_TEMPLATE_PARSE_TYPE__ESCS_RET:
+            {
+                if (*c == ')')
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__NONE;
+                }
+                else
+                {
+                    self->state = QTEE_TEMPLATE_PARSE_TYPE__ESCS;
+                    
+                    // add missing
+                    cape_stream_append_c (self->sb, ')');
+                    cape_stream_append_c (self->sb, *c);
+                }
+
+                break;
+            }
+        }
     }
-  }
-  
-  // add last part as text
-  return cape_template_compiler_part (self, PART_TYPE_TEXT, err);
+    
+    // add last part as text
+    return cape_template_compiler_part (self, PART_TYPE_TEXT, err);
 }
 
 //-----------------------------------------------------------------------------
 
-static int __STDCALL cape_template_compile__on_buf (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
+static int __STDCALL qtee_template_compile__on_buf (void* ptr, const char* bufdat, number_t buflen, CapeErr err)
 {
-  return cape_template_compiler_parse (ptr, bufdat, buflen, err);
+    return qtee_template_compiler_parse (ptr, bufdat, buflen, err);
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_template_compile (CapeTemplate self, const char* path, CapeErr err)
 {
-  int res;
+    int res;
   
-  EcTemplateCompiler tcl = cape_template_compiler_new (self->root_part);
+    // local objects
+    QTeeTemplateCompiler tcl = cape_template_compiler_new (self->root_part);
 
-  // open the file and parse the content
-  res = cape_fs_file_load (path, self->fileName, tcl, cape_template_compile__on_buf, err);
+    // open the file and parse the content
+    res = cape_fs_file_load (path, self->fileName, tcl, qtee_template_compile__on_buf, err);
 
-  cape_template_compiler_del (&tcl);
-
-  return res;
+    cape_template_compiler_del (&tcl);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -1233,15 +1280,16 @@ int cape_template_compile_file (CapeTemplate self, const char* path, const char*
 
 int cape_template_compile_str (CapeTemplate self, const char* content, CapeErr err)
 {
-  int res;
+    int res;
   
-  EcTemplateCompiler tcl = cape_template_compiler_new (self->root_part);
-  
-  res = cape_template_compiler_parse (tcl, content, cape_str_size (content), err);
-  
-  cape_template_compiler_del (&tcl);
-  
-  return res;
+    // local object
+    QTeeTemplateCompiler tcl = cape_template_compiler_new (self->root_part);
+    
+    // parse the input string into qtee parts, results into root_part
+    res = qtee_template_compiler_parse (tcl, content, cape_str_size (content), err);
+    
+    cape_template_compiler_del (&tcl);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
