@@ -20,7 +20,7 @@ struct QBusMethodItem_s
   CapeUdc rinfo;
   CapeString cid;
   
-}; typedef struct QBusMethodItem_s* QBusMethodItem;
+};
 
 //-----------------------------------------------------------------------------
 

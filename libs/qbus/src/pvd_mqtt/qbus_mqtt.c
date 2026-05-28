@@ -323,6 +323,9 @@ int on_message (void* user_ptr, char* topicName, int topicLen, MQTTClient_messag
     }
   }
 
+  MQTTClient_freeMessage (&message);
+  MQTTClient_free (topicName);
+
   return 1;
 }
 
@@ -404,6 +407,8 @@ int qbus_pvd_ctx__internal__connect (QbusPvdCtx self, QbusPvdConnection connecti
   conn_opts.username = "test";
   conn_opts.password = "1234";
   conn_opts.keepAliveInterval = 120;     // give the server more time to respond
+  conn_opts.maxInflightMessages = 10;    // limit inflight messages
+  conn_opts.cleansession = 1;
 
   conn_opts.will = &last_will;
 
@@ -673,8 +678,9 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
 
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
-  mqtt_msg.qos = 1;
-  mqtt_msg.retained = TRUE;
+
+  mqtt_msg.qos = 0;
+  mqtt_msg.retained = FALSE;
 
   // send away
   MQTTClient_publishMessage (self->client, subscriber_topic, &mqtt_msg, &token);
