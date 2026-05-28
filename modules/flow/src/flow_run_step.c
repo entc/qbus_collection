@@ -61,7 +61,7 @@ static int __STDCALL flow_run_step__method__syncron__on_call (QBus qbus, void* p
     goto exit_and_cleanup;
   }
 
-  cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "send request");
+  cape_log_msg (CAPE_LL_TRACE, "FLOW", "method sync", "on call");
 
   if (qin->cdata)
   {
