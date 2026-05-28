@@ -474,7 +474,7 @@ const CapeString  cape_udc_name (const CapeUdc self)
 
 u_t cape_udc_type (const CapeUdc self)
 {
-  return self->type;
+    return (NULL == self) ? CAPE_UDC_UNDEFINED : self->type;
 }
 
 //-----------------------------------------------------------------------------
