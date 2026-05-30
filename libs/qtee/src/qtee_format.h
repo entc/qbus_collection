@@ -5,8 +5,6 @@
 #include <sys/cape_err.h>
 #include <stc/cape_udc.h>
 
-#include "qtee_template.h"
-
 struct QTeeFormat_s; typedef struct QTeeFormat_s* QTeeFormat;
 
 //-----------------------------------------------------------------------------
@@ -30,6 +28,10 @@ __CAPE_LIBEX   void           qtee_format_parse             (QTeeFormat, const C
 __CAPE_LIBEX   int            qtee_format_has_encrypted     (QTeeFormat);
 
 __CAPE_LIBEX   CapeUdc        qtee_format_item              (QTeeFormat, CapeList node_stack);
+
+//-----------------------------------------------------------------------------
+
+typedef char*  (__STDCALL *fct_cape_template__on_pipe) (const char* name, const char* pipe, const char* value);
 
 //-----------------------------------------------------------------------------
 
