@@ -49,12 +49,14 @@ void cape_template_part_checkForEval (QTeeTemplatePart self, const CapeString te
       // try to split with '='
       if (cape_tokenizer_split (text, '=', &s1, &s2))
       {
-        self->text = cape_str_trim_utf8 (s1);
-        self->eval = cape_str_trim_utf8 (s2);
+          self->text = cape_str_trim_utf8 (s1);
+          self->eval = cape_str_trim_utf8 (s2);
+
+          self->format = qtee_format_gen (self->text);
       }
       else
       {
-        self->format = qtee_format_gen (text);
+          self->format = qtee_format_gen (text);
       }
 
       cape_str_del (&s1);
@@ -401,6 +403,8 @@ int cape_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
     cape_log_msg (CAPE_LL_WARN, "QTEE", "template", "no format defined");
   }
 
+    cape_log_fmt (CAPE_LL_TRACE, "QTEE", "tag apply", "use format = '%s', found item = %p", self->text, found_item);
+
   // call the tag callback
     qtee_template_cb__tag (cb, self->text);
   
@@ -569,8 +573,8 @@ int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTe
       {
         case PART_TYPE_TEXT:
         {
-            qtee_template_cb__value (cb, part->text);
-            
+            qtee_template_cb__s (cb, self->format, part->text);
+                        
           break;
         }
         case PART_TYPE_FILE:
@@ -614,20 +618,21 @@ int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTe
         }
         case PART_TYPE_TAG:
         {
-          if (cape_str_equal (part->text, "INDEX_1"))
-          {
-              CapeString h = cape_str_n (pos + 1);
-            
-              qtee_template_cb__value (cb, h);
+            // apply special values
+            if (cape_str_equal (part->text, "INDEX_1"))
+            {
+                CapeString h = cape_str_n (pos + 1);
               
-              cape_str_del (&h);
-          }
-          else
-          {
-            cape_template_tag_apply (part, node_stack, cb, cursor->position, err);
-          }
-          
-          break;
+                qtee_template_cb__value (cb, h);
+                
+                cape_str_del (&h);
+            }
+            else
+            {
+                cape_template_tag_apply (part, node_stack, cb, cursor->position, err);
+            }
+
+            break;
         }
       }
     }

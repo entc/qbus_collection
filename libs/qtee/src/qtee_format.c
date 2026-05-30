@@ -459,11 +459,15 @@ void qtee_format_parse (QTeeFormat self, const CapeString possible_format)
         else
         {
             qtee_format_parse__items (self, s2);
-        }        
+        }       
+        
+        cape_log_fmt (CAPE_LL_TRACE, "QTEE", "format parse", "node_name = '%s', format = '%s'", self->node_name, s2);
     }
     else
     {
         self->node_name = cape_str_trim_utf8 (possible_format);
+
+        cape_log_fmt (CAPE_LL_TRACE, "QTEE", "format parse", "node_name = '%s', no format", self->node_name);
     }
     
     cape_str_del (&s2);
