@@ -390,22 +390,23 @@ int cape_template_mod_apply__date (QTeeTemplatePart self, CapeList node_stack, Q
 
 //-----------------------------------------------------------------------------
 
-int cape_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
+int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
 {
-  CapeUdc found_item = NULL;
+    CapeUdc found_item = NULL;
   
-  if (self->format)
-  {
-    found_item = qtee_format_item (self->format, node_stack);
-  }
-  else
-  {
-    cape_log_msg (CAPE_LL_WARN, "QTEE", "template", "no format defined");
-  }
+    if (self->format)
+    {
+        // try to find the node_name UDC object in the node stack
+        found_item = qtee_format_item (self->format, node_stack);
+    }
+    else
+    {
+        cape_log_msg (CAPE_LL_WARN, "QTEE", "template", "no format defined");
+    }
 
-    cape_log_fmt (CAPE_LL_TRACE, "QTEE", "tag apply", "use format = '%s', found item = %p", self->text, found_item);
+    //cape_log_fmt (CAPE_LL_TRACE, "QTEE", "tag apply", "use format = '%s', found item = %p", self->text, found_item);
 
-  // call the tag callback
+    // call the tag callback
     qtee_template_cb__tag (cb, self->text);
   
   if (found_item)
@@ -629,7 +630,7 @@ int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTe
             }
             else
             {
-                cape_template_tag_apply (part, node_stack, cb, cursor->position, err);
+                qtee_template_tag_apply (part, node_stack, cb, cursor->position, err);
             }
 
             break;

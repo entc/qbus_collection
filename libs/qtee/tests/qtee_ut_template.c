@@ -110,6 +110,34 @@ int main (int argc, char *argv[])
     cape_udc_add (values, &extras);
   }
   
+    {
+        CapeString template = cape_template_run ("{{#val_bool_true = TRUE}}TRUE{{/val_bool_true}}", values, NULL, NULL, err);
+        
+        if (template)
+        {
+          printf ("Template 1: '%s'\n", template);
+        }
+        else
+        {
+          printf ("ERR %s\n", cape_err_text(err));
+        }
+        
+        cape_str_del (&template);
+    }
+    {
+        CapeString template = cape_template_run ("{{#val_bool_false|lpad:30 = FALSE}}FALSE{{/val_bool_true}}", values, NULL, NULL, err);
+        
+        if (template)
+        {
+          printf ("Template 2: '%s'\n", template);
+        }
+        else
+        {
+          printf ("ERR %s\n", cape_err_text(err));
+        }
+        
+        cape_str_del (&template);
+    }
   {
     CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);
 
