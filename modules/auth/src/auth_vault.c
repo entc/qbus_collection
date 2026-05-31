@@ -76,33 +76,95 @@ void auth_vault_del (AuthVault* p_self)
 
 int auth_vault_set (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
 {
-  // do some security checks
-  if (qin->rinfo == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing rinfo");
-  }
+    int res;
+    
+    number_t wpid = 0;
+    const CapeString secret;
+    
+    if (NULL == qin->cdata)
+    {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+        goto exit_and_cleanup;
+    }
 
-  if (qin->cdata == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
-  }
+    // special case admin
+    if (qbus_message_role_has (qin, "admin"))
+    {
+        // preference of given wpid
+        wpid = cape_udc_get_n (qin->cdata, "wpid", cape_udc_get_n (qin->rinfo, "wpid", 0));
+    }
+    else if (qin->rinfo)
+    {
+        // simple case
+        wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
+    }
+    else
+    {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+        goto exit_and_cleanup;
+    }
 
-  number_t wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-  
-  if (wpid == 0)
-  {
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing wpid");
-  }
+    if (wpid == 0)
+    {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+        goto exit_and_cleanup;
+    }
 
-  const CapeString secret = cape_udc_get_s (qin->cdata, "secret", NULL);
-  if (secret == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing secret");
-  }
+    secret = cape_udc_get_s (qin->cdata, "secret", NULL);
+    if (secret == NULL)
+    {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_SECRET");
+        goto exit_and_cleanup;
+    }
+
+    auth_vault__save (self, wpid, secret);
+    
+    res = CAPE_ERR_NONE;
   
-  auth_vault__save (self, wpid, secret);
-  
-  return CAPE_ERR_NONE;
+exit_and_cleanup:
+    
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_vault_close (AuthVault self, QBusM qin, QBusM qout, CapeErr err)
+{
+    int res;
+    number_t wpid;
+    
+    // allow only admin role to unset the vault
+    if (FALSE == qbus_message_role_has (qin, "admin"))
+    {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+        goto exit_and_cleanup;
+    }
+
+    if (NULL == qin->cdata)
+    {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+        goto exit_and_cleanup;
+    }
+
+    wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+    if (wpid == 0)
+    {
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID");
+        goto exit_and_cleanup;
+    }
+    
+    cape_mutex_lock (self->mutex);
+
+    // remove the entry from the vault
+    cape_map_erase (self->contexts, cape_map_find (self->contexts, (void*)wpid));
+
+    cape_mutex_unlock (self->mutex);
+
+    res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+    
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -133,6 +195,8 @@ void auth_vault__save (AuthVault self, number_t wpid, const CapeString vsec)
 {
   cape_mutex_lock (self->mutex);
   
+    printf ("VSEC [%lu]: %s\n", cape_str_size (vsec), vsec);
+    
   {
     CapeMapNode n = cape_map_find (self->contexts, (void*)wpid);
     

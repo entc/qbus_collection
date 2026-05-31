@@ -5,11 +5,18 @@
     <div class="btn-group" role="group" aria-label="Basic example">
       <button type="button" class="btn btn-outline-secondary btn-sm" (click)="fetch()"><i class="fa fa-sync-alt fa-fw"></i></button>
       <div class="btn-group" ngbDropdown role="group" aria-label="Add Roles">
-        <button type="button" class="btn btn-outline-success btn-sm" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;{{ 'AUTH.USER' | transloco }}</button>
-        <button class="btn btn-sm btn-outline-success" ngbDropdownToggle><i class="fa fa-bars"></i></button>
+        <button type="button" class="btn btn-outline-success btn-sm width_15em" (click)="open_add(info_item)"><i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;{{ 'AUTH.USER' | transloco }}</button>
+        <button *authSessionRole="['admin']" class="btn btn-sm btn-outline-success" ngbDropdownToggle><i class="fa fa-bars"></i></button>
         <div class="dropdown-menu" ngbDropdownMenu>
-          <button *authSessionRole="['admin']" (click)="open_add_merge (info_item)" type="button" class="dropdown-item text-success">
+          <button (click)="open_add_merge (info_item)" type="button" class="dropdown-item text-success">
             <i class="fa fa-plus fa-fw"></i>&nbsp;&nbsp;|&nbsp;&nbsp;{{ 'AUTH.ADD_USER_MERGE' | transloco }}
+          </button>
+          <div class="dropdown-divider"></div>
+          <button (click)="open_vault_clear ()" type="button" class="dropdown-item text-danger">
+            <i class="fa fa-lock"></i>&nbsp;&nbsp;|&nbsp;&nbsp;{{ 'AUTH.VAULT_CLEAR' | transloco }}
+          </button>
+          <button (click)="open_vault_set ()" type="button" class="dropdown-item text-success">
+            <i class="fa fa-lock-open"></i>&nbsp;&nbsp;|&nbsp;&nbsp;{{ 'AUTH.VAULT_SET' | transloco }}
           </button>
         </div>
       </div>

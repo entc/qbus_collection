@@ -161,6 +161,48 @@ export class AuthUsersComponent implements OnInit {
 
     });
   }
+
+  //-----------------------------------------------------------------------------
+
+  private vault_clear ()
+  {
+    this.auth_session.json_rpc ('AUTH', 'vault_close', {wpid: this._wpid}).subscribe (() => {
+
+      this.fetch ();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public open_vault_clear ()
+  {
+    var holder: QbngOptionHolder = new QbngOptionHolder ('AUTH.VAULT_CLEAR', 'AUTH.VAULT_CLEAR', 'AUTH.VAULT_CLEAR');
+
+    this.modal_service.open(QbngWarnOptionModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create([{provide: QbngOptionHolder, useValue: holder}])}).result.then(() => {
+
+      this.vault_clear ();
+
+    }, () => {});
+  }
+
+  //-----------------------------------------------------------------------------
+
+  public open_vault_set ()
+  {
+    var ctx: AuthUserContext = new AuthUserContext;
+
+    ctx.wpid = Number(this._wpid);
+    ctx.gpid = null;
+    ctx.userid = null;
+    ctx.info = null;
+
+    this.modal_service.open (AuthUsersVaultSetModalComponent, {ariaLabelledBy: 'modal-basic-title', size: 'md', injector: Injector.create([{provide: AuthUserContext, useValue: ctx}])}).result.then(() => {
+
+      this.fetch ();
+
+    });
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -431,6 +473,33 @@ export class AuthUserItem
     }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
   }
 
+}
+
+//-----------------------------------------------------------------------------
+
+@Component({
+  selector: 'auth-users-vault-set-modal',
+  templateUrl: './modal_vault.html'
+}) export class AuthUsersVaultSetModalComponent {
+
+  public input_vsec: string;
+
+  //---------------------------------------------------------------------------
+
+  constructor (public modal: NgbActiveModal, private modal_service: NgbModal, private auth_session: AuthSession, public ctx: AuthUserContext)
+  {
+  }
+
+  //---------------------------------------------------------------------------
+
+  public apply()
+  {
+    this.auth_session.json_rpc ('AUTH', 'vault_set', {wpid: this.ctx.wpid, secret: this.input_vsec}).subscribe (() => {
+
+      this.modal.close();
+
+    }, (err: QbngErrorHolder) => this.modal_service.open (QbngErrorModalComponent, {ariaLabelledBy: 'modal-basic-title', injector: Injector.create ([{provide: QbngErrorHolder, useValue: err}])}));
+  }
 }
 
 //-----------------------------------------------------------------------------

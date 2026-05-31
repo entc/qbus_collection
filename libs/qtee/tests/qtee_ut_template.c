@@ -99,7 +99,7 @@ int main (int argc, char *argv[])
 
   cape_udc_add_b (values, "val_bool_true", TRUE);
   cape_udc_add_b (values, "val_bool_false", FALSE);
-
+    
   // subnode
   {
     CapeUdc extras = cape_udc_new (CAPE_UDC_NODE, "extras");
@@ -111,7 +111,7 @@ int main (int argc, char *argv[])
   }
   
     {
-        CapeString template = cape_template_run ("{{#val_bool_true = TRUE}}TRUE{{/val_bool_true}}", values, NULL, NULL, err);
+        CapeString template = cape_template_run ("{{#val_bool_true = TRUE}}TRUE{{/val_bool_true}} is not {{#val_bool_false = TRUE}}FALSE{{/val_bool_false}} but {{val_float5|lpad:10}}", values, NULL, NULL, err);
         
         if (template)
         {
@@ -125,7 +125,7 @@ int main (int argc, char *argv[])
         cape_str_del (&template);
     }
     {
-        CapeString template = cape_template_run ("{{#val_bool_false|lpad:30 = FALSE}}FALSE{{/val_bool_true}}", values, NULL, NULL, err);
+        CapeString template = cape_template_run ("{{#val_bool_false|lpad:30 = FALSE}}FALSE{{/val_bool_false}} is false {{val_float5|lpad:10}}", values, NULL, NULL, err);
         
         if (template)
         {
@@ -137,6 +137,58 @@ int main (int argc, char *argv[])
         }
         
         cape_str_del (&template);
+    }
+    {
+        CapeUdc values_h = cape_udc_new (CAPE_UDC_NODE, NULL);
+        
+        {
+            CapeUdc values_set = cape_udc_new (CAPE_UDC_LIST, "set");
+            
+            // add 10 lines
+            {
+                int i;
+                for (i = 0; i < 10; i++)
+                {
+                    CapeUdc set_item = cape_udc_new (CAPE_UDC_NODE, NULL);
+                    
+                    {
+                        CapeDatetime dt; cape_datetime_utc (&dt);
+                        cape_udc_add_d (set_item, "timestamp", &dt);
+                    }
+
+                    {
+                        CapeUdc h = cape_udc_cp (values);
+                        
+                        {
+                            cape_udc_add_b (h, "rand", i % 2);
+                        }
+                        
+                        cape_udc_add_name (set_item, &h, "data");
+                    }
+                    
+                    cape_udc_add (values_set, &set_item);
+                }
+            }
+            
+            cape_udc_add (values_h, &values_set);
+        }
+        
+        {
+            CapeString template = cape_template_run ("{{#set}}{{timestamp|date_utc:fd1}}{{#data}}{{val_float1|decimal:1%.%3|lpad:10}}{{val_float2|decimal:1%.%3|lpad:10}}{{#rand|lpad:21 = FALSE}}Manual{{/rand}}{{#rand|lpad:21 = TRUE}}Auto{{/rand}}{{val_float5|decimal:1%.%3|lpad:11}}{{val_float6|decimal:1%.%3|lpad:12}}{{/data}}\n{{/set}}", values_h, NULL, NULL, err);
+
+            if (template)
+            {
+              printf ("Template List: '\n%s'\n", template);
+            }
+            else
+            {
+              printf ("ERR %s\n", cape_err_text(err));
+            }
+            
+            cape_str_del (&template);
+        }
+        
+        cape_udc_del (&values_h);
     }
   {
     CapeString h = cape_template_run ("bool_t: {{val_bool_true}}, bool_f: {{val_bool_false}}", values, NULL, NULL, err);

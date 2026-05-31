@@ -229,8 +229,11 @@ int qcrypt__decrypt_row_node (const CapeString vsec, const CapeUdc row, const Ca
       {
         // convert to cape node
         CapeUdc k = cape_json_from_s (decrypted);
-        
-        cape_udc_add_name (row, &k, data_name);
+
+          if (k)
+          {
+              cape_udc_add_name (row, &k, data_name);
+          }
         
         cape_str_del (&decrypted);
       }

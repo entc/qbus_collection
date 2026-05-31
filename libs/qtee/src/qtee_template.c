@@ -184,15 +184,15 @@ void qtee_template_compiler_part (QTeeTemplateCompiler self, int type)
                   // is the current part the ending tag
                   if (qtee_template_part_equal (self->part, name + 1))
                   {
-                    // has the current part a parent
+                      // has the current part a parent
                       QTeeTemplatePart parent_part = qtee_template_part_parent (self->part);
-                    if (parent_part)
-                    {
-                      // change back the current part to the parent, that we go one level down
-                      self->part = parent_part;
-                    }
+                      if (parent_part)
+                      {
+                          // change back the current part to the parent, that we go one level down
+                          self->part = parent_part;
+                      }
                   }
-                  
+
                   break;
               }
               case '$':   // extra modules
