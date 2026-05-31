@@ -412,19 +412,19 @@ void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, 
     
     QBusMethodItem mitem = NULL;
 
-    cape_log_fmt (CAPE_LL_TRACE, "QBUS", "------------>>>>>>>>", "%s [%s]", mctx->saves_key, mctx->method_name);
+    //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "------------>>>>>>>>", "%s [%s]", mctx->saves_key, mctx->method_name);
 
     res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);
 
     // check for special case continue
     if (res == CAPE_ERR_CONTINUE)
     {
-        cape_log_fmt (CAPE_LL_TRACE, "QBUS", "-----*********------", "%s [%s]: waiting for respond", mctx->saves_key, mctx->method_name);
+        //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "-----*********------", "%s [%s]: waiting for respond", mctx->saves_key, mctx->method_name);
         // do nothing, the response is handled on another event
     }
     else
     {
-      cape_log_fmt (CAPE_LL_TRACE, "QBUS", "<<<<<<<<<<<<--------", "%s [%s]: %i", mctx->saves_key, mctx->method_name, res);
+      //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "<<<<<<<<<<<<--------", "%s [%s]: %i", mctx->saves_key, mctx->method_name, res);
 
       if (res)
       {

@@ -180,13 +180,13 @@ int adbl_pvd_connect (AdblPvdSession self, CapeErr err)
   mysql_options (self->mysql, MYSQL_OPT_RECONNECT, &reconnect);
   
   // set propper read timeout in seconds
-  timeout = 3;
+  timeout = cape_udc_get_n (self->cp, "timeout_read", 3);
   mysql_options (self->mysql, MYSQL_OPT_READ_TIMEOUT, &timeout);
   
   cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [opts]: ", "timeout read:  %is", timeout);
   
   // set propper write timeout in seconds
-  timeout = 3;
+  timeout = cape_udc_get_n (self->cp, "timeout_write", 3);
   mysql_options (self->mysql, MYSQL_OPT_WRITE_TIMEOUT, &timeout);
   
   cape_log_fmt (CAPE_LL_TRACE, "ADBL", "connect [opts]: ", "timeout write: %is", timeout);

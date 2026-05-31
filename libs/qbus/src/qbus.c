@@ -43,7 +43,7 @@ struct QBus_s
     QBusMethods methods;
 
     CapeThread thread;
-    
+
     void* on_init_ptr;
     fct_qbus_on_init on_init;
 
@@ -67,10 +67,10 @@ QBus qbus_new (const CapeString module, CapeUdc* p_args)
 
     self->con = NULL;
     self->thread = NULL;
-    
+
     self->on_init_ptr = NULL;
     self->on_init = NULL;
-    
+
     self->on_done_ptr = NULL;
     self->on_done = NULL;
 
@@ -105,7 +105,7 @@ void qbus_del (QBus* p_self)
             CapeErr err = cape_err_new ();
 
             self->on_done (self, self->on_done_ptr, err);
-            
+
             cape_err_del (&err);
         }
 
@@ -130,7 +130,7 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 {
   QBus self = user_ptr;
 
-  const CapeString cid = qbus_method_item_cid (mitem);  
+  const CapeString cid = qbus_method_item_cid (mitem);
   if (cid)
   {
     qbus_con_snd (self->con, cid, NULL, qbus_method_item_skey (mitem), QBUS_FRAME_TYPE_MSG_RES, *p_msg);
@@ -144,7 +144,7 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 
     {
       QBusM msg = *p_msg;
-      
+
       // correct the qin skey environment
       cape_str_replace_cp (&(msg->chain_key), saves_key);
       cape_str_del (&(msg->sender));
@@ -168,7 +168,7 @@ int __STDCALL qbus__on_clock (void* user_ptr)
 int qbus_init__preconditions (QBus self, CapeErr err)
 {
     int res;
-      
+
     // open the operating system AIO/event subsystem
     res = cape_aio_context_open (self->aio, err);
 
@@ -176,7 +176,7 @@ int qbus_init__preconditions (QBus self, CapeErr err)
     {
         CapeAioTimer timer = cape_aio_timer_new ();
 
-        if (cape_aio_timer_set (timer, 1000 * 60, self, qbus__on_clock, err))
+        if (cape_aio_timer_set (timer, 1000 /* ms */ * 60 /* s */ * qbus_config_n (self->config, "defrac", 60), self, qbus__on_clock, err))
         {
             return res;
         }
@@ -198,16 +198,16 @@ int qbus_init__submodules (QBus self, CapeErr err)
   {
     return res;
   }
-  
+
   // create
   self->con = qbus_con_new (self->router, self->methods, qbus_config_name (self->config));
-  
+
   res = qbus_con_init (self->con, self->engines, self->aio, qbus_config_s (self->config, "h", "127.0.0.1"), err);
   if (res)
   {
     return res;
   }
-  
+
   // optional start the agent
   if (qbus_config_b (self->config, "run_agent", FALSE))
   {
@@ -226,15 +226,15 @@ int qbus_init__submodules (QBus self, CapeErr err)
 int qbus_init__intern (QBus self, CapeErr err)
 {
   int res;
-  
+
 #if defined __WINDOWS_OS
-  
+
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization");
-  
+
 #else
 
   cape_log_fmt (CAPE_LL_TRACE, "QBUS", "instance", "start qbus initialization [%i:%i]", getuid(), getgid());
-  
+
 #endif
 
   res = qbus_init__preconditions (self, err);
@@ -242,7 +242,7 @@ int qbus_init__intern (QBus self, CapeErr err)
   {
     goto exit_and_cleanup;
   }
-  
+
   cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- user initialization --------------------------------------------------");
 
   if (self->on_init)
@@ -255,11 +255,11 @@ int qbus_init__intern (QBus self, CapeErr err)
   }
 
   cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- submodules -----------------------------------------------------------");
-    
+
   res = qbus_init__submodules (self, err);
 
 exit_and_cleanup:
-    
+
   return res;
 }
 
@@ -314,7 +314,7 @@ int qbus_wait (QBus self, CapeErr err)
 int qbus_loop__intern (QBus self, CapeErr err)
 {
     cape_log_msg (CAPE_LL_DEBUG, "QBUS", "instance", "---- main loop ------------------------------------------------------------");
-  
+
 #if defined __WINDOWS_OS
 
     // TODO: nice to have
@@ -368,7 +368,7 @@ int qbus_run (QBus self, CapeErr err)
 int __STDCALL qbus__worker (void* ptr)
 {
     QBus self = ptr;
-    
+
     // local objects
     CapeErr err = cape_err_new ();
 
@@ -378,7 +378,7 @@ int __STDCALL qbus__worker (void* ptr)
     }
 
     cape_err_del (&err);
-    
+
     // terminate thread
     return FALSE;
 }
@@ -390,20 +390,20 @@ int qbus_run__d (QBus self, CapeErr err)
     // initialize qbus
     {
         int res;
-        
+
         res = qbus_init__intern (self, err);
         if (res)
         {
             return res;
         }
     }
-    
+
     // allocate memory for the thread
     self->thread = cape_thread_new ();
-    
+
     // start the thread
     cape_thread_start (self->thread, qbus__worker, self);
-    
+
     return CAPE_ERR_NONE;
 }
 
@@ -413,7 +413,7 @@ void qbus_set_cb (QBus self, void* user_ptr, fct_qbus_on_init on_init, fct_qbus_
 {
     self->on_init_ptr = user_ptr;
     self->on_done_ptr = NULL;
-    
+
     self->on_init = on_init;
     self->on_done = on_done;
 }
@@ -433,7 +433,7 @@ void qbus_instance (const char* name, void* ptr, fct_qbus_on_init on_init, fct_q
 
     // set callbacks
     qbus_set_cb (self, ptr, on_init, on_done);
-    
+
     res = qbus_run (self, err);
 
     cape_log_msg (CAPE_LL_DEBUG, "qbus", "instance", "shutting down ...");
@@ -466,7 +466,7 @@ int __STDCALL qbus_request__on_modules_get (QBus self, void* ptr, QBusM qin, QBu
 int qbus_request (QBus self, const CapeString module, const CapeString method, QBusM msg, void* user_ptr, fct_qbus_on_msg on_msg, CapeErr err)
 {
   int res;
-  
+
   // local objects
   CapeString module_upper_case = cape_str_cp (module);
   cape_str_to_upper (module_upper_case);
@@ -557,7 +557,7 @@ int qbus_request (QBus self, const CapeString module, const CapeString method, Q
           res = CAPE_ERR_NONE;
       }
   }
-  
+
   cape_str_del (&module_upper_case);
   return res;
 }
@@ -589,7 +589,7 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
   {
     res = qbus_request (self, module, method, qin, NULL, on_msg, err);
   }
-  
+
   if (res)
   {
     return res;
@@ -606,17 +606,17 @@ int qbus_continue (QBus self, const CapeString module, const CapeString method, 
 int qbus_save (QBus self, QBusM msg, CapeString* p_skey, CapeErr err)
 {
   //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "save", "save message, skey = %s, sender = %s", msg->chain_key, msg->sender);
-  
+
   // use this key directly
   cape_str_replace_cp (p_skey, msg->chain_key);
-  
+
   /*
-  
+
   // save this context and overrides the given pointer to the skey
   cape_str_replace_cp (p_skey, qbus_methods_save (self->methods, NULL, NULL, msg->chain_key, msg->sender, msg->rinfo, NULL));
-  
+
   */
-  
+
   // always return continue
   return CAPE_ERR_CONTINUE;
 }
@@ -636,7 +636,7 @@ int qbus_response (QBus self, const CapeString skey, QBusM msg, CapeErr err)
     qbus_methods_response (self->methods, mitem, &qin, err);
 
     qbus_method_item_del (&mitem);
-    
+
     return CAPE_ERR_NONE;
   }
   else
@@ -650,7 +650,7 @@ int qbus_response (QBus self, const CapeString skey, QBusM msg, CapeErr err)
 int qbus_subscribe (QBus self, const CapeString module, const CapeString ident, void* user_ptr, fct_qbus_on_val on_val, CapeErr err)
 {
   int res;
-  
+
   // local objects
   CapeString topic = NULL;
   CapeString module_upper_case = cape_str_cp (module);
@@ -658,13 +658,13 @@ int qbus_subscribe (QBus self, const CapeString module, const CapeString ident, 
 
   // create the topic
   topic = cape_str_catenate_c (module_upper_case, '_', ident);
-  
+
   // this will activate the subscription on the connection
   qbus_con_sub_add (self->con, topic);
-  
+
   // this will save the callback related to the topic
   res = qbus_methods__sub_add (self->methods, topic, user_ptr, on_val, err);
-  
+
   cape_str_del (&module_upper_case);
   cape_str_del (&topic);
 
@@ -690,9 +690,9 @@ int qbus_unsubscribe (QBus self, const CapeString module, const CapeString ident
 
   // this will remove the callback related to the topic
   qbus_methods__sub_rm (self->methods, topic);
-  
+
   res = CAPE_ERR_NONE;
-  
+
   cape_str_del (&module_upper_case);
   cape_str_del (&topic);
 
@@ -707,10 +707,10 @@ void qbus_next (QBus self, const CapeString ident, CapeUdc* p_val)
   {
     // local objects
     CapeString topic = cape_str_catenate_c (qbus_config_name (self->config), '_', ident);
-    
+
     // this will emit the new value to the engine
     qbus_con_sub_next (self->con, topic, p_val);
-    
+
     cape_str_del (&topic);
   }
 }
@@ -728,7 +728,7 @@ CapeUdc qbus_methods (QBus self, const CapeString optional_module)
 {
     if (optional_module)
     {
-        
+
     }
     else
     {
