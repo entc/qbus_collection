@@ -139,7 +139,14 @@ static void __STDCALL cape_template_create_parts_onDestroy (void* ptr)
 
 int qtee_template_part_equal (QTeeTemplatePart self, const CapeString text)
 {
-  return cape_str_equal (self->text, text);
+    if (self->format)
+    {
+        return qtee_format_has_name (self->format, text);
+    }
+    else
+    {
+        return cape_str_equal (self->text, text);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -153,12 +160,15 @@ QTeeTemplatePart qtee_template_part_parent (QTeeTemplatePart self)
 
 void qtee_template_part_add (QTeeTemplatePart self, QTeeTemplatePart part)
 {
-  if (self->parts == NULL)
-  {
-    self->parts = cape_list_new (cape_template_create_parts_onDestroy);
-  }
-  
-  cape_list_push_back (self->parts, part);
+    if (self->parts == NULL)
+    {
+        self->parts = cape_list_new (cape_template_create_parts_onDestroy);
+    }
+    
+    // add a new part to the part list
+    cape_list_push_back (self->parts, part);
+    
+    cape_log_fmt (CAPE_LL_TRACE, "QTEE", "compiler", "add part [%i]@[%p] text = '%s'", part->type, self->parts, part->text);
 }
 
 //-----------------------------------------------------------------------------
@@ -286,8 +296,6 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
     
   cape_str_del (&le);
   cape_str_del (&re);
-  
-  //printf ("RET: %f\n", ret);
   
   return ret;
 }

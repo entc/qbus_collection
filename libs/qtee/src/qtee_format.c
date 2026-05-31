@@ -388,6 +388,13 @@ void qtee_format_del (QTeeFormat* p_self)
 
 //-----------------------------------------------------------------------------
 
+int qtee_format_has_name (QTeeFormat self, const CapeString text)
+{
+    return cape_str_equal (self->node_name, text);
+}
+
+//-----------------------------------------------------------------------------
+
 QTeeFormat qtee_format_gen (const CapeString possible_format)
 {
     QTeeFormat self = qtee_format_new ();
