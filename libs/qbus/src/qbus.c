@@ -158,8 +158,20 @@ void __STDCALL qbus_on_res (void* user_ptr, QBusMethodItem mitem, QBusM* p_msg)
 
 int __STDCALL qbus__on_clock (void* user_ptr)
 {
+#if defined __LINUX_OS
+
     malloc_trim (0);
 
+#elif defined __BSD_OS
+
+    malloc_zone_pressure_relief(NULL, 0);
+
+#elif defined _WIN64 || defined _WIN32
+
+    HeapCompact(GetProcessHeap(), 0);
+    
+#endif
+    
     return TRUE;
 }
 
