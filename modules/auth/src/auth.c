@@ -652,6 +652,15 @@ static int __STDCALL qbus_auth_vault_open (QBus qbus, void* ptr, QBusM qin, QBus
 
 //-------------------------------------------------------------------------------------
 
+static int __STDCALL qbus_auth_vault_close (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
+{
+  AuthContext ctx = ptr;
+
+  return auth_vault_close (ctx->vault, qin, qout, err);
+}
+
+//-------------------------------------------------------------------------------------
+
 static int __STDCALL qbus_auth_vault_get (QBus qbus, void* ptr, QBusM qin, QBusM qout, CapeErr err)
 {
   AuthContext ctx = ptr;
@@ -1001,6 +1010,9 @@ static int __STDCALL qbus_auth_init (QBus qbus, void* ptr, void** p_ptr, CapeErr
 
   // all vault functions
   qbus_register (qbus, "vault_set"            , ctx, qbus_auth_vault_open, NULL, err);
+
+  // all vault functions
+  qbus_register (qbus, "vault_close"          , ctx, qbus_auth_vault_close, NULL, err);
 
   // return vesc
   // can only be used internal

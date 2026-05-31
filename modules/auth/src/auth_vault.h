@@ -20,6 +20,8 @@ __CAPE_LIBEX   void         auth_vault_del    (AuthVault*);
 
 __CAPE_LIBEX   int          auth_vault_set    (AuthVault, QBusM qin, QBusM qout, CapeErr err);
 
+__CAPE_LIBEX   int          auth_vault_close  (AuthVault, QBusM qin, QBusM qout, CapeErr err);
+
 __CAPE_LIBEX   int          auth_vault_get    (AuthVault, QBusM qin, QBusM qout, CapeErr err);
 
 //-----------------------------------------------------------------------------
