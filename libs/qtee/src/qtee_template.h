@@ -27,10 +27,8 @@ __CAPE_LIBEX   void           cape_template_del            (CapeTemplate*);
 
 __CAPE_LIBEX   int            cape_template_compile_file   (CapeTemplate, const char* path, const char* name, const char* lang, CapeErr);
 
-                              /*
-                               compiles the template
-                               */
-__CAPE_LIBEX   int            cape_template_compile_str    (CapeTemplate, const char* content, CapeErr);
+                              /* compiles the template into parts */
+__CAPE_LIBEX   void           cape_template_compile_str    (CapeTemplate, const char* content);
 
 __CAPE_LIBEX   int            cape_template_apply          (CapeTemplate, CapeUdc node, void* ptr, fct_cape_template__on_text, fct_cape_template__on_file, fct_cape_template__on_pipe, fct_cape_template__on_tag, CapeErr);
 

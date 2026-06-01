@@ -51,11 +51,8 @@ void test_custom_files (CapeErr err)
 
   template_engine = cape_template_new ();
   
-  res = cape_template_compile_str (template_engine, cape_stream_get (s1), err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
+  // compile into parts
+  cape_template_compile_str (template_engine, cape_stream_get (s1));
   
   s2 = cape_stream_new ();
 

@@ -3,7 +3,8 @@ INCLUDE_DIRECTORIES("../../cape/src")
 #----------------------------------------------------------------------------------
 
 SET(QTEE_SOURCES
-  qtee_template_part.c
+  qtee_compiler.c
+  qtee_part.c
   qtee_template_cb.c
   qtee_template.c
   qtee_eval.c
@@ -12,7 +13,8 @@ SET(QTEE_SOURCES
 )
 
 SET(QTEE_HEADERS
-  qtee_template_part.h
+  qtee_compiler.h
+  qtee_part.h
   qtee_template_cb.h
   qtee_template.h
   qtee_eval.h

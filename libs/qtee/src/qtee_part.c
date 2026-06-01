@@ -1,4 +1,4 @@
-#include "qtee_template_part.h"
+#include "qtee_part.h"
 #include "qtee_eval.h"
 #include "qtee_format.h"
 
@@ -17,7 +17,7 @@
 
 //-----------------------------------------------------------------------------
 
-struct QTeeTemplatePart_s
+struct QTeePart_s
 {
     int type;
     
@@ -29,14 +29,14 @@ struct QTeeTemplatePart_s
     
     CapeList parts;
 
-    QTeeTemplatePart parent;
+    QTeePart parent;
 
     QTeeFormat format;
 };
 
 //-----------------------------------------------------------------------------
 
-void cape_template_part_checkForEval (QTeeTemplatePart self, const CapeString text)
+void cape_template_part_checkForEval (QTeePart self, const CapeString text)
 {
   switch (self->type)
   {
@@ -79,9 +79,9 @@ void cape_template_part_checkForEval (QTeeTemplatePart self, const CapeString te
 
 //-----------------------------------------------------------------------------
 
-QTeeTemplatePart qtee_template_part_new (int type, const CapeString raw_text, QTeeTemplatePart parent)
+QTeePart qtee_part_new (int type, const CapeString raw_text, QTeePart parent)
 {
-  QTeeTemplatePart self = CAPE_NEW (struct QTeeTemplatePart_s);
+  QTeePart self = CAPE_NEW (struct QTeePart_s);
   
   self->type = type;
   
@@ -102,9 +102,9 @@ QTeeTemplatePart qtee_template_part_new (int type, const CapeString raw_text, QT
 
 //-----------------------------------------------------------------------------
 
-void qtee_template_part_del (QTeeTemplatePart* p_self)
+void qtee_part_del (QTeePart* p_self)
 {
-    QTeeTemplatePart self = *p_self;
+    QTeePart self = *p_self;
   
   qtee_format_del (&(self->format));
   
@@ -117,12 +117,12 @@ void qtee_template_part_del (QTeeTemplatePart* p_self)
     cape_list_del (&(self->parts));
   }
   
-  CAPE_DEL (p_self, struct QTeeTemplatePart_s);
+  CAPE_DEL (p_self, struct QTeePart_s);
 }
 
 //-----------------------------------------------------------------------------
 
-void qtee_template_part_set (QTeeTemplatePart self, CapeString* p_text, CapeString* p_modn)
+void qtee_part_set (QTeePart self, CapeString* p_text, CapeString* p_modn)
 {
     cape_str_replace_mv (&(self->text), p_text);
     cape_str_replace_mv (&(self->modn), p_modn);
@@ -132,12 +132,12 @@ void qtee_template_part_set (QTeeTemplatePart self, CapeString* p_text, CapeStri
 
 static void __STDCALL cape_template_create_parts_onDestroy (void* ptr)
 {
-  QTeeTemplatePart h = ptr; qtee_template_part_del (&h);
+  QTeePart h = ptr; qtee_part_del (&h);
 }
 
 //-----------------------------------------------------------------------------
 
-int qtee_template_part_equal (QTeeTemplatePart self, const CapeString text)
+int qtee_part_equal (QTeePart self, const CapeString text)
 {
     if (self->format)
     {
@@ -151,14 +151,14 @@ int qtee_template_part_equal (QTeeTemplatePart self, const CapeString text)
 
 //-----------------------------------------------------------------------------
 
-QTeeTemplatePart qtee_template_part_parent (QTeeTemplatePart self)
+QTeePart qtee_part_parent (QTeePart self)
 {
   return self->parent;
 }
 
 //-----------------------------------------------------------------------------
 
-void qtee_template_part_add (QTeeTemplatePart self, QTeeTemplatePart part)
+void qtee_part_add (QTeePart self, QTeePart part)
 {
     if (self->parts == NULL)
     {
@@ -173,11 +173,25 @@ void qtee_template_part_add (QTeeTemplatePart self, QTeeTemplatePart part)
 
 //-----------------------------------------------------------------------------
 
-int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err);
+void qtee_part_clear (QTeePart self)
+{
+    if (self->parts == NULL)
+    {
+        self->parts = cape_list_new (cape_template_create_parts_onDestroy);
+    }
+    else
+    {
+        cape_list_clr (self->parts);
+    }
+}
 
 //-----------------------------------------------------------------------------
 
-int cape_template_file_apply (QTeeTemplatePart self, QTeeTemplatePart part, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
+int qtee_part_apply (QTeePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+int cape_template_file_apply (QTeePart self, QTeePart part, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
 {
   int res;
   const CapeString name = part->text;
@@ -302,7 +316,7 @@ double cape_template_math (const CapeString formular, CapeList node_stack)
 
 //-----------------------------------------------------------------------------
 
-int cape_template_mod_apply__math (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
+int cape_template_mod_apply__math (QTeePart self, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
 {
     qtee_template_cb__f (cb, self->format, cape_template_math (self->text, node_stack));
     
@@ -382,7 +396,7 @@ CapeDatetime* cape_template_date (const CapeString formular, CapeList node_stack
 
 //-----------------------------------------------------------------------------
 
-int cape_template_mod_apply__date (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
+int cape_template_mod_apply__date (QTeePart self, CapeList node_stack, QTeeTemplateCB cb, CapeErr err)
 {
     CapeDatetime* value = cape_template_date (self->text, node_stack);
     
@@ -398,7 +412,7 @@ int cape_template_mod_apply__date (QTeeTemplatePart self, CapeList node_stack, Q
 
 //-----------------------------------------------------------------------------
 
-int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
+int qtee_template_tag_apply (QTeePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
 {
     CapeUdc found_item = NULL;
   
@@ -426,7 +440,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
         // add a next level
         cape_list_push_back (node_stack, found_item);
         
-        int res = qtee_template_part_apply (self, node_stack, cb, pos, err);
+        int res = qtee_part_apply (self, node_stack, cb, pos, err);
         
         cape_list_pop_back (node_stack);
         
@@ -446,7 +460,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
           // add a next level
           cape_list_push_back (node_stack, cursor_item->item);
           
-          int res = qtee_template_part_apply (self, node_stack, cb, cursor_item->position, err);
+          int res = qtee_part_apply (self, node_stack, cb, cursor_item->position, err);
           
           cape_list_pop_back (node_stack);
           
@@ -466,7 +480,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
         {
           if (qtee_compare (self->eval, cape_udc_s (found_item, "")))
           {
-              qtee_template_part_apply (self, node_stack, cb, 0, err);
+              qtee_part_apply (self, node_stack, cb, 0, err);
           }
         }
         else
@@ -484,7 +498,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
           
           if (h == cape_udc_n (found_item, 0))
           {
-              qtee_template_part_apply (self, node_stack, cb, 0, err);
+              qtee_part_apply (self, node_stack, cb, 0, err);
           }
         }
         else
@@ -502,7 +516,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
           
           if (h == cape_udc_f (found_item, .0))
           {
-              qtee_template_part_apply (self, node_stack, cb, 0, err);
+              qtee_part_apply (self, node_stack, cb, 0, err);
           }
         }
         else
@@ -520,11 +534,11 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
           
           if ((h == TRUE) && cape_str_equal (self->eval, "TRUE"))
           {
-              qtee_template_part_apply (self, node_stack, cb, 0, err);
+              qtee_part_apply (self, node_stack, cb, 0, err);
           }
           else if ((h == FALSE) && cape_str_equal (self->eval, "FALSE"))
           {
-              qtee_template_part_apply (self, node_stack, cb, 0, err);
+              qtee_part_apply (self, node_stack, cb, 0, err);
           }
         }
         else
@@ -568,7 +582,7 @@ int qtee_template_tag_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTem
 
 //-----------------------------------------------------------------------------
 
-int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
+int qtee_part_apply (QTeePart self, CapeList node_stack, QTeeTemplateCB cb, number_t pos, CapeErr err)
 {
   if (self->parts)
   {
@@ -576,7 +590,7 @@ int qtee_template_part_apply (QTeeTemplatePart self, CapeList node_stack, QTeeTe
     
     while (cape_list_cursor_next (cursor))
     {
-      QTeeTemplatePart part = cape_list_node_data (cursor->node);
+      QTeePart part = cape_list_node_data (cursor->node);
       
       switch (part->type)
       {
