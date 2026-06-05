@@ -679,7 +679,7 @@ void __STDCALL qbus_pvd_con_snd (QbusPvdConnection self, const CapeString cid, Q
   mqtt_msg.payload = (void*)cape_stream_data (payload);
   mqtt_msg.payloadlen = (int)cape_stream_size (payload);
 
-  mqtt_msg.qos = 0;
+  mqtt_msg.qos = 1;
   mqtt_msg.retained = FALSE;
 
   // send away
