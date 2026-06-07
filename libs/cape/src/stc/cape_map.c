@@ -819,21 +819,28 @@ CapeMap cape_map_clone (CapeMap self, fct_cape_map__on_clone on_clone)
   return clone;
 }
 
-//=============================================================================
+//-----------------------------------------------------------------------------
+
+#define CAPE_MAP_FLAG__INIT    (1U << 0)
+#define CAPE_MAP_FLAG__FORW    (1U << 1)
+#define CAPE_MAP_FLAG__PREV    (1U << 2)
 
 void cape_map_cursor_init (CapeMap self, CapeMapCursor* cursor, int direction)
 {
-  if (direction == CAPE_DIRECTION_FORW)
-  {
-    cursor->node = cape_map_first (self);   
-  }
-  else
-  {
-    cursor->node = cape_map_last (self);
-  }
-  
-  cursor->position = -1;
-  cursor->direction = direction;
+    if (direction == CAPE_DIRECTION_FORW)
+    {
+        cursor->node = cape_map_first (self);
+        cursor->position = 0;
+        cursor->flags = CAPE_MAP_FLAG__FORW;
+    }
+    else
+    {
+        cursor->node = cape_map_last (self);
+        cursor->position = self->size - 1;
+        cursor->flags = CAPE_MAP_FLAG__PREV;
+    }
+    
+    cursor->flags |= CAPE_MAP_FLAG__INIT;
 }
 
 //-----------------------------------------------------------------------------
@@ -861,46 +868,64 @@ void cape_map_cursor_del (CapeMapCursor** pcursor)
 
 int cape_map_cursor_nextnode (CapeMapCursor* cursor, int dir)
 {
-  if (cursor->position < 0)
-  {
-    if (dir == cursor->direction)
+    // check for initial state
+    if (cursor->flags & CAPE_MAP_FLAG__INIT)
     {
-      if (cursor->node)
-      {
-        cursor->position = 0;
-        return TRUE;
-      }
+        if ((dir == CAPE_DIRECTION_FORW) && (cursor->flags & CAPE_MAP_FLAG__FORW))
+        {
+            if (cursor->node)
+            {
+                cursor->flags &= ~CAPE_MAP_FLAG__INIT;
+                return TRUE;
+            }
+        }
+        else if ((dir == CAPE_DIRECTION_PREV) && (cursor->flags & CAPE_MAP_FLAG__PREV))
+        {
+            if (cursor->node)
+            {
+                cursor->flags &= ~CAPE_MAP_FLAG__INIT;
+                return TRUE;
+            }
+        }
     }
-  }
-  else
-  {
-    CapeMapNode n = cursor->node;
-    
-    if (n)
+    else
     {
-      if (dir == CAPE_DIRECTION_FORW)
-      {
-        cursor->node = cape_map_node_next (n);        
-      }
-      else
-      {
-        cursor->node = cape_map_node_prev (n);         
-      }
-
-      if (cursor->direction == dir)
-      {
-        cursor->position++;
-      }
-      else
-      {
-        cursor->position--;
-      }
+      CapeMapNode n = cursor->node;
       
-      return (cursor->node != NULL);
+      if (n)
+      {
+        if (dir == CAPE_DIRECTION_FORW)
+        {
+            cursor->node = cape_map_node_next (n);
+
+            if (cursor->flags & CAPE_MAP_FLAG__FORW)
+            {
+              cursor->position++;
+            }
+            else
+            {
+              cursor->position--;
+            }
+        }
+        else
+        {
+            cursor->node = cape_map_node_prev (n);
+            
+            if (cursor->flags & CAPE_MAP_FLAG__PREV)
+            {
+              cursor->position--;
+            }
+            else
+            {
+              cursor->position++;
+            }
+        }
+        
+        return (cursor->node != NULL);
+      }
     }
-  }
-  
-  return FALSE;
+    
+    return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -927,22 +952,22 @@ CapeMapNode cape_map_cursor_extract (CapeMap self, CapeMapCursor* cursor)
   {
     CapeMapNode ret;  
 
-    if (cursor->direction == CAPE_DIRECTION_FORW)
+    if (cursor->flags & CAPE_MAP_FLAG__FORW)
     {
-      cursor->node = cape_map_node_prev (x);
+        cursor->node = cape_map_node_prev (x);
+        cursor->position--;
     }
     else
     {
-      cursor->node = cape_map_node_next (x);
+        cursor->node = cape_map_node_next (x);
+        cursor->position++;
     }
     
-    cursor->position -= 1;
-
     ret = cape_map_extract (self, x);
     
     if (cursor->node == NULL)
     {
-      cape_map_cursor_init (self, cursor, cursor->direction);
+        cape_map_cursor_init (self, cursor, (cursor->flags & CAPE_MAP_FLAG__FORW) ? CAPE_DIRECTION_FORW : CAPE_DIRECTION_PREV);
     }
 
     return ret;

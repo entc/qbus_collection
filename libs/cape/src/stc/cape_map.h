@@ -89,10 +89,10 @@ __CAPE_LIBEX   CapeMap           cape_map_clone             (CapeMap, fct_cape_m
 
 typedef struct
 {  
-  CapeMapNode node;    // the tree node
-  int direction;       // the direction of the cursor
-  number_t position;        // the current position
-  
+    CapeMapNode node;         // the tree node
+    number_t position;        // the current position
+    int flags;                // the direction of the cursor
+
 } CapeMapCursor;
 
 //-----------------------------------------------------------------------------
