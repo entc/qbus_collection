@@ -68,6 +68,12 @@ __CAPE_LIBEX   void            cape_datetime_utc__s       (CapeDatetime*, time_t
                                 */
 __CAPE_LIBEX   void            cape_datetime_utc__ms      (CapeDatetime*, time_t unix_time_since_1970);
 
+                               /* sets the internal structure from day of the year
+                                  -> time = 00:00:00.000
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__doy     (CapeDatetime*, number_t year, number_t doy);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void            cape_datetime_utc          (CapeDatetime*);

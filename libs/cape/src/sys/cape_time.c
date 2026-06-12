@@ -195,6 +195,57 @@ void cape_datetime_utc__ms (CapeDatetime* dt, time_t unix_time_since_1970)
 
 //-----------------------------------------------------------------------------
 
+int cape_datetime_year_isleap (const CapeDatetime* self)
+{
+    return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
+{
+#if defined __WINDOWS_OS
+
+#else
+
+    int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    // set the year
+    self->year = year;
+
+    // correct leap year
+    if (cape_datetime_year_isleap (self))
+    {
+        days_in_month[1] = 29;
+    }
+
+    // start with January, will be increased
+    self->month = 1;
+
+    // start with the doy, will be reduced
+    self->day = doy;
+
+    // adjust day and month
+    while (self->day > days_in_month[self->month - 1])
+    {
+        self->day -= days_in_month[self->month - 1];
+        (self->month)++;
+    }
+
+    // set time to zero
+    self->hour = 0;
+    self->minute = 0;
+    self->sec = 0;
+    self->msec = 0;
+    self->usec = 0;
+
+    self->is_utc = TRUE;
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_utc (CapeDatetime* dt)
 {
 #if defined __WINDOWS_OS
@@ -847,13 +898,6 @@ void cape_datetime_cross__set (CapeDatetime* self)
 int cape_datetime_cross__is (const CapeDatetime* self)
 {
   return (self->day > 0) && (self->month == 0);
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_datetime_year_isleap (const CapeDatetime* self)
-{
-  return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
 }
 
 //-----------------------------------------------------------------------------
