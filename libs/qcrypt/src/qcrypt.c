@@ -171,40 +171,48 @@ int qcrypt__decrypt_node (const CapeString vsec, const CapeString encrypted_text
 
 int qcrypt__decrypt_row_text (const CapeString vsec, const CapeUdc row, const CapeString data_name, CapeErr err)
 {
-  int res;
-  
-  // extract the node
-  CapeUdc extracted_text_node = cape_udc_ext (row, data_name);
-  
-  // do we have a node
-  if (extracted_text_node)
-  {
-    // assume that the node is a text node
-    const CapeString encrypted_text = cape_udc_s (extracted_text_node, NULL);
-    if (encrypted_text && encrypted_text[0])
+    int res;
+    
+    // local objects
+    CapeUdc extracted_text_node = NULL;
+
+    if (cape_str_size (vsec) < 10)
     {
-      CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
-      if (decrypted)
-      {
-        cape_udc_add_s_mv (row, data_name, &decrypted);
-      }
-      else
-      {
-        cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row text", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
-        
-        res = cape_err_code (err);
+        cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.INVALID_VSEC");
         goto exit_and_cleanup;
-      }
     }
-  }
-  
-  res = CAPE_ERR_NONE;
+    
+    // try to extract node
+    extracted_text_node = cape_udc_ext (row, data_name);
+
+    // do we have a node
+    if (extracted_text_node)
+    {
+        // assume that the node is a text node
+        const CapeString encrypted_text = cape_udc_s (extracted_text_node, NULL);
+        if (encrypted_text && encrypted_text[0])
+        {
+          CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
+          if (decrypted)
+          {
+            cape_udc_add_s_mv (row, data_name, &decrypted);
+          }
+          else
+          {
+            cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row text", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
+            
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+          }
+        }
+    }
+        
+    res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
   
-  cape_udc_del (&extracted_text_node);
-
-  return res;
+    cape_udc_del (&extracted_text_node);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
