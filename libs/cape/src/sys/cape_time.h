@@ -74,6 +74,12 @@ __CAPE_LIBEX   void            cape_datetime_utc__ms      (CapeDatetime*, time_t
                                 */
 __CAPE_LIBEX   void            cape_datetime_utc__doy     (CapeDatetime*, number_t year, number_t doy);
 
+                               /* sets the internal structure starting by start time and interval in seconds
+                                  -> finds the next time not in the past
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__next    (CapeDatetime*, const CapeString start, number_t interval);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void            cape_datetime_utc          (CapeDatetime*);

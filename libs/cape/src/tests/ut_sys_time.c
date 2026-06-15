@@ -8,7 +8,7 @@ int main (int argc, char *argv[])
   CapeDatetime utc_time;
   
   cape_datetime_utc (&utc_time);
-  
+
   {
     CapeString s = cape_datetime_s__fmt_lcl (&utc_time, "%Y-%m-%d %H:%M:%S");
 
@@ -176,6 +176,21 @@ int main (int argc, char *argv[])
       cape_str_del (&s);
     }
   }
-  
- return 0;
+
+    // next test
+    {
+        CapeDatetime dt;
+      
+        cape_datetime_utc__next (&dt, "00:00:00", 3000);
+      
+        {
+            CapeString s = cape_datetime_s__str (&dt);
+            
+            printf ("-> NEXT    : '%s'\n", s);
+            
+            cape_str_del (&s);
+        }
+    }
+
+    return 0;
 }

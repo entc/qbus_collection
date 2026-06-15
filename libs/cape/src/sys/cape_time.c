@@ -211,7 +211,7 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
     int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
     // set the year
-    self->year = year;
+    self->year = (unsigned int)year;
 
     // correct leap year
     if (cape_datetime_year_isleap (self))
@@ -223,7 +223,7 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
     self->month = 1;
 
     // start with the doy, will be reduced
-    self->day = doy;
+    self->day = (unsigned int)doy;
 
     // adjust day and month
     while (self->day > days_in_month[self->month - 1])
@@ -242,6 +242,31 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
     self->is_utc = TRUE;
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__next (CapeDatetime* self, const CapeString start, number_t interval)
+{
+    CapeDatetime dt;
+    
+    // fetch the current date
+    cape_datetime_utc (&dt);
+    
+    // use the date from the current datetime
+    self->year = dt.year;
+    self->month = dt.month;
+    self->day = dt.day;
+    
+    cape_sscanf (start, "%d:%d:%d", &(self->hour), &(self->minute), &(self->sec));
+    
+    self->msec = 0;
+    self->usec = 0;
+    
+    while (cape_datetime_cmp (self, &dt) < 0)
+    {
+        cape_datetime__add_n (self, interval, self);
+    }
 }
 
 //-----------------------------------------------------------------------------
