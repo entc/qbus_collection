@@ -118,29 +118,32 @@ void cape_datetime__convert_timeinfo (CapeDatetime* dt, const struct tm* timeinf
 
 void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
 {
-  // fill the timeinfo
-  timeinfo->tm_sec   = dt->sec;
-  timeinfo->tm_hour  = dt->hour;
-  timeinfo->tm_min   = dt->minute;
+    // zero the struct
+    memset(timeinfo, 0, sizeof(*timeinfo));
 
-  timeinfo->tm_mday  = dt->day;
-  timeinfo->tm_mon   = dt->month - 1;
-  timeinfo->tm_year  = dt->year - 1900;
+    // fill the timeinfo
+    timeinfo->tm_sec   = dt->sec;
+    timeinfo->tm_hour  = dt->hour;
+    timeinfo->tm_min   = dt->minute;
 
-  // set to determine proper value for DST by mktime
-  timeinfo->tm_isdst = -1; //dt->is_dst;
-  
-  // initialize with zeros
-  timeinfo->tm_yday = 0;
-  timeinfo->tm_wday = 0;
-  timeinfo->tm_zone = NULL;
-  timeinfo->tm_gmtoff = 0;
+    timeinfo->tm_mday  = dt->day;
+    timeinfo->tm_mon   = dt->month - 1;
+    timeinfo->tm_year  = dt->year - 1900;
 
-  // this will fill up the timeinfo with all values
-  if (mktime(timeinfo) == -1)
-  {
-    cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
-  }
+    // set to determine proper value for DST by mktime
+    timeinfo->tm_isdst = -1; //dt->is_dst;
+
+    // initialize with zeros
+    timeinfo->tm_yday = 0;
+    timeinfo->tm_wday = 0;
+    timeinfo->tm_zone = NULL;
+    timeinfo->tm_gmtoff = 0;
+
+    // this will fill up the timeinfo with all values
+    if (mktime(timeinfo) == -1)
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -253,12 +256,23 @@ void cape_datetime_utc__next (CapeDatetime* self, const CapeString start, number
     // fetch the current date
     cape_datetime_utc (&dt);
     
+    self->is_utc = TRUE;
+    self->is_dst = FALSE;
+
     // use the date from the current datetime
     self->year = dt.year;
     self->month = dt.month;
     self->day = dt.day;
-    
-    cape_sscanf (start, "%d:%d:%d", &(self->hour), &(self->minute), &(self->sec));
+
+    // initialize before sscanf
+    self->hour = 0;
+    self->minute = 0;
+    self->sec = 0;
+
+    if (3 != cape_sscanf (start, "%d:%d:%d", &(self->hour), &(self->minute), &(self->sec)))
+    {
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "utc next", "input start value is mal formatted: expected (HH:MM:ss) <--> input (%s)", start);
+    }
     
     self->msec = 0;
     self->usec = 0;
@@ -1164,7 +1178,7 @@ CapeString cape_datetime_s__fd1 (const CapeDatetime* self)
 
 time_t cape_datetime_n__unix (const CapeDatetime* dt)
 {
-  struct tm timeinfo;
+  struct tm timeinfo = {0};
 
   cape_datetime__convert_cape (&timeinfo, dt);
 

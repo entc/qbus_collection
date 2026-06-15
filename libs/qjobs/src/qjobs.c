@@ -493,34 +493,48 @@ int qjobs_add (QJobs self, const CapeDatetime* dt, number_t period, CapeUdc* p_p
   if (rinfo)
   {
     // rinfo contains personal data -> this must be encrypted
-    if (vsec == NULL)
+    if (NULL == vsec)
     {
-      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "can't create event with rinfo and no vsec");
-      goto exit_and_cleanup;
+        {
+            number_t wpid = cape_udc_get_n (rinfo, "wpid", 0);
+            if (wpid)
+            {
+                cape_udc_add_n (values, "wpid", wpid);
+            }
+        }
+        {
+            number_t gpid = cape_udc_get_n (rinfo, "gpid", 0);
+            if (gpid)
+            {
+                cape_udc_add_n (values, "gpid", gpid);
+            }
+        }
     }
-    
-    // add workspace and user info (this is needed to decrypt rinfo)
-    cape_udc_add_n (values, "wpid", cape_udc_get_n (rinfo, "wpid", 0));
-    cape_udc_add_n (values, "gpid", cape_udc_get_n (rinfo, "gpid", 0));
+    else
+    {
+        // add workspace and user info (this is needed to decrypt rinfo)
+        cape_udc_add_n (values, "wpid", cape_udc_get_n (rinfo, "wpid", 0));
+        cape_udc_add_n (values, "gpid", cape_udc_get_n (rinfo, "gpid", 0));
 
-    // serialize rinfo
-    h1 = cape_json_to_s (rinfo);
-    if (h1 == NULL)
-    {
-      res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize rinfo");
-      goto exit_and_cleanup;
+        // serialize rinfo
+        h1 = cape_json_to_s (rinfo);
+        if (h1 == NULL)
+        {
+            res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize rinfo");
+            goto exit_and_cleanup;
+        }
+
+        // encrypt rinfo
+        h2 = qcrypt__encrypt (vsec, h1, err);
+        if (h2 == NULL)
+        {
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+        }
+
+        // finally add to the values
+        cape_udc_add_s_mv (values, "rinfo", &h2);
     }
-    
-    // encrypt rinfo
-    h2 = qcrypt__encrypt (vsec, h1, err);
-    if (h2 == NULL)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
-    
-    // finally add to the values
-    cape_udc_add_s_mv (values, "rinfo", &h2);
   }
   
   cape_udc_add_d (values, "event_date", dt);
