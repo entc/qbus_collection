@@ -104,8 +104,12 @@ void test01_iteration ()
   
   test_print_map_s__forward (m1);
   
+    printf ("-----------------------------------------\n");
+
   test_print_map_s__rewiend (m1);
   
+    printf ("-----------------------------------------\n");
+
   cape_map_del (&m1);
 }
 
@@ -211,10 +215,14 @@ void test01_delete (number_t size, number_t runs)
 int main (int argc, char *argv[])
 {
   test01_iteration ();
+    
+    printf ("-----------------------------------------\n");
   
   test01_balance (10000);
   
-  test01_delete (30, 10000);
+    printf ("-----------------------------------------\n");
+
+    test01_delete (30, 10000);
   
   return 0;
 }
