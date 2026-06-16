@@ -906,7 +906,12 @@ namespace cape
 
     operator const char*()
     {
-      return cape_udc_s (m_obj, NULL);
+        if (m_obj == NULL)
+        {
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, "UDC object has no content");
+        }
+
+        return cape_udc_s (m_obj, NULL);
     }
 
     //-----------------------------------------------------------------------------
