@@ -940,17 +940,21 @@ double cape_udc_f (CapeUdc self, double alt)
   {
     case CAPE_UDC_NUMBER:
     {
-      return (number_t)(self->data);
+        return (number_t)(self->data);
     }
     case CAPE_UDC_FLOAT:
     {
-      double* h = self->data;
+        double* h = self->data;
 
-      return *h;
+        return *h;
+    }
+    case CAPE_UDC_STRING:
+    {
+        return cape_str_to_f ((CapeString)self->data);
     }
     default:
     {
-      return alt;
+        return alt;
     }
   }
 }
