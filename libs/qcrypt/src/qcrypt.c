@@ -394,30 +394,39 @@ CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
 
 #else
 
-  number_t len = ((buflen + 3) / 4 * 3) + 1;
-  CapeStream ret = cape_stream_new ();
+    int pad = 0;
 
-  // reserve memory
-  cape_stream_cap (ret, len);
-  
-  // openssl function
-  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, (int)buflen);
-  
-  // everything worked fine
-  if ((decodedSize > 0) && (decodedSize < len))
-  {
-    // trim the last bytes which are 0
-    while ((cape_stream_pos (ret)[decodedSize - 1] == '\0') && (decodedSize > 0))
+    number_t len = ((buflen + 3) / 4 * 3) + 1;
+    CapeStream ret = cape_stream_new ();
+
+    // get the padding characters
+    if (buflen >= 1 && bufdat[buflen - 1] == '=')
     {
-      decodedSize--;
+        pad++;
     }
-    
-    cape_stream_set (ret, decodedSize);
-    return ret;
-  }
-  
-  cape_stream_del (&ret);
-  return NULL;
+
+    if (buflen >= 2 && bufdat[buflen - 2] == '=')
+    {
+        pad++;
+    }
+
+    // reserve memory
+    cape_stream_cap (ret, len);
+
+    {
+        // openssl function
+        int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, (int)buflen);
+
+        // everything worked fine
+        if ((decodedSize > 0) && (decodedSize < len))
+        {
+            cape_stream_set (ret, decodedSize - pad);
+            return ret;
+        }
+    }
+
+    cape_stream_del (&ret);
+    return NULL;
 
 #endif
 }
