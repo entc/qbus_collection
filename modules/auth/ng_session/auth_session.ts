@@ -3,9 +3,8 @@ import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, Ht
 import { CanActivate, RouterStateSnapshot, UrlTree, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, Subscriber, BehaviorSubject, Subject } from 'rxjs';
 import { catchError, retry, map, takeWhile, tap, mergeMap } from 'rxjs/operators'
-import { throwError, of, timer } from 'rxjs';
+import { throwError, of, timer, from, switchMap } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
-import * as CryptoJS from 'crypto-js';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import { ConnService } from '@conn/conn_service';
 //-----------------------------------------------------------------------------
@@ -30,8 +29,6 @@ export class AuthSession
   private interval_obj;
   private timer_idle_countdown;
 
-  private user: string = null;
-  private pass: string = null;
   private wpid: string = null;
   private vault: boolean = false;    // special option to summit vault password
 
@@ -96,43 +93,40 @@ export class AuthSession
 
   private roles_set (data: object)
   {
-    console.log('set roles');
-    console.log(data);
+      this.roles.next (data);
+  }
 
-    this.roles.next (data);
+  //---------------------------------------------------------------------------
+
+  private handle_sitem (user: string, vsec: string)
+  {
+      return map((slogin: AuthLoginItem) => {
+
+          const sitem = slogin.sitem;
+
+          if (sitem)
+          {
+              sitem.user = user;
+              this.roles_set(sitem['roles']);
+              this.storage_set(sitem, vsec);
+          }
+
+          return slogin;
+      });
   }
 
   //---------------------------------------------------------------------------
 
   public enable (user: string, pass: string, code: string = null, wpid: number = 0): Observable<AuthLoginItem>
   {
-    const navigator = window.navigator;
-    const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
+      const navigator = window.navigator;
+      const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
-    // set the credentials
-    this.user = user;
-    this.pass = pass;
+      return from (this.sha256(user + ':' + pass)).pipe(switchMap(vsec => {
 
-    let creds: AuthLoginCreds = new AuthLoginCreds (wpid, user, pass, this.vault, code, browser_info, this.gen_vsec (user, pass));
+          return this.conn.session__login(new AuthLoginCreds (wpid, user, pass, this.vault, code, browser_info, vsec)).pipe(this.handle_sitem(user, vsec));
 
-    return this.conn.session__login (creds).pipe (map ((slogin: AuthLoginItem) => {
-
-      let sitem: AuthSessionItem = slogin.sitem;
-      if (sitem)
-      {
-        // set the user
-        sitem.user = user;
-
-        this.roles_set (sitem['roles']);
-
-        console.log('login done, set storage');
-
-        this.storage_set (sitem);
-      }
-
-      return slogin;
-
-    }));
+      }));
   }
 
   //---------------------------------------------------------------------------
@@ -244,17 +238,24 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private gen_vsec (user: string, pass: string): string
+  private async sha256 (text: string): Promise<string>
   {
-    return CryptoJS.SHA256 (this.user + ":" + this.pass).toString();
+      // convert credentials string to UTF-8 bytes (Uint8Array)
+      const data = new TextEncoder().encode(text);
+
+      // compute SHA-256 hash
+      const hash = await crypto.subtle.digest('SHA-256', data);
+
+      // convert hash bytes to lowercase hexadecimal string
+      return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   //---------------------------------------------------------------------------
 
-  private storage_set (sitem: AuthSessionItem): void
+  private storage_set (sitem: AuthSessionItem, vsec: string): void
   {
     // encode the vsec
-    sitem.vsec = this.gen_vsec (this.user, this.pass);
+    sitem.vsec = vsec;
     this.session.next (sitem);
 
     sessionStorage.setItem (SESSION_STORAGE_VSEC, sitem.vsec);
@@ -276,8 +277,6 @@ export class AuthSession
   {
     this.timer_clear ();
 
-    this.user = null;
-    this.pass = null;
     this.wpid = null;
 
     sessionStorage.removeItem (SESSION_STORAGE_VSEC);
@@ -326,13 +325,20 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private construct_bearer (sitem: AuthSessionItem): string
+  private async construct_bearer (sitem: AuthSessionItem): Promise<string>
   {
-    // get the linux time since 1970 in milliseconds
+      // get the linux time since 1970 in milliseconds
+      const iv = this.padding(Date.now().toString(), 16);
+
+      const da = await this.sha256(iv + ':' + sitem.vsec);
+
+      return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
+/*
     var iv: string = this.padding ((new Date).getTime().toString(), 16);
     var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
 
     return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
+    */
   }
 
   //---------------------------------------------------------------------------
@@ -344,6 +350,14 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  private async session_get_bearer(): Promise<string | null>
+  {
+      const sitem = this.session_get_token();
+
+      return sitem ? this.construct_bearer(sitem) : null;
+  }
+
+/*
   private session_get_bearer (): string
   {
     var sitem: AuthSessionItem = this.session_get_token ();
@@ -357,13 +371,20 @@ export class AuthSession
       return null;
     }
   }
-
+*/
   //---------------------------------------------------------------------------
 
+  private async session_options(): Promise<object>
+  {
+      const bearer = await this.session_get_bearer();
+
+      return bearer ? { headers: this.construct_header(bearer) } : {};
+  }
+  /*
   private session_options (): object
   {
     var options: object;
-    var bearer: string = this.session_get_bearer ();
+    var bearer: string = await this.session_get_bearer ();
 
     if (bearer)
     {
@@ -376,7 +397,7 @@ export class AuthSession
 
     return options;
   }
-
+*/
   //---------------------------------------------------------------------------
 
   public json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, cb_progress, cb_done, cb_error)
@@ -463,32 +484,55 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
+  public rest_GET<T>(path: string, params: object): Observable<T>
+  {
+      return from (this.session_options()).pipe (switchMap (options => this.handle_error_session<T>(this.http.get<T>('rest/' + path, options))));
+  }
+
+  /*
   public rest_GET<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.get<T>('rest/' + path, this.session_options()));
   }
-
+*/
   //---------------------------------------------------------------------------
 
+  public rest_POST<T>(path: string, params: object): Observable<T>
+  {
+      return from (this.session_options()).pipe (switchMap(options => this.handle_error_session<T>(this.http.post<T>('rest/' + path, params, options))));
+  }
+
+/*
   public rest_POST<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.post<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
+  */
 
   //---------------------------------------------------------------------------
 
+  public rest_PUT<T>(path: string, params: object): Observable<T>
+  {
+      return from (this.session_options()).pipe (switchMap(options => this.handle_error_session<T>(this.http.put<T>('rest/' + path, params, options))));
+  }
+/*
   public rest_PUT<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.put<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
-
+*/
   //---------------------------------------------------------------------------
 
+  public rest_PATCH<T>(path: string, params: object): Observable<T>
+  {
+      return from (this.session_options()).pipe (switchMap(options => this.handle_error_session<T>(this.http.patch<T>('rest/' + path, params, options))));
+  }
+/*
   public rest_PATCH<T> (path: string, params: object): Observable<T>
   {
     return this.handle_error_session<T> (this.http.patch<T>('rest/' + path, JSON.stringify (params), this.session_options()));
   }
-
+*/
   //---------------------------------------------------------------------------
 
 /*
