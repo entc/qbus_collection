@@ -431,6 +431,7 @@ int auth_wp__internal__fetch_workspace (AuthGP self, number_t wpid, CapeUdc* p_r
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
     cape_udc_add_n      (params, "id"               , wpid);
+    cape_udc_add_n      (values, "id"               , 0);
     cape_udc_add_n      (values, "active"           , 0);
     cape_udc_add_s_cp   (values, "name"             , NULL);
     cape_udc_add_s_cp   (values, "domain"           , NULL);
