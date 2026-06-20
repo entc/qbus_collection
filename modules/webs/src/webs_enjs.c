@@ -416,7 +416,7 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
   }
 
   qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
-
+    
   // remote
   {
     CapeString remote = qwebs_request_remote (self->request);
@@ -434,6 +434,12 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
   // transfer the files
   cape_udc_replace_mv (&(qin->files), &(self->files));
   
+    {
+        CapeString h = cape_json_to_s (qin->rinfo);
+        
+        printf ("rinfo: %s\n", h);
+    }
+
   // continue
   // -> use the direct return, otherwise need to check self
   res = qbus_continue (self->qbus, self->module, self->method, qin, (void**)&self, webs_enjs_run__on_call, err);

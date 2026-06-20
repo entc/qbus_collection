@@ -848,7 +848,13 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
       goto exit_and_cleanup;
     }
     
-    // set the vault 
+      if (cape_str_size (h2) < 10)
+      {
+          res = cape_err_set (err, CAPE_ERR_NO_AUTH, "invalid vault secret");
+          goto exit_and_cleanup;
+      }
+      
+    // set the vault
     auth_vault__save (self->vault, wpid, h2);
     
     vsec = auth_vault__vsec (self->vault, wpid);
@@ -1067,6 +1073,9 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
       }
       
       res = auth_ui_crypt4 (p_self, auth_content, auth_extras, qin, qout, err);
+        
+        cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui get", "new login: wpid = %lu", self->wpid);
+        
       goto exit_and_cleanup;
     }
     case 4:

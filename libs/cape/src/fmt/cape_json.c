@@ -141,41 +141,49 @@ static void __STDCALL cape_json_onObjDestroy (void* ptr, void* obj)
 
 CapeUdc cape_json_from_buf (const char* buffer, number_t size, fct_cape_stream_base64_decode cb_decode)
 {
-  CapeUdc ret = NULL;
-  int res;
-  
-  CapeErr err = cape_err_new ();
-  
-  // create a new parser for the json format
-  CapeParserJson parser_json = cape_parser_json_new (cb_decode, cape_json_onItem, cape_json_onObjCreate, cape_json_onObjDestroy);
- 
-  // try to parse the current buffer
-  res = cape_parser_json_process (parser_json, buffer, size, err);
-  if (res)
-  {
-    //printf ("ERROR JSON PARSER: %s\n", cape_err_text(err));
-  }
-  else
-  {
-    ret = cape_parser_json_object (parser_json);
-    
-    if (ret)
+    CapeUdc ret = NULL;
+    int res;
+
+    // valid json must start with { or [
+    if (('{' == buffer[0]) || ('[' == buffer[0]))
     {
-      // set name
-      // cape_udc_set_name (ret, name);
+        CapeErr err = cape_err_new ();
+        
+        // create a new parser for the json format
+        CapeParserJson parser_json = cape_parser_json_new (cb_decode, cape_json_onItem, cape_json_onObjCreate, cape_json_onObjDestroy);
+       
+        // try to parse the current buffer
+        res = cape_parser_json_process (parser_json, buffer, size, err);
+        if (res)
+        {
+          //printf ("ERROR JSON PARSER: %s\n", cape_err_text(err));
+        }
+        else
+        {
+          ret = cape_parser_json_object (parser_json);
+          
+          if (ret)
+          {
+            // set name
+            // cape_udc_set_name (ret, name);
+          }
+          else
+          {
+            //eclog_msg (LL_WARN, "JSON", "reader", "returned NULL object as node");
+          }
+        }
+        
+        // clean up
+        cape_parser_json_del (&parser_json);
+        
+        cape_err_del (&err);
     }
     else
     {
-      //eclog_msg (LL_WARN, "JSON", "reader", "returned NULL object as node");
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "json from", "json serialization starts with invalid character [%c]", buffer[0]);
     }
-  }
-  
-  // clean up
-  cape_parser_json_del (&parser_json);
-  
-  cape_err_del (&err);
-  
-  return ret;
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -804,11 +812,22 @@ CapeString cape_json_to_s (const CapeUdc source)
 {
   if (source)
   {
-    CapeStream stream = cape_stream_new ();
-    
-    cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream, FALSE, 0);
-    
-    return cape_stream_to_str (&stream);
+    switch (cape_udc_type (source))
+    {
+      case CAPE_UDC_NODE:
+      case CAPE_UDC_LIST:
+      {
+        CapeStream stream = cape_stream_new ();
+        
+        cape_json_fill (stream, source, 0, cape_json_to_s__encode_stream, FALSE, 0);
+        
+        return cape_stream_to_str (&stream);
+      }
+      default:
+      {
+        return cape_str_cp ("NULL");
+      }
+    }
   }
   else
   {
@@ -822,12 +841,23 @@ CapeString cape_json_to_s__strict (const CapeUdc source)
 {
   if (source)
   {
-    CapeStream stream = cape_stream_new ();
-    
-    // use the strict method
-    cape_json_fill__strict (stream, source, NULL, FALSE);
-    
-    return cape_stream_to_str (&stream);
+    switch (cape_udc_type (source))
+    {
+      case CAPE_UDC_NODE:
+      case CAPE_UDC_LIST:
+      {
+        CapeStream stream = cape_stream_new ();
+        
+        // use the strict method
+        cape_json_fill__strict (stream, source, NULL, FALSE);
+        
+        return cape_stream_to_str (&stream);
+      }
+      default:
+      {
+        return cape_str_cp ("{}");
+      }
+    }
   }
   else
   {

@@ -6,6 +6,7 @@
 #include <sys/cape_log.h>
 #include <sys/cape_queue.h>
 #include <sys/cape_mutex.h>
+#include <fmt/cape_json.h>
 
 //-----------------------------------------------------------------------------
 
@@ -411,7 +412,7 @@ void __STDCALL qbus_methods__rpc_queue__on_event (void* user_ptr, number_t pos, 
     QBusM qout = qbus_message_new (NULL, NULL);
     
     QBusMethodItem mitem = NULL;
-
+      
     //cape_log_fmt (CAPE_LL_TRACE, "QBUS", "------------>>>>>>>>", "%s [%s]", mctx->saves_key, mctx->method_name);
 
     res = mctx->on_msg (mctx->qbus, mctx->on_msg_user_ptr, mctx->qin, qout, err);

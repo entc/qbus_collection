@@ -57,114 +57,283 @@ void auth_session_del (AuthSession* p_self)
 
 //-----------------------------------------------------------------------------
 
+void auth_session__decrypt_node (AuthSession self, CapeUdc wp_dataset, const CapeString name, CapeErr err)
+{
+    CapeUdc node = cape_udc_ext (wp_dataset, name);
+    if (node)
+    {
+        CapeString h4 = qcrypt__decrypt (self->vsec, cape_udc_s (node, ""), err);
+        if (h4 == NULL)
+        {
+            cape_err_clr (err);
+            cape_udc_add (wp_dataset, &node);
+        }
+        else
+        {
+            cape_udc_add_s_mv (wp_dataset, name, &h4);
+            cape_udc_del (&node);
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_session__generate_aitem (AuthSession self, CapeUdc wp_dataset, const CapeString sec, QBusM qout, CapeErr err)
+{
+    int res;
+    
+    // local objects
+    CapeString serialized_output = NULL;
+    CapeString encrypted_output = NULL;
+    
+    // set the wpid and gpid
+    cape_udc_add_n      (wp_dataset, "wpid"        , self->wpid);
+    cape_udc_add_n      (wp_dataset, "gpid"        , self->gpid);
+
+    // decrypt the following nodes from the original dataset
+    auth_session__decrypt_node (self, wp_dataset, "firstname", err);
+    auth_session__decrypt_node (self, wp_dataset, "lastname", err);
+    auth_session__decrypt_node (self, wp_dataset, "remote", err);
+
+    serialized_output = cape_json_to_s (wp_dataset);
+    if (NULL == serialized_output)
+    {
+        res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize wp dataset");
+        goto exit_and_cleanup;
+    }
+    
+    // encrypt the content with a known secret of the frontend
+    encrypted_output = qcrypt__encrypt (sec, serialized_output, err);
+    if (NULL == encrypted_output)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "gen aitem", "generated new AITEM with size = %lubytes", cape_str_size (encrypted_output));
+    
+    // create the output
+    qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+    cape_udc_add_s_mv (qout->cdata, "aitem", &encrypted_output);
+
+    res = CAPE_ERR_NONE;
+    
+exit_and_cleanup:
+    
+    cape_str_del (&serialized_output);
+    cape_str_del (&encrypted_output);
+
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString auth_session__generate_token_hash (const CapeString session_token, CapeErr err)
+{
+    // create the hash of the token
+    return qcrypt__hash_sha256__hex_o (session_token, cape_str_size (session_token), err);
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_session__save_session (AuthSession self, AdblTrx trx, number_t type, number_t ttl, const CapeString token, const CapeString remote, const CapeUdc roles, CapeErr err)
+{
+    int res;
+    
+    // local objects
+    CapeString h1 = NULL;
+    CapeString h2 = NULL;
+    CapeString h3 = NULL;
+    CapeString token_hash = NULL;
+
+    // serialize the roles
+    h1 = cape_json_to_s (roles);
+    if (h1 == NULL)
+    {
+        res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize roles");
+        goto exit_and_cleanup;
+    }
+
+    // encrypt the vesc secret
+    h2 = qcrypt__encrypt (self->vsec, h1, err);
+    if (h2 == NULL)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (remote)
+    {
+        h3 = qcrypt__encrypt (self->vsec, remote, err);
+        if (h3 == NULL)
+        {
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+        }
+    }
+
+    // create the hash of the token
+    token_hash = auth_session__generate_token_hash (token, err);
+    if (token_hash == NULL)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    {
+        CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+        CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+        
+        // insert values
+        cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+        
+        cape_udc_add_n      (params, "wpid"         , self->wpid);
+        cape_udc_add_n      (params, "gpid"         , self->gpid);
+        cape_udc_add_n      (params, "type"         , type);
+
+        cape_udc_add_s_mv   (values, "token"        , &token_hash);
+
+        {
+            CapeDatetime dt; cape_datetime_utc (&dt);
+            cape_udc_add_d (values, "lt", &dt);
+            cape_udc_add_d (values, "lu", &dt);
+        }
+
+        cape_udc_add_n      (values, "vp"            , ttl);
+
+        cape_udc_add_s_mv   (values, "roles"         , &h2);
+        
+        // reset the HA value with a fresh session
+        cape_udc_add_s_cp   (values, "ha_value"      , "0");
+        
+        if (h3)
+        {
+            cape_udc_add_s_mv   (values, "remote"      , &h3);
+        }
+        
+        // execute query
+        if (0 == adbl_trx_inorup (trx, "auth_sessions", &params, &values, err))
+        {
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+        }
+    }
+    
+    res = CAPE_ERR_NONE;
+    
+exit_and_cleanup:
+  
+    cape_str_del (&h1);
+    cape_str_del (&h2);
+    cape_str_del (&h3);
+    cape_str_del (&token_hash);
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
-  int res;
-  AuthSession self = *p_self;
-  
-  number_t session_ttl = 600;   // 10 minutes
-  number_t type;
-  
-  // local objects
-  CapeString session_token = cape_str_uuid ();
-  CapeString session_token_hash = NULL;
-  CapeString session_locale = NULL;
-  CapeString sec = NULL;
-  
-  CapeString h1 = NULL;
-  CapeString h2 = NULL;
-  CapeString h3 = NULL;
-  
-  CapeString serialized_output = NULL;
-  CapeString encrypted_output = NULL;
-  
-  AdblTrx trx = NULL;
-  CapeUdc query_results = NULL;
-  CapeUdc first_row = NULL;
+    int res;
+    AuthSession self = *p_self;
+    
+    number_t session_ttl = 600;   // 10 minutes
+    number_t type;
+    
+    // local objects
+    CapeString session_token = cape_str_uuid ();
+    CapeString session_locale = NULL;
+    CapeString sec = NULL;
+    
+    AdblTrx trx = NULL;
+    CapeUdc query_results = NULL;
+    CapeUdc first_row = NULL;
 
-  QBusM msg = NULL;
-  CapeUdc roles = NULL;
+    QBusM msg = NULL;
+    CapeUdc roles = NULL;
 
-  if (qin->cdata == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
-    goto exit_and_cleanup;
-  }
-
-  type = cape_udc_get_n (qin->cdata, "type", 1);
-  if (type == 0)
-  {
-    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing type");
-    goto exit_and_cleanup;
-  }
-
-  if (qin->rinfo == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_RINFO");
-    goto exit_and_cleanup;
-  }
-
-  sec = cape_udc_ext_s (qin->rinfo, "sec");
-  if (NULL == sec)
-  {
-    res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_SEC");
-    goto exit_and_cleanup;
-  }
-  
-  switch (type)
-  {
-    case 1:
+    if (qin->cdata == NULL)
     {
-      self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
-      if (self->wpid == 0)
-      {
-        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing cdata");
         goto exit_and_cleanup;
-      }
-      
-      self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
-      if (self->gpid == 0)
-      {
-        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
-        goto exit_and_cleanup;
-      }
-
-      break;
     }
-    default:
+
+    type = cape_udc_get_n (qin->cdata, "type", 1);
+    if (type == 0)
     {
-      // only admin can add other types
-      if (qbus_message_role_has (qin, "admin"))
+        res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "missing type");
+        goto exit_and_cleanup;
+    }
+
+    if (qin->rinfo == NULL)
+    {
+        res = cape_err_set (err, CAPE_ERR_NO_AUTH, "ERR.NO_RINFO");
+        goto exit_and_cleanup;
+    }
+
+    sec = cape_udc_ext_s (qin->rinfo, "sec");
+    if (NULL == sec)
+    {
+        res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NO_SEC");
+        goto exit_and_cleanup;
+    }
+
+    switch (type)
+    {
+      case 1:
       {
-        self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+        self->wpid = cape_udc_get_n (qin->rinfo, "wpid", 0);
         if (self->wpid == 0)
         {
-          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_WPID");
           goto exit_and_cleanup;
         }
         
-        self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+        self->gpid = cape_udc_get_n (qin->rinfo, "gpid", 0);
         if (self->gpid == 0)
         {
-          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+          res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_GPID");
           goto exit_and_cleanup;
         }
-        
-        // optional
-        session_ttl = cape_udc_get_n (qin->cdata, "session_ttl", 0);
+
+        break;
       }
+      default:
+      {
+        // only admin can add other types
+        if (qbus_message_role_has (qin, "admin"))
+        {
+          self->wpid = cape_udc_get_n (qin->cdata, "wpid", 0);
+          if (self->wpid == 0)
+          {
+            res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing wpid");
+            goto exit_and_cleanup;
+          }
+          
+          self->gpid = cape_udc_get_n (qin->cdata, "gpid", 0);
+          if (self->gpid == 0)
+          {
+            res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing gpid");
+            goto exit_and_cleanup;
+          }
+          
+          // optional
+          session_ttl = cape_udc_get_n (qin->cdata, "session_ttl", 0);
+        }
 
-      break;
+        break;
+      }
     }
-  }
-  
-  self->vsec = cape_str_cp (auth_vault__vsec (self->vault, self->wpid));
-  if (self->vsec == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
-    goto exit_and_cleanup;
-  }
 
+    self->vsec = cape_str_cp (auth_vault__vsec (self->vault, self->wpid));
+    if (self->vsec == NULL)
+    {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing vault");
+        goto exit_and_cleanup;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "session add", "starting new auth session: wpid = %lu", self->wpid);
+    
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -224,227 +393,81 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  msg = qbus_message_new (NULL, NULL);
+    msg = qbus_message_new (NULL, NULL);
 
-  {
-    // use the rinfo classes
-    AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->wpid, self->gpid);
-    
-    // fetch all rinfo from database
-    res = auth_rinfo_get (&rinfo, &(msg->rinfo), &(msg->cdata), err);
-    if (res)
     {
-      goto exit_and_cleanup;
+        // use the rinfo classes
+        AuthRInfo rinfo = auth_rinfo_new (self->adbl_session, self->wpid, self->gpid);
+        
+        // fetch all rinfo from database
+        res = auth_rinfo_get (&rinfo, &(msg->rinfo), &(msg->cdata), err);
+        if (res)
+        {
+            goto exit_and_cleanup;
+        }
     }
-  }
 
-  roles = cape_udc_ext (msg->rinfo, "roles");
-  if (roles == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
-    goto exit_and_cleanup;
-  }
-
-  h1 = cape_json_to_s (roles);
-  if (h1 == NULL)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize roles");
-    goto exit_and_cleanup;
-  }
-  
-  h2 = qcrypt__encrypt (self->vsec, h1, err);
-  if (h1 == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  {
-    const CapeString remote = cape_udc_get_s (qin->rinfo, "remote", NULL);
-    if (remote)
+    roles = cape_udc_ext (msg->rinfo, "roles");
+    if (roles == NULL)
     {
-      h3 = qcrypt__encrypt (self->vsec, remote, err);
-      if (h3 == NULL)
-      {
+        res = cape_err_set (err, CAPE_ERR_NO_ROLE, "missing roles");
+        goto exit_and_cleanup;
+    }
+
+    // start a new transaction
+    trx = adbl_trx_new (self->adbl_session, err);
+    if (trx == NULL)
+    {
         res = cape_err_code (err);
         goto exit_and_cleanup;
-      }
-    }
-  }
-
-  // create the hash of the token
-  session_token_hash = qcrypt__hash_sha256__hex_o (session_token, cape_str_size (session_token), err);
-  if (session_token_hash == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  // start a new transaction
-  trx = adbl_trx_new (self->adbl_session, err);
-  if (trx == NULL)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  {
-    number_t id;
-    
-    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // insert values
-    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
-    
-    cape_udc_add_n      (params, "wpid"         , self->wpid);
-    cape_udc_add_n      (params, "type"         , type);
-    cape_udc_add_n      (params, "gpid"         , self->gpid);
-
-    cape_udc_add_s_mv   (values, "token"         , &session_token_hash);
-
-    {
-      CapeDatetime dt; cape_datetime_utc (&dt);
-      cape_udc_add_d (values, "lt", &dt);
-      cape_udc_add_d (values, "lu", &dt);
     }
 
-    cape_udc_add_n      (values, "vp"            , session_ttl);
-
-    cape_udc_add_s_mv   (values, "roles"         , &h2);
-    
-    // reset the HA value with a fresh session
-    cape_udc_add_s_cp   (values, "ha_value"      , "0");
-    
-    if (h3)
+    // save session into the database
+    res = auth_session__save_session (self, trx, type, session_ttl, session_token, cape_udc_get_s (qin->rinfo, "remote", NULL), roles, err);
+    if (res)
     {
-      cape_udc_add_s_mv   (values, "remote"      , &h3);
+        goto exit_and_cleanup;
     }
     
-    // execute query
-    id = adbl_trx_inorup (trx, "auth_sessions", &params, &values, err);
-    if (id == 0)
+    // add to log
+    // insert into logins
+    res = auth_ui__save_log_entry (trx, self->wpid, self->gpid, cape_udc_get_n (qin->rinfo, "userid", 0), qin->rinfo, qin->cdata, 1, err);
+    if (res)
     {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
+        goto exit_and_cleanup;
     }
-  }
-  
-  // add to log
-  // insert into logins
-  res = auth_ui__save_log_entry (trx, self->wpid, self->gpid, cape_udc_get_n (qin->rinfo, "userid", 0), qin->rinfo, qin->cdata, 1, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  {
-    CapeUdc node = cape_udc_ext (first_row, "firstname");
-    if (node)
+
+    // set the vp
+    cape_udc_add_n (first_row, "vp", session_ttl);
+    
+    // add token
+    cape_udc_add_s_mv (first_row, "token", &session_token);
+    
+    // add roles
+    cape_udc_add (first_row, &roles);
+
+    // this will generate the encrypted AITEM, which can be used by the frontend to gather
+    // all security and authentication information
+    res = auth_session__generate_aitem (self, first_row, sec, qout, err);
+    if (res)
     {
-      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-      if (h4 == NULL)
-      {
-        cape_err_clr (err);
-        cape_udc_add (first_row, &node);
-      }
-      else
-      {
-        cape_udc_add_s_mv (first_row, "firstname", &h4);
-        cape_udc_del (&node);
-      }
+        goto exit_and_cleanup;
     }
-  }
-
-  {
-    CapeUdc node = cape_udc_ext (first_row, "lastname");
-    if (node)
-    {
-      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-      if (h4 == NULL)
-      {
-        cape_err_clr (err);
-        cape_udc_add (first_row, &node);
-      }
-      else
-      {
-        cape_udc_add_s_mv (first_row, "lastname", &h4);
-        cape_udc_del (&node);
-      }
-    }
-  }
-
-  {
-    CapeUdc node = cape_udc_ext (first_row, "remote");
-    if (node)
-    {
-      CapeString h4 = qcrypt__decrypt(self->vsec, cape_udc_s (node, ""), err);
-      if (h4 == NULL)
-      {
-        cape_err_clr (err);
-        cape_udc_add (first_row, &node);
-      }
-      else
-      {
-        cape_udc_add_s_mv (first_row, "remote", &h4);
-        cape_udc_del (&node);
-      }
-    }
-  }
-
-  // set the wpid and gpid
-  cape_udc_add_n      (first_row, "wpid"        , self->wpid);
-  cape_udc_add_n      (first_row, "gpid"        , self->gpid);
   
-  // set the vp
-  cape_udc_add_n (first_row, "vp", session_ttl);
-  
+    res = CAPE_ERR_NONE;
+    adbl_trx_commit (&trx, err);
 
-  // add token
-  cape_udc_add_s_mv (first_row, "token", &session_token);
-  
-  // add roles
-  cape_udc_add (first_row, &roles);
-
-  serialized_output = cape_json_to_s (first_row);
-  if (NULL == serialized_output)
-  {
-    res = cape_err_set (err, CAPE_ERR_RUNTIME, "can't serialize roles");
-    goto exit_and_cleanup;
-  }
-  
-  encrypted_output = qcrypt__encrypt (sec, serialized_output, err);
-  if (NULL == encrypted_output)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-
-  // create the output
-  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
-  cape_udc_add_s_mv (qout->cdata, "aitem", &encrypted_output);
-  
-  res = CAPE_ERR_NONE;
-  adbl_trx_commit (&trx, err);
-  
 exit_and_cleanup:
   
-  adbl_trx_rollback (&trx, err);
-  
-  cape_str_del (&serialized_output);
-  cape_str_del (&encrypted_output);
-  
-  cape_udc_del (&query_results);
-  cape_udc_del (&roles);
-  
-  cape_str_del (&session_token);
-  cape_str_del (&session_token_hash);
-  
-  cape_str_del (&h1);
-  cape_str_del (&h2);
-
-  auth_session_del (p_self);
-  return res;
+    adbl_trx_rollback (&trx, err);
+        
+    cape_udc_del (&query_results);
+    cape_udc_del (&roles);
+    
+    cape_str_del (&session_token);
+    
+    auth_session_del (p_self);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -572,7 +595,7 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   }
   
   // create the hash of the token
-  session_token_hash = qcrypt__hash_sha256__hex_o (session_token, cape_str_size (session_token), err);
+  session_token_hash = auth_session__generate_token_hash (session_token, err);
   if (session_token_hash == NULL)
   {
     res = cape_err_code (err);
@@ -611,6 +634,9 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
     goto exit_and_cleanup;
   }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session get", "fetch sessions [%lu] for token = %s", cape_udc_size (query_results), session_token);
+    
 
   // AK: timeout can only be handled by the server
   // -> client must be synced with the server session timeouts
@@ -731,6 +757,12 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_n    (qout->rinfo, "wpid", self->wpid);
   cape_udc_add_n    (qout->rinfo, "gpid", self->gpid);
 
+    {
+        CapeString h = cape_json_to_s (qout->rinfo);
+        
+        printf ("rinfo: %s\n", h);
+    }
+    
   // to be safe
   if (qout->pdata == NULL)
   {

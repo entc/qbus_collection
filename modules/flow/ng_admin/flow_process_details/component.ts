@@ -32,7 +32,7 @@ export class FlowProcessDetailsComponent implements OnInit {
 
   return_page ()
   {
-    this.router.navigate(['../../flow_process'], {relativeTo: this.route});
+    this.router.navigate(['../../flow-process'], {relativeTo: this.route});
   }
 
   //-----------------------------------------------------------------------------

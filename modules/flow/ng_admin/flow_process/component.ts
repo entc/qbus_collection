@@ -38,7 +38,7 @@ export class FlowProcessComponent {
 
   show_details (item: ProcessStep)
   {
-    this.router.navigate(['../flow_process', item.id], {relativeTo: this.route});
+    this.router.navigate(['../flow-process', item.id], {relativeTo: this.route});
   }
 
   //-----------------------------------------------------------------------------
