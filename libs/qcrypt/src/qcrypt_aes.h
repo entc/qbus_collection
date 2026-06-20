@@ -14,12 +14,15 @@
 
 #define QCRYPT_AES_TYPE_CBC                0x01
 #define QCRYPT_AES_TYPE_CFB                0x02
+#define QCRYPT_AES_TYPE_GCM                0x03
 
 #define QCRYPT_AES_TYPE_CFB_1              0xF2
 #define QCRYPT_AES_TYPE_CFB_8              0xF3
 #define QCRYPT_AES_TYPE_CFB_128            0xF4
 
 #define QCRYPT_KEY_SHA256                  0x00     // default
+#define QCRYPT_KEY_SHA192                  0x01
+#define QCRYPT_KEY_SHA128                  0x02
 
 // paddings for keys
 #define QCRYPT_PADDING_ANSI_X923           0x01
@@ -65,7 +68,7 @@ __CAPE_LIBEX  void               qcrypt_aes_padding__ansiX923_pad    (unsigned c
 
 __CAPE_LIBEX  int                qcrypt_aes__handle_error            (struct evp_cipher_ctx_st* ctx, CapeErr err);
 
-__CAPE_LIBEX  const struct evp_cipher_st*  qencrypt_aes__get_cipher            (number_t type);
+__CAPE_LIBEX  const struct evp_cipher_st*  qencrypt_aes__get_cipher            (int aes_type, int key_type);
 
 //-----------------------------------------------------------------------------
 

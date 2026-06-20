@@ -315,30 +315,48 @@ QCryptAESKeys qcrypt_aes_keys_new__padding_pkcs7 (const CapeString secret, const
 
 //-----------------------------------------------------------------------------
 
-const EVP_CIPHER* qencrypt_aes__get_cipher (number_t type)
+const EVP_CIPHER* qencrypt_aes__get_cipher (int type_aes, int type_key)
 {
-  switch (type)
+  switch (type_aes)
   {
-    case QCRYPT_AES_TYPE_CBC:
-    {
-      return EVP_aes_256_cbc();
-    }
-    case QCRYPT_AES_TYPE_CFB:
-    {
-      return EVP_aes_256_cfb();
-    }
-    case QCRYPT_AES_TYPE_CFB_1:
-    {
-      return EVP_aes_256_cfb1();
-    }
-    case QCRYPT_AES_TYPE_CFB_8:
-    {
-      return EVP_aes_256_cfb8();
-    }
-    case QCRYPT_AES_TYPE_CFB_128:
-    {
-      return EVP_aes_256_cfb128();
-    }
+      case QCRYPT_AES_TYPE_GCM:
+      {
+          switch (type_key)
+          {
+              case QCRYPT_KEY_SHA256:
+              {
+                  return EVP_aes_256_gcm();
+              }
+              case QCRYPT_KEY_SHA192:
+              {
+                  return EVP_aes_192_gcm();
+              }
+              case QCRYPT_KEY_SHA128:
+              {
+                  return EVP_aes_128_gcm();
+              }
+          }
+      }
+      case QCRYPT_AES_TYPE_CBC:
+      {
+          return EVP_aes_256_cbc();
+      }
+      case QCRYPT_AES_TYPE_CFB:
+      {
+          return EVP_aes_256_cfb();
+      }
+      case QCRYPT_AES_TYPE_CFB_1:
+      {
+          return EVP_aes_256_cfb1();
+      }
+      case QCRYPT_AES_TYPE_CFB_8:
+      {
+          return EVP_aes_256_cfb8();
+      }
+      case QCRYPT_AES_TYPE_CFB_128:
+      {
+          return EVP_aes_256_cfb128();
+      }
   }
   
   return EVP_aes_256_cbc();

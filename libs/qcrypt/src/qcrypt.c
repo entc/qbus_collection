@@ -270,12 +270,26 @@ CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_te
 {
   if (decrypted_text)
   {
-    return qcrypt__encrypt_o (vsec, decrypted_text, cape_str_size (decrypted_text), err);
+    return qcrypt__encrypt_o (vsec, decrypted_text, cape_str_size (decrypted_text), QCRYPT_AES_TYPE_CFB, QCRYPT_KEY_SHA256, err);
   }
   else
   {
     return NULL;
   }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encrypt_ex (const CapeString vsec, const CapeString source, int aes_type, int key_type, CapeErr err)
+{
+    if (source)
+    {
+        return qcrypt__encrypt_o (vsec, source, cape_str_size (source), aes_type, key_type, err);
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -284,7 +298,7 @@ CapeString qcrypt__encrypt_m (const CapeString vsec, const CapeStream source, Ca
 {
   if (source)
   {
-    return qcrypt__encrypt_o (vsec, cape_stream_data (source), cape_stream_size (source), err);
+    return qcrypt__encrypt_o (vsec, cape_stream_data (source), cape_stream_size (source), QCRYPT_AES_TYPE_CFB, QCRYPT_KEY_SHA256, err);
   }
   else
   {
@@ -294,7 +308,7 @@ CapeString qcrypt__encrypt_m (const CapeString vsec, const CapeStream source, Ca
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_t buflen, CapeErr err)
+CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_t buflen, int aes_type, int key_type, CapeErr err)
 {
   int res;
   CapeString ret = NULL;
@@ -310,7 +324,7 @@ CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_
   }
   
   // create encryption engine
-  enc = qencrypt_aes_new (s, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
+  enc = qencrypt_aes_new (s, aes_type, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
   
   // encrypt the buffer 'decrypted_text'
   res = qencrypt_aes_process (enc, bufdat, buflen, err);

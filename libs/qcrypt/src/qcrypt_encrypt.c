@@ -282,7 +282,7 @@ int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, C
   int res;
   
   // get the cypher
-  const EVP_CIPHER* cypher = qencrypt_aes__get_cipher (self->cypher_type);
+  const EVP_CIPHER* cypher = qencrypt_aes__get_cipher (self->cypher_type, QCRYPT_KEY_SHA256);
     
   switch (self->key_type)
   {

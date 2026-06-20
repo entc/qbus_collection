@@ -10,6 +10,7 @@
 
 // qcrypt includes
 #include <qcrypt.h>
+#include <qcrypt_aes.h>
 
 //-----------------------------------------------------------------------------
 
@@ -413,7 +414,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  encrypted_output = qcrypt__encrypt (sec, serialized_output, err);
+  encrypted_output = qcrypt__encrypt_ex (sec, serialized_output, QCRYPT_AES_TYPE_GCM, QCRYPT_KEY_SHA256, err);
   if (NULL == encrypted_output)
   {
     res = cape_err_code (err);

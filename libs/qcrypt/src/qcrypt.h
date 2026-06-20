@@ -32,7 +32,9 @@ __CAPE_LIBEX  CapeString     qcrypt__encrypt            (const CapeString vsec, 
 
 __CAPE_LIBEX  CapeString     qcrypt__encrypt_m          (const CapeString vsec, const CapeStream source, CapeErr err);
 
-__CAPE_LIBEX  CapeString     qcrypt__encrypt_o          (const CapeString vsec, const char* bufdat, number_t buflen, CapeErr err);
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_ex         (const CapeString vsec, const CapeString decrypted_text, int aes_type, int key_type, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_o          (const CapeString vsec, const char* bufdat, number_t buflen, int aes_type, int key_type, CapeErr err);
 
 //-----------------------------------------------------------------------------
 // encode / decode methods
