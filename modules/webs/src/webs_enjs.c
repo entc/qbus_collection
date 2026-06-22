@@ -182,7 +182,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
         }
         
         // encrypt response
-        h2 = qcrypt__encrypt (self->vsec, h1, err);
+        h2 = qcrypt__encrypt_ex (self->vsec, h1, QCRYPT_AES_TYPE_256_GCM, err);
         if (h2 == NULL)
         {
           res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "can't encrypt");
@@ -434,12 +434,6 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
   // transfer the files
   cape_udc_replace_mv (&(qin->files), &(self->files));
   
-    {
-        CapeString h = cape_json_to_s (qin->rinfo);
-        
-        printf ("rinfo: %s\n", h);
-    }
-
   // continue
   // -> use the direct return, otherwise need to check self
   res = qbus_continue (self->qbus, self->module, self->method, qin, (void**)&self, webs_enjs_run__on_call, err);

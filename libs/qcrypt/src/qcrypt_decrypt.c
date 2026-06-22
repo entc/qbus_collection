@@ -169,7 +169,7 @@ struct QDecryptAES_s
 
   int blocksize;
   
-  number_t cypher_type;
+  int cypher_type;
   number_t padding_type;
   number_t key_type;
   
@@ -265,6 +265,65 @@ void qdecrypt_aes_del (QDecryptAES* p_self)
 
 //-----------------------------------------------------------------------------
 
+int qdecrypt_aes__cfb (QDecryptAES self, const EVP_CIPHER* cypher, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
+{
+    int res;
+          
+    switch (self->key_type)
+    {
+            /*
+      case QCRYPT_KEY_SHA256:
+      {
+        self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
+        break;
+      }
+             */
+      case QCRYPT_KEY_PASSPHRASE_MD5:
+      {
+        self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
+        
+        // set the correct offset
+        *p_buffer_offset = 16;
+        
+        break;
+      }
+      case QCRYPT_PADDING_ZEROS:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_ANSI_X923:
+      {
+        self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_PKCS7:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
+        break;
+      }
+    }
+    
+    if (self->keys == NULL)
+    {
+      return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
+    }
+      
+    res = EVP_DecryptInit_ex (self->ctx, cypher, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys));
+    
+    if (res == 0)
+    {
+      return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // check for the blocksize
+    self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
 {
 #if defined __WINDOWS_OS
@@ -272,60 +331,37 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
 
 #else
 
-  int res;
-  
-  // get the cypher
-  const EVP_CIPHER* cypher = qencrypt_aes__get_cipher (self->cypher_type);
-    
-  switch (self->key_type)
-  {
-    case QCRYPT_KEY_SHA256:
+    switch (self->cypher_type)
     {
-      self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
-      break;
+        case QCRYPT_AES_TYPE_256_GCM:
+        {
+            
+        }
+        case QCRYPT_AES_TYPE_256_CBC:
+        {
+            return qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB:
+        {
+            return qdecrypt_aes__cfb (self, EVP_aes_256_cfb(), bufdat, buflen, p_buffer_offset, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_1:
+        {
+            return qdecrypt_aes__cfb (self, EVP_aes_256_cfb1(), bufdat, buflen, p_buffer_offset, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_8:
+        {
+            return qdecrypt_aes__cfb (self, EVP_aes_256_cfb8(), bufdat, buflen, p_buffer_offset, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_128:
+        {
+            return qdecrypt_aes__cfb (self, EVP_aes_256_cfb128(), bufdat, buflen, p_buffer_offset, err);
+        }
+        default:
+        {
+            return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "cypher version is not supported");
+        }
     }
-    case QCRYPT_KEY_PASSPHRASE_MD5:
-    {
-      self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
-      
-      // set the correct offset
-      *p_buffer_offset = 16;
-      
-      break;
-    }
-    case QCRYPT_PADDING_ZEROS:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_ANSI_X923:
-    {
-      self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_PKCS7:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
-      break;
-    }
-  }
-  
-  if (self->keys == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
-  }
-    
-  res = EVP_DecryptInit_ex (self->ctx, cypher, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys));
-  
-  if (res == 0)
-  {
-    return qcrypt_aes__handle_error (self->ctx, err);
-  }
-  
-  // check for the blocksize
-  self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
-  
-  return CAPE_ERR_NONE;
 
 #endif
 }

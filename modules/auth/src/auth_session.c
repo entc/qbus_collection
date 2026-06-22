@@ -10,6 +10,7 @@
 
 // qcrypt includes
 #include <qcrypt.h>
+#include <qcrypt_aes.h>
 
 //-----------------------------------------------------------------------------
 
@@ -103,7 +104,7 @@ int auth_session__generate_aitem (AuthSession self, CapeUdc wp_dataset, const Ca
     }
     
     // encrypt the content with a known secret of the frontend
-    encrypted_output = qcrypt__encrypt (sec, serialized_output, err);
+    encrypted_output = qcrypt__encrypt_ex (sec, serialized_output, QCRYPT_AES_TYPE_256_GCM, err);
     if (NULL == encrypted_output)
     {
         res = cape_err_code (err);
@@ -154,10 +155,12 @@ int auth_session__save_session (AuthSession self, AdblTrx trx, number_t type, nu
         goto exit_and_cleanup;
     }
 
-    // encrypt the vesc secret
+    // encrypt the vsec secret
     h2 = qcrypt__encrypt (self->vsec, h1, err);
     if (h2 == NULL)
     {
+        cape_log_fmt (CAPE_LL_ERROR, "AUTH", "session save", "can't encrypt roles: %s", cape_err_text (err));
+
         res = cape_err_code (err);
         goto exit_and_cleanup;
     }
@@ -167,6 +170,8 @@ int auth_session__save_session (AuthSession self, AdblTrx trx, number_t type, nu
         h3 = qcrypt__encrypt (self->vsec, remote, err);
         if (h3 == NULL)
         {
+            cape_log_fmt (CAPE_LL_ERROR, "AUTH", "session save", "can't encrypt remote: %s", cape_err_text (err));
+
             res = cape_err_code (err);
             goto exit_and_cleanup;
         }
@@ -180,6 +185,8 @@ int auth_session__save_session (AuthSession self, AdblTrx trx, number_t type, nu
         goto exit_and_cleanup;
     }
 
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session save", "saved session as hash = '%s'", token_hash);
+    
     {
         CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
         CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -378,21 +385,21 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
-  {
-    CapeUdc h = cape_udc_get (first_row, "opt_locale");
-    if (h)
     {
-      session_locale = cape_udc_s_mv (h, NULL);
+        CapeUdc h = cape_udc_get (first_row, "opt_locale");
+        if (h)
+        {
+            session_locale = cape_udc_s_mv (h, NULL);
+        }
     }
-  }
-  {
-    CapeUdc h = cape_udc_get (first_row, "opt_ttl");
-    if (h)
     {
-      session_ttl = cape_udc_n (h, session_ttl);
+        CapeUdc h = cape_udc_get (first_row, "opt_ttl");
+        if (h)
+        {
+            session_ttl = cape_udc_n (h, session_ttl);
+        }
     }
-  }
-  
+
     msg = qbus_message_new (NULL, NULL);
 
     {
@@ -421,7 +428,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
         res = cape_err_code (err);
         goto exit_and_cleanup;
     }
-
+    
     // save session into the database
     res = auth_session__save_session (self, trx, type, session_ttl, session_token, cape_udc_get_s (qin->rinfo, "remote", NULL), roles, err);
     if (res)
@@ -441,7 +448,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n (first_row, "vp", session_ttl);
     
     // add token
-    cape_udc_add_s_mv (first_row, "token", &session_token);
+    cape_udc_add_s_cp (first_row, "token", session_token);
     
     // add roles
     cape_udc_add (first_row, &roles);
@@ -456,7 +463,7 @@ int auth_session_add (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   
     res = CAPE_ERR_NONE;
     adbl_trx_commit (&trx, err);
-
+    
 exit_and_cleanup:
   
     adbl_trx_rollback (&trx, err);
@@ -602,6 +609,8 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session get", "seek session as hash = '%s'", session_token_hash);
+
   {
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
@@ -628,16 +637,15 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
   
-  first_row = cape_udc_get_first (query_results);
+    //cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session get", "fetch sessions [%lu] for token = %s", cape_udc_size (query_results), session_token);
+
+    first_row = cape_udc_get_first (query_results);
   if (first_row == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_AUTH, "token not found");
     goto exit_and_cleanup;
   }
     
-    cape_log_fmt (CAPE_LL_TRACE, "AUTH", "session get", "fetch sessions [%lu] for token = %s", cape_udc_size (query_results), session_token);
-    
-
   // AK: timeout can only be handled by the server
   // -> client must be synced with the server session timeouts
   vp = cape_udc_get_n (first_row, "vp", 0);
@@ -756,12 +764,6 @@ int auth_session_get (AuthSession* p_self, QBusM qin, QBusM qout, CapeErr err)
   cape_udc_add_name (qout->rinfo, &roles, "roles");
   cape_udc_add_n    (qout->rinfo, "wpid", self->wpid);
   cape_udc_add_n    (qout->rinfo, "gpid", self->gpid);
-
-    {
-        CapeString h = cape_json_to_s (qout->rinfo);
-        
-        printf ("rinfo: %s\n", h);
-    }
     
   // to be safe
   if (qout->pdata == NULL)

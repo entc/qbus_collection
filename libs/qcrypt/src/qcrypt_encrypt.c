@@ -1,5 +1,6 @@
 #include "qcrypt_encrypt.h"
 #include "qcrypt_aes.h"
+#include "qcrypt.h"
 
 // cape includes
 #include <sys/cape_log.h>
@@ -17,6 +18,7 @@
 #include <openssl/md5.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 
 #endif
 
@@ -193,7 +195,7 @@ struct QEncryptAES_s
 
 //-----------------------------------------------------------------------------
 
-QEncryptAES qencrypt_aes_new (CapeStream r_product, number_t cypher_type, number_t padding_type, const CapeString secret, number_t key_type)
+QEncryptAES qencrypt_aes_new (CapeStream r_product, number_t cypher_type, const CapeString secret)
 {
   QEncryptAES self = CAPE_NEW (struct QEncryptAES_s);
   
@@ -220,11 +222,11 @@ QEncryptAES qencrypt_aes_new (CapeStream r_product, number_t cypher_type, number
   
   // cipher settings
   self->cypher_type = cypher_type;
-  self->padding_type = padding_type;
+  self->padding_type = QCRYPT_PADDING_NONE;
   
   // key settings
   self->secret = cape_str_cp (secret);
-  self->key_type = key_type;
+  self->key_type = QCRYPT_KEY_NONE;
   
   self->keys = NULL;
 
@@ -272,79 +274,176 @@ void qencrypt_aes_del (QEncryptAES* p_self)
 
 //-----------------------------------------------------------------------------
 
-int qencrypt_aes__init (QEncryptAES self, const char* bufdat, number_t buflen, CapeErr err)
+int qencrypt_aes__cfb (QEncryptAES self, const EVP_CIPHER* cypher, number_t padding_type, number_t key_type, CapeErr err)
+{
+    int res;
+  
+    self->padding_type = padding_type;
+    self->key_type = key_type;
+    
+    switch (self->key_type)
+    {
+            /*
+      case QCRYPT_KEY_SHA256:
+      {
+        self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
+        break;
+      }
+             */
+      case QCRYPT_KEY_PASSPHRASE_MD5:
+      {
+        number_t size = cape_stream_size (self->product);
+        
+        self->keys = qcrypt_aes_keys_new__md5_en (self->secret, cypher, self->product);
+        
+        // increase the total size by the delta of the last size
+        self->total_size += (cape_stream_size (self->product) - size);
+        
+        break;
+      }
+      case QCRYPT_PADDING_ZEROS:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_ANSI_X923:
+      {
+        self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_PKCS7:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
+        break;
+      }
+    }
+    
+    if (self->keys == NULL)
+    {
+      return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
+    }
+      
+    res = EVP_EncryptInit_ex (self->ctx, cypher, NULL, (unsigned char*)qcrypt_aes_key (self->keys), (unsigned char*)qcrypt_aes_iv (self->keys));
+    
+    if (res == 0)
+    {
+      return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // check for the blocksize
+    self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
+    
+    if (self->padding_type)
+    {
+      // disable automatic padding
+      EVP_CIPHER_CTX_set_padding (self->ctx, 0);
+    }
+    else
+    {
+      EVP_CIPHER_CTX_set_padding (self->ctx, 1);
+    }
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+#define AES_256_GCM__IV_LEN       12
+#define AES_256_GCM__SALT_LEN     16
+#define AES_256_GCM__TAG_LEN      16
+
+int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
+{
+    const EVP_CIPHER* cipher = EVP_aes_256_gcm();
+        
+    // create the keys needed for GCM
+    self->keys = qcrypt_aes_keys_new__pbkdf2 (self->secret, AES_256_GCM__IV_LEN, AES_256_GCM__SALT_LEN, err);
+    if (NULL == self->keys)
+    {
+        return cape_err_code (err);
+    }
+
+    // IMPORTANT: set cipher first
+    if (!EVP_EncryptInit_ex (self->ctx, cipher, NULL, NULL, NULL))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // set IV length (REQUIRED for GCM)
+    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, AES_256_GCM__IV_LEN, NULL))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // now set key + iv
+    if (!EVP_EncryptInit_ex (self->ctx, NULL, NULL, (const unsigned char*)qcrypt_aes_key (self->keys), (const unsigned char*)qcrypt_aes_iv (self->keys)))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    if (!EVP_CIPHER_CTX_set_padding (self->ctx, 0))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // clear the output stream
+    cape_stream_clr (self->product);
+    
+    // set the version flag
+    cape_stream_append_c (self->product, QCRYPT_AES_TYPE_256_GCM);
+    
+    // add the salt
+    cape_stream_append_buf (self->product, qcrypt_aes_salt (self->keys), AES_256_GCM__SALT_LEN);
+    
+    // add the iv
+    cape_stream_append_buf (self->product, qcrypt_aes_iv (self->keys), AES_256_GCM__IV_LEN);
+    
+    // we don't need padding
+    self->padding_type = QCRYPT_PADDING_NONE;
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qencrypt_aes__init (QEncryptAES self, CapeErr err)
 {
 #if defined __WINDOWS_OS
 
 
 #else
 
-  int res;
-  
-  // get the cypher
-  const EVP_CIPHER* cypher = qencrypt_aes__get_cipher (self->cypher_type);
-    
-  switch (self->key_type)
-  {
-    case QCRYPT_KEY_SHA256:
+    switch (self->cypher_type)
     {
-      self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
-      break;
+        case QCRYPT_AES_TYPE_256_GCM:
+        {
+            return qencrypt_aes__gcm (self, err);
+        }
+        case QCRYPT_AES_TYPE_256_CBC:
+        {
+            return qencrypt_aes__cfb (self, EVP_aes_256_cbc(), QCRYPT_PADDING_ANSI_X923, QCRYPT_KEY_PASSPHRASE_MD5, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB:
+        {
+            return qencrypt_aes__cfb (self, EVP_aes_256_cfb(), QCRYPT_PADDING_ANSI_X923, QCRYPT_KEY_PASSPHRASE_MD5, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_1:
+        {
+            return qencrypt_aes__cfb (self, EVP_aes_256_cfb1(), QCRYPT_PADDING_ANSI_X923, QCRYPT_KEY_PASSPHRASE_MD5, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_8:
+        {
+            return qencrypt_aes__cfb (self, EVP_aes_256_cfb8(), QCRYPT_PADDING_ANSI_X923, QCRYPT_KEY_PASSPHRASE_MD5, err);
+        }
+        case QCRYPT_AES_TYPE_256_CFB_128:
+        {
+            return qencrypt_aes__cfb (self, EVP_aes_256_cfb128(), QCRYPT_PADDING_ANSI_X923, QCRYPT_KEY_PASSPHRASE_MD5, err);
+        }
+        default:
+        {
+            return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "cypher version is not supported");
+        }
     }
-    case QCRYPT_KEY_PASSPHRASE_MD5:
-    {
-      number_t size = cape_stream_size (self->product);
-      
-      self->keys = qcrypt_aes_keys_new__md5_en (self->secret, cypher, self->product);
-      
-      // increase the total size by the delta of the last size
-      self->total_size += (cape_stream_size (self->product) - size);
-      
-      break;
-    }
-    case QCRYPT_PADDING_ZEROS:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_ANSI_X923:
-    {
-      self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_PKCS7:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
-      break;
-    }
-  }
-  
-  if (self->keys == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
-  }
-    
-  res = EVP_EncryptInit_ex (self->ctx, cypher, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys));
-  
-  if (res == 0)
-  {
-    return qcrypt_aes__handle_error (self->ctx, err);
-  }
-  
-  // check for the blocksize
-  self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
-  
-  if (self->padding_type)
-  {
-    // disable automatic padding
-    EVP_CIPHER_CTX_set_padding (self->ctx, 0);
-  }
-  else
-  {
-    EVP_CIPHER_CTX_set_padding (self->ctx, 1);
-  }
-  
-  return CAPE_ERR_NONE;
 
 #endif
 }
@@ -360,7 +459,7 @@ int qencrypt_aes_process (QEncryptAES self, const char* bufdat, number_t buflen,
 
   if (self->keys == NULL)
   {
-    int res = qencrypt_aes__init (self, bufdat, buflen, err);
+    int res = qencrypt_aes__init (self, err);
     if (res)
     {
       return res;
@@ -436,20 +535,41 @@ int qencrypt_aes_finalize (QEncryptAES self, CapeErr err)
     }
   }
   
-  cape_stream_cap (self->product, self->blocksize);
+    cape_stream_cap (self->product, self->blocksize);
 
-  {
-    int lenLast;
-
-    if (EVP_EncryptFinal_ex (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast) == 0)
     {
-      return qcrypt_aes__handle_error (self->ctx, err);
+        int lenLast;
+
+        if (EVP_EncryptFinal_ex (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast) == 0)
+        {
+            return qcrypt_aes__handle_error (self->ctx, err);
+        }
+
+        cape_stream_set (self->product, lenLast);
     }
 
-    cape_stream_set (self->product, lenLast);
-  }
+    switch (self->cypher_type)
+    {
+        case QCRYPT_AES_TYPE_256_GCM:
+        {
+            unsigned char tag[AES_256_GCM__TAG_LEN];
 
-  return CAPE_ERR_NONE;
+            // retrieve the cryptographic authentication tag
+            // computed from: the ciphertext, the key, the IV
+            // detects tampering of the encrypted product
+            if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_GET_TAG, AES_256_GCM__TAG_LEN, tag))
+            {
+                return qcrypt_aes__handle_error (self->ctx, err);
+            }
+            
+            // append the tag to the end of the product
+            cape_stream_append_buf (self->product, (char*)tag, AES_256_GCM__TAG_LEN);
+            
+            break;
+        }
+    }
+    
+    return CAPE_ERR_NONE;
 
 #endif
 }

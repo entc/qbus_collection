@@ -14,6 +14,16 @@
 
 //-----------------------------------------------------------------------------
 
+#define QCRYPT_AES_TYPE_256_CBC                0x01
+#define QCRYPT_AES_TYPE_256_CFB                0x02
+#define QCRYPT_AES_TYPE_256_GCM                0x67
+
+#define QCRYPT_AES_TYPE_256_CFB_1              0xF2
+#define QCRYPT_AES_TYPE_256_CFB_8              0xF3
+#define QCRYPT_AES_TYPE_256_CFB_128            0xF4
+
+//-----------------------------------------------------------------------------
+
 __CAPE_LIBEX  CapeString     qcrypt__decrypt            (const CapeString vsec, const CapeString encrypted_text, CapeErr err);
 
 __CAPE_LIBEX  CapeStream     qcrypt__decrypt_m          (const CapeString vsec, const CapeString encrypted_text, CapeErr err);
@@ -32,7 +42,9 @@ __CAPE_LIBEX  CapeString     qcrypt__encrypt            (const CapeString vsec, 
 
 __CAPE_LIBEX  CapeString     qcrypt__encrypt_m          (const CapeString vsec, const CapeStream source, CapeErr err);
 
-__CAPE_LIBEX  CapeString     qcrypt__encrypt_o          (const CapeString vsec, const char* bufdat, number_t buflen, CapeErr err);
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_ex         (const CapeString vsec, const CapeString decrypted_text, int type_aes, CapeErr err);
+
+__CAPE_LIBEX  CapeString     qcrypt__encrypt_o          (const CapeString vsec, const char* bufdat, number_t buflen, int type_aes, CapeErr err);
 
 //-----------------------------------------------------------------------------
 // encode / decode methods

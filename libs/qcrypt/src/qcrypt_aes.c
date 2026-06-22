@@ -16,6 +16,7 @@
 #include <openssl/md5.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 
 #endif
 
@@ -52,9 +53,12 @@ HCRYPTPROV ecencrypt_aes_acquireContext (DWORD provType, CapeErr err)
 
 struct QCryptAESKeys_s
 {
-  unsigned char* key;
-  unsigned char* iv;
-  
+    CapeString iv;
+    CapeString salt;
+
+    // the very secret key
+    CapeString key;
+    number_t key_len;
 };
 
 //-----------------------------------------------------------------------------
@@ -63,34 +67,48 @@ void qcrypt_aes_keys_del (QCryptAESKeys* p_self)
 {
   if (*p_self)
   {
-    QCryptAESKeys self = *p_self;
-    
-    if (self->key)
-    {
-      CAPE_FREE (self->key);
-    }
+      QCryptAESKeys self = *p_self;
+      
+      if (self->key)
+      {
+          // this prevents derived AES keys from remaining in heap memory
+          OPENSSL_cleanse (self->key, self->key_len);
+          CAPE_FREE (self->key);
+      }
 
-    if (self->iv)
-    {
-      CAPE_FREE (self->iv);
-    }
-    
-    CAPE_DEL (p_self, struct QCryptAESKeys_s);
+      if (self->iv)
+      {
+        CAPE_FREE (self->iv);
+      }
+
+      if (self->salt)
+      {
+        CAPE_FREE (self->salt);
+      }
+
+      CAPE_DEL (p_self, struct QCryptAESKeys_s);
   }
 }
 
 //-----------------------------------------------------------------------------
 
-unsigned char* qcrypt_aes_key (QCryptAESKeys self)
+const CapeString qcrypt_aes_key (QCryptAESKeys self)
 {
-  return self->key;
+    return self->key;
 }
 
 //-----------------------------------------------------------------------------
 
-unsigned char* qcrypt_aes_iv (QCryptAESKeys self)
+const CapeString qcrypt_aes_iv (QCryptAESKeys self)
 {
-  return self->iv;
+    return self->iv;
+}
+
+//-----------------------------------------------------------------------------
+
+const CapeString qcrypt_aes_salt (QCryptAESKeys self)
+{
+    return self->salt;
 }
 
 //-----------------------------------------------------------------------------
@@ -99,12 +117,12 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
 {
   QCryptAESKeys self = NULL;
   
-  int keyLength = EVP_CIPHER_key_length (cypher);
+  self->key_len = EVP_CIPHER_key_length (cypher);
 
   // length in 8 bit blocks
-  if (keyLength != 32)   // 8 * 32 = 256
+  if (self->key_len != 32)   // 8 * 32 = 256
   {
-    cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "cypher has unsupported key-length for padding (SHA256): %i", keyLength);
+    cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "cypher has unsupported key-length for padding (SHA256): %i", self->key_len);
     goto exit_and_cleanup;
   }
   
@@ -122,7 +140,7 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
       goto exit_and_cleanup;
     }
 
-    self->key = (unsigned char*)cape_stream_to_str (&h);
+    self->key = cape_stream_to_str (&h);
   }
   
 exit_and_cleanup:
@@ -145,12 +163,14 @@ QCryptAESKeys qcrypt_aes_keys_new__md5_en (const CapeString secret, const EVP_CI
   int res;
   
   self->key = CAPE_ALLOC (EVP_MAX_KEY_LENGTH);
+  self->key_len = EVP_MAX_KEY_LENGTH;
+    
   self->iv = CAPE_ALLOC (EVP_MAX_IV_LENGTH);
   
   {
     CapeString random_text = cape_str_random_s (8);
     
-    res = EVP_BytesToKey (cypher, EVP_md5(), (unsigned char*)random_text, (unsigned char*)secret, cape_str_size (secret), rounds, self->key, self->iv);
+    res = EVP_BytesToKey (cypher, EVP_md5(), (unsigned char*)random_text, (unsigned char*)secret, (int)cape_str_size (secret), rounds, (unsigned char*)self->key, (unsigned char*)self->iv);
 
     // set termination
     self->key[res] = 0;
@@ -161,26 +181,6 @@ QCryptAESKeys qcrypt_aes_keys_new__md5_en (const CapeString secret, const EVP_CI
     cape_str_del (&random_text);
   }
   
-  // for debug
-  /*
-  {
-      EcBuffer a0 = ecbuf_create_buffer_cp(self->buf->buffer + 8, 8);
-      
-      EcBuffer h0 = ecbuf_bin2hex (a0);
-      EcBuffer h1 = ecbuf_bin2hex (self->keys->key);
-      EcBuffer h2 = ecbuf_bin2hex (self->keys->iv);
-      
-      eclog_fmt (LL_TRACE, "ENTC", "eccrypt", "SLT: %s", h0->buffer);
-      eclog_fmt (LL_TRACE, "ENTC", "eccrypt", "KEY: %s", h1->buffer);
-      eclog_fmt (LL_TRACE, "ENTC", "eccrypt", " IV: %s", h2->buffer);
-      
-      ecbuf_destroy(&h1);
-      ecbuf_destroy(&h2);
-      ecbuf_destroy(&h0);
-      ecbuf_destroy(&a0);
-  }
-  */
-
   return self;
 }
 
@@ -198,14 +198,14 @@ QCryptAESKeys qcrypt_aes_keys_new__md5_de (const CapeString secret, const EVP_CI
   }
   
   // cypher options
-  int keyLength = EVP_CIPHER_key_length (cypher);
+  self->key_len = EVP_CIPHER_key_length (cypher);
   
   //eclog_fmt (LL_TRACE, "ENTC", "eccrypt", "passphrase with key-length %i", keyLength);
   
-  self->key = CAPE_ALLOC (keyLength);
+  self->key = CAPE_ALLOC (self->key_len);
   self->iv = CAPE_ALLOC (16);
   
-  EVP_BytesToKey (cypher, EVP_md5(), (const unsigned char*)bufdat + 8, (unsigned char*)secret, cape_str_size (secret), 1, self->key, self->iv);
+  EVP_BytesToKey (cypher, EVP_md5(), (const unsigned char*)bufdat + 8, (unsigned char*)secret, (int)cape_str_size (secret), 1, (unsigned char*)self->key, (unsigned char*)self->iv);
 
 exit_and_cleanup:
 
@@ -223,16 +223,16 @@ QCryptAESKeys qcrypt_aes_keys_new__padding_zero (const CapeString secret, const 
 {
   QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
 
-  int size = cape_str_size (secret);
+  number_t size = cape_str_size (secret);
 
   // cypher options
-  int keyLength = EVP_CIPHER_key_length (cypher);
+  self->key_len = EVP_CIPHER_key_length (cypher);
   
   // using the whole keylength for padding
-  self->key = CAPE_ALLOC (keyLength);
+  self->key = CAPE_ALLOC (self->key_len);
   
   // add the zeros (padding)
-  memset (self->key, 0, keyLength);
+  memset (self->key, 0, self->key_len);
 
   // fill the buffer with they key
   memcpy (self->key, secret, size);
@@ -262,22 +262,22 @@ QCryptAESKeys qcrypt_aes_keys_new__ansiX923 (const CapeString secret, const EVP_
 {
   QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
 
-  int size = cape_str_size (secret);
+  number_t size = cape_str_size (secret);
 
   // cypher options
-  int keyLength = EVP_CIPHER_key_length (cypher);
+  self->key_len = EVP_CIPHER_key_length (cypher);
   
   // using the whole keylength for padding
-  self->key = CAPE_ALLOC (keyLength);
+  self->key = CAPE_ALLOC (self->key_len);
 
   // add the zeros (padding)
-  memset (self->key, 0, keyLength);
+  memset (self->key, 0, self->key_len);
 
   // fill the buffer with they key
   memcpy (self->key, secret, size);
   
   // add the last byte (padding)
-  memset (self->key + keyLength - 1, keyLength - size, 1);
+  memset (self->key + self->key_len - 1, self->key_len - size, 1);
   
   // the rest is empty
   self->iv = NULL;
@@ -291,18 +291,18 @@ QCryptAESKeys qcrypt_aes_keys_new__padding_pkcs7 (const CapeString secret, const
 {
   QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
 
-  int size = cape_str_size (secret);
+  number_t size = cape_str_size (secret);
 
   // cypher options
-  int keyLength = EVP_CIPHER_key_length (cypher);
+  self->key_len = EVP_CIPHER_key_length (cypher);
   
-  int diff = keyLength - size;
+  number_t diff = self->key_len - size;
         
   // using the whole keylength for padding
-  self->key = CAPE_ALLOC (keyLength);
+  self->key = CAPE_ALLOC (self->key_len);
 
   // add the padding
-  memset (self->key, diff, keyLength);
+  memset (self->key, diff, self->key_len);
 
   // fill the buffer with the key
   memcpy (self->key, secret, size);
@@ -315,33 +315,45 @@ QCryptAESKeys qcrypt_aes_keys_new__padding_pkcs7 (const CapeString secret, const
 
 //-----------------------------------------------------------------------------
 
-const EVP_CIPHER* qencrypt_aes__get_cipher (number_t type)
+#define AES_256_PBKDF2__KEY_LEN      32
+#define AES_256_PBKDF2__ITERATIONS   100000
+//-----------------------------------------------------------------------------
+
+QCryptAESKeys qcrypt_aes_keys_new__pbkdf2 (const CapeString secret, number_t iv_len, number_t salt_len, CapeErr err)
 {
-  switch (type)
-  {
-    case QCRYPT_AES_TYPE_CBC:
+    QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
+
+    self->key = CAPE_ALLOC (AES_256_PBKDF2__KEY_LEN);
+    self->key_len = AES_256_PBKDF2__KEY_LEN;
+    
+    self->salt = CAPE_ALLOC (salt_len);
+    self->iv = CAPE_ALLOC (iv_len);
+
+    // create the salt
+    if (RAND_bytes ((unsigned char *)self->salt, (int)salt_len) != 1)
     {
-      return EVP_aes_256_cbc();
+        cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "rand failed on openssl");
+        goto cleanup_and_exit;
     }
-    case QCRYPT_AES_TYPE_CFB:
+    
+    if (RAND_bytes ((unsigned char *)self->iv, (int)iv_len) != 1)
     {
-      return EVP_aes_256_cfb();
+        cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "rand failed on openssl");
+        goto cleanup_and_exit;
     }
-    case QCRYPT_AES_TYPE_CFB_1:
+    
+    if (PKCS5_PBKDF2_HMAC (secret, (int)cape_str_size (secret), (unsigned char *)self->salt, (int)salt_len, AES_256_PBKDF2__ITERATIONS, EVP_sha256(), (int)self->key_len, (unsigned char *)self->key) != 1)
     {
-      return EVP_aes_256_cfb1();
+        cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "hmac failed on openssl");
+        goto cleanup_and_exit;
     }
-    case QCRYPT_AES_TYPE_CFB_8:
-    {
-      return EVP_aes_256_cfb8();
-    }
-    case QCRYPT_AES_TYPE_CFB_128:
-    {
-      return EVP_aes_256_cfb128();
-    }
-  }
-  
-  return EVP_aes_256_cbc();
+    
+    return self;
+    
+cleanup_and_exit:
+    
+    qcrypt_aes_keys_del (&self);
+    return NULL;
 }
 
 //-----------------------------------------------------------------------------

@@ -99,7 +99,7 @@ CapeStream qcrypt__decrypt_m (const CapeString vsec, const CapeString encrypted_
   
   ret = cape_stream_new ();
   
-  dec = qdecrypt_aes_new (ret, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
+  dec = qdecrypt_aes_new (ret, QCRYPT_AES_TYPE_256_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
   
   {
     int res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
@@ -270,12 +270,26 @@ CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_te
 {
   if (decrypted_text)
   {
-    return qcrypt__encrypt_o (vsec, decrypted_text, cape_str_size (decrypted_text), err);
+    return qcrypt__encrypt_o (vsec, decrypted_text, cape_str_size (decrypted_text), QCRYPT_AES_TYPE_256_CFB, err);
   }
   else
   {
     return NULL;
   }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encrypt_ex (const CapeString vsec, const CapeString source, int type_aes, CapeErr err)
+{
+    if (source)
+    {
+        return qcrypt__encrypt_o (vsec, source, cape_str_size (source), type_aes, err);
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -284,7 +298,7 @@ CapeString qcrypt__encrypt_m (const CapeString vsec, const CapeStream source, Ca
 {
   if (source)
   {
-    return qcrypt__encrypt_o (vsec, cape_stream_data (source), cape_stream_size (source), err);
+    return qcrypt__encrypt_o (vsec, cape_stream_data (source), cape_stream_size (source), QCRYPT_AES_TYPE_256_CFB, err);
   }
   else
   {
@@ -294,7 +308,7 @@ CapeString qcrypt__encrypt_m (const CapeString vsec, const CapeStream source, Ca
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_t buflen, CapeErr err)
+CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_t buflen, int type_aes, CapeErr err)
 {
   int res;
   CapeString ret = NULL;
@@ -310,7 +324,7 @@ CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_
   }
   
   // create encryption engine
-  enc = qencrypt_aes_new (s, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
+  enc = qencrypt_aes_new (s, type_aes, vsec);
   
   // encrypt the buffer 'decrypted_text'
   res = qencrypt_aes_process (enc, bufdat, buflen, err);

@@ -1,11 +1,27 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Observable, Subscriber, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, Subscriber, throwError, from, of } from 'rxjs';
+import { switchMap, map, catchError } from 'rxjs/operators';
 import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds, ConnStatus } from '@qbus/auth_session';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import * as CryptoJS from 'crypto-js';
+
+//---------------------------------------------------------------------------
+
+interface Crypt4Params
+{
+    ha: string;
+    id: string;
+    da: string;
+    wpid?: number;
+    code?: string;
+    vault?: string;
+}
+
+type RpcEvent<T> =
+  | { type: 'progress'; value: number }
+  | { type: 'result'; value: T };
 
 //---------------------------------------------------------------------------
 
@@ -14,38 +30,84 @@ import * as CryptoJS from 'crypto-js';
   // the connection status is always available and connected
   public status: Observable<ConnStatus> = new Observable ((subscriber) => subscriber.next({state: 0, url: null, connected: true}));
 
+  // for decryption
+  private readonly decoder = new TextDecoder();
+  private readonly encoder = new TextEncoder();
+
   constructor (private http: HttpClient, private modal_service: NgbModal)
   {
+  }
+
+  //---------------------------------------------------------------------------
+
+  private b64_to_bytes (b64: string): Uint8Array
+  {
+      return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  }
+
+  //-------------------------------------------------------------------------
+
+  private bytes_to_hex (buffer: ArrayBuffer): string
+  {
+      return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   //-------------------------------------------------------------------------
 
   private padding (str: string, max: number): string
   {
-  	return str.length < max ? this.padding ("0" + str, max) : str;
+  	 return str.length < max ? this.padding ("0" + str, max) : str;
   }
 
   //---------------------------------------------------------------------------
 
-  private crypt4_promise (creds: AuthLoginCreds): Promise<ArrayBuffer>
+  private async crypt4_promise (creds: AuthLoginCreds): Promise<string>
   {
-    // get the linux time since 1970 in milliseconds
-    var iv: string = this.padding ((new Date).getTime().toString(), 16);
+      const [hash1_buffer, user_buffer] = await Promise.all([
+          crypto.subtle.digest("SHA-256", this.encoder.encode(creds.user + ":" + creds.pass)),
+          crypto.subtle.digest("SHA-256", this.encoder.encode(creds.user))
+      ]);
 
-    const hash1_array = new TextEncoder().encode (creds.user + ":" + creds.pass);
+      // TODO: use a cached value here
+      // convert from ArrayBuffer into hex string
+      const hash1 = this.bytes_to_hex(hash1_buffer);
+      const user = this.bytes_to_hex(user_buffer);
 
-    return window.crypto.subtle.digest ("SHA-256", hash1_array).then ((hash1_buffer: ArrayBuffer) => {
+      // get the linux time since 1970 in milliseconds
+      const ha: string = this.padding (Date.now().toString(), 16);
 
-      const hash1: string = new TextDecoder().decode (hash1_buffer);
-      const hash2_array = new TextEncoder().encode (iv + ":" + hash1);
+      const hash2 = await crypto.subtle.digest ("SHA-256", this.encoder.encode (ha + ":" + hash1));
 
-      return window.crypto.subtle.digest ("SHA-256", hash2_array);
+      const params: Crypt4Params = {"ha": ha, "id": user, "da": this.bytes_to_hex(hash2)};
 
-    });
+      if (creds.wpid)
+      {
+          params.wpid = creds.wpid;
+      }
+
+      if (creds.code)
+      {
+          const hash3 = await crypto.subtle.digest ("SHA-256", this.encoder.encode (creds.code));
+
+          // use the new crypto interface
+          params.code = this.bytes_to_hex(hash3);
+      }
+
+      if (creds.vault)
+      {
+          // TODO: replace this
+          // ecrypt password with hash1
+          // hash1 is known to the auth module
+          params.vault = CryptoJS.AES.encrypt (creds.pass, hash1, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
+      }
+
+      // create a Object object as text
+      return JSON.stringify (params);
   }
 
   //---------------------------------------------------------------------------
 
+/*
   private crypt4 (creds: AuthLoginCreds): string
   {
     // get the linux time since 1970 in milliseconds
@@ -78,7 +140,7 @@ import * as CryptoJS from 'crypto-js';
     // create a Object object as text
     return JSON.stringify (params);
   }
-
+*/
   //---------------------------------------------------------------------------
 
   private login__handle_error<T> (http_request: Observable<T>, subscriber: Subscriber<AuthLoginItem>, creds: AuthLoginCreds): Observable<T>
@@ -138,55 +200,124 @@ import * as CryptoJS from 'crypto-js';
 
   //---------------------------------------------------------------------------
 
-  private session__decrypt_body (body: object, creds: AuthLoginCreds): AuthSessionItem
+  private async derive_key (password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey>
   {
-    if (body)
-    {
-      const aitem: string = body['aitem'];
+      // imports the password as PBKDF2 input material (not a usable cryptographic key yet)
+      const base_key = await crypto.subtle.importKey ("raw", this.encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
 
-      if (aitem)
-      {
-        return JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (aitem, creds.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 })));
-      }
-    }
-
-    return null;
+      // taking a password-derived key (baseKey) and turning it into a real 256-bit AES-GCM encryption key using PBKDF2
+      return crypto.subtle.deriveKey ({name: "PBKDF2", salt, iterations: iterations, hash: "SHA-256"}, base_key, {name: "AES-GCM", length: 256}, false, ["decrypt"]);
   }
 
   //---------------------------------------------------------------------------
 
-  private session__login_request (subscriber: Subscriber<AuthLoginItem>, creds: AuthLoginCreds): void
+  private async decrypt_v1 (payload: Uint8Array, password: string): Promise<string>
+  {
+      const salt = payload.slice(1, 17);
+      const iv = payload.slice(17, 29);
+      const ciphertext = payload.slice(29);
+
+      // derive AES-GCM CryptoKey from password + salt
+      const key = await this.derive_key(password, salt, 100000);
+
+      try
+      {
+          // decrypt
+          const plaintext_buffer = await crypto.subtle.decrypt({name: "AES-GCM", iv}, key, ciphertext);
+
+          return this.decoder.decode (plaintext_buffer);
+      }
+      catch
+      {
+          throw new Error("Invalid password or corrupted encrypted data");
+      }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private async decrypt_item (payload_base64: string, password: string): Promise<string>
+  {
+      const payload = this.b64_to_bytes (payload_base64);
+
+      if (payload.length <= 29)
+      {
+          throw new Error("Invalid encrypted payload");
+      }
+
+      switch (payload[0])
+      {
+          case 0x67:
+          {
+              return this.decrypt_v1 (payload, password);
+          }
+          default:
+          {
+              throw new Error(`Unsupported encryption version`);
+          }
+      }
+  }
+
+  //---------------------------------------------------------------------------
+
+  private session__decrypt_body (body: object, creds: AuthLoginCreds): Promise<AuthSessionItem | null>
+  {
+      if (!body)
+      {
+          return Promise.resolve (null);
+      }
+
+      const aitem: string = body['aitem'];
+
+      if (!aitem)
+      {
+          return Promise.resolve (null);
+      }
+
+      return this.decrypt_item (aitem, creds.vsec).then (plaintext => {
+
+          console.log(plaintext);
+
+          return JSON.parse(plaintext) as AuthSessionItem
+
+      });
+  }
+
+  //---------------------------------------------------------------------------
+
+  private async session__login_request (subscriber: Subscriber<AuthLoginItem>, creds: AuthLoginCreds): Promise<void>
   {
     var header: object;
 
     if (creds.user && creds.pass)
     {
-      /*
-      this.crypt4_promise (creds).then ((hash2_buffer: ArrayBuffer) => {
-
-        const hash2: string = new TextDecoder().decode (hash2_buffer);
-
-        console.log('hash2 #2 = ' + hash2);
-
-      });
-      */
+      const crypt4 = await this.crypt4_promise(creds);
 
       // use the old crypt4 authentication mechanism
       // to create a session handle in backend
-      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + this.crypt4 (creds)}), observe: 'events', reportProgress: true};
+      header = {headers: new HttpHeaders ({'Authorization': "Crypt4 " + crypt4}), observe: 'events', reportProgress: true};
     }
     else
     {
       header = {observe: 'events', reportProgress: true};
     }
 
-    this.login__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: creds.browser_info}), header), subscriber, creds).subscribe ((event: HttpEvent<AuthSessionItem>) => {
+    this.login__handle_error (this.http.post('json/AUTH/session_add', JSON.stringify ({type: 1, info: creds.browser_info}), header), subscriber, creds).subscribe (async (event: HttpEvent<AuthSessionItem>) => {
 
       switch (event.type)
       {
         case HttpEventType.Response:  // final event
         {
-          subscriber.next (new AuthLoginItem (0, this.session__decrypt_body (event.body, creds)));
+          try
+          {
+            const item = await this.session__decrypt_body(event.body, creds);
+
+            subscriber.next(new AuthLoginItem(0, item));
+          }
+          catch (error)
+          {
+            subscriber.next(new AuthLoginItem(0, null));
+          }
+
           break;
         }
       }
@@ -198,7 +329,9 @@ import * as CryptoJS from 'crypto-js';
 
   public session__login (creds: AuthLoginCreds): Observable<AuthLoginItem>
   {
-    return new Observable ((subscriber) => this.session__login_request (subscriber, creds));
+    return new Observable (subscriber => {
+      void this.session__login_request (subscriber, creds);
+    });
   }
 
   //---------------------------------------------------------------------------
@@ -295,39 +428,80 @@ import * as CryptoJS from 'crypto-js';
 
   public session__json_rpc<T> (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_cdata: object, qbus_clist: object): Observable<T>
   {
-    return new Observable<T>((subscriber) => {
+      const enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_cdata);
 
-      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_cdata);
-      let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
+      return this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
 
-        switch (event.type)
-        {
-          case HttpEventType.Response:  // final event
+          if (event.type !== HttpEventType.Response)
           {
-            if (event.body)
-            {
+              return of(null); // ignore intermediate events
+          }
+
+          const body = event.body;
+
+          if (!body)
+          {
+              return of({} as T);
+          }
+
+          // encrypted response
+          if (enjs.vsec)
+          {
+              return from(this.decrypt_item (body, enjs.vsec)).pipe(map((plaintext: string) => JSON.parse(plaintext) as T));
+          }
+
+          // plain response
+          return of(JSON.parse(body) as T);
+
+      }), catchError((err: QbngErrorHolder) => {
+
+          throw err;
+      }));
+  }
+
+  //---------------------------------------------------------------------------
+
+  public session__json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<AuthUploadItem>
+  {
+      const enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+
+      return this.session__convert_error(this.http.post(enjs.url,enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
+
+          // Upload progress
+          if (event.type === HttpEventType.UploadProgress)
+          {
+              const percent = event.total ? Math.round(100 * (event.loaded / event.total)) : 0;
+
+              return of(new AuthUploadItem(0, percent));
+          }
+
+          // Final response
+          if (event.type === HttpEventType.Response)
+          {
+              const body = event.body;
+
+              if (!body)
+              {
+                  return of(new AuthUploadItem(1, 0, {}));
+              }
+
+              // encrypted response
               if (enjs.vsec)
               {
-                subscriber.next (JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }))) as T);
+                  return from(this.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => new AuthUploadItem(1, 0, JSON.parse(plaintext))));
               }
-              else
-              {
-                subscriber.next (JSON.parse(event.body) as T);
-              }
-            }
-            else
-            {
-              subscriber.next ({} as T);
-            }
 
-            subscriber.complete();
-            obj.unsubscribe();
-            break;
+              // plain response
+              return of(new AuthUploadItem(1, 0, JSON.parse(body)));
           }
-        }
-      }, (err: QbngErrorHolder) => subscriber.error (err));
 
-    });
+          // ignore other events
+          return of(null as any);
+
+      }), switchMap(x => x ? of(x) : of()), catchError((err: QbngErrorHolder) => {
+
+          throw err;
+      }));
   }
 
   //---------------------------------------------------------------------------
@@ -350,43 +524,6 @@ import * as CryptoJS from 'crypto-js';
 
       var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
       let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob', observe: 'response'})).subscribe ((response: HttpResponse<Blob>) => subscriber.next (response));
-
-    });
-  }
-
-  //---------------------------------------------------------------------------
-
-  public session__json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<AuthUploadItem>
-  {
-    return new Observable ((subscriber) => {
-
-      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
-      let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).subscribe ((event: HttpEvent<string>) => {
-
-        switch (event.type)
-        {
-          case HttpEventType.UploadProgress:  // update
-          {
-            subscriber.next (new AuthUploadItem (0, Math.round(100 * (event.loaded / event.total))));
-            break;
-          }
-          case HttpEventType.Response:  // final event
-          {
-            if (event.body)
-            {
-              subscriber.next (new AuthUploadItem (1, 0, JSON.parse(CryptoJS.enc.Utf8.stringify (CryptoJS.AES.decrypt (event.body, enjs.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 })))));
-            }
-            else
-            {
-              subscriber.next (new AuthUploadItem (1, 0, {}));
-            }
-
-            subscriber.complete();
-            obj.unsubscribe();
-            break;
-          }
-        }
-      }, (err: QbngErrorHolder) => subscriber.error (err));
 
     });
   }
