@@ -678,6 +678,8 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   CapeString h2 = NULL;
   CapeString vault_secret = NULL;
   
+  printf ("crypt4: %s\n", content);
+
   // convert from raw input to credentials part
   auth_crypt_credentials = auth_ui_crypt4__extract_from_content (content);
   if (auth_crypt_credentials == NULL)
