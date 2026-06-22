@@ -43,6 +43,20 @@ export class QCrypt {
 
     //---------------------------------------------------------------------------
 
+    public async sha256 (text: string): Promise<string>
+    {
+        // convert credentials string to UTF-8 bytes (Uint8Array)
+        const data = this.encoder.encode(text);
+
+        // compute SHA-256 hash
+        const hash = await crypto.subtle.digest('SHA-256', data);
+
+        // convert hash bytes to lowercase hexadecimal string
+        return QCrypt.bytes_to_hex (hash);
+    }
+
+    //---------------------------------------------------------------------------
+
     public async derive_key (password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey>
     {
         // imports the password as PBKDF2 input material (not a usable cryptographic key yet)
@@ -59,9 +73,9 @@ export class QCrypt {
         // get the linux time since 1970 in milliseconds
         const ha: string = QCrypt.padding (Date.now().toString(), 16);
 
-        const hash = await crypto.subtle.digest ("SHA-256", this.encoder.encode (ha + ":" + sitem.vsec));
+        const da: string = await this.sha256 (ha + ":" + sitem.vsec);
 
-        return btoa(JSON.stringify ({token: sitem.token, ha: ha, da: QCrypt.bytes_to_hex(hash)}));
+        return btoa(JSON.stringify ({token: sitem.token, ha: ha, da: da}));
     }
 
     //---------------------------------------------------------------------------
@@ -156,6 +170,15 @@ export class QCrypt {
                 throw new Error(`Unsupported encryption version`);
             }
         }
+    }
+
+    //---------------------------------------------------------------------------
+
+    public async encrypt_object (sitem: AuthSessionItem, params: object): Promise<string>
+    {
+        var h = JSON.stringify (params);
+
+        return CryptoJS.AES.encrypt (h, sitem.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
     }
 
     //---------------------------------------------------------------------------

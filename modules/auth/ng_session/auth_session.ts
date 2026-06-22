@@ -7,6 +7,7 @@ import { throwError, of, timer, from, switchMap } from 'rxjs';
 import { interval } from 'rxjs/internal/observable/interval';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import { ConnService } from '@conn/conn_service';
+import { QCrypt } from '@qbus/qcrypt';
 //-----------------------------------------------------------------------------
 
 const SESSION_STORAGE_TOKEN        = 'session_token';
@@ -38,6 +39,7 @@ export class AuthSession
   public idle: EventEmitter<number> = new EventEmitter();
 
   private conn_subscriber;
+  private qcrypt: QCrypt = new QCrypt;
 
   //-----------------------------------------------------------------------------
 
@@ -122,7 +124,7 @@ export class AuthSession
       const navigator = window.navigator;
       const browser_info = {userAgent: navigator.userAgent, vendor: navigator.vendor, geolocation: navigator.geolocation, platform: navigator.platform};
 
-      return from (this.sha256(user + ':' + pass)).pipe(switchMap(vsec => {
+      return from (this.qcrypt.sha256(user + ':' + pass)).pipe(switchMap(vsec => {
 
           return this.conn.session__login(new AuthLoginCreds (wpid, user, pass, this.vault, code, browser_info, vsec)).pipe(this.handle_sitem(user, vsec));
 
@@ -238,20 +240,6 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private async sha256 (text: string): Promise<string>
-  {
-      // convert credentials string to UTF-8 bytes (Uint8Array)
-      const data = new TextEncoder().encode(text);
-
-      // compute SHA-256 hash
-      const hash = await crypto.subtle.digest('SHA-256', data);
-
-      // convert hash bytes to lowercase hexadecimal string
-      return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  //---------------------------------------------------------------------------
-
   private storage_set (sitem: AuthSessionItem, vsec: string): void
   {
     // encode the vsec
@@ -325,24 +313,6 @@ export class AuthSession
 
   //---------------------------------------------------------------------------
 
-  private async construct_bearer (sitem: AuthSessionItem): Promise<string>
-  {
-      // get the linux time since 1970 in milliseconds
-      const iv = this.padding(Date.now().toString(), 16);
-
-      const da = await this.sha256(iv + ':' + sitem.vsec);
-
-      return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
-/*
-    var iv: string = this.padding ((new Date).getTime().toString(), 16);
-    var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
-
-    return btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
-    */
-  }
-
-  //---------------------------------------------------------------------------
-
   private construct_header (bearer: string): HttpHeaders
   {
     return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
@@ -354,24 +324,9 @@ export class AuthSession
   {
       const sitem = this.session_get_token();
 
-      return sitem ? this.construct_bearer(sitem) : null;
+      return sitem ? this.qcrypt.header_base64(sitem) : null;
   }
 
-/*
-  private session_get_bearer (): string
-  {
-    var sitem: AuthSessionItem = this.session_get_token ();
-
-    if (sitem)
-    {
-      return this.construct_bearer (sitem);
-    }
-    else
-    {
-      return null;
-    }
-  }
-*/
   //---------------------------------------------------------------------------
 
   private async session_options(): Promise<object>
@@ -380,24 +335,7 @@ export class AuthSession
 
       return bearer ? { headers: this.construct_header(bearer) } : {};
   }
-  /*
-  private session_options (): object
-  {
-    var options: object;
-    var bearer: string = await this.session_get_bearer ();
 
-    if (bearer)
-    {
-      options = {headers: this.construct_header (bearer)};
-    }
-    else
-    {
-      options = {};
-    }
-
-    return options;
-  }
-*/
   //---------------------------------------------------------------------------
 
   public json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, cb_progress, cb_done, cb_error)
@@ -568,14 +506,6 @@ export class AuthSession
   }
 
   //-----------------------------------------------------------------------------
-
-
-  private padding (str: string, max: number): string
-  {
-  	return str.length < max ? this.padding ("0" + str, max) : str;
-  }
-
-  //---------------------------------------------------------------------------
 
   private handle_http_headers (headers: HttpHeaders)
   {

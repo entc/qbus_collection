@@ -1,11 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Observable, Subscriber, throwError, from, of } from 'rxjs';
-import { switchMap, map, catchError } from 'rxjs/operators';
+import { switchMap, map, catchError, filter } from 'rxjs/operators';
 import { AuthLoginItem, AuthUploadItem, AuthSessionItem, AuthLoginCreds, ConnStatus } from '@qbus/auth_session';
 import { QbngErrorHolder } from '@qbus/qbng_modals/header';
 import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
-import * as CryptoJS from 'crypto-js';
 import { QCrypt } from '@qbus/qcrypt';
 //---------------------------------------------------------------------------
 
@@ -198,64 +197,35 @@ type RpcEvent<T> =
 
   public session__logout (session_expired: boolean)
   {
-    this.modal_service.dismissAll();
+      this.modal_service.dismissAll();
   }
 
   //---------------------------------------------------------------------------
 
-  private async construct_header (sitem: AuthSessionItem): HttpHeaders
+  private async construct_enjs (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_params: object): Promise<AuthEnjs>
   {
-    const bearer = await this.qcrypt.header_base64 (sitem);
+      if (sitem)
+      {
+          const bearer = await this.qcrypt.header_base64 (sitem);
 
-    return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
-  }
+          return {
 
-  //---------------------------------------------------------------------------
+            url: 'enjs/' + qbus_module + '/' + qbus_method,
+            header: new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}),
+            params: await this.qcrypt.encrypt_object (sitem, qbus_params),
+            vsec: sitem.vsec
 
-  private construct_params (sitem: AuthSessionItem, params: object): string
-  {
-    var h = JSON.stringify (params);
+          } as AuthEnjs;
+      }
 
-    return CryptoJS.AES.encrypt (h, sitem.vsec, { mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.AnsiX923 }).toString();
-  }
+      return {
 
-  //---------------------------------------------------------------------------
+        url: (stoken ? `json/${qbus_module}/${qbus_method}/__P/${stoken}` : `json/${qbus_module}/${qbus_method}`),
+        header: new HttpHeaders({'Cache-Control': 'no-cache', Pragma: 'no-cache'}),
+        params: JSON.stringify(qbus_params),
+        vsec: null
 
-  private construct_enjs (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_params: object): AuthEnjs
-  {
-    if (sitem)
-    {
-      var enjs: AuthEnjs = new AuthEnjs;
-
-      enjs.url = 'enjs/' + qbus_module + '/' + qbus_method;
-      enjs.header = this.construct_header (sitem);
-      enjs.params = this.construct_params (sitem, qbus_params);
-      enjs.vsec = sitem.vsec;
-
-      return enjs;
-    }
-    else if (stoken)
-    {
-      var enjs: AuthEnjs = new AuthEnjs;
-
-      enjs.url = 'json/' + qbus_module + '/' + qbus_method + '/__P/' + stoken;
-      enjs.header = new HttpHeaders ({'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
-      enjs.params = JSON.stringify (qbus_params);
-      enjs.vsec = null;
-
-      return enjs;
-    }
-    else
-    {
-      var enjs: AuthEnjs = new AuthEnjs;
-
-      enjs.url = 'json/' + qbus_module + '/' + qbus_method;
-      enjs.header = new HttpHeaders ({'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
-      enjs.params = JSON.stringify (qbus_params);
-      enjs.vsec = null;
-
-      return enjs;
-    }
+      } as AuthEnjs;
   }
 
   //---------------------------------------------------------------------------
@@ -284,104 +254,94 @@ type RpcEvent<T> =
 
   public session__json_rpc<T> (sitem: AuthSessionItem, stoken: string, qbus_module: string, qbus_method: string, qbus_cdata: object, qbus_clist: object): Observable<T>
   {
-      const enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_cdata);
+      return from(this.construct_enjs(sitem, stoken, qbus_module, qbus_method, qbus_cdata)).pipe(switchMap((enjs: AuthEnjs) =>
 
-      return this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
+          this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
 
-          if (event.type !== HttpEventType.Response)
-          {
-              return of(null); // ignore intermediate events
-          }
+              if (event.type !== HttpEventType.Response)
+              {
+                  return of(null); // ignore intermediate events
+              }
 
-          const body = event.body;
+              const body = event.body;
 
-          if (!body)
-          {
-              return of({} as T);
-          }
+              if (!body)
+              {
+                  return of({} as T);
+              }
 
-          // encrypted response
-          if (enjs.vsec)
-          {
-              return from(this.qcrypt.decrypt_item (body, enjs.vsec)).pipe(map((plaintext: string) => JSON.parse(plaintext) as T));
-          }
+              if (enjs.vsec)
+              {
+                  return from(this.qcrypt.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => JSON.parse(plaintext) as T));
+              }
 
-          // plain response
-          return of(JSON.parse(body) as T);
+              return of(JSON.parse(body) as T);
 
-      }), catchError((err: QbngErrorHolder) => {
+          }))
 
-          throw err;
-      }));
+      ));
   }
 
   //---------------------------------------------------------------------------
 
   public session__json_rpc_upload (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<AuthUploadItem>
   {
-      const enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
+      return from(this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params)).pipe(switchMap((enjs: AuthEnjs) =>
 
-      return this.session__convert_error(this.http.post(enjs.url,enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
+          this.session__convert_error(this.http.post(enjs.url,enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
 
-          // Upload progress
-          if (event.type === HttpEventType.UploadProgress)
-          {
-              const percent = event.total ? Math.round(100 * (event.loaded / event.total)) : 0;
-
-              return of(new AuthUploadItem(0, percent));
-          }
-
-          // Final response
-          if (event.type === HttpEventType.Response)
-          {
-              const body = event.body;
-
-              if (!body)
+              // Upload progress
+              if (event.type === HttpEventType.UploadProgress)
               {
-                  return of(new AuthUploadItem(1, 0, {}));
+                  const percent = event.total ? Math.round(100 * (event.loaded / event.total)) : 0;
+
+                  return of(new AuthUploadItem(0, percent));
               }
 
-              // encrypted response
-              if (enjs.vsec)
+              // Final response
+              if (event.type === HttpEventType.Response)
               {
-                  return from(this.qcrypt.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => new AuthUploadItem(1, 0, JSON.parse(plaintext))));
+                  const body = event.body;
+
+                  if (!body)
+                  {
+                      return of(new AuthUploadItem(1, 0, {}));
+                  }
+
+                  // encrypted response
+                  if (enjs.vsec)
+                  {
+                      return from(this.qcrypt.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => new AuthUploadItem(1, 0, JSON.parse(plaintext))));
+                  }
+
+                  // plain response
+                  return of(new AuthUploadItem(1, 0, JSON.parse(body)));
               }
 
-              // plain response
-              return of(new AuthUploadItem(1, 0, JSON.parse(body)));
-          }
+              // ignore other events
+              return of(null as any);
 
-          // ignore other events
-          return of(null as any);
+          }))
 
-      }), switchMap(x => x ? of(x) : of()), catchError((err: QbngErrorHolder) => {
-
-          throw err;
-      }));
+      ));
   }
 
   //---------------------------------------------------------------------------
 
   public session__json_rpc_blob (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<Blob>
   {
-    return new Observable((subscriber) => {
-
-      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
-      let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob'})).subscribe ((data: Blob) => subscriber.next (data));
-
-    });
+      return from(this.construct_enjs(sitem, stoken, qbus_module, qbus_method, qbus_params)).pipe(switchMap((enjs: AuthEnjs) =>
+          this.session__convert_error(this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob'}))
+      ));
   }
 
   //---------------------------------------------------------------------------
 
   public session__json_rpc_resp (qbus_module: string, qbus_method: string, qbus_params: object, sitem: AuthSessionItem, stoken: string): Observable<HttpResponse<Blob>>
   {
-    return new Observable((subscriber) => {
-
-      var enjs: AuthEnjs = this.construct_enjs (sitem, stoken, qbus_module, qbus_method, qbus_params);
-      let obj = this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob', observe: 'response'})).subscribe ((response: HttpResponse<Blob>) => subscriber.next (response));
-
-    });
+      return from(this.construct_enjs(sitem, stoken, qbus_module, qbus_method, qbus_params)).pipe(switchMap((enjs: AuthEnjs) =>
+          this.session__convert_error(this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'blob', observe: 'response'}))
+      ));
   }
 
 }
