@@ -1,5 +1,6 @@
 #include "qcrypt_decrypt.h"
 #include "qcrypt_aes.h"
+#include "qcrypt.h"
 
 // cape includes
 #include <sys/cape_log.h>

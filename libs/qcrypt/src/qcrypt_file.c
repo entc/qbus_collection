@@ -279,7 +279,7 @@ int qcrypt_file_encrypt (QCryptFile self, const CapeString vsec, CapeErr err)
   }
   
   // create encryption engine
-  self->enc = qencrypt_aes_new (self->product, 0, 0, vsec, 0);
+  self->enc = qencrypt_aes_new (self->product, 0, vsec);
   if (self->enc == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "can't initialize crypt");
