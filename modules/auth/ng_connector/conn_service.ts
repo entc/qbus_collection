@@ -20,6 +20,8 @@ type RpcEvent<T> =
   // the connection status is always available and connected
   public status: Observable<ConnStatus> = new Observable ((subscriber) => subscriber.next({state: 0, url: null, connected: true}));
 
+  private qcrypt: QCrypt = new QCrypt;
+
   constructor (private http: HttpClient, private modal_service: NgbModal)
   {
   }
@@ -133,9 +135,7 @@ type RpcEvent<T> =
           return Promise.resolve (null);
       }
 
-      return this.decrypt_item (aitem, creds.vsec).then (plaintext => {
-
-          console.log(plaintext);
+      return this.qcrypt.decrypt_item (aitem, creds.vsec).then (plaintext => {
 
           return JSON.parse(plaintext) as AuthSessionItem
 
@@ -150,7 +150,7 @@ type RpcEvent<T> =
 
     if (creds.user && creds.pass)
     {
-      const crypt4 = await this.crypt4_promise(creds);
+      const crypt4 = await this.qcrypt.crypt4_authentication(creds);
 
       // use the old crypt4 authentication mechanism
       // to create a session handle in backend
@@ -206,7 +206,7 @@ type RpcEvent<T> =
   private construct_header (sitem: AuthSessionItem): HttpHeaders
   {
     // get the linux time since 1970 in milliseconds
-    var iv: string = this.padding ((new Date).getTime().toString(), 16);
+    var iv: string = QCrypt.padding ((new Date).getTime().toString(), 16);
     var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
 
     var bearer: string = btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
@@ -307,7 +307,7 @@ type RpcEvent<T> =
           // encrypted response
           if (enjs.vsec)
           {
-              return from(this.decrypt_item (body, enjs.vsec)).pipe(map((plaintext: string) => JSON.parse(plaintext) as T));
+              return from(this.qcrypt.decrypt_item (body, enjs.vsec)).pipe(map((plaintext: string) => JSON.parse(plaintext) as T));
           }
 
           // plain response
@@ -348,7 +348,7 @@ type RpcEvent<T> =
               // encrypted response
               if (enjs.vsec)
               {
-                  return from(this.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => new AuthUploadItem(1, 0, JSON.parse(plaintext))));
+                  return from(this.qcrypt.decrypt_item(body, enjs.vsec)).pipe(map((plaintext: string) => new AuthUploadItem(1, 0, JSON.parse(plaintext))));
               }
 
               // plain response
