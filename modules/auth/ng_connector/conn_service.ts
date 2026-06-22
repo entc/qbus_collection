@@ -203,13 +203,9 @@ type RpcEvent<T> =
 
   //---------------------------------------------------------------------------
 
-  private construct_header (sitem: AuthSessionItem): HttpHeaders
+  private async construct_header (sitem: AuthSessionItem): HttpHeaders
   {
-    // get the linux time since 1970 in milliseconds
-    var iv: string = QCrypt.padding ((new Date).getTime().toString(), 16);
-    var da: string = CryptoJS.SHA256 (iv + ":" + sitem.vsec).toString();
-
-    var bearer: string = btoa(JSON.stringify ({token: sitem.token, ha: iv, da: da}));
+    const bearer = await this.qcrypt.header_base64 (sitem);
 
     return new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'});
   }
