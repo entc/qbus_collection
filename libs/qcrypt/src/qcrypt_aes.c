@@ -117,10 +117,10 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
 {
   QCryptAESKeys self = NULL;
   
-  self->key_len = EVP_CIPHER_key_length (cypher);
+  int key_length = EVP_CIPHER_key_length (cypher);
 
   // length in 8 bit blocks
-  if (self->key_len != 32)   // 8 * 32 = 256
+  if (key_length != 32)   // 8 * 32 = 256
   {
     cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "cypher has unsupported key-length for padding (SHA256): %i", self->key_len);
     goto exit_and_cleanup;
@@ -128,6 +128,7 @@ QCryptAESKeys qcrypt_aes_keys_new__sha256 (const CapeString secret, const EVP_CI
   
   self = CAPE_NEW (struct QCryptAESKeys_s);
 
+  self->key_len = key_length;
   self->key = NULL;
   self->iv = NULL;
 

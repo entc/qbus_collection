@@ -129,7 +129,7 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
   self->product = cape_stream_new ();
   
   // create the decryption context
-  self->dec = qdecrypt_aes_new (self->product, 0, 0, vsec, 0);
+  self->dec = qdecrypt_aes_new (self->product, QCRYPT_AES_TYPE_DETECT, 0, vsec, 0);
   
   self->state = TRUE;
 

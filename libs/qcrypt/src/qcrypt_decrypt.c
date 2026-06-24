@@ -170,7 +170,7 @@ struct QDecryptAES_s
 
   int blocksize;
   
-  int cypher_type;
+  number_t cypher_type;
   number_t padding_type;
   number_t key_type;
   
@@ -272,13 +272,11 @@ int qdecrypt_aes__cfb (QDecryptAES self, const EVP_CIPHER* cypher, const char* b
           
     switch (self->key_type)
     {
-            /*
       case QCRYPT_KEY_SHA256:
       {
         self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
         break;
       }
-             */
       case QCRYPT_KEY_PASSPHRASE_MD5:
       {
         self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
@@ -325,6 +323,44 @@ int qdecrypt_aes__cfb (QDecryptAES self, const EVP_CIPHER* cypher, const char* b
 
 //-----------------------------------------------------------------------------
 
+int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, const char* bufdat, number_t buflen, CapeErr err)
+{
+    // local objects
+    CapeString salt = cape_str_sub (bufdat + 4, 16);
+    CapeString iv = cape_str_sub (bufdat + 20, 12);
+
+    // create the keys needed for GCM
+    self->keys = qcrypt_aes_keys_new__pbkdf2 (self->secret, AES_256_GCM__IV_LEN, AES_256_GCM__SALT_LEN, err);
+    if (NULL == self->keys)
+    {
+        return cape_err_code (err);
+    }
+
+    if (!EVP_DecryptInit_ex(self->ctx, EVP_aes_256_gcm(), NULL, NULL, NULL))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+
+    // set IV length (REQUIRED for GCM)
+    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, AES_256_GCM__IV_LEN, NULL))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // now set key + iv
+    if (!EVP_DecryptInit_ex (self->ctx, NULL, NULL, (const unsigned char*)qcrypt_aes_key (self->keys), (const unsigned char*)qcrypt_aes_iv (self->keys)))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+
+    if (!EVP_CIPHER_CTX_set_padding (self->ctx, 0))
+    {
+        return qcrypt_aes__handle_error (self->ctx, err);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
 {
 #if defined __WINDOWS_OS
@@ -334,9 +370,38 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
 
     switch (self->cypher_type)
     {
+        case QCRYPT_AES_TYPE_DETECT:
+        {
+            // check minimum length
+            if (buflen <= 32)
+            {
+                return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Invalid encrypted payload");
+            }
+            
+            // check the magic bytes
+            if ((*(bufdat + 0) == 81) && (*(bufdat + 1) == 67) && (*(bufdat + 2) == 77))
+            {
+                switch (*(bufdat + 3))
+                {
+                    case 0x67:
+                    {
+                        return qdecrypt_aes__gcm_256_pbkdf2 (self, bufdat, buflen, err);
+                    }
+                    default:
+                    {
+                        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Unsupported encryption version");
+                    }
+                }
+            }
+            else
+            {
+                // current default version
+                return qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
+            }
+        }
         case QCRYPT_AES_TYPE_256_GCM:
         {
-            
+            return qdecrypt_aes__gcm_256_pbkdf2 (self, bufdat, buflen, err);
         }
         case QCRYPT_AES_TYPE_256_CBC:
         {
@@ -360,7 +425,7 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
         }
         default:
         {
-            return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "cypher version is not supported");
+            return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Unsupported encryption version");
         }
     }
 

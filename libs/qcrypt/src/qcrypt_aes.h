@@ -12,15 +12,21 @@
 
 //-----------------------------------------------------------------------------
 
+#define QCRYPT_MAGIC_BYTES                     "QCM"
+
 // paddings for keys
 #define QCRYPT_PADDING_NONE                    0x00
 #define QCRYPT_PADDING_ANSI_X923               0x01
 #define QCRYPT_PADDING_ZEROS                   0x02
 #define QCRYPT_PADDING_PKCS7                   0x03
 
-// other options
+#define QCRYPT_KEY_SHA256                      0x00     // default
 #define QCRYPT_KEY_NONE                        0x01
 #define QCRYPT_KEY_PASSPHRASE_MD5              0x04     // default for passphrase
+
+#define AES_256_GCM__IV_LEN       12
+#define AES_256_GCM__SALT_LEN     16
+#define AES_256_GCM__TAG_LEN      16
 
 //-----------------------------------------------------------------------------
 

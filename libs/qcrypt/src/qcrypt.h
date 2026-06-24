@@ -14,6 +14,8 @@
 
 //-----------------------------------------------------------------------------
 
+#define QCRYPT_AES_TYPE_DETECT                 0x00    // use this only for decryption (default)
+
 #define QCRYPT_AES_TYPE_256_CBC                0x01
 #define QCRYPT_AES_TYPE_256_CFB                0x02
 #define QCRYPT_AES_TYPE_256_GCM                0x67

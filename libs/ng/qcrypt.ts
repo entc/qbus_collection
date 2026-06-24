@@ -128,9 +128,9 @@ export class QCrypt {
 
     private async decrypt_v1 (payload: Uint8Array, password: string): Promise<string>
     {
-        const salt = payload.slice(1, 17);
-        const iv = payload.slice(17, 29);
-        const ciphertext = payload.slice(29);
+        const salt = payload.slice(4, 20);
+        const iv = payload.slice(20, 32);
+        const ciphertext = payload.slice(32);
 
         // derive AES-GCM CryptoKey from password + salt
         const key = await this.derive_key(password, salt, 100000);
@@ -154,21 +154,29 @@ export class QCrypt {
     {
         const payload = QCrypt.b64_to_bytes (payload_base64);
 
-        if (payload.length <= 29)
+        if (payload.length <= 32)
         {
             throw new Error("Invalid encrypted payload");
         }
 
-        switch (payload[0])
+        // check the magic bytes
+        if (payload[0] == 81 && payload[1] == 67 && payload[2] == 77)
         {
-            case 0x67:
+            switch (payload[3])
             {
-                return this.decrypt_v1 (payload, password);
+                case 0x67:
+                {
+                    return this.decrypt_v1 (payload, password);
+                }
+                default:
+                {
+                    throw new Error(`Unsupported encryption version`);
+                }
             }
-            default:
-            {
-                throw new Error(`Unsupported encryption version`);
-            }
+        }
+        else
+        {
+            throw new Error(`Wrong magic bytes`);
         }
     }
 

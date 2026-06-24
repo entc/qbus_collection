@@ -348,10 +348,6 @@ int qencrypt_aes__cfb (QEncryptAES self, const EVP_CIPHER* cypher, number_t padd
 
 //-----------------------------------------------------------------------------
 
-#define AES_256_GCM__IV_LEN       12
-#define AES_256_GCM__SALT_LEN     16
-#define AES_256_GCM__TAG_LEN      16
-
 int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
 {
     const EVP_CIPHER* cipher = EVP_aes_256_gcm();
@@ -388,8 +384,9 @@ int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
     
     // clear the output stream
     cape_stream_clr (self->product);
-    
-    // set the version flag
+
+    // add magic bytes + type 
+    cape_stream_append_buf (self->product, QCRYPT_MAGIC_BYTES, 3);
     cape_stream_append_c (self->product, QCRYPT_AES_TYPE_256_GCM);
     
     // add the salt
