@@ -317,38 +317,63 @@ QCryptAESKeys qcrypt_aes_keys_new__padding_pkcs7 (const CapeString secret, const
 //-----------------------------------------------------------------------------
 
 #define AES_256_PBKDF2__KEY_LEN      32
-#define AES_256_PBKDF2__ITERATIONS   100000
 //-----------------------------------------------------------------------------
 
-QCryptAESKeys qcrypt_aes_keys_new__pbkdf2 (const CapeString secret, number_t iv_len, number_t salt_len, CapeErr err)
+QCryptAESKeys qcrypt_aes_keys_new__pbkdf2 (const CapeString secret, int iterations, CapeErr err)
 {
     QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
 
     self->key = CAPE_ALLOC (AES_256_PBKDF2__KEY_LEN);
     self->key_len = AES_256_PBKDF2__KEY_LEN;
     
-    self->salt = CAPE_ALLOC (salt_len);
-    self->iv = CAPE_ALLOC (iv_len);
+    self->salt = CAPE_ALLOC (AES_256_GCM__SALT_LEN);
+    self->iv = CAPE_ALLOC (AES_256_GCM__IV_LEN);
 
     // create the salt
-    if (RAND_bytes ((unsigned char *)self->salt, (int)salt_len) != 1)
+    if (RAND_bytes ((unsigned char *)self->salt, AES_256_GCM__SALT_LEN) != 1)
     {
         cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "rand failed on openssl");
         goto cleanup_and_exit;
     }
     
-    if (RAND_bytes ((unsigned char *)self->iv, (int)iv_len) != 1)
+    if (RAND_bytes ((unsigned char *)self->iv, AES_256_GCM__IV_LEN) != 1)
     {
         cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "rand failed on openssl");
         goto cleanup_and_exit;
     }
     
-    if (PKCS5_PBKDF2_HMAC (secret, (int)cape_str_size (secret), (unsigned char *)self->salt, (int)salt_len, AES_256_PBKDF2__ITERATIONS, EVP_sha256(), (int)self->key_len, (unsigned char *)self->key) != 1)
+    if (PKCS5_PBKDF2_HMAC (secret, (int)cape_str_size (secret), (unsigned char *)self->salt, AES_256_GCM__SALT_LEN, iterations, EVP_sha256(), (int)self->key_len, (unsigned char *)self->key) != 1)
     {
         cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "hmac failed on openssl");
         goto cleanup_and_exit;
     }
     
+    return self;
+    
+cleanup_and_exit:
+    
+    qcrypt_aes_keys_del (&self);
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
+QCryptAESKeys qcrypt_aes_keys_gen__pbkdf2 (const CapeString secret, int iterations, const CapeString salt, const CapeString iv, CapeErr err)
+{
+    QCryptAESKeys self = CAPE_NEW (struct QCryptAESKeys_s);
+
+    self->key = CAPE_ALLOC (AES_256_PBKDF2__KEY_LEN);
+    self->key_len = AES_256_PBKDF2__KEY_LEN;
+
+    self->salt = cape_str_cp (salt);
+    self->iv = cape_str_cp (iv);
+
+    if (PKCS5_PBKDF2_HMAC (secret, (int)cape_str_size (secret), (unsigned char *)self->salt, AES_256_GCM__SALT_LEN, iterations, EVP_sha256(), (int)self->key_len, (unsigned char *)self->key) != 1)
+    {
+        cape_err_set (err, CAPE_ERR_3RDPARTY_LIB, "hmac failed on openssl");
+        goto cleanup_and_exit;
+    }
+
     return self;
     
 cleanup_and_exit:

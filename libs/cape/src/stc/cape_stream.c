@@ -285,27 +285,30 @@ char cape_stream_last_c (CapeStream self)
 
 void cape_stream_shift_l (CapeStream self, number_t bytes)
 {
-  number_t tail = (self->pos - self->buffer) - bytes;
-  
-  if (tail > 0)
-  {    
-    char* new_pos = self->pos - bytes;
+    // calculate used bytes
+    number_t used = self->pos - self->buffer;
     
-    memmove (self->buffer, self->pos - tail, tail);
-        
-    self->size = tail;
-    self->pos = new_pos;
-  }
-  else if (tail == 0)
-  {
-    self->pos = self->buffer;
-  }
-  else
-  {
-    self->pos = self->buffer;
-    
-    cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "shift-l overflow");
-  }
+    if (bytes >= used)
+    {
+        self->size = 0;
+        self->pos = self->buffer;
+
+        // special case overflow
+        if (bytes > used)
+        {
+            cape_log_msg(CAPE_LL_WARN, "CAPE", "stream", "shift-l overflow");
+        }
+    }
+    else
+    {
+        // safe because bytes < used here
+        number_t tail = used - bytes;
+
+        memmove(self->buffer, self->buffer + bytes, tail);
+
+        self->size = tail;
+        self->pos = self->buffer + tail;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -633,18 +636,19 @@ void cape_stream_append_16 (CapeStream self, cape_uint16 val, int network_byte_o
 
 void cape_stream_append_32 (CapeStream self, cape_uint32 val, int network_byte_order)
 {
-  cape_stream_reserve (self, 4);
+    cape_stream_reserve (self, 4);
 
-  if (network_byte_order)
-  {
-    *((cape_uint32*)(self->pos)) = htonl (val);
-  }
-  else
-  {
-    *((cape_uint32*)(self->pos)) = val;
-  }
+    if (network_byte_order)
+    {
+        uint32_t v = htonl(val);
+        memcpy(self->pos, &v, sizeof(v));
+    }
+    else
+    {
+        *((cape_uint32*)(self->pos)) = val;
+    }
 
-  self->pos += 4;
+    self->pos += 4;
 }
 
 //-----------------------------------------------------------------------------

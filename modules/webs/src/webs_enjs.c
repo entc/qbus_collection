@@ -397,7 +397,7 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
 
   if (self->encrypted_content)
   {
-    content = qcrypt__decrypt (self->vsec, self->encrypted_content, err);
+    content = qcrypt__decrypt_ex (self->vsec, self->encrypted_content, QCRYPT_AES_TYPE_DETECT, err);
     if (content == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_PARSER, "can't decrypt");

@@ -50,7 +50,9 @@ __CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__ansiX923       (const Cape
 
 __CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__padding_pkcs7  (const CapeString secret, const struct evp_cipher_st* cypher);
 
-__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__pbkdf2         (const CapeString secret, number_t iv_len, number_t salt_len, CapeErr err);
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_new__pbkdf2         (const CapeString secret, int iterations, CapeErr err);
+
+__CAPE_LIBEX  QCryptAESKeys      qcrypt_aes_keys_gen__pbkdf2         (const CapeString secret, int iterations, const CapeString salt, const CapeString iv, CapeErr err);
 
 __CAPE_LIBEX  void               qcrypt_aes_keys_del                 (QCryptAESKeys* p_self);
 

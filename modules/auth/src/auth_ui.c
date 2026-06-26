@@ -834,7 +834,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
 
     cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "no vault found -> continue with parameter");
 
-    h1 = qcrypt__decrypt (self->secret, vault_password, err);
+    h1 = qcrypt__decrypt_ex (self->secret, vault_password, QCRYPT_AES_TYPE_DETECT, err);
     if (h1 == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_NO_AUTH, "wrong vault");

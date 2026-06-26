@@ -30,6 +30,8 @@ __CAPE_LIBEX  CapeString     qcrypt__decrypt            (const CapeString vsec, 
 
 __CAPE_LIBEX  CapeStream     qcrypt__decrypt_m          (const CapeString vsec, const CapeString encrypted_text, CapeErr err);
 
+__CAPE_LIBEX  CapeString     qcrypt__decrypt_ex         (const CapeString vsec, const CapeString encrypted_text, int type_aes, CapeErr err);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX  int            qcrypt__decrypt_node       (const CapeString vsec, const CapeString encrypted_text, CapeUdc dest_list, CapeErr err);

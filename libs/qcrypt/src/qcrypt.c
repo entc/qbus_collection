@@ -146,6 +146,42 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
 
 //-----------------------------------------------------------------------------
 
+CapeString qcrypt__decrypt_ex (const CapeString vsec, const CapeString encrypted_text, int type_aes, CapeErr err)
+{
+    CapeStream ret = NULL;
+
+    // local objects
+    QDecryptAES dec;
+    
+    if (vsec == NULL)
+    {
+      cape_err_set (err, CAPE_ERR_NO_OBJECT, "vsec is not set");
+      return NULL;
+    }
+    
+    ret = cape_stream_new ();
+    
+    dec = qdecrypt_aes_new (ret, type_aes, 0, vsec, 0);
+    
+    {
+      int res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
+      
+      qdecrypt_aes_del (&dec);
+      
+      if (res)
+      {
+          cape_stream_del (&ret);
+          return NULL;
+      }
+      else
+      {
+          return cape_stream_to_str (&ret);
+      }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 int qcrypt__decrypt_node (const CapeString vsec, const CapeString encrypted_text, CapeUdc dest_list, CapeErr err)
 {
   CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);

@@ -167,28 +167,29 @@ int qencrypt_base64_finalize (QEncryptBase64 self, CapeErr err)
 
 struct QEncryptAES_s
 {
-  CapeStream product;
+    CapeStream product;
 
 #if defined __WINDOWS_OS
 
     
 #else
 
-  EVP_CIPHER_CTX* ctx;
+    EVP_CIPHER_CTX* ctx;
 
-  int blocksize;
-  
-  number_t cypher_type;
-  number_t padding_type;
-  number_t key_type;
-  
-  number_t total_size;
-  
-  // this are our secrets
-  
-  CapeString secret;
-  
-  QCryptAESKeys keys;
+    int blocksize;
+    
+    number_t cypher_type;
+    number_t padding_type;
+    number_t key_type;
+    
+    number_t total_size;
+    
+    // this are our secrets
+    
+    CapeString secret;
+    
+    QCryptAESKeys keys;
+    int taglen;
 
 #endif
 };
@@ -197,10 +198,10 @@ struct QEncryptAES_s
 
 QEncryptAES qencrypt_aes_new (CapeStream r_product, number_t cypher_type, const CapeString secret)
 {
-  QEncryptAES self = CAPE_NEW (struct QEncryptAES_s);
-  
-  self->product = r_product;
-  
+    QEncryptAES self = CAPE_NEW (struct QEncryptAES_s);
+    
+    self->product = r_product;
+
 #if defined __WINDOWS_OS
 
   
@@ -208,31 +209,32 @@ QEncryptAES qencrypt_aes_new (CapeStream r_product, number_t cypher_type, const 
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   
-  self->ctx = CAPE_NEW (EVP_CIPHER_CTX);
+    self->ctx = CAPE_NEW (EVP_CIPHER_CTX);
 
 #else
 
-  // it only allocates the memory
-  self->ctx = EVP_CIPHER_CTX_new ();
+    // it only allocates the memory
+    self->ctx = EVP_CIPHER_CTX_new ();
 
 #endif
 
-  self->blocksize = 0;
-  self->total_size = 0;
-  
-  // cipher settings
-  self->cypher_type = cypher_type;
-  self->padding_type = QCRYPT_PADDING_NONE;
-  
-  // key settings
-  self->secret = cape_str_cp (secret);
-  self->key_type = QCRYPT_KEY_NONE;
-  
-  self->keys = NULL;
+    self->blocksize = 0;
+    self->total_size = 0;
+    
+    // cipher settings
+    self->cypher_type = cypher_type;
+    self->padding_type = QCRYPT_PADDING_NONE;
+    
+    // key settings
+    self->secret = cape_str_cp (secret);
+    self->key_type = QCRYPT_KEY_NONE;
+
+    self->keys = NULL;
+    self->taglen = 0;
 
 #endif
   
-  return self;
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -348,12 +350,20 @@ int qencrypt_aes__cfb (QEncryptAES self, const EVP_CIPHER* cypher, number_t padd
 
 //-----------------------------------------------------------------------------
 
+#define AES_256_PBKDF2__ITERATIONS   100000
+
+//-----------------------------------------------------------------------------
+
 int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
 {
     const EVP_CIPHER* cipher = EVP_aes_256_gcm();
         
+    // use the default value here
+    // can be changed in the future
+    self->taglen = AES_256_GCM__TAG_LEN;
+    
     // create the keys needed for GCM
-    self->keys = qcrypt_aes_keys_new__pbkdf2 (self->secret, AES_256_GCM__IV_LEN, AES_256_GCM__SALT_LEN, err);
+    self->keys = qcrypt_aes_keys_new__pbkdf2 (self->secret, AES_256_PBKDF2__ITERATIONS, err);
     if (NULL == self->keys)
     {
         return cape_err_code (err);
@@ -382,6 +392,9 @@ int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
         return qcrypt_aes__handle_error (self->ctx, err);
     }
     
+    // (optional) set tag length HERE
+    EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_AEAD_SET_TAG, self->taglen, NULL);
+    
     // clear the output stream
     cape_stream_clr (self->product);
 
@@ -389,12 +402,18 @@ int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
     cape_stream_append_buf (self->product, QCRYPT_MAGIC_BYTES, 3);
     cape_stream_append_c (self->product, QCRYPT_AES_TYPE_256_GCM);
     
+    // add iterations
+    cape_stream_append_32 (self->product, AES_256_PBKDF2__ITERATIONS, TRUE);
+    
     // add the salt
     cape_stream_append_buf (self->product, qcrypt_aes_salt (self->keys), AES_256_GCM__SALT_LEN);
     
     // add the iv
     cape_stream_append_buf (self->product, qcrypt_aes_iv (self->keys), AES_256_GCM__IV_LEN);
-    
+
+    // add iterations
+    cape_stream_append_08 (self->product, self->taglen);
+
     // we don't need padding
     self->padding_type = QCRYPT_PADDING_NONE;
     
@@ -468,7 +487,7 @@ int qencrypt_aes_process (QEncryptAES self, const char* bufdat, number_t buflen,
   {
     int lenLast;
     
-    if (EVP_EncryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, (const unsigned char*)bufdat, buflen) == 0)
+    if (EVP_EncryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, (const unsigned char*)bufdat, (int)buflen) == 0)
     {
       return qcrypt_aes__handle_error (self->ctx, err);
     }
@@ -516,7 +535,7 @@ int qencrypt_aes_finalize (QEncryptAES self, CapeErr err)
       cape_stream_cap (self->product, padlen);
 
       // encrypt the padding
-      encrRes = EVP_EncryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, padding, padlen);
+      encrRes = EVP_EncryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, padding, (int)padlen);
       
       CAPE_FREE (padding);
         
@@ -545,27 +564,26 @@ int qencrypt_aes_finalize (QEncryptAES self, CapeErr err)
         cape_stream_set (self->product, lenLast);
     }
 
-    switch (self->cypher_type)
+    if (self->taglen)
     {
-        case QCRYPT_AES_TYPE_256_GCM:
-        {
-            unsigned char tag[AES_256_GCM__TAG_LEN];
+        char* tag_buffer = CAPE_ALLOC (self->taglen);
 
-            // retrieve the cryptographic authentication tag
-            // computed from: the ciphertext, the key, the IV
-            // detects tampering of the encrypted product
-            if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_GET_TAG, AES_256_GCM__TAG_LEN, tag))
-            {
-                return qcrypt_aes__handle_error (self->ctx, err);
-            }
+        // retrieve the cryptographic authentication tag
+        // computed from: the ciphertext, the key, the IV
+        // detects tampering of the encrypted product
+        if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_GET_TAG, self->taglen, tag_buffer))
+        {
+            CAPE_FREE (tag_buffer);
             
-            // append the tag to the end of the product
-            cape_stream_append_buf (self->product, (char*)tag, AES_256_GCM__TAG_LEN);
-            
-            break;
+            return qcrypt_aes__handle_error (self->ctx, err);
         }
+        
+        // append the tag to the end of the product
+        cape_stream_append_buf (self->product, tag_buffer, self->taglen);
+
+        CAPE_FREE (tag_buffer);
     }
-    
+        
     return CAPE_ERR_NONE;
 
 #endif
