@@ -50,6 +50,8 @@ __CAPE_LIBEX number_t        cape_cursor_copy       (CapeCursor, char* bufdat, n
 
 __CAPE_LIBEX char*           cape_cursor_scan_s     (CapeCursor, number_t len);
 
+__CAPE_LIBEX unsigned char*  cape_cursor_scan_buf   (CapeCursor, number_t len);
+
 __CAPE_LIBEX cape_uint8      cape_cursor_scan_08    (CapeCursor);
 
 __CAPE_LIBEX cape_uint16     cape_cursor_scan_16    (CapeCursor, int network_byte_order);

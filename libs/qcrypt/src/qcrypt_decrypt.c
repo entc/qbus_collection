@@ -336,21 +336,23 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
     
     // local objects
     int iterations = 0;
-    CapeString salt = NULL;
-    CapeString iv = NULL;
+    unsigned char* salt = NULL;
+    unsigned char* iv = NULL;
 
     // check if there is enough data to parse the first 4 bytes
-    if (FALSE == cape_cursor__has_data (cursor, 4 + AES_256_GCM__SALT_LEN + AES_256_GCM__IV_LEN))
+    if (FALSE == cape_cursor__has_data (cursor, 4 + AES_256_GCM__SALT_LEN + AES_256_GCM__IV_LEN + 1))
     {
         res = cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Invalid encrypted payload");
         goto cleanup_and_exit;
     }
 
     // scan the next values we need
-    iterations      = cape_cursor_scan_32 (cursor, TRUE);
-    salt            = cape_cursor_scan_s (cursor, AES_256_GCM__SALT_LEN);
-    iv              = cape_cursor_scan_s (cursor, AES_256_GCM__IV_LEN);
-    self->tag_len   = cape_cursor_scan_08 (cursor);
+    iterations      = cape_cursor_scan_32  (cursor, TRUE);
+    salt            = cape_cursor_scan_buf (cursor, AES_256_GCM__SALT_LEN);
+    iv              = cape_cursor_scan_buf (cursor, AES_256_GCM__IV_LEN);
+    self->tag_len   = cape_cursor_scan_08  (cursor);
+
+    //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using iterations = %i", iterations);
 
     // small sanity check
     if (self->tag_len < 4 || self->tag_len > 16)
@@ -359,10 +361,10 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
         goto cleanup_and_exit;
     }
     
-    cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using tag length = %i", self->tag_len);
+    //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using tag length = %i", self->tag_len);
     
     // create the keys needed for GCM
-    self->keys = qcrypt_aes_keys_gen__pbkdf2 (self->secret, iterations, salt, iv, err);
+    self->keys = qcrypt_aes_keys_gen__pbkdf2 (self->secret, iterations, &salt, AES_256_GCM__SALT_LEN, &iv, AES_256_GCM__IV_LEN, err);
     if (NULL == self->keys)
     {
         res = cape_err_code (err);
@@ -376,14 +378,14 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
     }
 
     // set IV length (REQUIRED for GCM)
-    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, AES_256_GCM__IV_LEN, NULL))
+    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, qcrypt_aes_iv_len (self->keys), NULL))
     {
         res = qcrypt_aes__handle_error (self->ctx, err);
         goto cleanup_and_exit;
     }
     
     // now set key + iv
-    if (!EVP_DecryptInit_ex (self->ctx, NULL, NULL, (const unsigned char*)qcrypt_aes_key (self->keys), (const unsigned char*)qcrypt_aes_iv (self->keys)))
+    if (!EVP_DecryptInit_ex (self->ctx, NULL, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys)))
     {
         res = qcrypt_aes__handle_error (self->ctx, err);
         goto cleanup_and_exit;
@@ -402,8 +404,16 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
     
 cleanup_and_exit:
     
-    cape_str_del (&salt);
-    cape_str_del (&iv);
+    if (salt)
+    {
+        CAPE_FREE (salt);
+    }
+
+    if (iv)
+    {
+        CAPE_FREE (iv);
+    }
+
     return res;
 }
 
@@ -431,7 +441,9 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
                 res = cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Invalid encrypted payload");
                 goto cleanup_and_exit;
             }
-            
+
+            //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", bufdat);
+
             // check the magic bytes
             if ((cape_cursor_scan_08 (cursor) == 81) && (cape_cursor_scan_08 (cursor) == 67) && (cape_cursor_scan_08 (cursor) == 77))
             {
@@ -441,6 +453,8 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
                 {
                     case QCRYPT_AES_TYPE_256_GCM:
                     {
+                        //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_GCM");
+
                         res = qdecrypt_aes__gcm_256_pbkdf2 (self, cursor, err);
                         
                         // set the offset from delta of the cursor's current position
@@ -457,6 +471,8 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
             }
             else
             {
+                //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_CBC");
+
                 // current default version
                 res = qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
             }

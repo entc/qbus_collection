@@ -151,6 +151,26 @@ char* cape_cursor_scan_s (CapeCursor self, number_t len)
 
 //-----------------------------------------------------------------------------
 
+unsigned char* cape_cursor_scan_buf (CapeCursor self, number_t len)
+{
+    unsigned char* ret = NULL;
+    
+    if (!cape_cursor__has_data (self, len))
+    {
+        return NULL;
+    }
+    
+    ret = (unsigned char*)CAPE_ALLOC(len);
+    
+    memcpy (ret, self->pos, len);
+    
+    self->pos += len;
+    
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
 cape_uint8 cape_cursor_scan_08 (CapeCursor self)
 {
   cape_uint8 ret = 0;

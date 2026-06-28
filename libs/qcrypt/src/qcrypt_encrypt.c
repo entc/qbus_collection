@@ -296,8 +296,8 @@ int qencrypt_aes__cfb (QEncryptAES self, const EVP_CIPHER* cypher, number_t padd
       {
         number_t size = cape_stream_size (self->product);
         
-        self->keys = qcrypt_aes_keys_new__md5_en (self->secret, cypher, self->product);
-        
+        self->keys = qcrypt_aes_keys_new__md5_en (self->secret, cypher, self->product, err);
+
         // increase the total size by the delta of the last size
         self->total_size += (cape_stream_size (self->product) - size);
         
@@ -376,7 +376,7 @@ int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
     }
     
     // set IV length (REQUIRED for GCM)
-    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, AES_256_GCM__IV_LEN, NULL))
+    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, qcrypt_aes_iv_len (self->keys), NULL))
     {
         return qcrypt_aes__handle_error (self->ctx, err);
     }
@@ -406,10 +406,10 @@ int qencrypt_aes__gcm (QEncryptAES self, CapeErr err)
     cape_stream_append_32 (self->product, AES_256_PBKDF2__ITERATIONS, TRUE);
     
     // add the salt
-    cape_stream_append_buf (self->product, qcrypt_aes_salt (self->keys), AES_256_GCM__SALT_LEN);
+    cape_stream_append_buf (self->product, (char*)qcrypt_aes_salt (self->keys), qcrypt_aes_salt_len (self->keys));
     
     // add the iv
-    cape_stream_append_buf (self->product, qcrypt_aes_iv (self->keys), AES_256_GCM__IV_LEN);
+    cape_stream_append_buf (self->product, (char*)qcrypt_aes_iv (self->keys), qcrypt_aes_iv_len (self->keys));
 
     // add iterations
     cape_stream_append_08 (self->product, self->taglen);
