@@ -10,8 +10,8 @@
 #if defined __WINDOWS_OS
 
 #include <windows.h>
-#include <wincrypt.h>
-#pragma comment (lib, "Crypt32.lib")
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 
 #else
 
@@ -362,6 +362,16 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
     }
     
     //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using tag length = %i", self->tag_len);
+
+#if defined __WINDOWS_OS
+
+    BCRYPT_ALG_HANDLE hAes;
+    
+    BCryptOpenAlgorithmProvider (&hAes, BCRYPT_AES_ALGORITHM, NULL, 0);
+    
+    NTSTATUS status = BCryptDeriveKeyPBKDF2 (BCRYPT_ALG_HANDLE hPrf, (PUCHAR)secret, secret_len, salt, salt_len, iterations, key, key_len, 0);
+
+#else
     
     // create the keys needed for GCM
     self->keys = qcrypt_aes_keys_gen__pbkdf2 (self->secret, iterations, &salt, AES_256_GCM__SALT_LEN, &iv, AES_256_GCM__IV_LEN, err);
@@ -401,7 +411,9 @@ int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr e
     self->rolling_buffer = cape_stream_new();
     
     res = CAPE_ERR_NONE;
-    
+
+#endif
+
 cleanup_and_exit:
     
     if (salt)
@@ -421,11 +433,6 @@ cleanup_and_exit:
 
 int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
 {
-#if defined __WINDOWS_OS
-
-
-#else
-
     int res;
     CapeCursor cursor = cape_cursor_new ();
     
@@ -453,7 +460,7 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
                 {
                     case QCRYPT_AES_TYPE_256_GCM:
                     {
-                        //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_GCM");
+                        cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_GCM");
 
                         res = qdecrypt_aes__gcm_256_pbkdf2 (self, cursor, err);
                         
@@ -471,7 +478,7 @@ int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, n
             }
             else
             {
-                //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_CBC");
+                cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_CBC");
 
                 // current default version
                 res = qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
@@ -527,7 +534,6 @@ cleanup_and_exit:
     cape_cursor_del (&cursor);
     return res;
 
-#endif
 }
 
 //-----------------------------------------------------------------------------
