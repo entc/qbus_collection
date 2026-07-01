@@ -59,7 +59,7 @@ void cape_stream_allocate (CapeStream self, unsigned long amount)
 void cape_stream_reserve (CapeStream self, number_t amount)
 {
   number_t bytes_needed = cape_stream_size (self) + amount + 1;
-  
+
   if (bytes_needed > self->size)
   {
     if (amount > self->size)
@@ -174,20 +174,20 @@ CapeStream cape_stream_mv (CapeStream* p_self)
 CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
 {
   CapeStream self = CAPE_NEW (struct CapeStream_s);
-  
+
   // allocate memory and set the size
   self->buffer = CAPE_ALLOC (buflen + 1);
   self->size = buflen;
-  
+
   // copy the data
   memcpy (self->buffer, bufdat, buflen);
-  
+
   // set the new position
   self->pos = self->buffer + buflen;
-  
+
   // no mime type
   self->mime_type = NULL;
-  
+
   return self;
 }
 
@@ -196,10 +196,10 @@ CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
 CapeStream cape_stream_cp (const CapeStream other)
 {
   CapeStream self = cape_stream_from_buf (other->buffer, other->pos - other->buffer);
-    
+
   // copy mime type
   self->mime_type = cape_str_cp (other->mime_type);
-    
+
   return self;
 }
 
@@ -287,7 +287,7 @@ void cape_stream_shift_l (CapeStream self, number_t bytes)
 {
     // calculate used bytes
     number_t used = self->pos - self->buffer;
-    
+
     if (bytes >= used)
     {
         self->size = 0;
@@ -466,7 +466,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
   va_list valist;
   va_start (valist, format);
 
-  #ifdef _MSC_VER
+#ifdef _MSC_VER
 
   {
     int len = _vscprintf (format, valist) + 1;
@@ -478,20 +478,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
     self->pos += len;
   }
 
-  #elif _GCC
-
-  {
-    char* strp;
-
-    int bytesWritten = vasprintf (&strp, format, valist);
-    if ((bytesWritten > 0) && strp)
-    {
-      cape_stream_append_buf (self, strp, bytesWritten);
-      free(strp);
-    }
-  }
-
-  #elif __BORLANDC__
+#elif __BORLANDC__
 
   {
     int len = 1024;
@@ -503,7 +490,20 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
     self->pos += len;
   }
 
-  #endif
+#else
+
+  {
+      char* strp;
+
+      int bytesWritten = vasprintf (&strp, format, valist);
+      if ((bytesWritten > 0) && strp)
+      {
+          cape_stream_append_buf (self, strp, bytesWritten);
+          free(strp);
+      }
+  }
+
+#endif
 
   va_end(valist);
 }
