@@ -144,9 +144,10 @@ CapeUdc cape_json_from_buf (const char* buffer, number_t size, fct_cape_stream_b
     CapeUdc ret = NULL;
     int res;
 
+    // SG: if else commented out because it doesn't function
     // valid json must start with { or [
-    if (('{' == buffer[0]) || ('[' == buffer[0]))
-    {
+    //if (('{' == buffer[0]) || ('[' == buffer[0]))
+    //{
         CapeErr err = cape_err_new ();
         
         // create a new parser for the json format
@@ -177,11 +178,11 @@ CapeUdc cape_json_from_buf (const char* buffer, number_t size, fct_cape_stream_b
         cape_parser_json_del (&parser_json);
         
         cape_err_del (&err);
-    }
-    else
-    {
-        cape_log_fmt (CAPE_LL_WARN, "CAPE", "json from", "json serialization starts with invalid character [%c]", buffer[0]);
-    }
+    //}
+    //else
+    //{
+    //    cape_log_fmt (CAPE_LL_WARN, "CAPE", "json from", "json serialization starts with invalid character [%c]", buffer[0]);
+    //}
     
     return ret;
 }
