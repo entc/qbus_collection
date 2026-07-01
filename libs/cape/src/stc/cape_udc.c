@@ -1472,6 +1472,9 @@ void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
       {
         CapeUdc h = *p_node;
         
+        // set the name in case the udc has a different name
+        cape_str_replace_cp (&(h->name), name);
+
         cape_map_insert (self->data, h->name, h);
         
         *p_node = NULL;
