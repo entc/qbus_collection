@@ -42,7 +42,7 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
   void* ret = NULL;
 
   // local objects
-  struct sockaddr_in* addr = cape_net__resolve_os (host, (u_short)port, FALSE, err);
+  struct addrinfo* addr = cape_net__resolve_os (host, (u_short)port, FALSE, err);
   int sock = CAPE_SOCKET_INVALID;
 
   if (NULL == addr)
@@ -110,7 +110,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
   void* ret = NULL;
 
   // local objects
-  struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
+  struct addrinfo* addr = cape_net__resolve_os (host, port, FALSE, err);
   number_t sock1 = CAPE_SOCKET_INVALID;
   number_t sock2 = CAPE_SOCKET_INVALID;
   int opt = 1;
@@ -155,7 +155,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     goto cleanup_and_exit;
   }
 
-  if (bind ((int)sock1, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
+  if (bind ((int)sock1, addr->ai_addr, addr->ai_addrlen) < 0)
   {
     // save the last system error into the error object
     cape_err_lastOSError (err);
@@ -256,7 +256,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
   void* ret = NULL;
 
   int sock = CAPE_SOCKET_INVALID;
-  struct sockaddr_in* addr = cape_net__resolve_os (host, port, FALSE, err);
+  struct addrinfo* addr = cape_net__resolve_os (host, port, FALSE, err);
 
   // create socket
 #if defined __LINUX_OS
@@ -286,7 +286,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
     }
 
     // try to bind the socket to an address
-    if (bind (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0)
+    if (bind (sock, addr->ai_addr, addr->ai_addrlen) < 0)
     {
       // save the last system error into the error object
       cape_err_lastOSError (err);
@@ -347,15 +347,21 @@ int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, lon
 
   if (host && port)
   {
-    struct sockaddr_in send_addr;
-    
-    memset (&send_addr, 0, sizeof(struct sockaddr_in));
-    
-    send_addr.sin_family = AF_INET;      // set the network type
-    send_addr.sin_port = htons (port);    // set the port
-    send_addr.sin_addr.s_addr = inet_addr(host);
-    
-    res = cape_sock__udp__send_to_nr (handle, buf, &send_addr, err);
+      struct sockaddr_in send_addr;
+      
+      memset (&send_addr, 0, sizeof(struct sockaddr_in));
+      
+      send_addr.sin_family = AF_INET;      // set the network type
+      send_addr.sin_port = htons (port);    // set the port
+      send_addr.sin_addr.s_addr = inet_addr(host);
+
+      {
+          struct addrinfo* addr = cape_net__new (0, AF_INET, SOCK_DGRAM, IPPROTO_UDP, &send_addr, sizeof(struct sockaddr_in), NULL);
+
+          res = cape_sock__udp__send_to_nr (handle, buf, addr, err);
+          
+          cape_net__resolve_del (&addr);
+      }
   }
       
   return res;
@@ -363,7 +369,7 @@ int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, lon
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, CapeSockaddr addr, CapeErr err)
+int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, struct addrinfo* addr, CapeErr err)
 {
   int res = CAPE_ERR_NONE;
   number_t bufpos = 0;
@@ -371,7 +377,7 @@ int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, CapeSockaddr addr,
   // file descriptor
   int fd = (int)(number_t)handle;
   
-  ssize_t bytes_send = sendto (fd, cape_stream_data (buf) + bufpos, cape_stream_size (buf) - bufpos, MSG_DONTWAIT, (const struct sockaddr*)addr, sizeof(struct sockaddr_in));
+  ssize_t bytes_send = sendto (fd, cape_stream_data (buf) + bufpos, cape_stream_size (buf) - bufpos, MSG_DONTWAIT, addr->ai_addr, addr->ai_addrlen);
   if (bytes_send == -1)
   {
     res = cape_err_lastOSError (err);
@@ -791,7 +797,7 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
       goto exit_and_cleanup;
     }
 
-    if (bind(sock, (SOCKADDR*)&(addr), sizeof(addr)) != 0)
+    if (bind(sock, addr->ai_addr, addr->ai_addrlen) != 0)
     {
       goto exit_and_cleanup;
     }

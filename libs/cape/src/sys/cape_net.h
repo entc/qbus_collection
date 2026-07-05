@@ -7,6 +7,8 @@
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   struct addrinfo*   cape_net__new                (int flags, int family, int socktype, int protocol, void* addr_buf, number_t addr_len, const CapeString canonname);
+
 __CAPE_LIBEX   struct addrinfo*   cape_net__resolve_os         (const CapeString host, int port, int ipv6, CapeErr err);
 
 __CAPE_LIBEX   void               cape_net__resolve_del        (struct addrinfo**);
