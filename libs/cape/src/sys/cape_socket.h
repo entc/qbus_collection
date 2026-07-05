@@ -21,7 +21,7 @@ __CAPE_LIBEX   void*         cape_sock__udp__srv_new      (const char* host, lon
 
 __CAPE_LIBEX   int           cape_sock__udp__send_to      (void* handle, CapeStream buf, const char* host, long port, CapeErr err);
 
-__CAPE_LIBEX   int           cape_sock__udp__send_to_nr   (void* handle, CapeStream buf, CapeSockaddr, CapeErr err);
+__CAPE_LIBEX   int           cape_sock__udp__send_to_nr   (void* handle, CapeStream buf, struct addrinfo*, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
@@ -50,11 +50,6 @@ __CAPE_LIBEX   void          cape_sock__shutdown__rd      (void*);
 __CAPE_LIBEX   void          cape_sock__shutdown__wr      (void*);
 
 __CAPE_LIBEX   int           cape_sock__noneblocking      (void*, CapeErr err);
-
-
-//-----------------------------------------------------------------------------
-
-__CAPE_LIBEX   CapeString    cape_net__resolve            (const CapeString host, int ipv6, CapeErr err);
 
 //-----------------------------------------------------------------------------
 

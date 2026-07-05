@@ -13,7 +13,7 @@ static CapeLogLevel g_log_level = CAPE_LL_TRACE;
 
 // for udp sending
 void* g_log_udp_handle = NULL;
-CapeSockaddr g_sockaddr = NULL;
+struct addrinfo* g_sockaddr = NULL;
 
 //-----------------------------------------------------------------------------
 

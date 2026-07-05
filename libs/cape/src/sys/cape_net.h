@@ -7,15 +7,14 @@
 
 //-----------------------------------------------------------------------------
 
-typedef struct sockaddr_in* CapeSockaddr;
+__CAPE_LIBEX   struct addrinfo*   cape_net__resolve_os         (const CapeString host, int port, int ipv6, CapeErr err);
 
-//-----------------------------------------------------------------------------
+__CAPE_LIBEX   void               cape_net__resolve_del        (struct addrinfo**);
 
-__CAPE_LIBEX   CapeSockaddr   cape_net__resolve_os         (const CapeString host, u_short port, int ipv6, CapeErr err);
+__CAPE_LIBEX   CapeString         cape_net__resolve            (const CapeString host, int ipv6, CapeErr err);
 
-__CAPE_LIBEX   void           cape_net__resolve_del        (CapeSockaddr*);
-
-__CAPE_LIBEX   CapeString     cape_net__resolve            (const CapeString host, int ipv6, CapeErr err);
+                                  /* this function is only implemented for windows to initialize WSA */
+__CAPE_LIBEX   int                cape_net__init               (void);
 
 //-----------------------------------------------------------------------------
 

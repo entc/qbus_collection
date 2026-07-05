@@ -26,6 +26,7 @@
 
 #define u_t unsigned
 #define number_t long long
+#define ul32_t u_long  
 
 #else
 
@@ -36,6 +37,7 @@
 
 #define u_t unsigned
 #define number_t long
+#define ul32_t uint32_t  
 
 #endif
 
@@ -63,6 +65,24 @@ static void* cape_alloc (number_t size)
 
 //-----------------------------------------------------------------------------
 
+static void* cape_calloc (number_t count, number_t size)
+{
+    void* ptr = calloc (count, size);
+
+    if (ptr == NULL)
+    {
+        // write some last words
+        printf("*** FATAL *** CAN't ALLOCATE MEMORY *** FATAL ***\n");
+
+        // abort everything
+        abort();
+    }
+
+    return ptr;
+}
+
+//-----------------------------------------------------------------------------
+
 static void cape_free (void* ptr)
 {
   free (ptr);
@@ -81,6 +101,7 @@ static void* cape_mv (void** p_ptr)
 //-----------------------------------------------------------------------------
 
 #define CAPE_ALLOC(size) cape_alloc(size)
+#define CAPE_CALLOC(count, size) cape_calloc(count, size)
 #define CAPE_FREE(ptr) cape_free(ptr)
 #define CAPE_MV(pp) cape_mv((void**)pp)
 
