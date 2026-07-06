@@ -50,6 +50,74 @@ struct addrinfo* cape_net__new (int flags, int family, int socktype, int protoco
 
 //-----------------------------------------------------------------------------
 
+struct addrinfo* cape_net__new_simple (int flags, int family, int socktype, int protocol, const CapeString host, int port, const CapeString canonname)
+{
+    struct addrinfo* self;
+
+    if (!host)
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "NET", "can't create addrinfo: host is NULL");
+        return NULL;
+    }
+
+    self = CAPE_CALLOC (1, sizeof(struct addrinfo));
+    
+    /* Copy all scalar fields */
+    self->ai_flags = flags;
+    self->ai_family = family;
+    self->ai_socktype = socktype;
+    self->ai_protocol = protocol;
+
+    self->ai_addrlen = sizeof(struct sockaddr_storage);
+    self->ai_addr = CAPE_CALLOC (1, self->ai_addrlen);
+    
+    if (family == AF_INET)
+    {
+        struct sockaddr_in* sa4 = (struct sockaddr_in*)self->ai_addr;
+        
+        sa4->sin_family = AF_INET;
+        sa4->sin_port = htons((uint16_t)port);
+
+        if (inet_pton(AF_INET, host, &sa4->sin_addr) != 1)
+        {
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "NET", "can't create addrinfo: host [IPV4] is invalid");
+
+            cape_net__resolve_del (&self);
+            return NULL;
+        }
+    }
+    else if (family == AF_INET6)
+    {
+        struct sockaddr_in6* sa6 = (struct sockaddr_in6*)self->ai_addr;
+        
+        sa6->sin6_family = AF_INET6;
+        sa6->sin6_port = htons((uint16_t)port);
+
+        if (inet_pton (AF_INET6, host, &sa6->sin6_addr) != 1)
+        {
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "NET", "can't create addrinfo: host [IPV6] is invalid");
+
+            cape_net__resolve_del (&self);
+            return NULL;
+        }
+    }
+    else
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "NET", "can't create addrinfo: family is not supported");
+
+        cape_net__resolve_del(&self);
+        return NULL;
+    }
+    
+    /* copy canonical name */
+    self->ai_canonname = cape_str_cp (canonname);
+    self->ai_next = NULL;
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_net__resolve_del (struct addrinfo** p_self)
 {
     if (*p_self)
