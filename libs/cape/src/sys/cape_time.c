@@ -136,8 +136,13 @@ void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
     // initialize with zeros
     timeinfo->tm_yday = 0;
     timeinfo->tm_wday = 0;
+
+#ifndef __WINDOWS_OS
+
     timeinfo->tm_zone = NULL;
     timeinfo->tm_gmtoff = 0;
+
+#endif
 
     // this will fill up the timeinfo with all values
     if (mktime(timeinfo) == -1)

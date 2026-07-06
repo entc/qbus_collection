@@ -232,7 +232,7 @@ CapeString cape_str_n (number_t value)
 
 #ifdef _MSC_VER
 
-  _snprintf_s (ret, 24, _TRUNCATE, "%li", value);
+  _snprintf_s (ret, 24, _TRUNCATE, "%Iu", value);
 
 #else
 
@@ -781,7 +781,7 @@ CapeString cape_str_password (number_t len, number_t cnt_upper, number_t cnt_low
     number_t i;
     for (i = len_max - 1; i > 0; i--)
     {
-      number_t j = (number_t) (drand48() * (i + 1));
+      number_t j = (number_t) ((double)rand() / (double)RAND_MAX);
       
       // switch position
       char t = self[j];
@@ -1247,7 +1247,7 @@ CapeString cape_str_trim_lr (const CapeString source, char l, char r)
 
 CapeString cape_str_trim_lrstrict (const CapeString self)
 {
-  CapeString ret;
+  CapeString ret = NULL;
   const char* pos01;
   const char* pos02;
 

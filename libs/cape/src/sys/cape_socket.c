@@ -21,6 +21,7 @@
 
 #elif defined _WIN64 || defined _WIN32
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <ws2tcpip.h>
 #include <winsock2.h>
 
@@ -37,19 +38,19 @@
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__socket_make_reusable (int sock, CapeErr err)
+int cape_sock__socket_make_reusable(int sock, CapeErr err)
 {
     int opt = 1;
 
-    if (setsockopt ((int)sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
+    if (setsockopt((int)sock, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0)
     {
-        close (sock);
-        
+        close(sock);
+
         // save the last system error into the error object
-        cape_err_lastOSError (err);
+        cape_err_lastOSError(err);
         return CAPE_SOCKET_INVALID;
     }
-    
+
     return sock;
 }
 
@@ -607,17 +608,55 @@ int cape_sock__noneblocking (void* sock, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+SOCKET cape_sock__socket_make_exclusive (SOCKET sock, CapeErr err)
+{
+    BOOL opt = TRUE;
+
+    if (setsockopt((int)sock, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char*)&opt, sizeof(opt)) < 0)
+    {
+        closesocket (sock);
+
+        // save the last system error into the error object
+        cape_err_lastOSError(err);
+        return INVALID_SOCKET;
+    }
+
+    return sock;
+}
+
+//-----------------------------------------------------------------------------
+
+SOCKET cape_sock__socket (int domain, int type, int protocol, CapeErr err)
+{
+    SOCKET sock;
+
+    // try to create a TCP IPV4 socket
+    sock = WSASocketA (domain, type, protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
+    if (sock < 0)
+    {
+        // save the last system error into the error object
+        cape_err_lastOSError(err);
+        return INVALID_SOCKET;
+    }
+
+    return cape_sock__socket_make_exclusive (sock, err);
+}
+
+//-----------------------------------------------------------------------------
+
 void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 {
-  // TODO: needs to be done
+    // TODO: needs to be done
 
-  return NULL;
+    return NULL;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__tcp__srv_new (const char* host, long port, CapeErr err)
 {
+    void* ret = NULL;
+
     // local variables
     struct addrinfo* addr = NULL;
     SOCKET sock = INVALID_SOCKET;
@@ -625,87 +664,79 @@ void* cape_sock__tcp__srv_new (const char* host, long port, CapeErr err)
     // in windows the WSA system must be initialized first
     if (!cape_net__init())
     {
-        goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
     // resolve host and port
     addr = cape_net__resolve_os (host, port, FALSE, err);
 
     // create the socket using the resolved address
-    sock = WSASocket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
     if (sock == INVALID_SOCKET)
     {
-        goto exit_and_cleanup;
-    }
-
-    {
-        BOOL opt = TRUE;
-        setsockopt (sock, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (const char*)&opt, sizeof(opt));
+        goto cleanup_and_exit;
     }
 
     if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR)
     {
-        goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
     // in windows this can fail
     if (listen(sock, SOMAXCONN) == SOCKET_ERROR)
     {
-        goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
     cape_log_fmt(CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host ? host : "0.0.0.0", port);
 
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+
+cleanup_and_exit:
+
     cape_net__resolve_del(&addr);
-
-    return (void*)sock;
-
-exit_and_cleanup:
-
-    cape_net__resolve_del(&addr);
-
-    // save the last system error into the error object
-    cape_err_formatErrorOS(err, WSAGetLastError());
 
     if (sock != INVALID_SOCKET)
     {
         closesocket (sock);
     }
 
-    return NULL;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__udp__clt_new (CapeErr err)
 {
+    void* ret = NULL;
+
+    // local variables
     SOCKET sock = INVALID_SOCKET;
 
     // in windows the WSA system must be initialized first
     if (!cape_net__init())
     {
-        goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
     // create socket as datagram
-    sock = WSASocket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_OVERLAPPED);
+    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
     if (sock == INVALID_SOCKET)
     {
-        goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
+    // use the objects noneblocking function
+    if (cape_sock__noneblocking((void*)(number_t)sock, err))
     {
-        u_long mode = 1;  // 1 to enable non-blocking socket
-        ioctlsocket(sock, FIONBIO, &mode);
+        goto cleanup_and_exit;
     }
 
-    // return the socket
-    return (void*)sock;
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
 
-exit_and_cleanup:
-
-    // save the last system error into the error object
-    cape_err_lastOSError (err);
+cleanup_and_exit:
 
     if (sock >= 0)
     {
@@ -719,71 +750,74 @@ exit_and_cleanup:
 
 void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 {
-  SOCKET sock = INVALID_SOCKET;
-  struct sockaddr_in* addr = NULL;
+    void* ret = NULL;
 
-  // in windows the WSA system must be initialized first
-  if (!cape_net__init())
-  {
-    goto exit_and_cleanup;
-  }
+    // local variables
+    struct addrinfo* addr = NULL;
+    SOCKET sock = INVALID_SOCKET;
 
-  sock = WSASocket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0, WSA_FLAG_OVERLAPPED);
-  if (sock == INVALID_SOCKET)
-  {
-    goto exit_and_cleanup;
-  }
-
-  addr = cape_net__resolve_os (host, port, FALSE, err);
-
-  {
-    int opt = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+    // in windows the WSA system must be initialized first
+    if (!cape_net__init())
     {
-      goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
 
-    if (bind(sock, addr->ai_addr, addr->ai_addrlen) != 0)
+    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
+    if (sock == INVALID_SOCKET)
     {
-      goto exit_and_cleanup;
+        goto cleanup_and_exit;
     }
-  }
 
-  return (void*)sock;
+    // use the objects noneblocking function
+    if (cape_sock__noneblocking((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
 
-exit_and_cleanup:
+    addr = cape_net__resolve_os (host, port, FALSE, err);
 
-  // save the last system error into the error object
-  cape_err_lastOSError (err);
-  cape_net__resolve_del (&addr);
+    if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) != 0)
+    {
+      goto cleanup_and_exit;
+    }
+  
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
 
-  if (sock != INVALID_SOCKET)
-  {
-    closesocket (sock);
-  }
+cleanup_and_exit:
 
-  return NULL;
+    cape_net__resolve_del (&addr);
+
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket(sock);
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__icmp__new (CapeErr err)
 {
-  return NULL;
+    return NULL;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_sock__close (void* sock)
 {
-  closesocket ((SOCKET)sock);
+    closesocket ((SOCKET)sock);
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_sock__noneblocking (void* sock, CapeErr err)
 {
-  return CAPE_ERR_NONE;
+    u_long mode = 1;  // 1 to enable non-blocking socket
+    ioctlsocket ((SOCKET)sock, FIONBIO, &mode);
+
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

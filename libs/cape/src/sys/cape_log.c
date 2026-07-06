@@ -62,7 +62,7 @@ void cape_log_enable_syslog (const CapeString host, number_t port)
   cape_net__resolve_del (&g_sockaddr);
 
   // this will resolve the incoming host & port
-  g_sockaddr = cape_net__resolve_os (host, port, FALSE, err);
+  g_sockaddr = cape_net__resolve_os (host, (int)port, FALSE, err);
   if (NULL == g_sockaddr)
   {
     cape_log_fmt (CAPE_LL_ERROR, "CAPE", "log", "can't create UDP client: %s", cape_err_text (err));

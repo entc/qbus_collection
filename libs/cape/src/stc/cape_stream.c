@@ -44,7 +44,7 @@ number_t cape_stream_size (CapeStream self)
 void cape_stream_allocate (CapeStream self, unsigned long amount)
 {
   // safe how much we have used from the buffer
-  unsigned long usedBytes = cape_stream_size (self);
+  number_t usedBytes = cape_stream_size (self);
 
   // use realloc to minimalize coping the buffer
   self->size += amount;
@@ -539,7 +539,7 @@ void cape_stream_append_n (CapeStream self, number_t val)
 
 #ifdef _MSC_VER
 
-  self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%li", val);
+  self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%Iu", val);
 
 #else
 
@@ -596,7 +596,7 @@ void cape_stream_append_d (CapeStream self, const CapeDatetime* val)
 
 void cape_stream_append_stream (CapeStream self, CapeStream stream)
 {
-  unsigned long usedBytes = stream->pos - stream->buffer;
+  number_t usedBytes = stream->pos - stream->buffer;
 
   cape_stream_reserve (self, usedBytes);
 
@@ -640,7 +640,7 @@ void cape_stream_append_32 (CapeStream self, cape_uint32 val, int network_byte_o
 
     if (network_byte_order)
     {
-        uint32_t v = htonl(val);
+        ul32_t v = htonl(val);
         memcpy(self->pos, &v, sizeof(v));
     }
     else

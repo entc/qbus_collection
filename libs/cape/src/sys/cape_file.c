@@ -631,26 +631,52 @@ exit_and_cleanup:
 
 int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 {
-  struct stat st;
+#ifdef __WINDOWS_OS
 
-  if (cape_str_empty (path))
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
-  }
+    DWORD attr = GetFileAttributesA(path);
 
-  if (stat (path, &st) != 0)
-  {
-    // not found or other error
-    // try to create the path
-    return cape_fs_path_create (path, ac, err);
-  }
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
 
-  if (FALSE == S_ISDIR (st.st_mode))
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        // not found or other error -> try create
+        return cape_fs_path_create(path, ac, err);
+    }
 
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-  }
+    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#else
+
+    struct stat st;
+
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (stat(path, &st) != 0)
+    {
+        // not found or other error
+        // try to create the path
+        return cape_fs_path_create(path, ac, err);
+    }
+
+    if (FALSE == S_ISDIR(st.st_mode))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#endif
 
   return CAPE_ERR_NONE;
 }
@@ -659,28 +685,54 @@ int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 
 int cape_fs_path_create_xe (const char* path, CapeFileAc ac, CapeErr err)
 {
-  struct stat st;
+#ifdef __WINDOWS_OS
 
-  if (cape_str_empty (path))
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
-  }
+    DWORD attr = GetFileAttributesA (path);
 
-  if (stat (path, &st) != 0)
-  {
-    // not found or other error
-    // try to create the path
-    return cape_fs_path_create_x (path, ac, err);
-  }
+    if (cape_str_empty (path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
 
-  if (FALSE == S_ISDIR (st.st_mode))
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        // not found -> create
+        return cape_fs_path_create (path, ac, err);
+    }
 
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-  }
+    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
 
-  return CAPE_ERR_NONE;
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#else
+
+    struct stat st;
+
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (stat(path, &st) != 0)
+    {
+        // not found or other error
+        // try to create the path
+        return cape_fs_path_create_x(path, ac, err);
+    }
+
+    if (FALSE == S_ISDIR(st.st_mode))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#endif
+
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1960,7 +2012,7 @@ void cape_fh_del (CapeFileHandle* p_self)
 
     if (self->fd >= 0)
     {
-      _close (self->fd);
+      _close ((int)self->fd);
     }
 
     CAPE_DEL (p_self, struct CapeFileHandle_s);

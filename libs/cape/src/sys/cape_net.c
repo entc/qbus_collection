@@ -20,6 +20,7 @@
 
 #include <windows.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #endif
 
@@ -164,6 +165,16 @@ void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
       break;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_net__print (struct addrinfo* self)
+{
+    char address[64];
+    cape_net__ntop(addr_current->ai_addr, address, 64);
+
+    cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "addrinfo: %s", address);
 }
 
 //-----------------------------------------------------------------------------
@@ -357,6 +368,17 @@ void cape_net__ntop (LPSOCKADDR sa, DWORD length, char* bufdat, number_t buflen)
 
 //-----------------------------------------------------------------------------
 
+void cape_net__print (struct addrinfo* self)
+{
+    char address[64];
+
+    cape_net__ntop((LPSOCKADDR)self->ai_addr, (DWORD)self->ai_addrlen, address, 64);
+
+    cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "addrinfo: %s", address);
+}
+
+//-----------------------------------------------------------------------------
+
 struct addrinfo* cape_net__resolve_os (const CapeString host, int port, int ipv6, CapeErr err)
 {
     struct addrinfo* ret = NULL;
@@ -372,6 +394,7 @@ struct addrinfo* cape_net__resolve_os (const CapeString host, int port, int ipv6
     {
         struct addrinfo hints;
         int errcode;
+        char service[16];
 
         ZeroMemory (&hints, sizeof(hints));
         
@@ -384,12 +407,14 @@ struct addrinfo* cape_net__resolve_os (const CapeString host, int port, int ipv6
             hints.ai_flags = AI_PASSIVE;
         }
 
-        errcode = GetAddrInfoA (host, NULL, &hints, &addr_result);
+        _snprintf(service, sizeof(service), "%d", port);
+
+        errcode = GetAddrInfoA (host, service, &hints, &addr_result);
         if (errcode)
         {
             cape_err_set (err, CAPE_ERR_OS, gai_strerror (errcode));
 
-            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "socket", "can't resolve hostname [%s]: %s", host, cape_err_text(err));
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "NET", "can't resolve hostname [%s]: %s", host, cape_err_text(err));
 
             goto exit_and_cleanup;
         }
@@ -413,7 +438,7 @@ struct addrinfo* cape_net__resolve_os (const CapeString host, int port, int ipv6
                 char address[64];
                 cape_net__ntop ((LPSOCKADDR)addr_current->ai_addr, (DWORD)addr_current->ai_addrlen, address, 64);
 
-                cape_log_fmt(CAPE_LL_TRACE, "CAPE", "resolve", "use address [%s:%i]", address, port);
+                cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "use address %s", address);
             }
 
             ret = cape_net__new (addr_current->ai_flags, addr_current->ai_family, addr_current->ai_socktype, addr_current->ai_protocol, addr_current->ai_addr, addr_current->ai_addrlen, addr_current->ai_canonname);
