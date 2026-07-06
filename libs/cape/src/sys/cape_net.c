@@ -172,7 +172,7 @@ void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
 void cape_net__print (struct addrinfo* self)
 {
     char address[64];
-    cape_net__ntop(addr_current->ai_addr, address, 64);
+    cape_net__ntop (self->ai_addr, address, 64);
 
     cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "addrinfo: %s", address);
 }
