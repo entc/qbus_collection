@@ -1,0 +1,25 @@
+#ifndef __QSOCK_CLIENT__H
+#define __QSOCK_CLIENT__H 1
+
+// cape includes
+#include "sys/cape_types.h"
+#include <sys/cape_err.h>
+#include <stc/cape_str.h>
+//-----------------------------------------------------------------------------
+
+struct QSockClient_s; typedef struct QSockClient_s* QSockClient;
+
+                                    /* constructor: create a new instance of the client class */
+__CAPE_LIBEX     QSockClient        qsock_client_new    (const CapeString host, int port);
+
+                                    /* destructor: cleans and frees all memory */
+__CAPE_LIBEX     void               qsock_client_del    (QSockClient*);
+
+__CAPE_LIBEX     int                qsock_client_run    (QSockClient, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+#endif
