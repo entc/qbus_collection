@@ -19,6 +19,9 @@ __CAPE_LIBEX     int                qsock_client_run    (QSockClient, CapeErr er
 
 //-----------------------------------------------------------------------------
 
+typedef void     (__STDCALL *fct_qsock_client__on_recv)      (void* user_ptr, const char* bufdat, number_t buflen);
+
+__CAPE_LIBEX     void               qsock_client_cb     (QSockClient, void* user_ptr, fct_qsock_client__on_recv on_recv);
 
 //-----------------------------------------------------------------------------
 

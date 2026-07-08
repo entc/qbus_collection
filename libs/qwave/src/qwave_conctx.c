@@ -33,6 +33,10 @@
 
 //-----------------------------------------------------------------------------
 
+#define QWAVE_BUFFER_SIZE                    1024
+
+//-----------------------------------------------------------------------------
+
 struct QWaveConctx_s
 {
     QWaveConfig config;                       // reference
@@ -196,6 +200,7 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->close_connection = FALSE;
     
     self->buffer = cape_stream_new ();
+    cape_stream_cap (self->buffer, QWAVE_BUFFER_SIZE);
     
     self->connection_aio_item = event;
     self->remote_address = cape_str_cp (remote_address);
@@ -323,7 +328,7 @@ int qwave_conctx_read (QWaveConctx self)
         
     while (con)
     {
-        switch (cape_sock__recv (cape_aio_item_get (self->connection_aio_item), self->buffer, 1024, err))
+        switch (cape_sock__recv (cape_aio_item_get (self->connection_aio_item), self->buffer, QWAVE_BUFFER_SIZE, err))
         {
             case CAPE_ERR_NONE:
             {

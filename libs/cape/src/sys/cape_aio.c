@@ -35,45 +35,66 @@
 
 //-----------------------------------------------------------------------------
 
+#define CAPE_FDTYPE__USER_MANAGED              0
+#define CAPE_FDTYPE__TIMER_FD                  1
+//-----------------------------------------------------------------------------
+
 struct CapeAioItem_s
 {
-  void* handle;
-  void* user_ptr;
+    void* handle;
+    void* user_ptr;
 
-  fct_cape_aio_item__on_event on_event;
-  fct_cape_aio_item__on_event on_done;
+    fct_cape_aio_item__on_event on_event;
+    fct_cape_aio_item__on_event on_done;
+
+    int fd_type;
 };
 
 //-----------------------------------------------------------------------------
 
-CapeAioItem cape_aio_item_new (void* handle)
+CapeAioItem cape_aio_item_new (void* handle, int fd_type)
 {
-  CapeAioItem self = CAPE_NEW (struct CapeAioItem_s);
+    CapeAioItem self = CAPE_NEW (struct CapeAioItem_s);
 
-  self->handle = handle;
-  self->user_ptr = NULL;
+    self->handle = handle;
+    self->user_ptr = NULL;
 
-  self->on_event = NULL;
-  self->on_done = NULL;
+    self->on_event = NULL;
+    self->on_done = NULL;
 
-  return self;
+    // this will set the item to be fully user managed
+    self->fd_type = CAPE_FDTYPE__USER_MANAGED;
+    
+    return self;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_aio_item_del (CapeAioItem* p_self)
 {
-  if (*p_self)
-  {
-    CapeAioItem self = *p_self;
-
-    if (self->on_done)
+    if (*p_self)
     {
-      self->on_done (self->user_ptr, self->handle);
-    }
+        CapeAioItem self = *p_self;
 
-    CAPE_DEL (p_self, struct CapeAioItem_s);
-  }
+        if (self->on_done)
+        {
+          self->on_done (self->user_ptr, self->handle);
+        }
+
+        switch (self->fd_type)
+        {
+            case CAPE_FDTYPE__TIMER_FD:
+            {
+    #if defined __LINUX_OS
+
+                close ((int)(number_t)self->handle);
+    #endif
+                break;
+            }
+        }
+
+        CAPE_DEL (p_self, struct CapeAioItem_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -97,6 +118,19 @@ void* cape_aio_item_get (CapeAioItem self)
 
 void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 {
+    switch (self->fd_type)
+    {
+        case CAPE_FDTYPE__TIMER_FD:
+        {
+#if defined __LINUX_OS
+
+            uint64_t expirations;
+            read (fd, &expirations, sizeof(expirations));
+#endif
+            break;
+        }
+    }
+    
     if (self)
     {
         if (self->on_event)
@@ -309,13 +343,13 @@ int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, 
 
 //-----------------------------------------------------------------------------
 
-int cape_aio__kevent_set (CapeAio self, int fd, int filter, int flags, void* udata, CapeErr err)
+int cape_aio__kevent_set (CapeAio self, int fd, int filter, int flags, intptr_t data, void* udata, CapeErr err)
 {
     int res;
     struct kevent change;
 
     // set all options
-    EV_SET (&change, fd, filter, flags, 0, 0, udata);
+    EV_SET (&change, fd, filter, flags, 0, data, udata);
 
     // apply the set by the systemcall to the kevent subsystem
     res = kevent (self->kq, &change, 1, NULL, 0, NULL);
@@ -358,10 +392,10 @@ int cape_aio__kevent_trigger (CapeAio self, int fd, int filter, void* udata, Cap
 int cape_aio__kevent_add_userevt_handler (CapeAio self, CapeErr err)
 {
     // create a new object for the handler
-    self->stop_item = cape_aio_item_new (EVENT_IDENT_STOP);
+    self->stop_item = cape_aio_item_new (EVENT_IDENT_STOP, CAPE_FDTYPE__USER_MANAGED);
     
     // add for user defined filter
-    if (cape_aio__kevent_set (self, EVENT_IDENT_STOP, EVFILT_USER, EV_ADD | EV_CLEAR, self->stop_item, err))
+    if (cape_aio__kevent_set (self, EVENT_IDENT_STOP, EVFILT_USER, EV_ADD | EV_CLEAR, 0, self->stop_item, err))
     {
         cape_aio_item_del (&(self->stop_item));
         
@@ -382,10 +416,10 @@ int cape_aio__kevent_add_userevt_handler (CapeAio self, CapeErr err)
 int cape_aio__kevent_add_signal_handler (CapeAio self, int signal, CapeErr err)
 {
     // create a new object for the handler
-    CapeAioItem aio_item = cape_aio_item_new (signal);
+    CapeAioItem aio_item = cape_aio_item_new (signal, CAPE_FDTYPE__USER_MANAGED);
 
     // add handler for term signal
-    if (cape_aio__kevent_set (self, signal, EVFILT_SIGNAL, EV_ADD, aio_item, err))
+    if (cape_aio__kevent_set (self, signal, EVFILT_SIGNAL, EV_ADD, 0, aio_item, err))
     {
         cape_aio_item_del (&aio_item);
         
@@ -555,7 +589,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
   CapeAioItem ret;
 
   // create a new object for the handler
-  ret = cape_aio_item_new (handle);
+  ret = cape_aio_item_new (handle, CAPE_FDTYPE__USER_MANAGED);
 
 #if defined __LINUX_OS
 
@@ -566,7 +600,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #elif defined __BSD_OS
 
-  if (cape_aio__kevent_set (self, (int)(number_t)handle, EVFILT_READ, EV_ADD, ret, err))
+  if (cape_aio__kevent_set (self, (int)(number_t)handle, EVFILT_READ, EV_ADD, 0, ret, err))
   {
     cape_aio_item_del (&ret);
   }
@@ -622,7 +656,7 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
 
 #elif defined __BSD_OS
 
-    if (cape_aio__kevent_set (self, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, EV_DELETE, NULL, err))
+    if (cape_aio__kevent_set (self, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, EV_DELETE, 0, NULL, err))
     {
       cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio rm", "can't remove kevent item: %s", cape_err_text (err));
     }
@@ -822,6 +856,77 @@ void cape_aio_kill (CapeAio self)
 #elif defined _WIN64 || defined _WIN32
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr err)
+{
+    CapeAioItem ret = NULL;
+    
+#if defined __LINUX_OS
+
+    int fd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (fd == -1)
+    {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+    
+    {
+        struct itimerspec its = {0};
+
+        its.it_value.tv_sec  = interval_in_ms / 1000;
+        its.it_value.tv_nsec = (interval_in_ms % 1000) * 1000000;
+
+        its.it_interval = its.it_value;   // periodic
+    }
+
+    // start it
+    timerfd_settime (fd, 0, &its, NULL);
+
+    // create a new object for the handler
+    ret = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
+
+    if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)fd, EPOLLET | EPOLLIN, ret, err))
+    {
+      cape_aio_item_del (&ret);
+    }
+
+#elif defined __BSD_OS
+
+    static uintptr_t g_timer_id = 1;
+    
+    g_timer_id++;
+    
+    // create a new object for the handler
+    ret = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
+
+    // add for user defined filter
+    if (cape_aio__kevent_set (self, (int)g_timer_id, EVFILT_TIMER, EV_ADD | EV_ENABLE, interval_in_ms, ret, err))
+    {
+        cape_aio_item_del (&ret);
+        
+        return NULL;
+    }
+
+#elif defined _WIN64 || defined _WIN32
+
+    HANDLE timer_handle = CreateWaitableTimer (NULL, FALSE, NULL);
+    
+    LARGE_INTEGER due;
+
+    // relative, 100-ns units
+    due.QuadPart = -(LONGLONG)interval_in_ms * 10000;
+
+    SetWaitableTimer (timer_handle, &due, interval_in_ms, NULL, NULL, FALSE);
+
+    // create a new object for the handler
+    ret = cape_aio_item_new ((void*)timer_handle, CAPE_FDTYPE__TIMER_FD);
+    
+#endif
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
