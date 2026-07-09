@@ -629,6 +629,11 @@ void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
 
 #elif defined _WIN64 || defined _WIN32
 
+    if (FALSE)
+    {
+
+    }
+
 #endif
 
     else
