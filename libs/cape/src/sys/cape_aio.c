@@ -29,6 +29,8 @@
 #include <windows.h>
 #include <stdio.h>
 
+//-----------------------------------------------------------------------------
+
 #endif
 
 #define MAX_EVENTS 64
@@ -38,6 +40,13 @@
 
 #define CAPE_FDTYPE__USER_MANAGED              0
 #define CAPE_FDTYPE__TIMER_FD                  1
+
+//-----------------------------------------------------------------------------
+
+typedef struct CapeAioTimerCtx_s* CapeAioTimerCtx;
+
+void  cape_aio_timer__del (CapeAioTimerCtx* p_self);
+
 //-----------------------------------------------------------------------------
 
 struct CapeAioItem_s
@@ -86,10 +95,15 @@ void cape_aio_item_del (CapeAioItem* p_self)
         {
             case CAPE_FDTYPE__TIMER_FD:
             {
-    #if defined __LINUX_OS
+ #if defined __LINUX_OS
 
                 close ((int)(number_t)self->handle);
-    #endif
+
+ #elif defined _WIN64 || defined _WIN32
+
+                cape_aio_timer__del(&(self->handle));
+
+ #endif
                 break;
             }
         }
@@ -475,6 +489,103 @@ int cape_aio__kevent_add_signal_handler (CapeAio self, int signal, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+#elif defined _WIN64 || defined _WIN32
+
+//-----------------------------------------------------------------------------
+
+struct CapeAioTimerCtx_s
+{
+    CapeAio aio;           // reference
+    PTP_TIMER timer;       // owned
+
+};
+
+//-----------------------------------------------------------------------------
+
+CapeAioTimerCtx cape_aio_timer__new(CapeAio aio)
+{
+    CapeAioTimerCtx self = CAPE_NEW(struct CapeAioTimerCtx_s);
+
+    self->aio = aio;
+    self->timer = NULL;
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void  cape_aio_timer__del(CapeAioTimerCtx* p_self)
+{
+    if (*p_self)
+    {
+        CapeAioTimerCtx self = *p_self;
+
+        if (self->timer)
+        {
+            // stop
+            SetThreadpoolTimer(self->timer, NULL, 0, 0);
+
+            // wait for callbacks
+            WaitForThreadpoolTimerCallbacks(self->timer, TRUE);
+
+            // close
+            CloseThreadpoolTimer(self->timer);
+        }
+
+        CAPE_DEL(p_self, struct CapeAioTimerCtx_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+VOID CALLBACK cape_aio_timer__on_threadpool(PTP_CALLBACK_INSTANCE instance, PVOID context, PTP_TIMER timer)
+{
+    CapeAioItem item = (CapeAioItem)context;
+
+    CapeAioTimerCtx self = cape_aio_item_get(item);
+
+    if (!PostQueuedCompletionStatus(self->aio->iocp, 0, (ULONG_PTR)item, NULL))
+    {
+        CapeErr err = cape_err_new();
+
+        // get the last error from the system
+        cape_err_lastOSError(err);
+
+        // print only the error message
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "aio", "can't queue timer event for IOCP: %s", cape_err_text(err));
+
+        cape_err_del(&err);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio_timer__init(CapeAioTimerCtx self, CapeAioItem item, number_t interval_in_ms, CapeErr err)
+{
+    // create a new background timer
+    self->timer = CreateThreadpoolTimer(cape_aio_timer__on_threadpool, item, NULL);
+
+    if (NULL == self->timer)
+    {
+        return cape_err_lastOSError(err);
+    }
+
+    {
+        FILETIME due;
+
+        ULONGLONG t = (ULONGLONG)-((LONGLONG)interval_in_ms * 10000);
+
+        due.dwLowDateTime = (DWORD)t;
+        due.dwHighDateTime = (DWORD)(t >> 32);
+
+        SetThreadpoolTimer(self->timer, &due, (DWORD)interval_in_ms, 0);
+    }
+
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
 #endif
 
 //-----------------------------------------------------------------------------
@@ -531,7 +642,8 @@ int cape_aio_block_signals (CapeAio self, CapeErr err)
 
 #elif defined _WIN64 || defined _WIN32
 
-    
+    return CAPE_ERR_NONE;
+
 #endif
 }
 
@@ -654,7 +766,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
   {
     cape_err_lastOSError (err);
 
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio add", "can't add fd [%li] to completion port: %s", (long)handle, cape_err_text (err));
+    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio add", "can't add fd [%lu] to completion port: %s", (number_t)handle, cape_err_text (err));
 
     cape_aio_item_del (&ret);
   }
@@ -666,7 +778,7 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
     cape_map_insert (self->items, (void*)ret, NULL);
   }
 
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %i", ret, (long)handle);
+  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %lu", ret, (number_t)handle);
 
   return ret;
 }
@@ -820,20 +932,36 @@ cleanup_and_exit:
 
 #elif defined _WIN64 || defined _WIN32
 
-  OVERLAPPED_ENTRY overlappeds[MAX_EVENTS];
-  ULONG count;
+    OVERLAPPED_ENTRY overlappeds[MAX_EVENTS];
+    ULONG count;
 
-  // wait for any event on the completion port
-  if (GetQueuedCompletionStatusEx (self->iocp, overlappeds, MAX_EVENTS, &count, timeout_in_ms, TRUE))
-  {
-    ULONG i;
-
-    for (i = 0; i < count; i++)
+    // wait for any event on the completion port
+    if (GetQueuedCompletionStatusEx(self->iocp, overlappeds, MAX_EVENTS, &count, (DWORD)timeout_in_ms, TRUE))
     {
-      // this handles the event
-      cape_aio_item__on_event (overlappeds[i].lpOverlapped, overlappeds[i].dwNumberOfBytesTransferred);
+        ULONG i;
+
+        for (i = 0; i < count; ++i)
+        {
+            cape_aio_item__on_event ((CapeAioItem)overlappeds[i].lpCompletionKey, overlappeds[i].dwNumberOfBytesTransferred);
+        }
+
+        res = CAPE_ERR_NONE;
     }
-  }
+    else
+    {
+        DWORD last_err_code = GetLastError();
+
+        if (last_err_code == WAIT_TIMEOUT)
+        {
+            res = CAPE_ERR_NONE;
+        }
+        else
+        {
+            res = cape_err_formatErrorOS(err, last_err_code);
+
+            cape_log_fmt(CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text(err));
+        }
+    }
 
 #endif
 
@@ -960,18 +1088,22 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
 
 #elif defined _WIN64 || defined _WIN32
 
-    HANDLE timer_handle = CreateWaitableTimer (NULL, FALSE, NULL);
-    
-    LARGE_INTEGER due;
-
-    // relative, 100-ns units
-    due.QuadPart = -(LONGLONG)interval_in_ms * 10000;
-
-    SetWaitableTimer (timer_handle, &due, interval_in_ms, NULL, NULL, FALSE);
+    // create a new timer
+    CapeAioTimerCtx ctx = cape_aio_timer__new(self);
 
     // create a new object for the handler
-    ret = cape_aio_item_new ((void*)timer_handle, CAPE_FDTYPE__TIMER_FD);
-    
+    ret = cape_aio_item_new ((void*)ctx, CAPE_FDTYPE__TIMER_FD);
+
+    if (cape_aio_timer__init (ctx, ret, interval_in_ms, err))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "aio", "can't initialize timer: %s", cape_err_text(err));
+
+        // takes care of the ctx instance
+        cape_aio_item_del(&ret);
+
+        return NULL;
+    }
+
 #endif
     
     if (ret)
