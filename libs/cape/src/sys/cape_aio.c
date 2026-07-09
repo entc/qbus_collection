@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <sys/eventfd.h>
+#include <sys/timerfd.h>
 
 #elif defined __BSD_OS
 
@@ -63,7 +64,7 @@ CapeAioItem cape_aio_item_new (void* handle, int fd_type)
     self->on_done = NULL;
 
     // this will set the item to be fully user managed
-    self->fd_type = CAPE_FDTYPE__USER_MANAGED;
+    self->fd_type = fd_type;
     
     return self;
 }
@@ -116,7 +117,7 @@ void* cape_aio_item_get (CapeAioItem self)
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
+int cape_aio_item__handle_fdtype (CapeAioItem self)
 {
     switch (self->fd_type)
     {
@@ -125,15 +126,53 @@ void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 #if defined __LINUX_OS
 
             uint64_t expirations;
-            read (fd, &expirations, sizeof(expirations));
+
+            // we need to read from the timerfd
+            ssize_t n = read ((int)(number_t)self->handle, &expirations, sizeof(expirations));
+
+            if (n == sizeof(expirations))
+            {
+                return TRUE;
+            }
+
+            if (n == -1)
+            {
+                if ((errno == EINTR) || (errno == EAGAIN))
+                {
+                    return FALSE;
+                }
+                else
+                {
+                    CapeErr err = cape_err_new ();
+
+                    // get the last error from the system
+                    cape_err_lastOSError (err);
+
+                    // print only the error message
+                    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio", "can't read from timer FD: %s", cape_err_text (err));
+
+                    cape_err_del (&err);
+
+                    return FALSE;
+                }
+            }
+
 #endif
             break;
         }
     }
-    
+
+    // default
+    return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
+{
     if (self)
     {
-        if (self->on_event)
+        if (cape_aio_item__handle_fdtype (self) && self->on_event)
         {
             self->on_event (self->user_ptr, self->handle);
         }
@@ -880,13 +919,17 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
         its.it_value.tv_nsec = (interval_in_ms % 1000) * 1000000;
 
         its.it_interval = its.it_value;   // periodic
+
+        // start it
+        if (timerfd_settime (fd, 0, &its, NULL) == -1)
+        {
+            cape_err_lastOSError (err);
+            return NULL;
+        }
     }
 
-    // start it
-    timerfd_settime (fd, 0, &its, NULL);
-
     // create a new object for the handler
-    ret = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
+    ret = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
 
     if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)fd, EPOLLET | EPOLLIN, ret, err))
     {
@@ -926,6 +969,13 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
     
 #endif
     
+    if (ret)
+    {
+        cape_map_insert (self->items, (void*)ret, NULL);
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p}", ret);
+
     return ret;
 }
 
