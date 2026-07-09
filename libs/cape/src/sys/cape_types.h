@@ -11,6 +11,7 @@
 
 #define u_t unsigned
 #define number_t long
+#define ul32_t uint32_t
 
 #elif defined __OpenBSD__
 

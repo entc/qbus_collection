@@ -56,4 +56,9 @@ __CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_
 
 //-----------------------------------------------------------------------------
 
+                                 /* adds timer event, returns ref to it */
+__CAPE_LIBEX   CapeAioItem       cape_aio_add__timer   (CapeAio, number_t interval_in_ms, CapeErr);
+
+//-----------------------------------------------------------------------------
+
 #endif

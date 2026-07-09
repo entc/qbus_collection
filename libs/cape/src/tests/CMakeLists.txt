@@ -35,6 +35,9 @@ target_link_libraries   (ut_aio_timer cape)
 add_executable          (ut_aio_socket_icmp ut_aio_socket_icmp.c)
 target_link_libraries   (ut_aio_socket_icmp cape)
 
+add_executable          (ut_sys_aio ut_sys_aio.c)
+target_link_libraries   (ut_sys_aio cape)
+
 add_executable          (ut_sys_time ut_sys_time.c)
 target_link_libraries   (ut_sys_time cape)
 
