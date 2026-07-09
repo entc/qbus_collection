@@ -5,6 +5,9 @@
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
 
+#define CAPE_AIO_MODE__RECV     0x01
+#define CAPE_AIO_MODE__SEND     0x02
+
 //=============================================================================
 
 struct CapeAio_s; typedef struct CapeAio_s* CapeAio;
@@ -39,7 +42,7 @@ struct CapeAioItem_s; typedef struct CapeAioItem_s* CapeAioItem;
 //-----------------------------------------------------------------------------
 
                                  /* adds a file descriptor to the event handler, returns ref to it */
-__CAPE_LIBEX   CapeAioItem       cape_aio_add          (CapeAio, void* handle, CapeErr);
+__CAPE_LIBEX   CapeAioItem       cape_aio_add          (CapeAio, void* handle, int inital_mode, CapeErr);
 
                                  /* removes the file descriptor from the event handler */
 __CAPE_LIBEX   void              cape_aio_rm           (CapeAio, CapeAioItem*);
@@ -49,10 +52,11 @@ __CAPE_LIBEX   void*             cape_aio_item_get     (CapeAioItem);
 
 //-----------------------------------------------------------------------------
 
-typedef void     (__STDCALL *fct_cape_aio_item__on_event)      (void* user_ptr, void* handle);
+typedef int      (__STDCALL *fct_cape_aio_item__on_event)      (void* user_ptr, void* handle);
+typedef void     (__STDCALL *fct_cape_aio_item__on_done)       (void* user_ptr, void* handle);
 
                                  /* sets the callback method and user pointer for upcoming events */
-__CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_event on_done);
+__CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_done on_done);
 
 //-----------------------------------------------------------------------------
 

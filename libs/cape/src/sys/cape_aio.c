@@ -55,7 +55,7 @@ struct CapeAioItem_s
     void* user_ptr;
 
     fct_cape_aio_item__on_event on_event;
-    fct_cape_aio_item__on_event on_done;
+    fct_cape_aio_item__on_done on_done;
 
     int fd_type;
 };
@@ -114,7 +114,7 @@ void cape_aio_item_del (CapeAioItem* p_self)
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_item_set (CapeAioItem self, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_event on_done)
+void cape_aio_item_set (CapeAioItem self, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_done on_done)
 {
   self->user_ptr = user_ptr;
 
@@ -182,19 +182,21 @@ int cape_aio_item__handle_fdtype (CapeAioItem self)
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
+int cape_aio_item__on_event (CapeAioItem self, number_t bytes_affected)
 {
     if (self)
     {
         if (cape_aio_item__handle_fdtype (self) && self->on_event)
         {
-            self->on_event (self->user_ptr, self->handle);
+            return self->on_event (self->user_ptr, self->handle);
         }
     }
     else
     {
         cape_log_msg (CAPE_LL_WARN, "CAPE", "aio event", "aio item is NULL");
     }
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -310,7 +312,7 @@ void cape_aio_del (CapeAio* p_self)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, void* handle)
+int __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, void* handle)
 {
     CapeAio self = user_ptr;
   
@@ -318,6 +320,8 @@ void __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, void* ha
     self->running = FALSE;
   
     cape_log_msg (CAPE_LL_DEBUG, "CAPE", "aio", "stop AIO loop");
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -388,6 +392,26 @@ int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, 
   {
     return TRUE;
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio__epoll_convert_mode (int mode)
+{
+    // enable edge triggered events
+    int ret = EPOLLET;
+
+    if (mode & CAPE_AIO_MODE__RECV)
+    {
+        ret |= EPOLLIN;
+    }
+
+    if (mode & CAPE_AIO_MODE__SEND)
+    {
+        ret |= EPOLLOUT;
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -681,7 +705,7 @@ int cape_aio_init (CapeAio self, CapeErr err)
     }
 
     {
-        CapeAioItem aio_item = cape_aio_add (self, (void*)(number_t)self->signal_fd, err);
+        CapeAioItem aio_item = cape_aio_add (self, (void*)(number_t)self->signal_fd, CAPE_AIO_MODE__RECV, err);
 
         if (NULL == aio_item)
         {
@@ -735,7 +759,7 @@ int cape_aio_init (CapeAio self, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
+CapeAioItem cape_aio_add (CapeAio self, void* handle, int inital_mode, CapeErr err)
 {
   CapeAioItem ret;
 
@@ -744,7 +768,8 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, CapeErr err)
 
 #if defined __LINUX_OS
 
-  if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)handle, EPOLLET | EPOLLIN, ret, err))
+  // convert from mode into epoll flag
+  if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)handle, cape_aio__epoll_convert_mode (inital_mode), ret, err))
   {
     cape_aio_item_del (&ret);
   }
@@ -871,10 +896,15 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
     for (i = 0; i < number_of_events; i++)
     {
-      //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
+        CapeAioItem item = events[i].data.ptr;
 
-      // this handles the event
-      cape_aio_item__on_event (events[i].data.ptr, 0);
+        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
+
+        // this handles the event
+        if (FALSE == cape_aio_item__on_event (item, 0))
+        {
+            cape_aio_rm (self, &item);
+        }
     }
   }
 

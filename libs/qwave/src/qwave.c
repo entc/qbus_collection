@@ -108,11 +108,13 @@ void qwave_del (QWave* p_self)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__ws_recv (void* user_ptr, void* handle_remote_connection)
+int __STDCALL qwave_server__ws_recv (void* user_ptr, void* handle_remote_connection)
 {
     QWaveConctx ctx = user_ptr;
     
     qwave_conctx_ws_read (ctx);
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -138,18 +140,21 @@ void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_connection)
+int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_connection)
 {
     QWaveConctx ctx = user_ptr;
     
     if (qwave_conctx_read (ctx))
     {
-        
+        return TRUE;
     }
     else
     {
         // if read failed we don't need a shutdown
+        // TODO: use the return value to close connection
         qwave_conctx_close (ctx, FALSE);
+
+        return TRUE;
     }
 }
 
@@ -164,7 +169,7 @@ void __STDCALL qwave_server__on_drop (void* user_ptr, void* handle_remote_connec
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_del (&ctx);    
+    qwave_conctx_del (&ctx);
 }
 
 //-----------------------------------------------------------------------------
@@ -176,7 +181,8 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
     {
         CapeErr err = cape_err_new();
         
-        CapeAioItem aio_item = cape_aio_add (self->aio, handle_remote_connection, err);
+        // handle only receive by the AIO
+        CapeAioItem aio_item = cape_aio_add (self->aio, handle_remote_connection, CAPE_AIO_MODE__RECV, err);
         
         if (NULL == aio_item)
         {
@@ -201,7 +207,7 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
+int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
 {
     QWave self = user_ptr;
 
@@ -234,6 +240,8 @@ void __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
     
     cape_err_del (&err);
     cape_str_del (&remote_address);
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -275,7 +283,7 @@ int qwave_init (QWave self, CapeErr err)
     }
     
     // attach the socket handle to the AIO controller
-    self->accept_aio_item = cape_aio_add (self->aio, socket_handle, err);
+    self->accept_aio_item = cape_aio_add (self->aio, socket_handle, CAPE_AIO_MODE__RECV, err);
     
     if (NULL == self->accept_aio_item)
     {

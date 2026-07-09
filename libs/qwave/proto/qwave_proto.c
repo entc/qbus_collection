@@ -207,7 +207,7 @@ int main (int argc, char *argv[])
     goto cleanup_and_exit;
   }
 
-  aio_server_item = cape_aio_add (aio, server_handle, err);
+  aio_server_item = cape_aio_add (aio, server_handle, CAPE_AIO_MODE__RECV, err);
   if (NULL == aio_server_item)
   {
     res = cape_err_code (err);

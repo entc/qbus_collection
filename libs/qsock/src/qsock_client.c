@@ -11,7 +11,7 @@
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qsock_client__on_recv (void* user_ptr, void* handle);
+int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle);
 void __STDCALL qsock_client__on_shutdown (void* user_ptr, void* handle);
 
 //-----------------------------------------------------------------------------
@@ -88,7 +88,8 @@ int qsock_client__create_socket (QSockClient self, CapeErr err)
     }
     
     // attach the socket handle to the AIO controller
-    self->aio_item = cape_aio_add (self->aio, handle, err);
+    // start with send mode first
+    self->aio_item = cape_aio_add (self->aio, handle, CAPE_AIO_MODE__SEND, err);
     
     if (NULL == self->aio_item)
     {
@@ -115,7 +116,7 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qsock_client__on_timer (void* user_ptr, void* handle)
+int __STDCALL qsock_client__on_timer (void* user_ptr, void* handle)
 {
     QSockClient self = user_ptr;
 
@@ -130,6 +131,8 @@ void __STDCALL qsock_client__on_timer (void* user_ptr, void* handle)
     }
 
     cape_err_del (&err);
+
+    return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -139,6 +142,8 @@ void qsock_client__start_reconnect_timer (QSockClient self)
     // local objects
     CapeErr err = cape_err_new ();
     
+    cape_log_msg (CAPE_LL_TRACE, "QSOCK", "client", "start reconnect timer");
+
     self->aio_timer = cape_aio_add__timer (self->aio, 10000, err);
     if (NULL == self->aio_timer)
     {
@@ -146,14 +151,14 @@ void qsock_client__start_reconnect_timer (QSockClient self)
     }
 
     // set callback
-    cape_aio_item_set (self->aio_timer, NULL, qsock_client__on_timer, NULL);
+    cape_aio_item_set (self->aio_timer, self, qsock_client__on_timer, NULL);
     
     cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
+int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
 {
     QSockClient self = user_ptr;
 
@@ -183,6 +188,10 @@ void __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
                 // we don't need to shutdown from our side
                 con = FALSE;
                 
+                // remove from AIO system -> this will call the shutdown callback
+                // TODO: here is a race condition, wait until all events were processed
+                cape_aio_rm (self->aio, &(self->aio_item));
+
                 // start reconnect timer
                 qsock_client__start_reconnect_timer (self);
                 
@@ -190,13 +199,19 @@ void __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
             }
             default:
             {
+                cape_log_fmt (CAPE_LL_TRACE, "QSOCK", "read", "error on connection [%li]", cape_aio_item_get (self->aio_item));
+
+                // we don't need to shutdown from our side
                 con = FALSE;
+
                 break;
             }
         }
     }
     
     cape_err_del (&err);
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -205,6 +220,8 @@ void __STDCALL qsock_client__on_shutdown (void* user_ptr, void* handle)
 {
     QSockClient self = user_ptr;
     
+    cape_log_fmt (CAPE_LL_TRACE, "QSOCK", "client", "close socket [%lu]", handle);
+
     cape_sock__close (handle);
 }
 

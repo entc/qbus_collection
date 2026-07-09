@@ -113,19 +113,31 @@ void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
         goto cleanup_and_exit;
     }
     
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
-
     // use the objects noneblocking function
     if (cape_sock__noneblocking ((void*)(number_t)sock, err))
     {
         goto cleanup_and_exit;
     }
 
-    // connect, don't check result because it is none-blocking
-    connect (sock, (const struct sockaddr*)addr, sizeof(struct sockaddr_in));
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
 
-    cape_log_msg (CAPE_LL_TRACE, "CAPE", "socket", "connected");
-    
+    // check results even if it is none-blocking
+    int rc = connect (sock, addr->ai_addr, addr->ai_addrlen);
+    if (rc == 0)
+    {
+        // connected
+    }
+    else if (errno == EINPROGRESS)
+    {
+        // check this with epoll later
+    }
+    else
+    {
+        // save the last system error into the error object
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
+
     ret = (void*)(number_t)sock;
     sock = CAPE_SOCKET_INVALID;
 

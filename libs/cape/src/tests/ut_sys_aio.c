@@ -4,9 +4,11 @@
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL ut_sys_aio__on_event (void* user_ptr, void* handle)
+int __STDCALL ut_sys_aio__on_event (void* user_ptr, void* handle)
 {
     cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)handle);
+
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
