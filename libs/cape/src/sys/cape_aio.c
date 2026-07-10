@@ -60,6 +60,7 @@ struct CapeAioItem_s
     fct_cape_aio_item__on_done on_done;
 
     int fd_type;
+    int mode_applied;
 };
 
 //-----------------------------------------------------------------------------
@@ -77,6 +78,7 @@ CapeAioItem cape_aio_item_new (void* handle, int fd_type)
 
     // this will set the item to be fully user managed
     self->fd_type = fd_type;
+    self->mode_applied = 0;
     
     return self;
 }
@@ -91,7 +93,7 @@ void cape_aio_item_del (CapeAioItem* p_self)
 
         if (self->on_done)
         {
-          self->on_done (self->user_ptr, self->handle);
+          self->on_done (self->user_ptr, self);
         }
 
         switch (self->fd_type)
@@ -196,7 +198,7 @@ int cape_aio_item__on_event (CapeAioItem self, int mode, number_t bytes_affected
             {
                 if (cape_aio_item__handle_fdtype__recv (self) && self->on_recv)
                 {
-                    return self->on_recv (self->user_ptr, self->handle);
+                    return self->on_recv (self->user_ptr, self);
                 }
 
                 break;
@@ -205,7 +207,16 @@ int cape_aio_item__on_event (CapeAioItem self, int mode, number_t bytes_affected
             {
                 if (self->on_send)
                 {
-                    return self->on_send (self->user_ptr, self->handle);
+                    return self->on_send (self->user_ptr, self);
+                }
+
+                break;
+            }
+            case CAPE_AIO_MODE__TIMER:
+            {
+                if (cape_aio_item__handle_fdtype__recv (self) && self->on_recv)
+                {
+                    return self->on_recv (self->user_ptr, self);
                 }
 
                 break;
@@ -333,7 +344,7 @@ void cape_aio_del (CapeAio* p_self)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, void* handle)
+int __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, CapeAioItem item)
 {
     CapeAio self = user_ptr;
   
@@ -382,37 +393,41 @@ int cape_aio__sigmask (CapeAio self, CapeErr err)
 
 int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, CapeErr err)
 {
-  struct epoll_event event;
+    int res;
+    
+    struct epoll_event event;
 
-  // use the data.ptr part of the union to store
-  // a pointer to the QWaveAioctxEvent object
-  event.data.ptr = data;
+    // use the data.ptr part of the union to store
+    // a pointer to the QWaveAioctxEvent object
+    event.data.ptr = data;
 
-  // set the events on which the epoll should return
-  event.events = flags;
+    // set the events on which the epoll should return
+    event.events = flags;
 
-  int s = epoll_ctl (self->epoll_fd, mode, fd, &event);
-  if (s < 0)
-  {
-    int errCode = errno;
-
-    if (errCode == EPERM)
+    int s = epoll_ctl (self->epoll_fd, mode, fd, &event);
+    if (s < 0)
     {
-      cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");
-      cape_log_msg (CAPE_LL_ERROR, "QWAVE", "epoll", cape_err_text (err));
+        int errCode = errno;
+
+        if (errCode == EPERM)
+        {
+            res = cape_err_set (err, CAPE_ERR_OS, "this filedescriptor is not supported by epoll");
+          
+            cape_log_msg (CAPE_LL_ERROR, "QWAVE", "epoll", cape_err_text (err));
+        }
+        else
+        {
+            res = cape_err_lastOSError (err);
+            
+            cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "epoll", "can't use fd [%li] in epoll: %s", fd, cape_err_text (err));
+        }
     }
     else
     {
-      cape_err_lastOSError (err);
-      cape_log_fmt (CAPE_LL_ERROR, "QWAVE", "epoll", "can't use fd [%li] in epoll: %s", fd, cape_err_text (err));
+        res = CAPE_ERR_NONE;
     }
 
-    return FALSE;
-  }
-  else
-  {
-    return TRUE;
-  }
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -420,8 +435,12 @@ int cape_aio__epoll_ctl (CapeAio self, int mode, int fd, int flags, void* data, 
 int cape_aio__epoll_convert_mode (int mode)
 {
     // enable edge triggered events
-    int ret = EPOLLET;
+    //int ret = EPOLLET;
 
+    // don't use edge triggered events to have same behaviour as for kevent on BSD
+    // all write operations must be removed after complete
+    int ret = 0;
+    
     if (mode & CAPE_AIO_MODE__RECV)
     {
         ret |= EPOLLIN;
@@ -537,7 +556,7 @@ int cape_aio__kevent_add_userevt_handler (CapeAio self, CapeErr err)
     }
 
     // set callbacks
-    cape_aio_item_set (self->stop_item, self, cape_aio__internal_event_stop__on_event, NULL);
+    cape_aio_item_set (self->stop_item, self, cape_aio__internal_event_stop__on_event, NULL, NULL);
     
     // register in map
     cape_map_insert (self->items, (void*)self->stop_item, NULL);
@@ -560,12 +579,76 @@ int cape_aio__kevent_add_signal_handler (CapeAio self, int signal, CapeErr err)
         return cape_err_code (err);
     }
 
-    cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL);
+    cape_aio_item_set (aio_item, self, cape_aio__internal_event_stop__on_event, NULL, NULL);
     
     // register in map
     cape_map_insert (self->items, (void*)aio_item, NULL);
     
     return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio__kevent_convert_filter (int filter)
+{
+    switch (filter)
+    {
+        case EVFILT_READ:
+        {
+            return CAPE_AIO_MODE__RECV;
+        }
+        case EVFILT_WRITE:
+        {
+            return CAPE_AIO_MODE__SEND;
+        }
+        case EVFILT_TIMER:
+        {
+            return CAPE_AIO_MODE__TIMER;
+        }
+        case EVFILT_USER:
+        case EVFILT_SIGNAL:
+        {
+            return CAPE_AIO_MODE__RECV;
+        }
+    }
+    
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio__event_process (CapeAio self, struct kevent* event)
+{
+    if (event->flags & EV_ERROR)
+    {
+        CapeErr err = cape_err_new ();
+        
+        cape_err_formatErrorOS (err, (int)event->data);
+
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+
+        cape_err_del (&err);
+        return;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d) flags = {0x%x}", event->filter, event->flags);
+
+    {
+        CapeAioItem item = event->udata;
+        
+        // convert from kevent filter to cape mode
+        int mode = cape_aio__kevent_convert_filter (event->filter);
+        
+        // trigger the event
+        int marked_for_remove = mode && (FALSE == cape_aio_item__on_event(item, mode, 0));
+
+        if (marked_for_remove || ((event->filter == EVFILT_READ) && (event->flags & EV_EOF)))
+        {
+            cape_log_msg (CAPE_LL_TRACE, "CAPE", "aio next", "close event item");
+
+            cape_aio_rm__item (self, &item);
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -818,103 +901,260 @@ int cape_aio_init (CapeAio self, CapeErr err)
 
 CapeAioItem cape_aio_add (CapeAio self, void* handle, int inital_mode, CapeErr err)
 {
-  CapeAioItem ret;
+    CapeAioItem ret;
 
-  // create a new object for the handler
-  ret = cape_aio_item_new (handle, CAPE_FDTYPE__USER_MANAGED);
+    // create a new object for the handler
+    ret = cape_aio_item_new (handle, CAPE_FDTYPE__USER_MANAGED);
 
-#if defined __LINUX_OS
+    if (cape_aio_set__mode (self, ret, inital_mode, err))
+    {
+        cape_aio_item_del (&ret);
+    }
+    
+    if (ret)
+    {
+      cape_map_insert (self->items, (void*)ret, NULL);
+    }
 
-  // convert from mode into epoll flag
-  if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)handle, cape_aio__epoll_convert_mode (inital_mode), ret, err))
-  {
-    cape_aio_item_del (&ret);
-  }
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %lu", ret, (number_t)handle);
 
-#elif defined __BSD_OS
-
-  if (cape_aio__kevent_set (self, (int)(number_t)handle, EVFILT_READ, EV_ADD, 0, ret, err))
-  {
-    cape_aio_item_del (&ret);
-  }
-
-#elif defined _WIN64 || defined _WIN32
-
-  // add the handle to the overlapping completion port
-  HANDLE iocp_handle = CreateIoCompletionPort (handle, self->iocp, 0, 0);
-
-  // cportHandle must return a value
-  if (NULL == iocp_handle)
-  {
-    cape_err_lastOSError (err);
-
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio add", "can't add fd [%lu] to completion port: %s", (number_t)handle, cape_err_text (err));
-
-    cape_aio_item_del (&ret);
-  }
-
-#endif
-
-  if (ret)
-  {
-    cape_map_insert (self->items, (void*)ret, NULL);
-  }
-
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p} -> %lu", ret, (number_t)handle);
-
-  return ret;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-void cape_aio_rm (CapeAio self, CapeAioItem* p_hitem)
+CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr err)
 {
-  CapeAioItem hitem = *p_hitem;
-
-  // remove handle from epoll
-  CapeMapNode n = cape_map_find (self->items, (void*)hitem);
-  
-  if (n)
-  {
-    CapeErr err = cape_err_new ();
-
-    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio rm", "remove aio item {%p} -> %i", hitem, (long)cape_aio_item_get(hitem));
-
+    CapeAioItem item = NULL;
+    
 #if defined __LINUX_OS
 
-    if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_DEL, (int)(number_t)cape_aio_item_get (hitem), 0, NULL, err))
+    int fd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (fd == -1)
     {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+    
+    {
+        struct itimerspec its = {0};
 
+        its.it_value.tv_sec  = interval_in_ms / 1000;
+        its.it_value.tv_nsec = (interval_in_ms % 1000) * 1000000;
+
+        its.it_interval = its.it_value;   // periodic
+
+        // start it
+        if (timerfd_settime (fd, 0, &its, NULL) == -1)
+        {
+            cape_err_lastOSError (err);
+            return NULL;
+        }
+    }
+
+    // create a new object for the handler
+    ret = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
+
+    if (cape_aio_set__mode (self, ret, CAPE_AIO_MODE__TIMER, err))
+    {
+        cape_aio_item_del (&ret);
+        return NULL;
     }
 
 #elif defined __BSD_OS
 
-    if (cape_aio__kevent_set (self, (int)(number_t)cape_aio_item_get (hitem), EVFILT_READ, EV_DELETE, 0, NULL, err))
+    static uintptr_t g_timer_id = 1;
+    
+    g_timer_id++;
+    
+    // create a new object for the handler
+    item = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
+
+    // add
+    if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_TIMER, EV_ADD | EV_ENABLE, interval_in_ms, item, err))
     {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio rm", "can't remove kevent item: %s", cape_err_text (err));
+        // return the error
+        return cape_err_code (err);
+    }
+    
+    item->mode_applied = CAPE_AIO_MODE__TIMER;
+
+#elif defined _WIN64 || defined _WIN32
+
+    // create a new timer
+    CapeAioTimerCtx ctx = cape_aio_timer__new(self);
+
+    // create a new object for the handler
+    ret = cape_aio_item_new ((void*)ctx, CAPE_FDTYPE__TIMER_FD);
+
+    if (cape_aio_timer__init (ctx, ret, interval_in_ms, err))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "aio", "can't initialize timer: %s", cape_err_text(err));
+
+        // takes care of the ctx instance
+        cape_aio_item_del(&ret);
+
+        return NULL;
+    }
+
+#endif
+    
+    if (item)
+    {
+        cape_map_insert (self->items, (void*)item, NULL);
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p}", item);
+
+    return item;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_rm__item (CapeAio self, CapeAioItem* p_hitem)
+{
+    CapeAioItem hitem = *p_hitem;
+
+    // remove handle from epoll
+    CapeMapNode n = cape_map_find (self->items, (void*)hitem);
+    
+    if (n)
+    {
+        CapeErr err = cape_err_new ();
+
+        //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio rm", "remove aio item {%p} -> %i", hitem, (long)cape_aio_item_get(hitem));
+
+        // remove all event handling
+        if (cape_aio_set__mode (self, hitem, 0, err))
+        {
+            // error
+        }
+        else
+        {
+          // call user defined shutdown function and
+          // cleanup handle event
+          cape_map_erase (self->items, n);
+          
+          // set the return value to NULL
+          *p_hitem = NULL;
+        }
+
+        cape_err_del (&err);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_aio_set__mode (CapeAio self, CapeAioItem item, int mode, CapeErr err)
+{
+    // already all modes where applied
+    if (item->mode_applied == mode)
+    {
+        return CAPE_ERR_NONE;
+    }
+
+#if defined __LINUX_OS
+
+    if (cape_aio__epoll_ctl (self, mode == 0 ? EPOLL_CTL_DEL : (item->mode_applied == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD), (int)(number_t)item->handle, cape_aio__epoll_convert_mode (mode), item, err))
+    {
+        // return the error
+        return cape_err_code (err);
+    }
+
+    item->mode_applied = mode;
+    
+#elif defined __BSD_OS
+
+    if ((mode & CAPE_AIO_MODE__RECV) && !(item->mode_applied & CAPE_AIO_MODE__RECV))
+    {
+        // add
+        if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_READ, EV_ADD, 0, item, err))
+        {
+            // return the error
+            return cape_err_code (err);
+        }
+        
+        item->mode_applied |= CAPE_AIO_MODE__RECV;
+    }
+    
+    if ((mode & CAPE_AIO_MODE__SEND) && !(item->mode_applied & CAPE_AIO_MODE__SEND))
+    {
+        // add
+        if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_WRITE, EV_ADD, 0, item, err))
+        {
+            // return the error
+            return cape_err_code (err);
+        }
+        
+        item->mode_applied |= CAPE_AIO_MODE__SEND;
+    }
+    
+    if ((mode & CAPE_AIO_MODE__TIMER) && !(item->mode_applied & CAPE_AIO_MODE__TIMER))
+    {
+        return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "timer can not be changed");
+    }
+
+    if (!(mode & CAPE_AIO_MODE__RECV) && (item->mode_applied & CAPE_AIO_MODE__RECV))
+    {
+        // delete
+        if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_READ, EV_DELETE, 0, item, err))
+        {
+            // return the error
+            return cape_err_code (err);
+        }
+        
+        item->mode_applied &= ~CAPE_AIO_MODE__RECV;
+    }
+    
+    if (!(mode & CAPE_AIO_MODE__SEND) && (item->mode_applied & CAPE_AIO_MODE__SEND))
+    {
+        // delete
+        if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_WRITE, EV_DELETE, 0, item, err))
+        {
+            // return the error
+            return cape_err_code (err);
+        }
+
+        item->mode_applied &= ~CAPE_AIO_MODE__SEND;
+    }
+
+    if (!(mode & CAPE_AIO_MODE__TIMER) && (item->mode_applied & CAPE_AIO_MODE__TIMER))
+    {
+        // delete
+        if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_TIMER, EV_DELETE, 0, item, err))
+        {
+            // return the error
+            return cape_err_code (err);
+        }
+
+        item->mode_applied &= ~CAPE_AIO_MODE__TIMER;
     }
 
 #elif defined _WIN64 || defined _WIN32
 
-    if (FALSE)
+    if (item->mode_applied == 0 && mode != 0)
     {
-
+        // returns the handle, the handle is only used for error identification
+        // the handle don't have to be stored for a free later, this is managed internally in winapi
+        if (NULL == CreateIoCompletionPort (item->handle, self->iocp, (ULONG_PTR)item, 0))
+        {
+            return cape_err_lastOSError (err);
+        }
     }
-
-#endif
-
+    else if (item->mode_applied != 0 && mode != 0)
+    {
+        // do nothing here
+    }
     else
     {
-      // call user defined shutdown function and
-      // cleanup handle event
-      cape_map_erase (self->items, n);
-      
-      // set the return value to NULL
-      *p_hitem = NULL;
+        // cannot be removed
     }
-
-    cape_err_del (&err);
-  }
+    
+    item->mode_applied = mode;
+    
+#endif
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -965,51 +1205,37 @@ cleanup_and_exit:
 
 #elif defined __BSD_OS
 
-  struct kevent events[MAX_EVENTS];
+    struct kevent events[MAX_EVENTS];
 
-  {
-    int i;
-
-    // wait for the next event
-    int number_of_events = kevent (self->kq, NULL, 0, events, MAX_EVENTS, NULL);
-
-    if (number_of_events == -1)
     {
-      if (errno == EINTR)
-      {
-        return CAPE_ERR_NONE;
-      }
+        int i;
 
-      res = cape_err_lastOSError (err);
+        // wait for the next event
+        int number_of_events = kevent (self->kq, NULL, 0, events, MAX_EVENTS, NULL);
 
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+        if (number_of_events == -1)
+        {
+            if (errno == EINTR)
+            {
+                return CAPE_ERR_NONE;
+            }
 
-      return res;
+            res = cape_err_lastOSError (err);
+
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
+
+            return res;
+        }
+
+        for (i = 0; i < number_of_events; i++)
+        {
+            struct kevent* event = &(events[i]);
+                        
+            cape_aio__event_process (self, event);
+        }
     }
 
-    for (i = 0; i < number_of_events; i++)
-    {
-      struct kevent* event = &(events[i]);
-
-      if (event->flags & EV_ERROR)
-      {
-        res = cape_err_lastOSError (err);
-
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "aio error: %s", cape_err_text (err));
-
-        return res;
-      }
-      else
-      {
-        //cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
-
-        // this handles the event
-        cape_aio_item__on_event (event->udata, 0);
-      }
-    }
-  }
-
-  res = CAPE_ERR_NONE;
+    res = CAPE_ERR_NONE;
 
 #elif defined _WIN64 || defined _WIN32
 
@@ -1109,92 +1335,6 @@ void cape_aio_kill (CapeAio self)
 #elif defined _WIN64 || defined _WIN32
 
 #endif
-}
-
-//-----------------------------------------------------------------------------
-
-CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr err)
-{
-    CapeAioItem ret = NULL;
-    
-#if defined __LINUX_OS
-
-    int fd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-    if (fd == -1)
-    {
-        cape_err_lastOSError (err);
-        return NULL;
-    }
-    
-    {
-        struct itimerspec its = {0};
-
-        its.it_value.tv_sec  = interval_in_ms / 1000;
-        its.it_value.tv_nsec = (interval_in_ms % 1000) * 1000000;
-
-        its.it_interval = its.it_value;   // periodic
-
-        // start it
-        if (timerfd_settime (fd, 0, &its, NULL) == -1)
-        {
-            cape_err_lastOSError (err);
-            return NULL;
-        }
-    }
-
-    // create a new object for the handler
-    ret = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
-
-    if (FALSE == cape_aio__epoll_ctl (self, EPOLL_CTL_ADD, (number_t)fd, EPOLLET | EPOLLIN, ret, err))
-    {
-      cape_aio_item_del (&ret);
-    }
-
-#elif defined __BSD_OS
-
-    static uintptr_t g_timer_id = 1;
-    
-    g_timer_id++;
-    
-    // create a new object for the handler
-    ret = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
-
-    // add for user defined filter
-    if (cape_aio__kevent_set (self, (int)g_timer_id, EVFILT_TIMER, EV_ADD | EV_ENABLE, interval_in_ms, ret, err))
-    {
-        cape_aio_item_del (&ret);
-        
-        return NULL;
-    }
-
-#elif defined _WIN64 || defined _WIN32
-
-    // create a new timer
-    CapeAioTimerCtx ctx = cape_aio_timer__new(self);
-
-    // create a new object for the handler
-    ret = cape_aio_item_new ((void*)ctx, CAPE_FDTYPE__TIMER_FD);
-
-    if (cape_aio_timer__init (ctx, ret, interval_in_ms, err))
-    {
-        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "aio", "can't initialize timer: %s", cape_err_text(err));
-
-        // takes care of the ctx instance
-        cape_aio_item_del(&ret);
-
-        return NULL;
-    }
-
-#endif
-    
-    if (ret)
-    {
-        cape_map_insert (self->items, (void*)ret, NULL);
-    }
-
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p}", ret);
-
-    return ret;
 }
 
 //-----------------------------------------------------------------------------

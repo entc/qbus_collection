@@ -43,8 +43,8 @@ __CAPE_LIBEX   int           cape_sock__touch             (void*, CapeErr err);
 
 __CAPE_LIBEX   void          cape_sock__close             (void*);
 
-                             /* checks if socket is coneccted */
-__CAPE_LIBEX   int           cape_sock__is_connected      (void*);
+                             /* checks if socket is coneccted, returns cape_err result */
+__CAPE_LIBEX   int           cape_sock__status            (void*, CapeErr err);
 
 __CAPE_LIBEX   void          cape_sock__shutdown          (void*);
 

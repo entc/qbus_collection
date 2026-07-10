@@ -4,18 +4,18 @@
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL ut_sys_aio__on_recv (void* user_ptr, void* handle)
+int __STDCALL ut_sys_aio__on_recv (void* user_ptr, CapeAioItem item)
 {
-    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)handle);
+    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)cape_aio_item_get (item));
 
     return TRUE;
 }
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL ut_sys_aio__on_send (void* user_ptr, void* handle)
+int __STDCALL ut_sys_aio__on_send (void* user_ptr, CapeAioItem item)
 {
-    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)handle);
+    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)cape_aio_item_get (item));
 
     return TRUE;
 }

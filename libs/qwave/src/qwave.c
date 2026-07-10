@@ -108,7 +108,7 @@ void qwave_del (QWave* p_self)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qwave_server__ws_recv (void* user_ptr, void* handle_remote_connection)
+int __STDCALL qwave_server__ws_recv (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
     
@@ -119,9 +119,11 @@ int __STDCALL qwave_server__ws_recv (void* user_ptr, void* handle_remote_connect
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__ws_done (void* user_ptr, void* handle_remote_connection)
+void __STDCALL qwave_server__ws_done (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
+    
+    void* handle_remote_connection = cape_aio_item_get (item);
     
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
     
@@ -141,7 +143,7 @@ void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_connection)
+int __STDCALL qwave_server__on_request (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
     
@@ -161,9 +163,11 @@ int __STDCALL qwave_server__on_request (void* user_ptr, void* handle_remote_conn
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__on_drop (void* user_ptr, void* handle_remote_connection)
+void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
+    
+    void* handle_remote_connection = cape_aio_item_get (item);
 
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
 
@@ -208,7 +212,7 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
+int __STDCALL qwave_server__on_accept (void* user_ptr, CapeAioItem item)
 {
     QWave self = user_ptr;
 
@@ -219,7 +223,7 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
     while (TRUE)
     {
         // try to gather a new connection handle
-        void* handle_remote_connection = cape_sock__accept (handle, &remote_address, err);
+        void* handle_remote_connection = cape_sock__accept (cape_aio_item_get (item), &remote_address, err);
         
         if (NULL == handle_remote_connection)
         {
@@ -247,11 +251,11 @@ int __STDCALL qwave_server__on_accept (void* user_ptr, void* handle)
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qwave_server__on_shutdown (void* user_ptr, void* handle)
+void __STDCALL qwave_server__on_shutdown (void* user_ptr, CapeAioItem item)
 {
     QWave self = user_ptr;
     
-    cape_sock__close (handle);
+    cape_sock__close (cape_aio_item_get (item));
 }
 
 //-----------------------------------------------------------------------------

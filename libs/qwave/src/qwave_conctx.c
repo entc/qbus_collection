@@ -283,7 +283,7 @@ void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
         }
 
         // self will be destroyed in the process
-        cape_aio_rm (self->aio, &aio_item);
+        cape_aio_rm__item (self->aio, &aio_item);
     }
 }
 

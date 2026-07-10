@@ -11,9 +11,9 @@
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle);
-int __STDCALL qsock_client__on_send (void* user_ptr, void* handle);
-void __STDCALL qsock_client__on_shutdown (void* user_ptr, void* handle);
+int __STDCALL qsock_client__on_recv (void* user_ptr, CapeAioItem item);
+int __STDCALL qsock_client__on_send (void* user_ptr, CapeAioItem item);
+void __STDCALL qsock_client__on_shutdown (void* user_ptr, CapeAioItem item);
 
 //-----------------------------------------------------------------------------
 
@@ -118,7 +118,7 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qsock_client__on_timer (void* user_ptr, void* handle)
+int __STDCALL qsock_client__on_timer (void* user_ptr, CapeAioItem item)
 {
     QSockClient self = user_ptr;
 
@@ -144,7 +144,7 @@ void qsock_client__start_reconnect_timer (QSockClient self)
     // local objects
     CapeErr err = cape_err_new ();
     
-    cape_log_msg (CAPE_LL_TRACE, "QSOCK", "client", "start reconnect timer");
+    cape_log_msg (CAPE_LL_DEBUG, "QSOCK", "client", "start reconnect timer");
 
     self->aio_timer = cape_aio_add__timer (self->aio, 10000, err);
     if (NULL == self->aio_timer)
@@ -160,17 +160,21 @@ void qsock_client__start_reconnect_timer (QSockClient self)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
+int __STDCALL qsock_client__on_recv (void* user_ptr, CapeAioItem item)
 {
     QSockClient self = user_ptr;
 
-    // state
-    int con = TRUE;
+    // indicates to close the socket by FALSE
+    int ret = TRUE;
+    
+    // indicates to keep on reading
+    int run = TRUE;
 
     // local objects
     CapeErr err = cape_err_new ();
     
-    while (con)
+    // try to read all data
+    while (run)
     {
         switch (cape_sock__recv (cape_aio_item_get (self->aio_item), self->buf_recv, QSOCK_BUFFER_RECV_SIZE, err))
         {
@@ -185,63 +189,81 @@ int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
             }
             case CAPE_ERR_EOF:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QSOCK", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->aio_item));
+                cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "read", "connection shutdown detected [%li]", cape_aio_item_get (self->aio_item));
                 
                 // we don't need to shutdown from our side
-                con = FALSE;
-                
-                // remove from AIO system -> this will call the shutdown callback
-                // TODO: here is a race condition, wait until all events were processed
-                cape_aio_rm (self->aio, &(self->aio_item));
-
-                // start reconnect timer
-                qsock_client__start_reconnect_timer (self);
-                
+                run = FALSE;
                 break;
             }
             default:
             {
-                cape_log_fmt (CAPE_LL_TRACE, "QSOCK", "read", "error on connection [%li]", cape_aio_item_get (self->aio_item));
+                cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "read", "error on connection [%li]", cape_aio_item_get (self->aio_item));
 
                 // we don't need to shutdown from our side
-                con = FALSE;
-
+                run = FALSE;
+                ret = FALSE;
                 break;
             }
         }
     }
     
     cape_err_del (&err);
-
-    return TRUE;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qsock_client__on_send (void* user_ptr, void* handle)
+int __STDCALL qsock_client__on_send (void* user_ptr, CapeAioItem item)
 {
     QSockClient self = user_ptr;
 
+    // indicates to close the socket by FALSE
+    int ret = TRUE;
 
-    if (cape_sock__is_connected (handle))
+    // local objects
+    CapeErr err = cape_err_new ();
+    
+    if (cape_sock__status (cape_aio_item_get (item), err))
     {
-        cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "client", "conected socket [%lu]", handle);
+        // -> not connected
 
+        // signal to close / destroy the item
+        ret = FALSE;
+        goto cleanup_and_exit;
+    }
+        
+    cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "client", "conected socket [%lu]", cape_aio_item_get (item));
+
+    // turn off sending and enable receving
+    if (cape_aio_set__mode (self->aio, item, CAPE_AIO_MODE__RECV, err))
+    {
+        // -> can't set the new mode
+
+        // signal to close / destroy the item
+        ret = FALSE;
+        goto cleanup_and_exit;
     }
 
-
-    return TRUE;
+cleanup_and_exit:
+    
+    cape_err_del (&err);
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
-void __STDCALL qsock_client__on_shutdown (void* user_ptr, void* handle)
+void __STDCALL qsock_client__on_shutdown (void* user_ptr, CapeAioItem item)
 {
     QSockClient self = user_ptr;
     
-    cape_log_fmt (CAPE_LL_TRACE, "QSOCK", "client", "close socket [%lu]", handle);
+    void* socket_handle = cape_aio_item_get (item);
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "client", "close socket [%lu]", socket_handle);
 
-    cape_sock__close (handle);
+    cape_sock__close (socket_handle);
+    
+    // start reconnect timer
+    qsock_client__start_reconnect_timer (self);
 }
 
 //-----------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 
 #define CAPE_AIO_MODE__RECV     0x01
 #define CAPE_AIO_MODE__SEND     0x02
+#define CAPE_AIO_MODE__TIMER    0x04
 
 //=============================================================================
 
@@ -44,24 +45,25 @@ struct CapeAioItem_s; typedef struct CapeAioItem_s* CapeAioItem;
                                  /* adds a file descriptor to the event handler, returns ref to it */
 __CAPE_LIBEX   CapeAioItem       cape_aio_add          (CapeAio, void* handle, int inital_mode, CapeErr);
 
-                                 /* removes the file descriptor from the event handler */
-__CAPE_LIBEX   void              cape_aio_rm           (CapeAio, CapeAioItem*);
+                                 /* adds timer event, returns ref to it */
+__CAPE_LIBEX   CapeAioItem       cape_aio_add__timer   (CapeAio, number_t interval_in_ms, CapeErr);
 
-                                 /* returns the original handle */
-__CAPE_LIBEX   void*             cape_aio_item_get     (CapeAioItem);
+                                 /* removes the file descriptor from the event handler */
+__CAPE_LIBEX   void              cape_aio_rm__item     (CapeAio, CapeAioItem*);
+
+                                 /* change the mode for an item */
+__CAPE_LIBEX   int               cape_aio_set__mode    (CapeAio, CapeAioItem item, int mode, CapeErr err);
 
 //-----------------------------------------------------------------------------
 
-typedef int      (__STDCALL *fct_cape_aio_item__on_event)      (void* user_ptr, void* handle);
-typedef void     (__STDCALL *fct_cape_aio_item__on_done)       (void* user_ptr, void* handle);
+typedef int      (__STDCALL *fct_cape_aio_item__on_event)      (void* user_ptr, CapeAioItem item);
+typedef void     (__STDCALL *fct_cape_aio_item__on_done)       (void* user_ptr, CapeAioItem item);
 
                                  /* sets the callback method and user pointer for upcoming events */
 __CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_ptr, fct_cape_aio_item__on_event on_recv, fct_cape_aio_item__on_event on_send, fct_cape_aio_item__on_done on_done);
 
-//-----------------------------------------------------------------------------
-
-                                 /* adds timer event, returns ref to it */
-__CAPE_LIBEX   CapeAioItem       cape_aio_add__timer   (CapeAio, number_t interval_in_ms, CapeErr);
+                                 /* returns the original handle */
+__CAPE_LIBEX   void*             cape_aio_item_get     (CapeAioItem);
 
 //-----------------------------------------------------------------------------
 

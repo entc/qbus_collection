@@ -533,27 +533,23 @@ void cape_sock__close (void* handle)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__is_connected (void* handle)
+int cape_sock__status (void* handle, CapeErr err)
 {
-    int err = 0;
-    socklen_t len = sizeof(err);
+    int error_code = 0;
+    socklen_t len = sizeof(error_code);
 
-    if (getsockopt((int)(number_t)handle, SOL_SOCKET, SO_ERROR, &err, &len) == -1)
+    if (getsockopt ((int)(number_t)handle, SOL_SOCKET, SO_ERROR, &error_code, &len) == -1)
     {
-        // getsockopt failed
+        return cape_err_lastOSError (err);
     }
-    else if (err == 0)
+    else if (error_code == 0)
     {
-        return TRUE;
+        return CAPE_ERR_NONE;
     }
     else
     {
-        // Connection failed.
-        errno = err;
-        perror("connect");
+        return cape_err_formatErrorOS (err, error_code);
     }
-
-    return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -849,10 +845,30 @@ void cape_sock__close (void* sock)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__noneblocking (void* sock, CapeErr err)
+int cape_sock__status (void* handle, CapeErr err)
+{
+    int error_code = 0;
+    socklen_t len = sizeof(error_code);
+
+    if (getsockopt((SOCKET)handle, SOL_SOCKET, SO_ERROR, (char *)&error_code, &len) == SOCKET_ERROR)
+    {
+        return cape_err_lastOSError(err);
+    }
+
+    if (error_code == 0)
+    {
+        return CAPE_ERR_NONE;
+    }
+
+    return cape_err_formatErrorOS (err, error_code);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_sock__noneblocking (void* handle, CapeErr err)
 {
     u_long mode = 1;  // 1 to enable non-blocking socket
-    ioctlsocket ((SOCKET)sock, FIONBIO, &mode);
+    ioctlsocket ((SOCKET)handle, FIONBIO, &mode);
 
     return CAPE_ERR_NONE;
 }
