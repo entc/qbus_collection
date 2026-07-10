@@ -4,7 +4,16 @@
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL ut_sys_aio__on_event (void* user_ptr, void* handle)
+int __STDCALL ut_sys_aio__on_recv (void* user_ptr, void* handle)
+{
+    cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)handle);
+
+    return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL ut_sys_aio__on_send (void* user_ptr, void* handle)
 {
     cape_log_fmt (CAPE_LL_DEBUG, "TEST", "on event", "timer event with handle [%lu]", (number_t)handle);
 
@@ -39,7 +48,7 @@ int main (int argc, char *argv[])
 			goto cleanup_and_exit;
 	}
 
-    cape_aio_item_set (aio_timer, NULL, ut_sys_aio__on_event, NULL);
+    cape_aio_item_set (aio_timer, NULL, ut_sys_aio__on_recv, ut_sys_aio__on_send, NULL);
 
 	cape_log_fmt(CAPE_LL_TRACE, "TEST", "main", "wait for events ...");
 

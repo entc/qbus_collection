@@ -12,6 +12,7 @@
 //-----------------------------------------------------------------------------
 
 int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle);
+int __STDCALL qsock_client__on_send (void* user_ptr, void* handle);
 void __STDCALL qsock_client__on_shutdown (void* user_ptr, void* handle);
 
 //-----------------------------------------------------------------------------
@@ -98,11 +99,12 @@ int qsock_client__create_socket (QSockClient self, CapeErr err)
     }
     else
     {
+        res = CAPE_ERR_NONE;
         handle = NULL;
     }
     
     // set the callbacks
-    cape_aio_item_set (self->aio_item, self, qsock_client__on_recv, qsock_client__on_shutdown);
+    cape_aio_item_set (self->aio_item, self, qsock_client__on_recv, qsock_client__on_send, qsock_client__on_shutdown);
     
 cleanup_and_exit:
     
@@ -151,7 +153,7 @@ void qsock_client__start_reconnect_timer (QSockClient self)
     }
 
     // set callback
-    cape_aio_item_set (self->aio_timer, self, qsock_client__on_timer, NULL);
+    cape_aio_item_set (self->aio_timer, self, qsock_client__on_timer, NULL, NULL);
     
     cape_err_del (&err);
 }
@@ -210,6 +212,23 @@ int __STDCALL qsock_client__on_recv (void* user_ptr, void* handle)
     }
     
     cape_err_del (&err);
+
+    return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+int __STDCALL qsock_client__on_send (void* user_ptr, void* handle)
+{
+    QSockClient self = user_ptr;
+
+
+    if (cape_sock__is_connected (handle))
+    {
+        cape_log_fmt (CAPE_LL_DEBUG, "QSOCK", "client", "conected socket [%lu]", handle);
+
+    }
+
 
     return TRUE;
 }

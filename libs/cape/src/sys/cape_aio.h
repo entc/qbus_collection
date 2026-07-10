@@ -56,7 +56,7 @@ typedef int      (__STDCALL *fct_cape_aio_item__on_event)      (void* user_ptr, 
 typedef void     (__STDCALL *fct_cape_aio_item__on_done)       (void* user_ptr, void* handle);
 
                                  /* sets the callback method and user pointer for upcoming events */
-__CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_ptr, fct_cape_aio_item__on_event on_event, fct_cape_aio_item__on_done on_done);
+__CAPE_LIBEX   void              cape_aio_item_set     (CapeAioItem, void* user_ptr, fct_cape_aio_item__on_event on_recv, fct_cape_aio_item__on_event on_send, fct_cape_aio_item__on_done on_done);
 
 //-----------------------------------------------------------------------------
 

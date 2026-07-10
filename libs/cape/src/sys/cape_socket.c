@@ -533,6 +533,31 @@ void cape_sock__close (void* handle)
 
 //-----------------------------------------------------------------------------
 
+int cape_sock__is_connected (void* handle)
+{
+    int err = 0;
+    socklen_t len = sizeof(err);
+
+    if (getsockopt((int)(number_t)handle, SOL_SOCKET, SO_ERROR, &err, &len) == -1)
+    {
+        // getsockopt failed
+    }
+    else if (err == 0)
+    {
+        return TRUE;
+    }
+    else
+    {
+        // Connection failed.
+        errno = err;
+        perror("connect");
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_sock__shutdown (void* handle)
 {
   if (-1 == shutdown ((int)(number_t)handle, SHUT_RDWR))

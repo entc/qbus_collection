@@ -135,7 +135,8 @@ void __STDCALL qwave_server__ws_done (void* user_ptr, void* handle_remote_connec
 
 void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
 {
-    cape_aio_item_set (aio_item, (void*)ctx, qwave_server__ws_recv, qwave_server__ws_done);
+    // TODO: use also the send callback
+    cape_aio_item_set (aio_item, (void*)ctx, qwave_server__ws_recv, NULL, qwave_server__ws_done);
 }
 
 //-----------------------------------------------------------------------------
@@ -195,7 +196,7 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
             // set the callbacks
             // transfer the responsiblity of the ownership of conctx to
             // the AIO system, qwave_server__on_drop will be called
-            cape_aio_item_set (aio_item, conctx, qwave_server__on_request, qwave_server__on_drop);
+            cape_aio_item_set (aio_item, conctx, qwave_server__on_request, NULL, qwave_server__on_drop);
             
             // set the callbacks
             qwave_conctx_ws_cb (conctx, self->ws_user_ptr, self->ws_on_upgrade, self->ws_on_message, self->ws_on_destroy);
@@ -296,7 +297,7 @@ int qwave_init (QWave self, CapeErr err)
     }
 
     // set the callbacks
-    cape_aio_item_set (self->accept_aio_item, self, qwave_server__on_accept, qwave_server__on_shutdown);
+    cape_aio_item_set (self->accept_aio_item, self, qwave_server__on_accept, NULL, qwave_server__on_shutdown);
     
     res = cape_queue_start (self->queue, self->threads, err);
     
