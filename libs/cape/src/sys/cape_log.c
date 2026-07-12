@@ -89,13 +89,12 @@ claenup_and_exit:
 
 void cape_log_disable_syslog (void)
 {
-  cape_net__resolve_del (&g_sockaddr);
-  
-  if (g_log_udp_handle)
-  {
-    cape_sock__close (g_log_udp_handle);
-    g_log_udp_handle = NULL;
-  }
+    cape_net__resolve_del (&g_sockaddr);
+
+    if (g_log_udp_handle)
+    {
+        cape_sock__close (cape_mv (&g_log_udp_handle));
+    }
 }
 
 //-----------------------------------------------------------------------------

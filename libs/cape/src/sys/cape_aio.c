@@ -312,8 +312,16 @@ void cape_aio_del (CapeAio* p_self)
   {
     CapeAio self = *p_self;
 
-    cape_map_del (&(self->items));
-    
+    {
+        // transfer ownership to local variable
+        // deleting of members of the map might result in new aio_add calls
+        // to prevent that events will be added in destructor phase
+        // there is a check for self->items
+        CapeMap items = cape_map_mv (&(self->items));
+
+        cape_map_del (&items);
+    }
+
 #if defined __LINUX_OS
 
     if (self->signal_fd != -1)
@@ -451,6 +459,11 @@ int cape_aio__epoll_convert_mode (int mode)
         ret |= EPOLLOUT;
     }
 
+    if (mode & CAPE_AIO_MODE__TIMER)
+    {
+        ret |= EPOLLIN;
+    }
+
     return ret;
 }
 
@@ -460,33 +473,39 @@ void cape_aio__event_process (CapeAio self, struct epoll_event* event)
 {
     CapeAioItem item = event->data.ptr;
 
-    int marked_for_remove = FALSE;
-
-    if (event->events & EPOLLIN)
+    if (event->events & EPOLLERR)
     {
-        cape_log_msg (CAPE_LL_TRACE, "QWAVE", "event", "new EPOLLIN event");
-
-        // this handles the event
-        if (FALSE == cape_aio_item__on_event (item, CAPE_AIO_MODE__RECV, 0))
-        {
-            marked_for_remove = TRUE;
-        }
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "error on handler");
+        return;
     }
 
-    if (event->events & EPOLLOUT)
-    {
-        cape_log_msg (CAPE_LL_TRACE, "QWAVE", "event", "new EPOLLOUT event");
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d)", event->events);
 
-        // this handles the event
-        if (FALSE == cape_aio_item__on_event (item, CAPE_AIO_MODE__SEND, 0))
+    {
+        int marked_for_remove = FALSE;
+        int i;
+
+        // helper struct to iterate through all event types
+        static const struct {uint32_t epoll_event; int aio_mode; } handlers[] = {{EPOLLIN, CAPE_AIO_MODE__RECV}, {EPOLLOUT, CAPE_AIO_MODE__SEND}};
+
+        // run a small loop to check all possible event types
+        for (i = 0; i < 2; ++i)
         {
-            marked_for_remove = TRUE;
+            // is this event type part of the event?
+            if (event->events & handlers[i].epoll_event)
+            {
+                // this handles the event
+                if (FALSE == cape_aio_item__on_event (item, handlers[i].aio_mode, 0))
+                {
+                    marked_for_remove = TRUE;
+                }
+            }
         }
-    }
 
-    if (marked_for_remove)
-    {
-        cape_aio_rm (self, &item);
+        if (marked_for_remove)
+        {
+            cape_aio_rm__item (self, &item);
+        }
     }
 }
 
@@ -903,6 +922,11 @@ CapeAioItem cape_aio_add (CapeAio self, void* handle, int inital_mode, CapeErr e
 {
     CapeAioItem ret;
 
+    if (NULL == self->items)
+    {
+        return NULL;
+    }
+
     // create a new object for the handler
     ret = cape_aio_item_new (handle, CAPE_FDTYPE__USER_MANAGED);
 
@@ -927,6 +951,11 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
 {
     CapeAioItem item = NULL;
     
+    if (NULL == self->items)
+    {
+        return NULL;
+    }
+
 #if defined __LINUX_OS
 
     int fd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
@@ -953,11 +982,11 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
     }
 
     // create a new object for the handler
-    ret = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
+    item = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
 
-    if (cape_aio_set__mode (self, ret, CAPE_AIO_MODE__TIMER, err))
+    if (cape_aio_set__mode (self, item, CAPE_AIO_MODE__TIMER, err))
     {
-        cape_aio_item_del (&ret);
+        cape_aio_item_del (&item);
         return NULL;
     }
 
@@ -1193,8 +1222,6 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
     for (i = 0; i < number_of_events; i++)
     {
-        cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "next", "triggered event = %i/%i", i, number_of_events);
-
         cape_aio__event_process (self, &events[i]);
     }
   }

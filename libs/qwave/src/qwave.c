@@ -157,7 +157,7 @@ int __STDCALL qwave_server__on_request (void* user_ptr, CapeAioItem item)
         // TODO: use the return value to close connection
         qwave_conctx_close (ctx, FALSE);
 
-        return TRUE;
+        return FALSE;
     }
 }
 
