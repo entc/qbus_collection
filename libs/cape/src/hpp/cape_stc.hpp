@@ -274,6 +274,13 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    cape::Stream clone () const
+    {
+        return cape::Stream ((const cape::Stream)*this);
+    }
+
+    //-----------------------------------------------------------------------------
+
     void append (const char* text)
     {
       if (m_obj == NULL)

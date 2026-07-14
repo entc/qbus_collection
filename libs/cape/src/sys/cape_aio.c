@@ -475,11 +475,13 @@ void cape_aio__event_process (CapeAio self, struct epoll_event* event)
 
     if (event->events & EPOLLERR)
     {
+        cape_aio_rm__item (self, &item);
+
         cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio next", "error on handler");
         return;
     }
 
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d)", event->events);
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d)", event->events);
 
     {
         int marked_for_remove = FALSE;

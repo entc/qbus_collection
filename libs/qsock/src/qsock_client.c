@@ -5,7 +5,6 @@
 #include <sys/cape_log.h>
 #include <sys/cape_thread.h>
 #include <sys/cape_queue.h>
-#include <sys/cape_aio.h>
 #include <stc/cape_list.h>
 #include <sys/cape_mutex.h>
 
@@ -25,8 +24,9 @@ struct QSockClient_s
     int port;
 
     CapeAio aio;
+    int aio_owned;
+
     CapeAioItem aio_item;
-    
     CapeAioItem aio_timer;
     
     CapeStream buf_recv;
@@ -50,16 +50,25 @@ void __STDCALL qsock_client__cached_buffers__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-QSockClient qsock_client_new (const CapeString host, int port)
+QSockClient qsock_client_new (const CapeString host, int port, CapeAio aio)
 {
     QSockClient self = CAPE_NEW (struct QSockClient_s);
 
     self->host = cape_str_cp (host);
     self->port = port;
 
-    self->aio = cape_aio_new ();
+    if (aio)
+    {
+        self->aio = aio;
+        self->aio_owned = FALSE;
+    }
+    else
+    {
+        self->aio = cape_aio_new ();
+        self->aio_owned = TRUE;
+    }
+
     self->aio_item = NULL;
-    
     self->aio_timer = NULL;
     
     self->buf_recv = cape_stream_new ();
@@ -83,8 +92,11 @@ void qsock_client_del (QSockClient* p_self)
     {
         QSockClient self = *p_self;
 
-        
-        cape_aio_del (&(self->aio));
+        if (self->aio_owned)
+        {
+            cape_aio_del (&(self->aio));
+        }
+
         cape_str_del (&(self->host));
 
         cape_stream_del (&(self->buf_recv));
@@ -392,10 +404,27 @@ void __STDCALL qsock_client__on_shutdown (void* user_ptr, CapeAioItem item)
 
 //-----------------------------------------------------------------------------
 
+int qsock_client_init (QSockClient self, CapeErr err)
+{
+    if (TRUE == self->aio_owned)
+    {
+        return cape_err_set (err, CAPE_ERR_WRONG_STATE, "init can only be used if the AIO IS NOT owned");
+    }
+
+    return qsock_client__create_socket (self, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int qsock_client_run (QSockClient self, CapeErr err)
 {
     int res;
     
+    if (FALSE == self->aio_owned)
+    {
+        return cape_err_set (err, CAPE_ERR_WRONG_STATE, "run can only be used if the AIO IS owned");
+    }
+
     // initialize main AIO event handler
     res = cape_aio_init (self->aio, err);
     if (res)

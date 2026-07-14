@@ -29,6 +29,8 @@ __CAPE_LIBEX   double             qbus_config_f          (QBusConfig, const char
 
 __CAPE_LIBEX   int                qbus_config_b          (QBusConfig, const char* name, int default_val);
 
+__CAPE_LIBEX   CapeUdc            qbus_config_list       (QBusConfig, const char* name);
+
 __CAPE_LIBEX   CapeUdc            qbus_config_node       (QBusConfig, const char* name);
 
 //-----------------------------------------------------------------------------

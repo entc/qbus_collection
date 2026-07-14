@@ -29,4 +29,6 @@ rbac_workspaces_roles_view \
 auth_logins_last_view \
 auth_logins_cnt_view \
 rbac_users_logins_view \
-| sed -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' > ../../../../var/auth.sql
+| sed -e '1{/sandbox mode/d;}' \
+      -e 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/' \
+> ../../../../var/auth.sql
