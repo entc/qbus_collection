@@ -18,7 +18,7 @@ __CAPE_LIBEX   CapeString        cape_json_to_s             (const CapeUdc sourc
                                  /* convert in strict mode (JSON definition), no nan, inf, or similar is allowed
                                   -> items with not allowed content, will be excluded from output
                                   */
-__CAPE_LIBEX   CapeString        cape_json_to_s__strict     (const CapeUdc source);
+__CAPE_LIBEX   CapeString        cape_json_to_s__strict     (const CapeUdc source, fct_cape_stream_base64_encode);
 
 __CAPE_LIBEX   CapeString        cape_json_to_s__ex         (const CapeUdc source, fct_cape_stream_base64_encode);
 

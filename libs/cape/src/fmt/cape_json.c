@@ -673,7 +673,7 @@ void cape_json_fill__strict_name (CapeStream stream, const CapeString name, int 
 
 //-----------------------------------------------------------------------------------------------------------
 
-void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeString name, int comma)
+void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeString name, int comma, fct_cape_stream_base64_encode cb_encode)
 {
   switch (cape_udc_type (node))
   {
@@ -688,7 +688,7 @@ void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeSt
 
         while (cape_udc_cursor_next (cursor))
         {
-          cape_json_fill__strict (stream, cursor->item, NULL, cursor->position);
+          cape_json_fill__strict (stream, cursor->item, NULL, cursor->position, cb_encode);
         }
 
         cape_stream_append_c (stream, ']');
@@ -709,7 +709,7 @@ void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeSt
         
         while (cape_udc_cursor_next (cursor))
         {
-          cape_json_fill__strict (stream, cursor->item, cape_udc_name (cursor->item), cursor->position);
+          cape_json_fill__strict (stream, cursor->item, cape_udc_name (cursor->item), cursor->position, cb_encode);
         }
         
         cape_stream_append_c (stream, '}');
@@ -779,7 +779,7 @@ void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeSt
       {
         const CapeStream s = cape_udc_m (node);
         
-        CapeString h = cape_stream_serialize (s, NULL);
+        CapeString h = cape_stream_serialize (s, cb_encode);
         if (h)
         {
           cape_stream_append_c (stream, '"');
@@ -838,7 +838,7 @@ CapeString cape_json_to_s (const CapeUdc source)
 
 //-----------------------------------------------------------------------------------------------------------
 
-CapeString cape_json_to_s__strict (const CapeUdc source)
+CapeString cape_json_to_s__strict (const CapeUdc source, fct_cape_stream_base64_encode cb_encode)
 {
   if (source)
   {
@@ -850,7 +850,7 @@ CapeString cape_json_to_s__strict (const CapeUdc source)
         CapeStream stream = cape_stream_new ();
         
         // use the strict method
-        cape_json_fill__strict (stream, source, NULL, FALSE);
+        cape_json_fill__strict (stream, source, NULL, FALSE, cb_encode);
         
         return cape_stream_to_str (&stream);
       }
