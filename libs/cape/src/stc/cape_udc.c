@@ -86,52 +86,67 @@ CapeUdc cape_udc_new (u_t type, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc__clear_data (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            cape_map_del ((CapeMap*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_list_del ((CapeList*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            cape_str_del ((CapeString*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            CAPE_DEL (&(self->data), double);
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            cape_datetime_del ((CapeDatetime**)&(self->data));
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            cape_stream_del ((CapeStream*)&(self->data));
+            break;
+        }
+        default:
+        {
+            self->data = NULL;
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_del (CapeUdc* p_self)
 {
-  CapeUdc self = *p_self;
+    CapeUdc self = *p_self;
 
-  if (self == NULL)
-  {
-    return;
-  }
+    if (self == NULL)
+    {
+        return;
+    }
 
-  cape_str_del (&(self->name));
+    // clear name
+    cape_str_del (&(self->name));
 
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
-    {
-      cape_map_del ((CapeMap*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_LIST:
-    {
-      cape_list_del ((CapeList*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      cape_str_del ((CapeString*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      CAPE_DEL (&(self->data), double);
-      break;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      cape_datetime_del ((CapeDatetime**)&(self->data));
-      break;
-    }
-    case CAPE_UDC_STREAM:
-    {
-      cape_stream_del ((CapeStream*)&(self->data));
-      break;
-    }
-  }
+    // clear data
+    cape_udc__clear_data (self);
 
-  CAPE_DEL(p_self, struct CapeUdc_s);
+    // release memory
+    CAPE_DEL(p_self, struct CapeUdc_s);
 }
 
 //-----------------------------------------------------------------------------
@@ -720,26 +735,32 @@ void cape_udc_rm (CapeUdc self, const CapeString name)
 
 void cape_udc_set_s_cp (CapeUdc self, const CapeString val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STRING:
+    if (CAPE_UDC_STRING != self->type)
     {
-      cape_str_replace_cp ((CapeString*)&(self->data), val);
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = CAPE_UDC_STRING;
     }
-  }
+
+    cape_str_replace_cp ((CapeString*)&(self->data), val);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_s_mv (CapeUdc self, CapeString* p_val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STRING:
+    if (CAPE_UDC_STRING != self->type)
     {
-      cape_str_replace_mv ((CapeString*)&(self->data), p_val);
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = CAPE_UDC_STRING;
     }
-  }
+    
+    cape_str_replace_mv ((CapeString*)&(self->data), p_val);
 }
 
 //-----------------------------------------------------------------------------
@@ -1311,30 +1332,30 @@ CapeUdc cape_udc_get_list (CapeUdc self, const CapeString name)
 
 void cape_udc_put_s_cp (CapeUdc self, const CapeString name, const CapeString val)
 {
-  CapeUdc h = cape_udc_get (self, name);
-  if (h)
-  {
-    cape_udc_set_s_cp (h, val);
-  }
-  else
-  {
-    cape_udc_add_s_cp (self, name, val);
-  }
+    CapeUdc h = cape_udc_get (self, name);
+    if (h)
+    {
+        cape_udc_set_s_cp (h, val);
+    }
+    else
+    {
+        cape_udc_add_s_cp (self, name, val);
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_put_s_mv (CapeUdc self, const CapeString name, CapeString* p_val)
 {
-  CapeUdc h = cape_udc_get (self, name);
-  if (h)
-  {
-    cape_udc_set_s_mv (h, p_val);
-  }
-  else
-  {
-    cape_udc_add_s_mv (self, name, p_val);
-  }
+    CapeUdc h = cape_udc_get (self, name);
+    if (h)
+    {
+        cape_udc_set_s_mv (h, p_val);
+    }
+    else
+    {
+        cape_udc_add_s_mv (self, name, p_val);
+    }
 }
 
 //-----------------------------------------------------------------------------
