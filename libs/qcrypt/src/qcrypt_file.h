@@ -43,6 +43,9 @@ __CAPE_LIBEX  int            qcrypt_file_write          (QCryptFile, const char*
 
 __CAPE_LIBEX  int            qcrypt_file_finalize       (QCryptFile, CapeErr err);
 
+                             /* this will remove the encrypted file, called internal in case of error */
+__CAPE_LIBEX  void           qcrypt_file_rollback       (QCryptFile);
+
 //-----------------------------------------------------------------------------
 
                              /*

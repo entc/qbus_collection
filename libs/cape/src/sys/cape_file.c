@@ -1632,11 +1632,8 @@ void cape_fh_del (CapeFileHandle* p_self)
 
     cape_str_del (&(self->file));
 
-    if (self->fd >= 0)
-    {
-      close ((int)self->fd);
-    }
-
+    cape_fh_close (self);
+      
     CAPE_DEL (p_self, struct CapeFileHandle_s);
   }
 }
@@ -1736,6 +1733,33 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
+void cape_fh_close (CapeFileHandle self)
+{
+    if (self->fd >= 0)
+    {
+        close ((int)self->fd);
+        
+        // set fd to invalid
+        self->fd = -1;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_fh_rm (CapeFileHandle self)
+{
+    CapeErr err = cape_err_new ();
+    
+    if (cape_fs_file_rm (self->file, err))
+    {
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "fh rm", "error in removing file: %s", cape_err_text (err));
+    }
+    
+    cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
 void* cape_fh_fd (CapeFileHandle self)
 {
   return (void*)self->fd;
@@ -1759,6 +1783,28 @@ number_t cape_fh_read_buf (CapeFileHandle self, char* bufdat, number_t buflen)
 number_t cape_fh_write_buf (CapeFileHandle self, const char* bufdat, number_t buflen)
 {
   return write ((int)self->fd, bufdat, buflen);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fh_write_m (CapeFileHandle self, CapeStream stream, CapeErr err)
+{
+    number_t total = cape_stream_size (stream);
+    number_t written = 0;
+    
+    while (written < total)
+    {
+        number_t n = cape_fh_write_buf (self, cape_stream_data (stream) + written, total - written);
+        
+        if (n <= 0)
+        {
+            return cape_err_set (err, CAPE_ERR_OS, "file write failed");
+        }
+        
+        written += n;
+    }
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

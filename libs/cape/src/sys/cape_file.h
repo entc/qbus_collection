@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_stream.h"
 #include "sys/cape_types.h"
 
 #include <fcntl.h>
@@ -148,13 +149,20 @@ __CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int fl
 
 __CAPE_LIBEX   int                cape_fh_open_ac        (CapeFileHandle, int flags, CapeFileAc*, CapeErr);
 
+__CAPE_LIBEX   void               cape_fh_close          (CapeFileHandle);
+
 __CAPE_LIBEX   void*              cape_fh_fd             (CapeFileHandle);
 
 __CAPE_LIBEX   number_t           cape_fh_read_buf       (CapeFileHandle, char* bufdat, number_t buflen);
 
 __CAPE_LIBEX   number_t           cape_fh_write_buf      (CapeFileHandle, const char* bufdat, number_t buflen);
 
+                                  /* this writes the full content of the stream into the file, returns error */
+__CAPE_LIBEX   int                cape_fh_write_m        (CapeFileHandle, CapeStream, CapeErr);
+
 __CAPE_LIBEX   const CapeString   cape_fh_file           (CapeFileHandle);
+
+__CAPE_LIBEX   void               cape_fh_rm             (CapeFileHandle);
 
 //-----------------------------------------------------------------------------
 
