@@ -174,10 +174,13 @@ static void* __STDCALL cape_udc_cp__list_on_clone (void* ptr)
 
 CapeUdc cape_udc_cp (const CapeUdc self)
 {
-  CapeUdc clone = NULL;
+    CapeUdc clone = NULL;
 
-  if (self)
-  {
+    if (NULL == self)
+    {
+        return NULL;
+    }
+    
     // copy the base type
     clone = CAPE_NEW (struct CapeUdc_s);
 
@@ -188,50 +191,67 @@ CapeUdc cape_udc_cp (const CapeUdc self)
 
     switch (self->type)
     {
-      case CAPE_UDC_NODE:
-      {
-        clone->data = cape_map_clone (self->data, cape_udc_cp__map_on_clone);
-        break;
-      }
-      case CAPE_UDC_LIST:
-      {
-        clone->data = cape_list_clone (self->data, cape_udc_cp__list_on_clone);
-        break;
-      }
-      case CAPE_UDC_STRING:
-      {
-        clone->data = cape_str_cp (self->data);
-        break;
-      }
-      case CAPE_UDC_NUMBER:
-      {
-        clone->data = self->data;
-        break;
-      }
-      case CAPE_UDC_BOOL:
-      {
-        clone->data = self->data;
-        break;
-      }
-      case CAPE_UDC_FLOAT:
-      {
-        // allocate memory
-        clone->data = CAPE_NEW (double);
+        case CAPE_UDC_NODE:
+        {
+            clone->data = cape_map_clone (self->data, cape_udc_cp__map_on_clone);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            clone->data = cape_list_clone (self->data, cape_udc_cp__list_on_clone);
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            clone->data = cape_str_cp (self->data);
+            break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            clone->data = self->data;
+            break;
+        }
+        case CAPE_UDC_BOOL:
+        {
+            clone->data = self->data;
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            if (NULL == self->data)
+            {
+                clone->data = NULL;
+            }
+            else
+            {
+                // allocate memory
+                clone->data = CAPE_NEW (double);
 
-        // copy the value
-        *(double*)(clone->data) = *(double*)(self->data);
-        break;
-      }
-      case CAPE_UDC_DATETIME:
-      {
-        // allocate memory
-        clone->data = cape_datetime_cp (self->data);
-        break;
-      }
+                // copy the value
+                *(double*)(clone->data) = *(double*)(self->data);
+            }
+                
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            // allocate memory
+            clone->data = cape_datetime_cp (self->data);
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            clone->data = cape_stream_cp (self->data);
+            break;
+        }
+        default:
+        {
+            cape_udc_del (&clone);
+            break;
+        }
     }
-  }
 
-  return clone;
+    return clone;
 }
 
 //-----------------------------------------------------------------------------
