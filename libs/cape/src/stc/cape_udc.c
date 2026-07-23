@@ -86,52 +86,67 @@ CapeUdc cape_udc_new (u_t type, const CapeString name)
 
 //-----------------------------------------------------------------------------
 
+void cape_udc__clear_data (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            cape_map_del ((CapeMap*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_list_del ((CapeList*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            cape_str_del ((CapeString*)&(self->data));
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            CAPE_DEL (&(self->data), double);
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            cape_datetime_del ((CapeDatetime**)&(self->data));
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            cape_stream_del ((CapeStream*)&(self->data));
+            break;
+        }
+        default:
+        {
+            self->data = NULL;
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_del (CapeUdc* p_self)
 {
-  CapeUdc self = *p_self;
+    CapeUdc self = *p_self;
 
-  if (self == NULL)
-  {
-    return;
-  }
+    if (self == NULL)
+    {
+        return;
+    }
 
-  cape_str_del (&(self->name));
+    // clear name
+    cape_str_del (&(self->name));
 
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
-    {
-      cape_map_del ((CapeMap*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_LIST:
-    {
-      cape_list_del ((CapeList*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      cape_str_del ((CapeString*)&(self->data));
-      break;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      CAPE_DEL (&(self->data), double);
-      break;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      cape_datetime_del ((CapeDatetime**)&(self->data));
-      break;
-    }
-    case CAPE_UDC_STREAM:
-    {
-      cape_stream_del ((CapeStream*)&(self->data));
-      break;
-    }
-  }
+    // clear data
+    cape_udc__clear_data (self);
 
-  CAPE_DEL(p_self, struct CapeUdc_s);
+    // release memory
+    CAPE_DEL(p_self, struct CapeUdc_s);
 }
 
 //-----------------------------------------------------------------------------
@@ -474,7 +489,7 @@ const CapeString  cape_udc_name (const CapeUdc self)
 
 u_t cape_udc_type (const CapeUdc self)
 {
-  return self->type;
+    return (NULL == self) ? CAPE_UDC_UNDEFINED : self->type;
 }
 
 //-----------------------------------------------------------------------------
@@ -720,26 +735,32 @@ void cape_udc_rm (CapeUdc self, const CapeString name)
 
 void cape_udc_set_s_cp (CapeUdc self, const CapeString val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STRING:
+    if (CAPE_UDC_STRING != self->type)
     {
-      cape_str_replace_cp ((CapeString*)&(self->data), val);
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = CAPE_UDC_STRING;
     }
-  }
+
+    cape_str_replace_cp ((CapeString*)&(self->data), val);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_s_mv (CapeUdc self, CapeString* p_val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STRING:
+    if (CAPE_UDC_STRING != self->type)
     {
-      cape_str_replace_mv ((CapeString*)&(self->data), p_val);
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = CAPE_UDC_STRING;
     }
-  }
+    
+    cape_str_replace_mv ((CapeString*)&(self->data), p_val);
 }
 
 //-----------------------------------------------------------------------------
@@ -819,9 +840,14 @@ void cape_udc_set_m_cp (CapeUdc self, const CapeStream val)
   {
     case CAPE_UDC_STREAM:
     {
+      if (self->data)
+      {
+        cape_stream_del ((CapeStream*)&(self->data));
+      }
+      
       if (val)
       {
-
+        self->data = cape_stream_cp (val);
       }
 
       break;
@@ -935,17 +961,21 @@ double cape_udc_f (CapeUdc self, double alt)
   {
     case CAPE_UDC_NUMBER:
     {
-      return (number_t)(self->data);
+        return (number_t)(self->data);
     }
     case CAPE_UDC_FLOAT:
     {
-      double* h = self->data;
+        double* h = self->data;
 
-      return *h;
+        return *h;
+    }
+    case CAPE_UDC_STRING:
+    {
+        return cape_str_to_f ((CapeString)self->data);
     }
     default:
     {
-      return alt;
+        return alt;
     }
   }
 }
@@ -1302,30 +1332,30 @@ CapeUdc cape_udc_get_list (CapeUdc self, const CapeString name)
 
 void cape_udc_put_s_cp (CapeUdc self, const CapeString name, const CapeString val)
 {
-  CapeUdc h = cape_udc_get (self, name);
-  if (h)
-  {
-    cape_udc_set_s_cp (h, val);
-  }
-  else
-  {
-    cape_udc_add_s_cp (self, name, val);
-  }
+    CapeUdc h = cape_udc_get (self, name);
+    if (h)
+    {
+        cape_udc_set_s_cp (h, val);
+    }
+    else
+    {
+        cape_udc_add_s_cp (self, name, val);
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_put_s_mv (CapeUdc self, const CapeString name, CapeString* p_val)
 {
-  CapeUdc h = cape_udc_get (self, name);
-  if (h)
-  {
-    cape_udc_set_s_mv (h, p_val);
-  }
-  else
-  {
-    cape_udc_add_s_mv (self, name, p_val);
-  }
+    CapeUdc h = cape_udc_get (self, name);
+    if (h)
+    {
+        cape_udc_set_s_mv (h, p_val);
+    }
+    else
+    {
+        cape_udc_add_s_mv (self, name, p_val);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1463,6 +1493,9 @@ void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
       {
         CapeUdc h = *p_node;
         
+        // set the name in case the udc has a different name
+        cape_str_replace_cp (&(h->name), name);
+
         cape_map_insert (self->data, h->name, h);
         
         *p_node = NULL;
@@ -1881,19 +1914,64 @@ CapeUdc cape_udc_find_n__iterate (CapeUdc self, const CapeString name, number_t 
 
 CapeUdc cape_udc_find_n (CapeUdc self, const CapeString name, number_t value)
 {
-  CapeUdc ret = NULL;
-  
-  switch (self->type)
-  {
-    case CAPE_UDC_LIST:
-    case CAPE_UDC_NODE:
+    CapeUdc ret = NULL;
+
+    switch (self->type)
     {
-      ret = cape_udc_find_n__iterate (self, name, value);
-      break;
+        case CAPE_UDC_LIST:
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_find_n__iterate (self, name, value);
+            break;
+        }
     }
-  }
-  
-  return ret;
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_find_s__iterate (CapeUdc self, const CapeString name, const CapeString value)
+{
+    CapeUdc ret = NULL;
+
+    // local objects
+    CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+
+    while (cape_udc_cursor_next (cursor))
+    {
+        CapeUdc seek_node = cape_udc_get (cursor->item, name);
+        if (seek_node)
+        {
+            if ((seek_node->type == CAPE_UDC_STRING) && cape_str_equal ((CapeString)(seek_node->data), value))
+            {
+                ret = cursor->item;
+                break;
+            }
+        }
+    }
+
+    cape_udc_cursor_del (&cursor);
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_find_s (CapeUdc self, const CapeString name, const CapeString value)
+{
+    CapeUdc ret = NULL;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_find_s__iterate (self, name, value);
+            break;
+        }
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -1930,6 +2008,170 @@ void cape_udc_reduce_s (CapeUdc self, const CapeString name, const CapeString va
       break;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_equal (CapeUdc self, CapeUdc other)
+{
+    int ret = FALSE;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            if (other->type == CAPE_UDC_LIST)
+            {
+                CapeListCursor cursor1; cape_list_cursor_init (self->data, &cursor1, CAPE_DIRECTION_FORW);
+                CapeListCursor cursor2; cape_list_cursor_init (other->data, &cursor2, CAPE_DIRECTION_FORW);
+
+                ret = TRUE;
+
+                while (ret && cape_list_cursor_next (&cursor1))
+                {
+                    if (cape_list_cursor_next (&cursor2))
+                    {
+                        ret = cape_udc_equal (cape_list_node_data (cursor1.node), cape_list_node_data (cursor2.node));
+                    }
+                    else
+                    {
+                        ret = FALSE;
+                    }
+                }
+
+                if (ret && cape_list_cursor_next (&cursor2))
+                {
+                    ret = FALSE;
+                }
+            }
+
+            break;
+        }
+        case CAPE_UDC_NODE:
+        {
+            // TODO: simliar as list
+
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            if (other->type == CAPE_UDC_STRING)
+            {
+                ret = cape_str_equal (self->data, other->data);
+            }
+
+            break;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            if (other->type == CAPE_UDC_NUMBER)
+            {
+                ret = ((number_t)(self->data) == (number_t)(other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            if (other->type == CAPE_UDC_FLOAT)
+            {
+                double* d1 = self->data;
+                double* d2 = other->data;
+
+                if (d1 && d2)
+                {
+                    ret = (*d1 == *d2);
+                }
+            }
+
+            break;
+        }
+        case CAPE_UDC_BOOL:
+        {
+            if (other->type == CAPE_UDC_BOOL)
+            {
+                ret = ((number_t)(self->data) == (number_t)(other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            if (other->type == CAPE_UDC_DATETIME)
+            {
+                ret = (0 == cape_datetime_cmp (self->data, other->data));
+            }
+
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            // TODO: compare 2 streams
+
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has__iterate (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    CapeUdcCursor* cursor = cape_udc_cursor_new (to_find, CAPE_DIRECTION_FORW);
+
+    while (cape_udc_cursor_next (cursor))
+    {
+        // try to find a node with the same name
+        CapeUdc node_found = cape_udc_get (self, cape_udc_name (cursor->item));
+        if (node_found)
+        {
+            ret = cape_udc_equal (cursor->item, node_found);
+        }
+    }
+
+    cape_udc_cursor_del (&cursor);
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has__node (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    switch (to_find->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_has__iterate (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_has (CapeUdc self, CapeUdc to_find)
+{
+    int ret = FALSE;
+
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            ret = cape_udc_has__node (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------

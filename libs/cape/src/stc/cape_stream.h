@@ -25,6 +25,9 @@ __CAPE_LIBEX void              cape_stream_clr (CapeStream);
                                /* moves stream ownership */
 __CAPE_LIBEX CapeStream        cape_stream_mv (CapeStream*);
 
+                               /* copy the stream */
+__CAPE_LIBEX CapeStream        cape_stream_cp (const CapeStream);
+
                                /* converts the stream into a c-string (adds zero termination) */
 __CAPE_LIBEX const char*       cape_stream_get (CapeStream);
 
@@ -46,6 +49,9 @@ __CAPE_LIBEX void              cape_stream_replace_mv (CapeStream*, CapeStream*)
 
                                /* returns the last byte from the data buffer */
 __CAPE_LIBEX char              cape_stream_last_c (CapeStream);
+
+                               /* shift the content of the stream to the left by an amount of bytes */
+__CAPE_LIBEX void              cape_stream_shift_l (CapeStream, number_t bytes);
 
 //-----------------------------------------------------------------------------
 

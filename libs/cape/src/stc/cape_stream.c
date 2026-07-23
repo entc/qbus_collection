@@ -171,23 +171,6 @@ CapeStream cape_stream_mv (CapeStream* p_self)
 
 //-----------------------------------------------------------------------------
 
-const char* cape_stream_get (CapeStream self)
-{
-  // set terminator
-  *(self->pos) = 0;
-
-  return self->buffer;
-}
-
-//-----------------------------------------------------------------------------
-
-const char* cape_stream_data (CapeStream self)
-{
-  return self->buffer;
-}
-
-//-----------------------------------------------------------------------------
-
 CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
 {
   CapeStream self = CAPE_NEW (struct CapeStream_s);
@@ -206,6 +189,35 @@ CapeStream cape_stream_from_buf (const char* bufdat, number_t buflen)
   self->mime_type = NULL;
 
   return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeStream cape_stream_cp (const CapeStream other)
+{
+  CapeStream self = cape_stream_from_buf (other->buffer, other->pos - other->buffer);
+
+  // copy mime type
+  self->mime_type = cape_str_cp (other->mime_type);
+
+  return self;
+}
+
+//-----------------------------------------------------------------------------
+
+const char* cape_stream_get (CapeStream self)
+{
+  // set terminator
+  *(self->pos) = 0;
+
+  return self->buffer;
+}
+
+//-----------------------------------------------------------------------------
+
+const char* cape_stream_data (CapeStream self)
+{
+  return self->buffer;
 }
 
 //-----------------------------------------------------------------------------
@@ -267,6 +279,36 @@ char cape_stream_last_c (CapeStream self)
     cape_log_msg (CAPE_LL_WARN, "CAPE", "stream", "can't fetch last byte");
     return 0;
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_stream_shift_l (CapeStream self, number_t bytes)
+{
+    // calculate used bytes
+    number_t used = self->pos - self->buffer;
+
+    if (bytes >= used)
+    {
+        self->size = 0;
+        self->pos = self->buffer;
+
+        // special case overflow
+        if (bytes > used)
+        {
+            cape_log_msg(CAPE_LL_WARN, "CAPE", "stream", "shift-l overflow");
+        }
+    }
+    else
+    {
+        // safe because bytes < used here
+        number_t tail = used - bytes;
+
+        memmove(self->buffer, self->buffer + bytes, tail);
+
+        self->size = tail;
+        self->pos = self->buffer + tail;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -497,7 +539,7 @@ void cape_stream_append_n (CapeStream self, number_t val)
 
 #ifdef _MSC_VER
 
-  self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%li", val);
+  self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%Iu", val);
 
 #else
 
@@ -554,7 +596,7 @@ void cape_stream_append_d (CapeStream self, const CapeDatetime* val)
 
 void cape_stream_append_stream (CapeStream self, CapeStream stream)
 {
-  unsigned long usedBytes = stream->pos - stream->buffer;
+  number_t usedBytes = stream->pos - stream->buffer;
 
   cape_stream_reserve (self, usedBytes);
 
