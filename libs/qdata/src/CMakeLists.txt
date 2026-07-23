@@ -1,4 +1,4 @@
-INCLUDE_DIRECTORIES("../../../qbus_collection/libs/cape/src" "../../../qbus_collection/libs/qcrypt/src")
+INCLUDE_DIRECTORIES("../../cape/src" "../../qcrypt/src")
 
 set(QDATA_SOURCES
   qdata.c
