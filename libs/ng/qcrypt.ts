@@ -119,7 +119,17 @@ export class QCrypt {
         // ciphertext
         buffer.set(new Uint8Array(ciphertext), offset);
 
-        return btoa(String.fromCharCode(...buffer));
+        // chunk the buffer, because the buffer might be big
+        // and ... cannot handle it
+        let binary = "";
+        const chunkSize = 0x8000;
+
+        for (let i = 0; i < buffer.length; i += chunkSize)
+        {
+            binary += String.fromCharCode(...buffer.subarray(i, i + chunkSize));
+        }
+
+        return btoa(binary);
     }
 
     //---------------------------------------------------------------------------
