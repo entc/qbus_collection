@@ -344,7 +344,7 @@ void adbl_bind_add__string_options (MYSQL_BIND* bind, CapeUdc item)
 
   // check if options are given
   const CapeString options_text = cape_udc_s (item, NULL);
-  if (options_text)
+  if (FALSE == cape_str_empty (options_text))
   {
     // decode -> they are are JSON encoded
     CapeUdc options = cape_json_from_s (options_text);
