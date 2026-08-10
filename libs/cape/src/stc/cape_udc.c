@@ -2,13 +2,16 @@
 
 // cape includes
 #include "sys/cape_types.h"
+#include "sys/cape_log.h"
 #include "stc/cape_map.h"
 
 //-----------------------------------------------------------------------------
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
+#define CAPE_FLOAT_EPSILON 1e-9
 //-----------------------------------------------------------------------------
 
 struct CapeUdc_s
@@ -38,50 +41,46 @@ static void __STDCALL cape_udc_list_onDel (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc cape_udc_new (u_t type, const CapeString name)
+void cape_udc__alloc_data (CapeUdc self)
 {
-  CapeUdc self = CAPE_NEW(struct CapeUdc_s);
-
-  self->type = type;
-  self->data = NULL;
-
-  self->name = cape_str_cp (name);
-
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      self->data = cape_map_new (NULL, cape_udc_node_onDel, NULL);
-      break;
+        case CAPE_UDC_NODE:
+        {
+            self->data = cape_map_new (NULL, cape_udc_node_onDel, NULL);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            self->data = cape_list_new (cape_udc_list_onDel);
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            self->data = NULL;
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            self->data = CAPE_NEW (double);
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            self->data = NULL;
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            self->data = NULL;
+            break;
+        }
+        default:
+        {
+            self->data = NULL;
+            break;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      self->data = cape_list_new (cape_udc_list_onDel);
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      self->data = NULL;
-      break;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      self->data = CAPE_NEW (double);
-      break;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      self->data = NULL;
-      break;
-    }
-    case CAPE_UDC_STREAM:
-    {
-
-      break;
-    }
-  }
-
-  return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -126,6 +125,22 @@ void cape_udc__clear_data (CapeUdc self)
             break;
         }
     }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_new (u_t type, const CapeString name)
+{
+    CapeUdc self = CAPE_NEW(struct CapeUdc_s);
+
+    self->type = type;
+    self->data = NULL;
+
+    self->name = cape_str_cp (name);
+
+    cape_udc__alloc_data (self);
+
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -318,19 +333,24 @@ void cape_udc_merge_mv__item__list (CapeUdc origin, CapeUdc other)
 
 void cape_udc_merge_mv__item (CapeUdc origin, CapeUdc other)
 {
-  switch (origin->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (origin->type)
     {
-      cape_udc_merge_mv__item__node (origin, other);
-      break;
+        case CAPE_UDC_NODE:
+        {
+            cape_udc_merge_mv__item__node (origin, other);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_udc_merge_mv__item__list (origin, other);
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "merge object with unsupported type");
+            break;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      cape_udc_merge_mv__item__list (origin, other);
-      break;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -441,41 +461,68 @@ CapeUdc cape_udc_merge__item (CapeUdc* p_origin, CapeUdc other)
 
 void cape_udc_merge_cp (CapeUdc self, const CapeUdc udc)
 {
-  if (udc)
-  {
-    switch (self->type)
+    if (udc)
     {
-      case CAPE_UDC_NODE:
-      {
-        cape_udc_merge_cp__item__node (self, udc);
-        break;
-      }
-      case CAPE_UDC_LIST:
-      {
-        cape_udc_merge_cp__item__list (self, udc);
-        break;
-      }
+        switch (self->type)
+        {
+            case CAPE_UDC_NODE:
+            {
+              cape_udc_merge_cp__item__node (self, udc);
+              break;
+            }
+            case CAPE_UDC_LIST:
+            {
+              cape_udc_merge_cp__item__list (self, udc);
+              break;
+            }
+            default:
+            {
+                cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "merge object with unsupported type");
+                break;
+            }
+        }
     }
-  }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_clr (CapeUdc self)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      cape_map_clr (self->data);      
-      break;
+        case CAPE_UDC_NODE:
+        {
+            cape_map_clr (self->data);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_list_clr (self->data);
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "clear object with unsupported type");
+            break;
+        }
     }
-    case CAPE_UDC_LIST:
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_type (CapeUdc self, u_t type)
+{
+    if (type != self->type)
     {
-      cape_list_clr (self->data);
-      break;
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = type;
+        
+        // initialize the new type
+        cape_udc__alloc_data (self);
     }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -553,36 +600,38 @@ number_t cape_udc_size (const CapeUdc self)
 
 CapeUdc cape_udc_add (CapeUdc self, CapeUdc* p_item)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      CapeUdc h = *p_item;
+        case CAPE_UDC_NODE:
+        {
+            CapeUdc h = *p_item;
 
-      cape_map_insert (self->data, h->name, h);
+            cape_map_insert (self->data, h->name, h);
 
-      *p_item = NULL;
+            *p_item = NULL;
 
-      return h;
+            return h;
+        }
+        case CAPE_UDC_LIST:
+        {
+            CapeUdc h = *p_item;
+
+            cape_list_push_back (self->data, h);
+
+            *p_item = NULL;
+
+            return h;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "add object on unsupported type");
+
+            // we can't add this item, but we can delete it
+            cape_udc_del (p_item);
+
+            return NULL;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      CapeUdc h = *p_item;
-
-      cape_list_push_back (self->data, h);
-
-      *p_item = NULL;
-
-      return h;
-    }
-    default:
-    {
-      // we can't add this item, but we can delete it
-      cape_udc_del (p_item);
-
-      return NULL;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -921,36 +970,26 @@ CapeString cape_udc_s_mv (CapeUdc self, const CapeString alt)
 
 number_t cape_udc_n (CapeUdc self, number_t alt)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NUMBER:
+    switch (self->type)
     {
-      return (number_t)(self->data);
+        case CAPE_UDC_NUMBER:
+        {
+            return (number_t)(self->data);
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            double* h = self->data;
+            return *h;
+        }
+        case CAPE_UDC_STRING:
+        {
+            return cape_str_to_n (self->data);
+        }
+        default:
+        {
+            return alt;
+        }
     }
-    case CAPE_UDC_FLOAT:
-    {
-      double* h = self->data;
-      return *h;
-    }
-    case CAPE_UDC_STRING:
-    {
-      char * pEnd;
-      long h = strtol (self->data, &pEnd, 10);
-
-      if (pEnd)
-      {
-        return h;
-      }
-      else
-      {
-        return alt;
-      }
-    }
-    default:
-    {
-      return alt;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -2049,7 +2088,30 @@ int cape_udc_equal (CapeUdc self, CapeUdc other)
         }
         case CAPE_UDC_NODE:
         {
-            // TODO: simliar as list
+            if (other->type == CAPE_UDC_NODE)
+            {
+                CapeMapCursor cursor1; cape_map_cursor_init (self->data, &cursor1, CAPE_DIRECTION_FORW);
+                CapeMapCursor cursor2; cape_map_cursor_init (other->data, &cursor2, CAPE_DIRECTION_FORW);
+
+                ret = TRUE;
+
+                while (ret && cape_map_cursor_next (&cursor1))
+                {
+                    if (cape_map_cursor_next (&cursor2))
+                    {
+                        ret = cape_udc_equal (cape_map_node_value (cursor1.node), cape_map_node_value (cursor2.node));
+                    }
+                    else
+                    {
+                        ret = FALSE;
+                    }
+                }
+                
+                if (ret && cape_map_cursor_next (&cursor2))
+                {
+                    ret = FALSE;
+                }
+            }
 
             break;
         }
@@ -2080,7 +2142,10 @@ int cape_udc_equal (CapeUdc self, CapeUdc other)
 
                 if (d1 && d2)
                 {
-                    ret = (*d1 == *d2);
+                    double diff = fabs(*d1 - *d2);
+                    double scale = fmax(fabs(*d1), fabs(*d2));
+                    
+                    ret = (diff <= CAPE_FLOAT_EPSILON * (scale > 1.0 ? scale : 1.0));
                 }
             }
 
@@ -2127,6 +2192,7 @@ int cape_udc_has__iterate (CapeUdc self, CapeUdc to_find)
     {
         // try to find a node with the same name
         CapeUdc node_found = cape_udc_get (self, cape_udc_name (cursor->item));
+        
         if (node_found)
         {
             ret = cape_udc_equal (cursor->item, node_found);
@@ -2167,6 +2233,62 @@ int cape_udc_has (CapeUdc self, CapeUdc to_find)
         case CAPE_UDC_NODE:
         {
             ret = cape_udc_has__node (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMap cape_udc_map_n (CapeUdc self, const CapeString key_name)
+{
+    CapeMap ret = NULL;
+    
+    if (self == NULL)
+    {
+        return NULL;
+    }
+    
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            ret = cape_map_new (cape_map__compare__n, cape_udc_node_onDel, NULL);
+
+            {
+                CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+                
+                while (cape_udc_cursor_next (cursor))
+                {
+                    number_t key = cape_udc_get_n (cursor->item, key_name, 0);
+                    
+                    CapeMapNode n = cape_map_find (ret, (void*)key);
+                    
+                    CapeUdc list;
+                    
+                    if (n)
+                    {
+                        list = cape_map_node_value (n);
+                    }
+                    else
+                    {
+                        list = cape_udc_new (CAPE_UDC_LIST, NULL);
+                        
+                        cape_map_insert (ret, (void*)key, list);
+                    }
+
+                    {
+                        CapeUdc item = cape_udc_cursor_ext (self, cursor);
+
+                        cape_udc_add (list, &item);
+                    }
+                }
+
+                cape_udc_cursor_del (&cursor);
+            }
+
             break;
         }
     }
@@ -2672,6 +2794,45 @@ void cape_udc_add_n__max (CapeUdc self, const CapeString name, number_t val, num
       break;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_add_map (CapeUdc self, CapeMap map)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+        
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            CapeMapCursor* cursor = cape_map_cursor_new (map, CAPE_DIRECTION_FORW);
+            
+            while (cape_map_cursor_next (cursor))
+            {
+                // extract the node from the map
+                CapeMapNode n = cape_map_cursor_extract (map, cursor);
+                
+                // transfer ownership of the object
+                CapeUdc h = cape_map_node_mv (n);
+                
+                cape_udc_add (self, &h);
+                cape_map_del_node (map, &n);
+            }
+            
+            cape_map_cursor_del (&cursor);
+            
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "cape_udc_add_map only supports LIST and NODE");
+            break;
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------

@@ -5,6 +5,7 @@
 #include "sys/cape_time.h"
 #include "stc/cape_str.h"
 #include "stc/cape_list.h"
+#include "stc/cape_map.h"
 #include "stc/cape_stream.h"
 
 //-----------------------------------------------------------------------------
@@ -77,8 +78,10 @@ __CAPE_LIBEX   void                 cape_udc_rm               (CapeUdc, const Ca
 
 //-----------------------------------------------------------------------------
 
+                                    /* sets the value, type convertion in case it is NOT CAPE_UDC_STRING */
 __CAPE_LIBEX   void                 cape_udc_set_s_cp         (CapeUdc, const CapeString val);
 
+                                    /* sets the value, type convertion in case it is NOT CAPE_UDC_STRING */
 __CAPE_LIBEX   void                 cape_udc_set_s_mv         (CapeUdc, CapeString* p_val);
 
 __CAPE_LIBEX   void                 cape_udc_set_n            (CapeUdc, number_t val);
@@ -178,6 +181,9 @@ __CAPE_LIBEX   int                  cape_udc_equal            (CapeUdc, CapeUdc)
                                     /* iterates through (node) and try to find the same entry in the to_find node */
 __CAPE_LIBEX   int                  cape_udc_has              (CapeUdc, CapeUdc to_find);
 
+                                    /* split (list) into a map using a key (number) */
+__CAPE_LIBEX   CapeMap              cape_udc_map_n            (CapeUdc, const CapeString key_name);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeString           cape_udc_ext_s            (CapeUdc, const CapeString name);
@@ -239,6 +245,9 @@ __CAPE_LIBEX   void                 cape_udc_sort_list        (CapeUdc, fct_cape
 
                                     /* only works for list */
 __CAPE_LIBEX   void                 cape_udc_add_n__max       (CapeUdc, const CapeString name, number_t val, number_t max_length);
+
+                                    /* add each item of the map will be added, map needs to contain CapeUdc objects */
+__CAPE_LIBEX   void                 cape_udc_add_map          (CapeUdc, CapeMap);
 
 //-----------------------------------------------------------------------------
 

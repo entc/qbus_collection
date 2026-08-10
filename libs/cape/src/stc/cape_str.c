@@ -233,7 +233,7 @@ CapeString cape_str_n (number_t value)
 
 #ifdef _MSC_VER
 
-  _snprintf_s (ret, 24, _TRUNCATE, "%li", value);
+  _snprintf_s (ret, 24, _TRUNCATE, "%Iu", value);
 
 #else
 
@@ -351,71 +351,120 @@ number_t cape_str_to_n (const CapeString s)
 
 //-----------------------------------------------------------------------------
 
-char cape_str_to_f__seek (const CapeString s)
+static size_t cape_str__find_last_decimal_separator (const CapeString s, size_t len)
 {
-  // first to to find what kind separator is used
-  number_t s_len = cape_str_size (s);
-  const char* pos;
+    size_t end = len;
+    size_t i;
 
-  for (pos = s + s_len; pos > s; pos--)
-  {
-    switch (*pos)
+    /* ignore exponent */
+    for (i = 0; i < len; i++)
     {
-      case '.':
-      {
-        return '.';
-      }
-      case ',':
-      {
-        return ',';
-      }
+        if (s[i] == 'e' || s[i] == 'E')
+        {
+            end = i;
+            break;
+        }
     }
-  }
 
-  return 0;
+    // find the last decimal separator
+    while (end > 0)
+    {
+        end--;
+
+        if (s[end] == '.' || s[end] == ',')
+        {
+            return end;
+        }
+    }
+
+    return (size_t)-1;
+}
+
+//-----------------------------------------------------------------------------
+
+static double cape_str__strtod (const CapeString s)
+{
+    double ret;
+    char *end;
+
+    if (s == NULL)
+    {
+        return 0.0;
+    }
+
+    ret = strtod (s, &end);
+
+    if (end == s || *end != '\0')
+    {
+        ret = 0.0;
+    }
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 double cape_str_to_f (const CapeString s)
 {
-  double ret = .0;
+    char buf[128];
+    size_t len;
+    size_t pos;
 
-  switch (cape_str_to_f__seek (s))
-  {
-    case '.':
+    if (s == NULL)
     {
-      // remove all ','
-      CapeString h = cape_str_cp_replaced (s, ",", "");
-
-      ret = strtod (h, NULL);
-
-      cape_str_del (&h);
-
-      break;
+        return 0.0;
     }
-    case ',':
+
+    len = strlen (s);
+
+    // rejects if longer as 127 characters
+    if (len >= sizeof(buf))
     {
-      // remove all '.'
-      CapeString h = cape_str_cp_replaced (s, ".", "");
-
-      cape_str_replace (&h, ",", ".");
-
-      ret = strtod (h, NULL);
-
-      cape_str_del (&h);
-
-      break;
+        return 0.0;
     }
-    default:
+
+    // find the position of '.' or ','
+    pos = cape_str__find_last_decimal_separator (s, len);
+
+    // normalize the string (replaces ',' -> '.' and removes other '.' and ',')
     {
-      ret = strtol (s, NULL, 10);
+        size_t out = 0;
+        size_t i;
 
-      break;
+        for (i = 0; i < len; i++)
+        {
+            char c = s[i];
+
+            // check for exponent
+            if (c == 'e' || c == 'E')
+            {
+                // copy the rest of the string directly to the buffer
+                memcpy (buf + out, s + i, len - i);
+                out += len - i;
+
+                break;
+            }
+
+            // decimal separator
+            if (i == pos)
+            {
+                buf[out++] = '.';
+                continue;
+            }
+
+            // remove thousands separators
+            if (c == '.' || c == ',')
+            {
+                continue;
+            }
+
+            buf[out++] = c;
+        }
+
+        buf[out] = '\0';
     }
-  }
 
-  return ret;
+    return cape_str__strtod (buf);
 }
 
 //-----------------------------------------------------------------------------
@@ -1248,7 +1297,7 @@ CapeString cape_str_trim_lr (const CapeString source, char l, char r)
 
 CapeString cape_str_trim_lrstrict (const CapeString self)
 {
-  CapeString ret;
+  CapeString ret = NULL;
   const char* pos01;
   const char* pos02;
 

@@ -44,7 +44,7 @@ number_t cape_stream_size (CapeStream self)
 void cape_stream_allocate (CapeStream self, unsigned long amount)
 {
   // safe how much we have used from the buffer
-  unsigned long usedBytes = cape_stream_size (self);
+  number_t usedBytes = cape_stream_size (self);
 
   // use realloc to minimalize coping the buffer
   self->size += amount;
