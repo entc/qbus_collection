@@ -559,6 +559,59 @@ void cape_list_sort (CapeList self, fct_cape_list_onCompare onCompare)
 
 //-----------------------------------------------------------------------------
 
+void cape_list_distinct (CapeList self, fct_cape_list_onCompare on_compare)
+{
+    CapeListNode current;
+        
+    if (!self || !on_compare)
+    {
+        return;
+    }
+    
+    // start with first position
+    current = self->fpos;
+    
+    while (current)
+    {
+        CapeListNode prev = current;
+        CapeListNode check = current->next;
+        
+        while (check)
+        {
+            // returns TRUE if both elements are equal
+            if (on_compare (current->data, check->data))
+            {
+                prev->next = check->next;
+
+                if (check == self->lpos)
+                {
+                    self->lpos = prev;
+                }
+
+                if (self->onDestroy)
+                {
+                    self->onDestroy (check->data);
+                }
+
+                CAPE_DEL (&check, struct CapeListNode_s);
+
+                self->size--;
+
+                check = prev->next;
+            }
+            else
+            {
+                prev = check;
+                check = check->next;
+            }
+        }
+        
+        current = current->next;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeList cape_list_clone (CapeList orig, fct_cape_list_onClone onClone)
 {
   CapeList self = CAPE_NEW(struct CapeList_s);
