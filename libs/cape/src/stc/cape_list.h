@@ -63,6 +63,9 @@ typedef int (__STDCALL *fct_cape_list_onCompare) (void* ptr1, void* ptr2);
 
 __CAPE_LIBEX   void              cape_list_sort             (CapeList, fct_cape_list_onCompare);
 
+                                 /* removes items with the same content, on_compare: true = equal, false = not equal */
+__CAPE_LIBEX   void              cape_list_distinct         (CapeList, fct_cape_list_onCompare);
+
 //-----------------------------------------------------------------------------
 
 typedef void* (__STDCALL *fct_cape_list_onClone) (void* ptr);

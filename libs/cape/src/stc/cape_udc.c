@@ -2779,6 +2779,32 @@ void cape_udc_sort_list (CapeUdc self, fct_cape_udc__on_compare on_compare)
 
 //-----------------------------------------------------------------------------
 
+static int __STDCALL cape_udc_list_distinct__on_compare (void* ptr1, void* ptr2)
+{
+    return cape_udc_equal ((CapeUdc)ptr1, (CapeUdc)ptr2);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_list_distinct (CapeUdc self)
+{
+    if (!self)
+    {
+        return;
+    }
+    
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            cape_list_distinct (self->data, cape_udc_list_distinct__on_compare);
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_add_n__max (CapeUdc self, const CapeString name, number_t val, number_t max_length)
 {
   switch (self->type)
