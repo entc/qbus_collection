@@ -388,6 +388,13 @@ void qtee_format_del (QTeeFormat* p_self)
 
 //-----------------------------------------------------------------------------
 
+int qtee_format_has_name (QTeeFormat self, const CapeString text)
+{
+    return cape_str_equal (self->node_name, text);
+}
+
+//-----------------------------------------------------------------------------
+
 QTeeFormat qtee_format_gen (const CapeString possible_format)
 {
     QTeeFormat self = qtee_format_new ();
@@ -439,35 +446,42 @@ cleanup_and_exit:
 
 void qtee_format_parse (QTeeFormat self, const CapeString possible_format)
 {
-    // local objects
-    CapeString s1 = NULL;
-    CapeString s2 = NULL;
-    
-    // cleanup old formats
-    cape_list_del (&(self->formats));
-    
-    if (cape_tokenizer_split (possible_format, '|',  &s1, &s2))
+    if (possible_format)
     {
-        // store the name of the node
-        self->node_name = cape_str_trim_utf8 (s1);
-
-        // parse for special case encrypted
-        if (cape_str_begins (s2, "encrypted"))
+        // local objects
+        CapeString s1 = NULL;
+        CapeString s2 = NULL;
+        
+        // cleanup old formats
+        cape_list_del (&(self->formats));
+        
+        if (cape_tokenizer_split (possible_format, '|',  &s1, &s2))
         {
-            self->encrypted = TRUE;
+            // store the name of the node
+            self->node_name = cape_str_trim_utf8 (s1);
+
+            // parse for special case encrypted
+            if (cape_str_begins (s2, "encrypted"))
+            {
+                self->encrypted = TRUE;
+            }
+            else
+            {
+                qtee_format_parse__items (self, s2);
+            }
+            
+            cape_log_fmt (CAPE_LL_TRACE, "QTEE", "format parse", "node_name = '%s', format = '%s'", self->node_name, s2);
         }
         else
         {
-            qtee_format_parse__items (self, s2);
-        }        
+            self->node_name = cape_str_trim_utf8 (possible_format);
+
+            cape_log_fmt (CAPE_LL_TRACE, "QTEE", "format parse", "node_name = '%s', no format", self->node_name);
+        }
+        
+        cape_str_del (&s2);
+        cape_str_del (&s1);
     }
-    else
-    {
-        self->node_name = cape_str_trim_utf8 (possible_format);
-    }
-    
-    cape_str_del (&s2);
-    cape_str_del (&s1);
 }
 
 //-----------------------------------------------------------------------------

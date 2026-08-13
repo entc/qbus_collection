@@ -316,11 +316,8 @@ int qtee_eval_b (const CapeString s, CapeUdc node, int* p_ret, fct_cape_template
   CapeTemplate tmpl = cape_template_new ();
   CapeStream stream = cape_stream_new ();
 
-  res = cape_template_compile_str (tmpl, s, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
+  // compile into parts
+  cape_template_compile_str (tmpl, s);
 
   res = cape_template_apply (tmpl, node, stream, qtee_eval__on_text, NULL, on_pipe, NULL, err);
   if (res)
