@@ -1063,10 +1063,7 @@ int cape_udc_merge_type (CapeUdc self, u_t type)
         return FALSE;
     }
     
-    if (type != self->type)
-    {
-        cape_udc__convert_data (self, type);
-    }
+    return cape_udc__convert_data (self, type);
 }
 
 //-----------------------------------------------------------------------------
