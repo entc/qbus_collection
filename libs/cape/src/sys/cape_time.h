@@ -68,9 +68,23 @@ __CAPE_LIBEX   void            cape_datetime_utc__s       (CapeDatetime*, time_t
                                 */
 __CAPE_LIBEX   void            cape_datetime_utc__ms      (CapeDatetime*, time_t unix_time_since_1970);
 
+                               /* sets the internal structure from day of the year
+                                  -> time = 00:00:00.000
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__doy     (CapeDatetime*, number_t year, number_t doy);
+
+                               /* sets the internal structure starting by start time and interval in seconds
+                                  -> finds the next time not in the past
+                                  -> in UTC
+                                */
+__CAPE_LIBEX   void            cape_datetime_utc__next    (CapeDatetime*, const CapeString start, number_t interval);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void            cape_datetime_utc          (CapeDatetime*);
+
+__CAPE_LIBEX   void            cape_datetime_utc__t       (CapeDatetime*, time_t);
 
 __CAPE_LIBEX   void            cape_datetime_local        (CapeDatetime*);
 
@@ -126,6 +140,9 @@ __CAPE_LIBEX   void            cape_datetime__sub_n       (const CapeDatetime*, 
 
                                // compares two datetimes
 __CAPE_LIBEX   int             cape_datetime_cmp          (const CapeDatetime*, const CapeDatetime*);
+
+                               // calculate the difference between two datetimes (1. earlier, 2. later) in seconds
+__CAPE_LIBEX   number_t        cape_datetime_delta__s     (const CapeDatetime*, const CapeDatetime*);
 
 //-----------------------------------------------------------------------------
 

@@ -64,6 +64,12 @@ __CAPE_LIBEX   void                 cape_udc_merge_cp         (CapeUdc, const Ca
                                     /* clear the content of a container */
 __CAPE_LIBEX   void                 cape_udc_clr              (CapeUdc);
 
+                                    /* changes the type, clears the old content */
+__CAPE_LIBEX   void                 cape_udc_set_type         (CapeUdc, u_t type);
+
+                                    /* changes the type, tries to convert the content into the new type, returns success or failure */
+__CAPE_LIBEX   int                  cape_udc_merge_type       (CapeUdc, u_t type);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeUdc              cape_udc_add              (CapeUdc, CapeUdc*);
@@ -226,14 +232,6 @@ __CAPE_LIBEX   void                 cape_udc_put_node_mv      (CapeUdc, const Ca
     -> the return value [TRUE|FALSE] indicates that the transmutation was possible
        and has been performed
  */
-
-__CAPE_LIBEX   int                  cape_udc_cto_s            (CapeUdc);  // into string
-
-__CAPE_LIBEX   int                  cape_udc_cto_n            (CapeUdc);  // into number
-
-__CAPE_LIBEX   int                  cape_udc_cto_f            (CapeUdc);  // into float
-
-__CAPE_LIBEX   int                  cape_udc_cto_b            (CapeUdc);  // into boolean
 
 __CAPE_LIBEX   int                  cape_udc_cto_d            (CapeUdc);  // into datetime
 

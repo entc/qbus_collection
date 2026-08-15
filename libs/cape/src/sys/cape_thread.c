@@ -178,7 +178,7 @@ void cape_thread_nosignals ()
 
   // disable the following signals
   sigaddset(&set, SIGINT);
-  sigaddset(&set, SIGKILL);
+  sigaddset(&set, SIGTERM);
   
   // for linux
   pthread_sigmask (SIG_BLOCK, &set, NULL);

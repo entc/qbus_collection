@@ -97,8 +97,8 @@ void cape_sync_del (CapeSync* p_self)
 
 #else
 
-    close (self->semid);
-
+    semctl(self->semid, 0, IPC_RMID);
+      
 #endif
 
     CAPE_DEL (p_self, struct CapeSync_s);

@@ -58,9 +58,9 @@ void cape_stream_allocate (CapeStream self, unsigned long amount)
 
 void cape_stream_reserve (CapeStream self, number_t amount)
 {
-  number_t diffBytes = cape_stream_size (self) + amount + 1;
+  number_t bytes_needed = cape_stream_size (self) + amount + 1;
 
-  if (diffBytes > self->size)
+  if (bytes_needed > self->size)
   {
     if (amount > self->size)
     {
@@ -466,7 +466,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
   va_list valist;
   va_start (valist, format);
 
-  #ifdef _MSC_VER
+#ifdef _MSC_VER
 
   {
     int len = _vscprintf (format, valist) + 1;
@@ -478,20 +478,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
     self->pos += len;
   }
 
-  #elif _GCC
-
-  {
-    char* strp;
-
-    int bytesWritten = vasprintf (&strp, format, valist);
-    if ((bytesWritten > 0) && strp)
-    {
-      cape_stream_append_buf (self, strp, bytesWritten);
-      free(strp);
-    }
-  }
-
-  #elif __BORLANDC__
+#elif __BORLANDC__
 
   {
     int len = 1024;
@@ -501,6 +488,19 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
     len = vsnprintf (self->pos, len, format, valist);
 
     self->pos += len;
+  }
+
+#else
+
+  {
+      char* strp;
+
+      int bytesWritten = vasprintf (&strp, format, valist);
+      if ((bytesWritten > 0) && strp)
+      {
+          cape_stream_append_buf (self, strp, bytesWritten);
+          free(strp);
+      }
   }
 
   #endif

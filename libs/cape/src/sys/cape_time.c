@@ -118,29 +118,37 @@ void cape_datetime__convert_timeinfo (CapeDatetime* dt, const struct tm* timeinf
 
 void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
 {
-  // fill the timeinfo
-  timeinfo->tm_sec   = dt->sec;
-  timeinfo->tm_hour  = dt->hour;
-  timeinfo->tm_min   = dt->minute;
+    // zero the struct
+    memset(timeinfo, 0, sizeof(*timeinfo));
 
-  timeinfo->tm_mday  = dt->day;
-  timeinfo->tm_mon   = dt->month - 1;
-  timeinfo->tm_year  = dt->year - 1900;
+    // fill the timeinfo
+    timeinfo->tm_sec   = dt->sec;
+    timeinfo->tm_hour  = dt->hour;
+    timeinfo->tm_min   = dt->minute;
 
-  // set to determine proper value for DST by mktime
-  timeinfo->tm_isdst = -1; //dt->is_dst;
-  
-  // initialize with zeros
-  timeinfo->tm_yday = 0;
-  timeinfo->tm_wday = 0;
-  timeinfo->tm_zone = NULL;
-  timeinfo->tm_gmtoff = 0;
+    timeinfo->tm_mday  = dt->day;
+    timeinfo->tm_mon   = dt->month - 1;
+    timeinfo->tm_year  = dt->year - 1900;
 
-  // this will fill up the timeinfo with all values
-  if (mktime(timeinfo) == -1)
-  {
-    cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
-  }
+    // set to determine proper value for DST by mktime
+    timeinfo->tm_isdst = -1; //dt->is_dst;
+
+    // initialize with zeros
+    timeinfo->tm_yday = 0;
+    timeinfo->tm_wday = 0;
+
+#ifndef __WINDOWS_OS
+
+    timeinfo->tm_zone = NULL;
+    timeinfo->tm_gmtoff = 0;
+
+#endif
+
+    // this will fill up the timeinfo with all values
+    if (mktime(timeinfo) == -1)
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "datetime", "mktime failed");
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -195,6 +203,93 @@ void cape_datetime_utc__ms (CapeDatetime* dt, time_t unix_time_since_1970)
 
 //-----------------------------------------------------------------------------
 
+int cape_datetime_year_isleap (const CapeDatetime* self)
+{
+    return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
+{
+#if defined __WINDOWS_OS
+
+#else
+
+    int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    // set the year
+    self->year = (unsigned int)year;
+
+    // correct leap year
+    if (cape_datetime_year_isleap (self))
+    {
+        days_in_month[1] = 29;
+    }
+
+    // start with January, will be increased
+    self->month = 1;
+
+    // start with the doy, will be reduced
+    self->day = (unsigned int)doy;
+
+    // adjust day and month
+    while (self->day > days_in_month[self->month - 1])
+    {
+        self->day -= days_in_month[self->month - 1];
+        (self->month)++;
+    }
+
+    // set time to zero
+    self->hour = 0;
+    self->minute = 0;
+    self->sec = 0;
+    self->msec = 0;
+    self->usec = 0;
+
+    self->is_utc = TRUE;
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__next (CapeDatetime* self, const CapeString start, number_t interval)
+{
+    CapeDatetime dt;
+    
+    // fetch the current date
+    cape_datetime_utc (&dt);
+    
+    self->is_utc = TRUE;
+    self->is_dst = FALSE;
+
+    // use the date from the current datetime
+    self->year = dt.year;
+    self->month = dt.month;
+    self->day = dt.day;
+
+    // initialize before sscanf
+    self->hour = 0;
+    self->minute = 0;
+    self->sec = 0;
+
+    if (3 != cape_sscanf (start, "%d:%d:%d", &(self->hour), &(self->minute), &(self->sec)))
+    {
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "utc next", "input start value is mal formatted: expected (HH:MM:ss) <--> input (%s)", start);
+    }
+    
+    self->msec = 0;
+    self->usec = 0;
+    
+    while (cape_datetime_cmp (self, &dt) < 0)
+    {
+        cape_datetime__add_n (self, interval, self);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_utc (CapeDatetime* dt)
 {
 #if defined __WINDOWS_OS
@@ -232,6 +327,13 @@ void cape_datetime_utc (CapeDatetime* dt)
   dt->is_utc = TRUE;
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__t (CapeDatetime* self, time_t time)
+{
+    
 }
 
 //-----------------------------------------------------------------------------
@@ -826,6 +928,17 @@ int cape_datetime_cmp (const CapeDatetime* dt1, const CapeDatetime* dt2)
 
 //-----------------------------------------------------------------------------
 
+number_t cape_datetime_delta__s (const CapeDatetime* s1, const CapeDatetime* s2)
+{
+  time_t t1 = cape_datetime_n__unix (s1);
+  time_t t2 = cape_datetime_n__unix (s2);
+  
+  // we assume that the t2 is the bigger value
+  return t2 - t1;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_cross__set (CapeDatetime* self)
 {
   self->month = 0;
@@ -836,13 +949,6 @@ void cape_datetime_cross__set (CapeDatetime* self)
 int cape_datetime_cross__is (const CapeDatetime* self)
 {
   return (self->day > 0) && (self->month == 0);
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_datetime_year_isleap (const CapeDatetime* self)
-{
-  return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -1084,7 +1190,7 @@ CapeString cape_datetime_s__fd1 (const CapeDatetime* self)
 
 time_t cape_datetime_n__unix (const CapeDatetime* dt)
 {
-  struct tm timeinfo;
+  struct tm timeinfo = {0};
 
   cape_datetime__convert_cape (&timeinfo, dt);
 
@@ -1148,6 +1254,7 @@ int cape_datetime__date_sce (CapeDatetime* dt, const CapeString datetime_in_text
 int cape_datetime__std (CapeDatetime* dt, const CapeString datetime_in_text)
 {
   dt->msec = 0;
+  dt->usec = 0;
   return cape_sscanf (datetime_in_text, "%u-%u-%uT%u:%u:%uZ", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
 }
 
