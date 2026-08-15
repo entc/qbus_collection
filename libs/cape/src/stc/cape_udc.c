@@ -977,24 +977,33 @@ static int cape_udc__convert_to_list (CapeUdc self)
         {
             if (self->data)
             {
-                CapeUdc new_content = cape_json_from_s ((CapeString)self->data);
+                CapeUdc value = cape_json_from_s ((CapeString)self->data);
                 
-                if (new_content && (cape_udc_type (new_content) == CAPE_UDC_LIST))
+                if (NULL == value)
                 {
-                    // free old value
-                    cape_str_del ((CapeString*)&(self->data));
-                    
-                    // transfer new value
-                    self->data = cape_mv (&(new_content->data));
-                    
-                    // set new type
-                    self->type = CAPE_UDC_LIST;
-                    
-                    cape_udc_del (&new_content);
-                    return TRUE;
+                    cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "convert to list: can't deserialize input string");
+                    return FALSE;
                 }
-
-                cape_udc_del (&new_content);
+                
+                if (cape_udc_type (value) != CAPE_UDC_LIST)
+                {
+                    cape_udc_del (&value);
+                    
+                    cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "convert to list: deserialized object is NOT a list");
+                    return FALSE;
+                }
+                
+                // free old value
+                cape_str_del ((CapeString*)&(self->data));
+                
+                // transfer new value
+                self->data = cape_mv (&(value->data));
+                
+                // set new type
+                self->type = CAPE_UDC_LIST;
+                
+                cape_udc_del (&value);
+                return TRUE;
             }
             
             break;
@@ -1008,11 +1017,6 @@ static int cape_udc__convert_to_list (CapeUdc self)
 
 static int cape_udc__convert_data (CapeUdc self, u_t type)
 {
-    if (!self)
-    {
-        return FALSE;
-    }
-    
     switch (type)
     {
         case CAPE_UDC_STRING:
@@ -1054,6 +1058,11 @@ static int cape_udc__convert_data (CapeUdc self, u_t type)
 
 int cape_udc_merge_type (CapeUdc self, u_t type)
 {
+    if (!self)
+    {
+        return FALSE;
+    }
+    
     if (type != self->type)
     {
         cape_udc__convert_data (self, type);
