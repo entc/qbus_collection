@@ -1,15 +1,16 @@
+#define _GNU_SOURCE
+
+// c includes
+#include <stdarg.h>
+#include <string.h>
+#include <memory.h>
+#include <stdlib.h>
+
 #include "cape_stream.h"
 #include "fmt/cape_dragon4.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
 #include "sys/cape_log.h"
-
-// c includes
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <memory.h>
-#include <stdlib.h>
 
 #if defined __WINDOWS_OS
 #include <winsock.h>
