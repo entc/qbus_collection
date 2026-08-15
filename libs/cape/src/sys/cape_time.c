@@ -331,6 +331,31 @@ void cape_datetime_utc (CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
+void cape_datetime_utc__t (CapeDatetime* self, time_t unix_time)
+{
+#if defined __WINDOWS_OS
+
+    struct tm timeinfo;
+
+    gmtime_s (&timeinfo, &unix_time);
+    cape_datetime__convert_timeinfo (self, &timeinfo);
+
+#else
+
+    struct tm timeinfo;
+
+    gmtime_r (&unix_time, &timeinfo);
+    cape_datetime__convert_timeinfo (self, &timeinfo);
+
+#endif
+
+    self->msec = 0;
+    self->usec = 0;
+    self->is_utc = TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_datetime_local (CapeDatetime* dt)
 {
 #if defined __WINDOWS_OS

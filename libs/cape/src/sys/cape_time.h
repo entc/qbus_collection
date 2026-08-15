@@ -84,6 +84,8 @@ __CAPE_LIBEX   void            cape_datetime_utc__next    (CapeDatetime*, const 
 
 __CAPE_LIBEX   void            cape_datetime_utc          (CapeDatetime*);
 
+__CAPE_LIBEX   void            cape_datetime_utc__t       (CapeDatetime*, time_t);
+
 __CAPE_LIBEX   void            cape_datetime_local        (CapeDatetime*);
 
 __CAPE_LIBEX   void            cape_datetime_to_local     (CapeDatetime*);

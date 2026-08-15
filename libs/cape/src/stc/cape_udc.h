@@ -5,6 +5,7 @@
 #include "sys/cape_time.h"
 #include "stc/cape_str.h"
 #include "stc/cape_list.h"
+#include "stc/cape_map.h"
 #include "stc/cape_stream.h"
 
 //-----------------------------------------------------------------------------
@@ -63,6 +64,12 @@ __CAPE_LIBEX   void                 cape_udc_merge_cp         (CapeUdc, const Ca
                                     /* clear the content of a container */
 __CAPE_LIBEX   void                 cape_udc_clr              (CapeUdc);
 
+                                    /* changes the type, clears the old content */
+__CAPE_LIBEX   void                 cape_udc_set_type         (CapeUdc, u_t type);
+
+                                    /* changes the type, tries to convert the content into the new type, returns success or failure */
+__CAPE_LIBEX   int                  cape_udc_merge_type       (CapeUdc, u_t type);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   CapeUdc              cape_udc_add              (CapeUdc, CapeUdc*);
@@ -77,8 +84,10 @@ __CAPE_LIBEX   void                 cape_udc_rm               (CapeUdc, const Ca
 
 //-----------------------------------------------------------------------------
 
+                                    /* sets the value, type convertion in case it is NOT CAPE_UDC_STRING */
 __CAPE_LIBEX   void                 cape_udc_set_s_cp         (CapeUdc, const CapeString val);
 
+                                    /* sets the value, type convertion in case it is NOT CAPE_UDC_STRING */
 __CAPE_LIBEX   void                 cape_udc_set_s_mv         (CapeUdc, CapeString* p_val);
 
 __CAPE_LIBEX   void                 cape_udc_set_n            (CapeUdc, number_t val);
@@ -92,6 +101,14 @@ __CAPE_LIBEX   void                 cape_udc_set_d            (CapeUdc, const Ca
 __CAPE_LIBEX   void                 cape_udc_set_m_cp         (CapeUdc, const CapeStream val);
 
 __CAPE_LIBEX   void                 cape_udc_set_m_mv         (CapeUdc, CapeStream* p_val);
+
+__CAPE_LIBEX   void                 cape_udc_set_node_cp      (CapeUdc, const CapeUdc val);
+
+__CAPE_LIBEX   void                 cape_udc_set_node_mv      (CapeUdc, CapeUdc* p_val);
+
+__CAPE_LIBEX   void                 cape_udc_set_list_cp      (CapeUdc, const CapeUdc val);
+
+__CAPE_LIBEX   void                 cape_udc_set_list_mv      (CapeUdc, CapeUdc* p_val);
 
 //-----------------------------------------------------------------------------
 
@@ -131,13 +148,21 @@ __CAPE_LIBEX   CapeUdc              cape_udc_add_d            (CapeUdc, const Ca
 
 __CAPE_LIBEX   CapeUdc              cape_udc_add_z            (CapeUdc, const CapeString name);   // NULL value
 
-__CAPE_LIBEX   CapeUdc              cape_udc_add_node         (CapeUdc, const CapeString name);
-
-__CAPE_LIBEX   CapeUdc              cape_udc_add_list         (CapeUdc, const CapeString name);
-
 __CAPE_LIBEX   CapeUdc              cape_udc_add_m_cp         (CapeUdc, const CapeString name, const CapeStream val);
 
 __CAPE_LIBEX   CapeUdc              cape_udc_add_m_mv         (CapeUdc, const CapeString name, CapeStream* p_val);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_node_cp      (CapeUdc, const CapeString name, const CapeUdc val);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_node_mv      (CapeUdc, const CapeString name, CapeUdc* p_val);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_list_cp      (CapeUdc, const CapeString name, const CapeUdc val);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_list_mv      (CapeUdc, const CapeString name, CapeUdc* p_val);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_node         (CapeUdc, const CapeString name);
+
+__CAPE_LIBEX   CapeUdc              cape_udc_add_list         (CapeUdc, const CapeString name);
 
 //-----------------------------------------------------------------------------
 
@@ -177,6 +202,9 @@ __CAPE_LIBEX   int                  cape_udc_equal            (CapeUdc, CapeUdc)
 
                                     /* iterates through (node) and try to find the same entry in the to_find node */
 __CAPE_LIBEX   int                  cape_udc_has              (CapeUdc, CapeUdc to_find);
+
+                                    /* split (list) into a map using a key (number) */
+__CAPE_LIBEX   CapeMap              cape_udc_map_n            (CapeUdc, const CapeString key_name);
 
 //-----------------------------------------------------------------------------
 
@@ -221,14 +249,6 @@ __CAPE_LIBEX   void                 cape_udc_put_node_mv      (CapeUdc, const Ca
        and has been performed
  */
 
-__CAPE_LIBEX   int                  cape_udc_cto_s            (CapeUdc);  // into string
-
-__CAPE_LIBEX   int                  cape_udc_cto_n            (CapeUdc);  // into number
-
-__CAPE_LIBEX   int                  cape_udc_cto_f            (CapeUdc);  // into float
-
-__CAPE_LIBEX   int                  cape_udc_cto_b            (CapeUdc);  // into boolean
-
 __CAPE_LIBEX   int                  cape_udc_cto_d            (CapeUdc);  // into datetime
 
 //-----------------------------------------------------------------------------
@@ -237,8 +257,14 @@ typedef int (__STDCALL *fct_cape_udc__on_compare) (CapeUdc obj1, CapeUdc obj2);
 
 __CAPE_LIBEX   void                 cape_udc_sort_list        (CapeUdc, fct_cape_udc__on_compare);
 
+                                    /* removes items which are equal, only works for list */
+__CAPE_LIBEX   void                 cape_udc_list_distinct    (CapeUdc);
+
                                     /* only works for list */
 __CAPE_LIBEX   void                 cape_udc_add_n__max       (CapeUdc, const CapeString name, number_t val, number_t max_length);
+
+                                    /* add each item of the map will be added, map needs to contain CapeUdc objects */
+__CAPE_LIBEX   void                 cape_udc_add_map          (CapeUdc, CapeMap);
 
 //-----------------------------------------------------------------------------
 

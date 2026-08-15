@@ -2,13 +2,16 @@
 
 // cape includes
 #include "sys/cape_types.h"
+#include "sys/cape_log.h"
 #include "stc/cape_map.h"
-
+#include "fmt/cape_json.h"
 //-----------------------------------------------------------------------------
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
+#include <errno.h>
 
+#define CAPE_FLOAT_EPSILON 1e-9
 //-----------------------------------------------------------------------------
 
 struct CapeUdc_s
@@ -38,50 +41,46 @@ static void __STDCALL cape_udc_list_onDel (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-CapeUdc cape_udc_new (u_t type, const CapeString name)
+void cape_udc__alloc_data (CapeUdc self)
 {
-  CapeUdc self = CAPE_NEW(struct CapeUdc_s);
-
-  self->type = type;
-  self->data = NULL;
-
-  self->name = cape_str_cp (name);
-
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      self->data = cape_map_new (NULL, cape_udc_node_onDel, NULL);
-      break;
+        case CAPE_UDC_NODE:
+        {
+            self->data = cape_map_new (NULL, cape_udc_node_onDel, NULL);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            self->data = cape_list_new (cape_udc_list_onDel);
+            break;
+        }
+        case CAPE_UDC_STRING:
+        {
+            self->data = NULL;
+            break;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            self->data = CAPE_NEW (double);
+            break;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            self->data = NULL;
+            break;
+        }
+        case CAPE_UDC_STREAM:
+        {
+            self->data = NULL;
+            break;
+        }
+        default:
+        {
+            self->data = NULL;
+            break;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      self->data = cape_list_new (cape_udc_list_onDel);
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      self->data = NULL;
-      break;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      self->data = CAPE_NEW (double);
-      break;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      self->data = NULL;
-      break;
-    }
-    case CAPE_UDC_STREAM:
-    {
-
-      break;
-    }
-  }
-
-  return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -126,6 +125,22 @@ void cape_udc__clear_data (CapeUdc self)
             break;
         }
     }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_new (u_t type, const CapeString name)
+{
+    CapeUdc self = CAPE_NEW(struct CapeUdc_s);
+
+    self->type = type;
+    self->data = NULL;
+
+    self->name = cape_str_cp (name);
+
+    cape_udc__alloc_data (self);
+
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -181,7 +196,6 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         return NULL;
     }
     
-    // copy the base type
     clone = CAPE_NEW (struct CapeUdc_s);
 
     clone->type = self->type;
@@ -203,7 +217,11 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_STRING:
         {
-            clone->data = cape_str_cp (self->data);
+            if (self->data)
+            {
+                clone->data = cape_str_cp (self->data);
+            }
+            
             break;
         }
         case CAPE_UDC_NUMBER:
@@ -218,11 +236,7 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_FLOAT:
         {
-            if (NULL == self->data)
-            {
-                clone->data = NULL;
-            }
-            else
+            if (self->data)
             {
                 // allocate memory
                 clone->data = CAPE_NEW (double);
@@ -235,17 +249,28 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_DATETIME:
         {
-            // allocate memory
-            clone->data = cape_datetime_cp (self->data);
+            if (self->data)
+            {
+                // allocate memory
+                clone->data = cape_datetime_cp (self->data);
+            }
+            
             break;
         }
         case CAPE_UDC_STREAM:
         {
-            clone->data = cape_stream_cp (self->data);
+            if (self->data)
+            {
+                clone->data = cape_stream_cp (self->data);
+            }
+            
             break;
         }
         default:
         {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "cloning object with unsupported type");
+
+            // return NULL
             cape_udc_del (&clone);
             break;
         }
@@ -338,19 +363,24 @@ void cape_udc_merge_mv__item__list (CapeUdc origin, CapeUdc other)
 
 void cape_udc_merge_mv__item (CapeUdc origin, CapeUdc other)
 {
-  switch (origin->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (origin->type)
     {
-      cape_udc_merge_mv__item__node (origin, other);
-      break;
+        case CAPE_UDC_NODE:
+        {
+            cape_udc_merge_mv__item__node (origin, other);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_udc_merge_mv__item__list (origin, other);
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "merge object with unsupported type");
+            break;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      cape_udc_merge_mv__item__list (origin, other);
-      break;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -461,41 +491,594 @@ CapeUdc cape_udc_merge__item (CapeUdc* p_origin, CapeUdc other)
 
 void cape_udc_merge_cp (CapeUdc self, const CapeUdc udc)
 {
-  if (udc)
-  {
-    switch (self->type)
+    if (udc)
     {
-      case CAPE_UDC_NODE:
-      {
-        cape_udc_merge_cp__item__node (self, udc);
-        break;
-      }
-      case CAPE_UDC_LIST:
-      {
-        cape_udc_merge_cp__item__list (self, udc);
-        break;
-      }
+        switch (self->type)
+        {
+            case CAPE_UDC_NODE:
+            {
+              cape_udc_merge_cp__item__node (self, udc);
+              break;
+            }
+            case CAPE_UDC_LIST:
+            {
+              cape_udc_merge_cp__item__list (self, udc);
+              break;
+            }
+            default:
+            {
+                cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "merge object with unsupported type");
+                break;
+            }
+        }
     }
-  }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_clr (CapeUdc self)
 {
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+            cape_map_clr (self->data);
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            cape_list_clr (self->data);
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "clear object with unsupported type");
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_type (CapeUdc self, u_t type)
+{
+    if (type != self->type)
+    {
+        // clear old data
+        cape_udc__clear_data (self);
+
+        // change type to string
+        self->type = type;
+        
+        // initialize the new type
+        cape_udc__alloc_data (self);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_s (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_STRING:
+        {
+            // we are fine here
+            return TRUE;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            CapeString value = cape_str_n ((number_t)self->data);
+            
+            if (!value)
+            {
+                return FALSE;
+            }
+            
+            // change the type
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+        case CAPE_UDC_BOOL:
+        {
+            CapeString value = cape_str_n ((number_t)self->data);
+
+            if (!value)
+            {
+                return FALSE;
+            }
+
+            // change the type
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            double* h = self->data;
+
+            CapeString value = cape_str_f (*h);
+
+            if (!value)
+            {
+                return FALSE;
+            }
+
+            // de-allocate old value
+            CAPE_DEL (&h, double);
+
+            // change type and set value
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            CapeDatetime* h = self->data;
+
+            CapeString value = cape_datetime_s__std_msec (h);
+
+            if (!value)
+            {
+                return FALSE;
+            }
+
+            // de-allocate old value
+            cape_datetime_del (&h);
+
+            // change type and set value
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+        case CAPE_UDC_NODE:
+        {
+            CapeString value = cape_json_to_s (self);
+            
+            if (!value)
+            {
+                return FALSE;
+            }
+
+            // de-allocate old value
+            cape_map_del ((CapeMap*)&(self->data));
+
+            // change type and set value
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+        case CAPE_UDC_LIST:
+        {
+            CapeString value = cape_json_to_s (self);
+            
+            if (!value)
+            {
+                return FALSE;
+            }
+
+            // de-allocate old value
+            cape_list_del ((CapeList*)&(self->data));
+            
+            // change type and set value
+            self->type = CAPE_UDC_STRING;
+            self->data = value;
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_n (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_NUMBER:
+        {
+            // we are fine here
+            return TRUE;
+        }
+        case CAPE_UDC_BOOL:
+        {
+            // change the type
+            self->type = CAPE_UDC_NUMBER;
+
+            // we are fine here
+            return TRUE;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            double* h = self->data;
+
+            // change type and set value
+            self->type = CAPE_UDC_NUMBER;
+            self->data = (void*)((number_t)*h);
+
+            CAPE_DEL (&h, double);
+
+            return TRUE;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            CapeDatetime* h = self->data;
+
+            // change type and set value
+            self->type = CAPE_UDC_NUMBER;
+            self->data = (void*)((number_t)cape_datetime_n__unix (h));  // convert into unix time (seconds since 1970)
+
+            cape_datetime_del (&h);
+
+            return TRUE;
+        }
+        case CAPE_UDC_STRING:
+        {
+            if (self->data)
+            {
+                errno = 0;
+
+                char * pEnd;
+                number_t h = strtoll (self->data, &pEnd, 10);
+
+                if ((pEnd != self->data) && (*pEnd == '\0') && (errno != ERANGE))  // convertion was possible
+                {
+                    cape_str_del ((CapeString*)&(self->data));
+
+                    // change the type
+                    self->type = CAPE_UDC_NUMBER;
+                    self->data = (void*)h;
+
+                    return TRUE;
+                }
+            }
+            
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_f (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_FLOAT:
+        {
+            // we are fine here
+            return TRUE;
+        }
+        case CAPE_UDC_NUMBER:
+        case CAPE_UDC_BOOL:
+        {
+            number_t h = (number_t)(self->data);
+
+            // change the type and allocate memory
+            self->type = CAPE_UDC_FLOAT;
+            self->data = CAPE_NEW (double);
+
+            // set the value
+            *(double*)(self->data) = h;
+
+            return TRUE;
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            CapeDatetime* h = self->data;
+
+            // change the type and allocate memory
+            self->type = CAPE_UDC_FLOAT;
+            self->data = CAPE_NEW (double);
+
+            // set the value
+            *(double*)(self->data) = (double)cape_datetime_n__unix (h);  // convert into unix time (seconds since 1970)
+
+            cape_datetime_del (&h);
+
+            return TRUE;
+        }
+        case CAPE_UDC_STRING:
+        {
+            if (self->data)
+            {
+                errno = 0;
+                
+                char * pEnd;
+                double h = strtod (self->data, &pEnd);  // try to convert
+
+                if ((pEnd != self->data) && (*pEnd == '\0') && (errno != ERANGE))  // convertion was possible
+                {
+                  // cleanup
+                  cape_str_del ((CapeString*)&(self->data));
+
+                  // change the type and allocate memory
+                  self->type = CAPE_UDC_FLOAT;
+                  self->data = CAPE_NEW (double);
+
+                  // set the value
+                  *(double*)(self->data) = h;
+
+                  return TRUE;
+                }
+            }
+
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_b (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_BOOL:
+        {
+            // we are fine here
+            return TRUE;
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            number_t h = (number_t)(self->data);
+
+            self->type = CAPE_UDC_BOOL;
+            self->data = (void*)((number_t)(h ? TRUE : FALSE));
+
+            return TRUE;
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            double* p_val = self->data;
+
+            // change type and set value
+            self->type = CAPE_UDC_BOOL;
+
+            if (p_val)
+            {
+                self->data = (void*)((number_t)(*p_val == .0 ? FALSE : TRUE));
+                CAPE_DEL (&p_val, double);
+            }
+            else
+            {
+                self->data = FALSE;
+            }
+
+            return TRUE;
+        }
+        case CAPE_UDC_STRING:
+        {
+            if (self->data)
+            {
+                if (cape_str_equal (self->data, "1"))
+                {
+                    // cleanup
+                    cape_str_del ((CapeString*)&(self->data));
+
+                    // change type and set value
+                    self->type = CAPE_UDC_BOOL;
+                    self->data = (void*)TRUE;
+
+                    return TRUE;
+                }
+                else if (cape_str_equal (self->data, "0"))
+                {
+                    // cleanup
+                    cape_str_del ((CapeString*)&(self->data));
+
+                    // change type and set value
+                    self->type = CAPE_UDC_BOOL;
+                    self->data = FALSE;
+
+                    return TRUE;
+                }
+            }
+
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_d (CapeUdc self)
+{
   switch (self->type)
   {
-    case CAPE_UDC_NODE:
-    {
-      cape_map_clr (self->data);      
-      break;
-    }
-    case CAPE_UDC_LIST:
-    {
-      cape_list_clr (self->data);
-      break;
-    }
+      case CAPE_UDC_DATETIME:
+      {
+          // we are fine here
+          return TRUE;
+      }
+      case CAPE_UDC_NUMBER:
+      {
+          number_t h = (number_t)(self->data);
+
+          CapeDatetime dt;
+
+          cape_datetime_utc__t (&dt, h);
+          
+          // change type and set value
+          self->type = CAPE_UDC_DATETIME;
+          self->data = cape_datetime_cp (&dt);
+
+          return TRUE;
+      }
+      case CAPE_UDC_STRING:
+      {
+          if (self->data)
+          {
+              CapeDatetime dt;
+
+              if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__std_usec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
+              {
+                  // cleanup
+                  cape_str_del ((CapeString*)&(self->data));
+
+                  // change type and set value
+                  self->type = CAPE_UDC_DATETIME;
+                  self->data = cape_datetime_cp (&dt);
+
+                  return TRUE;
+              }
+          }
+
+          break;
+      }
   }
+
+  return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_node (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_STRING:
+        {
+            if (self->data)
+            {
+                CapeUdc new_content = cape_json_from_s ((CapeString)self->data);
+                
+                if (new_content && (cape_udc_type (new_content) == CAPE_UDC_NODE))
+                {
+                    // free old value
+                    cape_str_del ((CapeString*)&(self->data));
+                    
+                    // transfer new value
+                    self->data = cape_mv (&(new_content->data));
+                    
+                    // set new type
+                    self->type = CAPE_UDC_NODE;
+                    
+                    cape_udc_del (&new_content);
+                    return TRUE;
+                }
+
+                cape_udc_del (&new_content);
+            }
+            
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_to_list (CapeUdc self)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_STRING:
+        {
+            if (self->data)
+            {
+                CapeUdc value = cape_json_from_s ((CapeString)self->data);
+                
+                if (NULL == value)
+                {
+                    cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "convert to list: can't deserialize input string");
+                    return FALSE;
+                }
+                
+                if (cape_udc_type (value) != CAPE_UDC_LIST)
+                {
+                    cape_udc_del (&value);
+                    
+                    cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "convert to list: deserialized object is NOT a list");
+                    return FALSE;
+                }
+                
+                // free old value
+                cape_str_del ((CapeString*)&(self->data));
+                
+                // transfer new value
+                self->data = cape_mv (&(value->data));
+                
+                // set new type
+                self->type = CAPE_UDC_LIST;
+                
+                cape_udc_del (&value);
+                return TRUE;
+            }
+            
+            break;
+        }
+    }
+
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_udc__convert_data (CapeUdc self, u_t type)
+{
+    switch (type)
+    {
+        case CAPE_UDC_STRING:
+        {
+            return cape_udc__convert_to_s (self);
+        }
+        case CAPE_UDC_NUMBER:
+        {
+            return cape_udc__convert_to_n (self);
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            return cape_udc__convert_to_f (self);
+        }
+        case CAPE_UDC_BOOL:
+        {
+            return cape_udc__convert_to_b (self);
+        }
+        case CAPE_UDC_DATETIME:
+        {
+            return cape_udc__convert_to_d (self);
+        }
+        case CAPE_UDC_NODE:
+        {
+            return cape_udc__convert_to_node (self);
+        }
+        case CAPE_UDC_LIST:
+        {
+            return cape_udc__convert_to_list (self);
+        }
+        default:
+        {
+            return FALSE;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_udc_merge_type (CapeUdc self, u_t type)
+{
+    if (!self)
+    {
+        return FALSE;
+    }
+    
+    return cape_udc__convert_data (self, type);
 }
 
 //-----------------------------------------------------------------------------
@@ -573,36 +1156,38 @@ number_t cape_udc_size (const CapeUdc self)
 
 CapeUdc cape_udc_add (CapeUdc self, CapeUdc* p_item)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      CapeUdc h = *p_item;
+        case CAPE_UDC_NODE:
+        {
+            CapeUdc h = *p_item;
 
-      cape_map_insert (self->data, h->name, h);
+            cape_map_insert (self->data, h->name, h);
 
-      *p_item = NULL;
+            *p_item = NULL;
 
-      return h;
+            return h;
+        }
+        case CAPE_UDC_LIST:
+        {
+            CapeUdc h = *p_item;
+
+            cape_list_push_back (self->data, h);
+
+            *p_item = NULL;
+
+            return h;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "add object on unsupported type");
+
+            // we can't add this item, but we can delete it
+            cape_udc_del (p_item);
+
+            return NULL;
+        }
     }
-    case CAPE_UDC_LIST:
-    {
-      CapeUdc h = *p_item;
-
-      cape_list_push_back (self->data, h);
-
-      *p_item = NULL;
-
-      return h;
-    }
-    default:
-    {
-      // we can't add this item, but we can delete it
-      cape_udc_del (p_item);
-
-      return NULL;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -755,14 +1340,7 @@ void cape_udc_rm (CapeUdc self, const CapeString name)
 
 void cape_udc_set_s_cp (CapeUdc self, const CapeString val)
 {
-    if (CAPE_UDC_STRING != self->type)
-    {
-        // clear old data
-        cape_udc__clear_data (self);
-
-        // change type to string
-        self->type = CAPE_UDC_STRING;
-    }
+    cape_udc_set_type (self, CAPE_UDC_STRING);
 
     cape_str_replace_cp ((CapeString*)&(self->data), val);
 }
@@ -771,15 +1349,8 @@ void cape_udc_set_s_cp (CapeUdc self, const CapeString val)
 
 void cape_udc_set_s_mv (CapeUdc self, CapeString* p_val)
 {
-    if (CAPE_UDC_STRING != self->type)
-    {
-        // clear old data
-        cape_udc__clear_data (self);
+    cape_udc_set_type (self, CAPE_UDC_STRING);
 
-        // change type to string
-        self->type = CAPE_UDC_STRING;
-    }
-    
     cape_str_replace_mv ((CapeString*)&(self->data), p_val);
 }
 
@@ -787,116 +1358,319 @@ void cape_udc_set_s_mv (CapeUdc self, CapeString* p_val)
 
 void cape_udc_set_n (CapeUdc self, number_t val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NUMBER:
-    {
-      self->data = (void*)val;
-    }
-  }
+    cape_udc_set_type (self, CAPE_UDC_NUMBER);
+
+    self->data = (void*)val;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_f (CapeUdc self, double val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_FLOAT:
-    {
-      double* h = self->data;
+    cape_udc_set_type (self, CAPE_UDC_FLOAT);
 
-      *h = val;
+    {
+        double* h = self->data;
+
+        *h = val;
     }
-  }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_b (CapeUdc self, int val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_BOOL:
-    {
-      self->data = val ? (void*)1 : NULL;
-      break;
-    }
-  }
+    cape_udc_set_type (self, CAPE_UDC_BOOL);
+
+    self->data = val ? (void*)1 : NULL;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_d (CapeUdc self, const CapeDatetime* val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_DATETIME:
+    cape_udc_set_type (self, CAPE_UDC_DATETIME);
+
+    if (val)
     {
-      if (val)
-      {
         if (self->data == NULL)
         {
-          self->data = cape_datetime_new ();
+            self->data = cape_datetime_new ();
         }
 
         memcpy (self->data, val, sizeof(CapeDatetime));
-      }
-      else
-      {
-        cape_datetime_del ((CapeDatetime**)&(self->data));
-      }
-
-      break;
     }
-  }
+    else
+    {
+        cape_datetime_del ((CapeDatetime**)&(self->data));
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_m_cp (CapeUdc self, const CapeStream val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STREAM:
-    {
-      if (self->data)
-      {
-        cape_stream_del ((CapeStream*)&(self->data));
-      }
-      
-      if (val)
-      {
-        self->data = cape_stream_cp (val);
-      }
+    cape_udc_set_type (self, CAPE_UDC_STREAM);
 
-      break;
+    if (self->data)
+    {
+        cape_stream_del ((CapeStream*)&(self->data));
     }
-  }
+    
+    if (val)
+    {
+        self->data = cape_stream_cp (val);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_node_cp (CapeUdc self, const CapeUdc val)
+{
+    if (self == val)
+    {
+        // avoid self copying
+        return;
+    }
+    
+    if (NULL == self->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set node failed, no map object exists");
+        return;
+    }
+    
+    if (NULL == val)
+    {
+        // correct type
+        cape_udc_set_type (self, CAPE_UDC_NODE);
+
+        // erase the current map
+        cape_map_clr (self->data);
+
+        return;
+    }
+
+    if (CAPE_UDC_NODE != val->type)
+    {
+        // we should return if it is the wrong type
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "set node failed, value has wrong type");
+        return;
+    }
+
+    if (NULL == val->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set node failed, value has no map object");
+        return;
+    }
+    
+    cape_udc_set_type (self, CAPE_UDC_NODE);
+
+    // release map object to replace it
+    cape_map_del ((CapeMap*)&(self->data));
+    
+    // clone a new map object by using the map clone function
+    self->data = cape_map_clone (val->data, cape_udc_cp__map_on_clone);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_node_mv (CapeUdc self, CapeUdc* p_val)
+{
+    if (NULL == p_val)
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set node failed, invalid pointer");
+        return;
+    }
+    
+    if (NULL == self->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set node failed, no map object exists");
+        return;
+    }
+
+    {
+        CapeUdc val = *p_val;
+
+        if (self == val)
+        {
+            // this is safe because self still holds the object
+            *p_val = NULL;
+            
+            // avoid self copying
+            return;
+        }
+
+        if (NULL == val)
+        {
+            cape_udc_set_type (self, CAPE_UDC_NODE);
+
+            // this might be valid to erase the current map
+            cape_map_clr (self->data);
+
+            cape_udc_del (p_val);
+            
+            return;
+        }
+        
+        if (CAPE_UDC_NODE != val->type)
+        {
+            // we should return if it is the wrong type
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "set node failed, value has wrong type");
+            return;
+        }
+
+        if (NULL == val->data)
+        {
+            // this should not happen
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set node failed, value has no map object");
+            return;
+        }
+
+        cape_udc_set_type (self, CAPE_UDC_NODE);
+
+        // release map object to replace it
+        cape_map_del ((CapeMap*)&(self->data));
+
+        self->data = cape_mv (&(val->data));
+    }
+
+    cape_udc_del (p_val);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_list_cp (CapeUdc self, const CapeUdc val)
+{
+    if (self == val)
+    {
+        // avoid self copying
+        return;
+    }
+    
+    if (NULL == self->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set list failed, no list object exists");
+        return;
+    }
+    
+    if (NULL == val)
+    {
+        cape_udc_set_type (self, CAPE_UDC_LIST);
+
+        // this might be valid to erase the current list
+        cape_list_clr (self->data);
+
+        return;
+    }
+
+    if (CAPE_UDC_LIST != val->type)
+    {
+        // we should return if it is the wrong type
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "set list failed, value has wrong type");
+        return;
+    }
+
+    if (NULL == val->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set list failed, value has no list object");
+        return;
+    }
+    
+    cape_udc_set_type (self, CAPE_UDC_LIST);
+
+    // release list object to replace it
+    cape_list_del ((CapeList*)&(self->data));
+    
+    // clone a new list object by using the list clone function
+    self->data = cape_list_clone (val->data, cape_udc_cp__list_on_clone);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_set_list_mv (CapeUdc self, CapeUdc* p_val)
+{
+    if (NULL == p_val)
+    {
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set list failed, invalid pointer");
+        return;
+    }
+    
+    if (NULL == self->data)
+    {
+        // this should not happen
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set list failed, no list object exists");
+        return;
+    }
+
+    {
+        CapeUdc val = *p_val;
+
+        if (self == val)
+        {
+            // this is safe because self still holds the object
+            *p_val = NULL;
+            
+            // avoid self copying
+            return;
+        }
+
+        if (NULL == val)
+        {
+            cape_udc_set_type (self, CAPE_UDC_LIST);
+
+            // this might be valid to erase the current list
+            cape_list_clr (self->data);
+
+            cape_udc_del (p_val);
+            
+            return;
+        }
+        
+        if (CAPE_UDC_LIST != val->type)
+        {
+            // we should return if it is the wrong type
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "set list failed, value has wrong type");
+            return;
+        }
+
+        if (NULL == val->data)
+        {
+            // this should not happen
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "UDC", "set list failed, value has no list object");
+            return;
+        }
+
+        cape_udc_set_type (self, CAPE_UDC_LIST);
+
+        // release list object to replace it
+        cape_list_del ((CapeList*)&(self->data));
+
+        self->data = cape_mv (&(val->data));
+    }
+
+    cape_udc_del (p_val);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_udc_set_m_mv (CapeUdc self, CapeStream* p_val)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_STREAM:
+    cape_udc_set_type (self, CAPE_UDC_STREAM);
+
+    if (self->data)
     {
-      if (self->data)
-      {
         cape_stream_del ((CapeStream*)&(self->data));
-      }
-
-      if (p_val)
-      {
-        self->data = *p_val;
-        *p_val = NULL;
-      }
-
-      break;
     }
-  }
+
+    if (p_val)
+    {
+        self->data = cape_mv ((void**)p_val);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -941,36 +1715,26 @@ CapeString cape_udc_s_mv (CapeUdc self, const CapeString alt)
 
 number_t cape_udc_n (CapeUdc self, number_t alt)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NUMBER:
+    switch (self->type)
     {
-      return (number_t)(self->data);
+        case CAPE_UDC_NUMBER:
+        {
+            return (number_t)(self->data);
+        }
+        case CAPE_UDC_FLOAT:
+        {
+            double* h = self->data;
+            return *h;
+        }
+        case CAPE_UDC_STRING:
+        {
+            return cape_str_to_n (self->data);
+        }
+        default:
+        {
+            return alt;
+        }
     }
-    case CAPE_UDC_FLOAT:
-    {
-      double* h = self->data;
-      return *h;
-    }
-    case CAPE_UDC_STRING:
-    {
-      char * pEnd;
-      long h = strtol (self->data, &pEnd, 10);
-
-      if (pEnd)
-      {
-        return h;
-      }
-      else
-      {
-        return alt;
-      }
-    }
-    default:
-    {
-      return alt;
-    }
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1228,6 +1992,50 @@ CapeUdc cape_udc_add_m_mv (CapeUdc self, const CapeString name, CapeStream* p_va
   cape_udc_set_m_mv (h, p_val);
 
   return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_add_node_cp (CapeUdc self, const CapeString name, const CapeUdc val)
+{
+    CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
+
+    cape_udc_set_node_cp (h, val);
+
+    return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_add_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_val)
+{
+    CapeUdc h = cape_udc_new (CAPE_UDC_NODE, name);
+
+    cape_udc_set_node_mv (h, p_val);
+
+    return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_add_list_cp (CapeUdc self, const CapeString name, const CapeUdc val)
+{
+    CapeUdc h = cape_udc_new (CAPE_UDC_LIST, name);
+
+    cape_udc_set_list_cp (h, val);
+
+    return cape_udc_add (self, &h);
+}
+
+//-----------------------------------------------------------------------------
+
+CapeUdc cape_udc_add_list_mv (CapeUdc self, const CapeString name, CapeUdc* p_val)
+{
+    CapeUdc h = cape_udc_new (CAPE_UDC_LIST, name);
+
+    cape_udc_set_list_mv (h, p_val);
+
+    return cape_udc_add (self, &h);
 }
 
 //-----------------------------------------------------------------------------
@@ -1526,308 +2334,6 @@ void cape_udc_put_node_mv (CapeUdc self, const CapeString name, CapeUdc* p_node)
 
 //-----------------------------------------------------------------------------
 
-int cape_udc_cto_s (CapeUdc self)
-{
-  switch (self->type)
-  {
-    case CAPE_UDC_STRING:
-    {
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_NUMBER:
-    {
-      // change the type
-      self->type = CAPE_UDC_STRING;
-      self->data = cape_str_n ((number_t)self->data);
-
-      return TRUE;
-    }
-    case CAPE_UDC_BOOL:
-    {
-      // change the type
-      self->type = CAPE_UDC_STRING;
-      self->data = cape_str_n ((number_t)self->data);
-
-      return TRUE;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      double* h = self->data;
-
-      // change type and set value
-      self->type = CAPE_UDC_STRING;
-      self->data = cape_str_f (*h);
-
-      CAPE_DEL (&h, double);
-
-      return TRUE;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      CapeDatetime* h = self->data;
-
-      // change type and set value
-      self->type = CAPE_UDC_STRING;
-      self->data = cape_datetime_s__std_msec (h);
-
-      cape_datetime_del (&h);
-
-      return TRUE;
-    }
-  }
-
-  return FALSE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_udc_cto_n (CapeUdc self)
-{
-  switch (self->type)
-  {
-    case CAPE_UDC_NUMBER:
-    {
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_BOOL:
-    {
-      // change the type
-      self->type = CAPE_UDC_NUMBER;
-
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      double* h = self->data;
-
-      // change type and set value
-      self->type = CAPE_UDC_NUMBER;
-      self->data = (void*)((number_t)*h);
-
-      CAPE_DEL (&h, double);
-
-      return TRUE;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      CapeDatetime* h = self->data;
-
-      // change type and set value
-      self->type = CAPE_UDC_NUMBER;
-      self->data = (void*)((number_t)cape_datetime_n__unix (h));  // convert into unix time (seconds since 1970)
-
-      cape_datetime_del (&h);
-
-      return TRUE;
-    }
-    case CAPE_UDC_STRING:
-    {
-      char * pEnd;
-      number_t h = strtol (self->data, &pEnd, 10);
-
-      if (pEnd)  // convertion was possible
-      {
-        // change the type
-        self->type = CAPE_UDC_NUMBER;
-        cape_str_del ((CapeString*)&(self->data));
-
-        self->data = (void*)h;
-
-        return TRUE;
-      }
-
-      break;
-    }
-  }
-
-  return FALSE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_udc_cto_f (CapeUdc self)
-{
-  switch (self->type)
-  {
-    case CAPE_UDC_FLOAT:
-    {
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_NUMBER:
-    case CAPE_UDC_BOOL:
-    {
-      number_t h = (number_t)(self->data);
-
-      // change the type and allocate memory
-      self->type = CAPE_UDC_FLOAT;
-      self->data = CAPE_NEW (double);
-
-      // set the value
-      *(double*)(self->data) = h;
-
-      return TRUE;
-    }
-    case CAPE_UDC_DATETIME:
-    {
-      CapeDatetime* h = self->data;
-
-      // change the type and allocate memory
-      self->type = CAPE_UDC_FLOAT;
-      self->data = CAPE_NEW (double);
-
-      // set the value
-      *(double*)(self->data) = (double)cape_datetime_n__unix (h);  // convert into unix time (seconds since 1970)
-
-      cape_datetime_del (&h);
-
-      return TRUE;
-    }
-    case CAPE_UDC_STRING:
-    {
-      char * pEnd;
-      double h = strtod (self->data, &pEnd);  // try to convert
-
-      if (pEnd)  // convertion was possible
-      {
-        // cleanup
-        cape_str_del ((CapeString*)&(self->data));
-
-        // change the type and allocate memory
-        self->type = CAPE_UDC_FLOAT;
-        self->data = CAPE_NEW (double);
-
-        // set the value
-        *(double*)(self->data) = h;
-
-        return TRUE;
-      }
-
-      break;
-    }
-  }
-
-  return FALSE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_udc_cto_b (CapeUdc self)
-{
-  switch (self->type)
-  {
-    case CAPE_UDC_BOOL:
-    {
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_NUMBER:
-    {
-      number_t h = (number_t)(self->data);
-
-      self->type = CAPE_UDC_BOOL;
-      self->data = (void*)((number_t)(h ? TRUE : FALSE));
-
-      return TRUE;
-    }
-    case CAPE_UDC_FLOAT:
-    {
-      double* p_val = self->data;
-
-      // change type and set value
-      self->type = CAPE_UDC_BOOL;
-
-      if (p_val)
-      {
-        self->data = (void*)((number_t)(*p_val == .0 ? FALSE : TRUE));
-        CAPE_DEL (&p_val, double);
-      }
-      else
-      {
-        self->data = FALSE;
-      }
-
-      return TRUE;
-    }
-    case CAPE_UDC_STRING:
-    {
-      if (cape_str_equal (self->data, "1"))
-      {
-        // cleanup
-        cape_str_del ((CapeString*)&(self->data));
-
-        // change type and set value
-        self->type = CAPE_UDC_BOOL;
-        self->data = (void*)TRUE;
-
-        return TRUE;
-      }
-      else if (cape_str_equal (self->data, "0"))
-      {
-        // cleanup
-        cape_str_del ((CapeString*)&(self->data));
-
-        // change type and set value
-        self->type = CAPE_UDC_BOOL;
-        self->data = FALSE;
-
-        return TRUE;
-      }
-
-      break;
-    }
-  }
-
-  return FALSE;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_udc_cto_d (CapeUdc self)
-{
-  switch (self->type)
-  {
-    case CAPE_UDC_DATETIME:
-    {
-      // we are fine here
-      return TRUE;
-    }
-    case CAPE_UDC_NUMBER:
-    {
-      number_t h = (number_t)(self->data);
-
-      // TODO: convert from time_t into DateTime object
-
-      break;
-    }
-    case CAPE_UDC_STRING:
-    {
-      CapeDatetime dt;
-
-      if (cape_datetime__std_msec (&dt, self->data) || cape_datetime__std_usec (&dt, self->data) || cape_datetime__str_msec (&dt, self->data) || cape_datetime__str (&dt, self->data) || cape_datetime__date_de (&dt, self->data) || cape_datetime__date_iso (&dt, self->data))
-      {
-        // cleanup
-        cape_str_del ((CapeString*)&(self->data));
-
-        // change type and set value
-        self->type = CAPE_UDC_DATETIME;
-        self->data = cape_datetime_cp (&dt);
-
-        return TRUE;
-      }
-
-      break;
-    }
-  }
-
-  return FALSE;
-}
-
-//-----------------------------------------------------------------------------
-
 CapeUdc cape_udc_get_first (CapeUdc self)
 {
   switch (self->type)
@@ -2069,7 +2575,30 @@ int cape_udc_equal (CapeUdc self, CapeUdc other)
         }
         case CAPE_UDC_NODE:
         {
-            // TODO: simliar as list
+            if (other->type == CAPE_UDC_NODE)
+            {
+                CapeMapCursor cursor1; cape_map_cursor_init (self->data, &cursor1, CAPE_DIRECTION_FORW);
+                CapeMapCursor cursor2; cape_map_cursor_init (other->data, &cursor2, CAPE_DIRECTION_FORW);
+
+                ret = TRUE;
+
+                while (ret && cape_map_cursor_next (&cursor1))
+                {
+                    if (cape_map_cursor_next (&cursor2))
+                    {
+                        ret = cape_udc_equal (cape_map_node_value (cursor1.node), cape_map_node_value (cursor2.node));
+                    }
+                    else
+                    {
+                        ret = FALSE;
+                    }
+                }
+                
+                if (ret && cape_map_cursor_next (&cursor2))
+                {
+                    ret = FALSE;
+                }
+            }
 
             break;
         }
@@ -2100,7 +2629,10 @@ int cape_udc_equal (CapeUdc self, CapeUdc other)
 
                 if (d1 && d2)
                 {
-                    ret = (*d1 == *d2);
+                    double diff = fabs(*d1 - *d2);
+                    double scale = fmax(fabs(*d1), fabs(*d2));
+                    
+                    ret = (diff <= CAPE_FLOAT_EPSILON * (scale > 1.0 ? scale : 1.0));
                 }
             }
 
@@ -2147,6 +2679,7 @@ int cape_udc_has__iterate (CapeUdc self, CapeUdc to_find)
     {
         // try to find a node with the same name
         CapeUdc node_found = cape_udc_get (self, cape_udc_name (cursor->item));
+        
         if (node_found)
         {
             ret = cape_udc_equal (cursor->item, node_found);
@@ -2187,6 +2720,62 @@ int cape_udc_has (CapeUdc self, CapeUdc to_find)
         case CAPE_UDC_NODE:
         {
             ret = cape_udc_has__node (self, to_find);
+            break;
+        }
+    }
+
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeMap cape_udc_map_n (CapeUdc self, const CapeString key_name)
+{
+    CapeMap ret = NULL;
+    
+    if (self == NULL)
+    {
+        return NULL;
+    }
+    
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            ret = cape_map_new (cape_map__compare__n, cape_udc_node_onDel, NULL);
+
+            {
+                CapeUdcCursor* cursor = cape_udc_cursor_new (self, CAPE_DIRECTION_FORW);
+                
+                while (cape_udc_cursor_next (cursor))
+                {
+                    number_t key = cape_udc_get_n (cursor->item, key_name, 0);
+                    
+                    CapeMapNode n = cape_map_find (ret, (void*)key);
+                    
+                    CapeUdc list;
+                    
+                    if (n)
+                    {
+                        list = cape_map_node_value (n);
+                    }
+                    else
+                    {
+                        list = cape_udc_new (CAPE_UDC_LIST, NULL);
+                        
+                        cape_map_insert (ret, (void*)key, list);
+                    }
+
+                    {
+                        CapeUdc item = cape_udc_cursor_ext (self, cursor);
+
+                        cape_udc_add (list, &item);
+                    }
+                }
+
+                cape_udc_cursor_del (&cursor);
+            }
+
             break;
         }
     }
@@ -2677,6 +3266,32 @@ void cape_udc_sort_list (CapeUdc self, fct_cape_udc__on_compare on_compare)
 
 //-----------------------------------------------------------------------------
 
+static int __STDCALL cape_udc_list_distinct__on_compare (void* ptr1, void* ptr2)
+{
+    return cape_udc_equal ((CapeUdc)ptr1, (CapeUdc)ptr2);
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_list_distinct (CapeUdc self)
+{
+    if (!self)
+    {
+        return;
+    }
+    
+    switch (self->type)
+    {
+        case CAPE_UDC_LIST:
+        {
+            cape_list_distinct (self->data, cape_udc_list_distinct__on_compare);
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_udc_add_n__max (CapeUdc self, const CapeString name, number_t val, number_t max_length)
 {
   switch (self->type)
@@ -2692,6 +3307,45 @@ void cape_udc_add_n__max (CapeUdc self, const CapeString name, number_t val, num
       break;
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_udc_add_map (CapeUdc self, CapeMap map)
+{
+    switch (self->type)
+    {
+        case CAPE_UDC_NODE:
+        {
+        
+            break;
+        }
+        case CAPE_UDC_LIST:
+        {
+            CapeMapCursor* cursor = cape_map_cursor_new (map, CAPE_DIRECTION_FORW);
+            
+            while (cape_map_cursor_next (cursor))
+            {
+                // extract the node from the map
+                CapeMapNode n = cape_map_cursor_extract (map, cursor);
+                
+                // transfer ownership of the object
+                CapeUdc h = cape_map_node_mv (n);
+                
+                cape_udc_add (self, &h);
+                cape_map_del_node (map, &n);
+            }
+            
+            cape_map_cursor_del (&cursor);
+            
+            break;
+        }
+        default:
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "cape_udc_add_map only supports LIST and NODE");
+            break;
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------
