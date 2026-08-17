@@ -16,6 +16,8 @@ int __STDCALL qsock_client__on_recv (void* user_ptr, CapeAioItem item);
 int __STDCALL qsock_client__on_send (void* user_ptr, CapeAioItem item);
 void __STDCALL qsock_client__on_shutdown (void* user_ptr, CapeAioItem item);
 
+void qsock_client__start_reconnect_timer (QSockClient);
+
 //-----------------------------------------------------------------------------
 
 struct QSockClient_s
@@ -27,7 +29,6 @@ struct QSockClient_s
     int aio_owned;
 
     CapeAioItem aio_item;
-    CapeAioItem aio_timer;
     
     CapeStream buf_recv;
     
@@ -69,7 +70,6 @@ QSockClient qsock_client_new (const CapeString host, int port, CapeAio aio)
     }
 
     self->aio_item = NULL;
-    self->aio_timer = NULL;
     
     self->buf_recv = cape_stream_new ();
     cape_stream_cap (self->buf_recv, QSOCK_BUFFER_RECV_SIZE);
@@ -120,10 +120,16 @@ int qsock_client__create_socket (QSockClient self, CapeErr err)
     handle = cape_sock__tcp__clt_new (self->host, self->port, err);
     if (NULL == handle)
     {
-        res = cape_err_code (err);
+        // this can happen if the pear is not available
+        qsock_client__start_reconnect_timer (self);
+
+        // return no error -> reconnect activated
+        res = CAPE_ERR_NONE;
         goto cleanup_and_exit;
     }
     
+    cape_log_msg (CAPE_LL_DEBUG, "QSOCK", "client", "socket created -> add to event handler");
+
     // attach the socket handle to the AIO controller
     // start with send mode first
     item = cape_aio_add (self->aio, handle, CAPE_AIO_MODE__SEND, err);
@@ -154,7 +160,7 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qsock_client__on_timer (void* user_ptr, CapeAioItem item)
+int __STDCALL qsock_client__on_timer_event (void* user_ptr, CapeAioItem item)
 {
     QSockClient self = user_ptr;
 
@@ -175,28 +181,35 @@ int __STDCALL qsock_client__on_timer (void* user_ptr, CapeAioItem item)
 
 //-----------------------------------------------------------------------------
 
+void __STDCALL qsock_client__on_timer_done (void* user_ptr, CapeAioItem item)
+{
+    cape_log_msg (CAPE_LL_TRACE, "QSOCK", "client", "timer has been stopped");
+}
+
+//-----------------------------------------------------------------------------
+
 void qsock_client__start_reconnect_timer (QSockClient self)
 {
-    if (NULL == self->aio_timer)
+    // local objects
+    CapeErr err = cape_err_new ();
+
+    CapeAioItem aio_timer;
+
+    cape_log_msg (CAPE_LL_DEBUG, "QSOCK", "client", "start reconnect timer");
+
+    // the instance of the timer is managed within cape_aio
+    aio_timer = cape_aio_add__timer (self->aio, 10000, err);
+    if (NULL == aio_timer)
     {
-        // local objects
-        CapeErr err = cape_err_new ();
 
-        cape_log_msg (CAPE_LL_DEBUG, "QSOCK", "client", "start reconnect timer");
-
-        self->aio_timer = cape_aio_add__timer (self->aio, 10000, err);
-        if (NULL == self->aio_timer)
-        {
-
-        }
-        else
-        {
-            // set callback
-            cape_aio_item_set (self->aio_timer, self, qsock_client__on_timer, NULL, NULL);
-        }
-
-        cape_err_del (&err);
     }
+    else
+    {
+        // set callback
+        cape_aio_item_set (aio_timer, self, qsock_client__on_timer_event, NULL, qsock_client__on_timer_done);
+    }
+
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
@@ -456,12 +469,18 @@ void qsock_client_cb (QSockClient self, void* user_ptr, fct_qsock_client__on_con
 
 //-----------------------------------------------------------------------------
 
-void qsock_client_send (QSockClient self, CapeStream* p_buffer)
+void qsock_client_send (QSockClient self, CapeStream* p_buffer, int clear_buffer)
 {
     // local objects
     CapeErr err = cape_err_new ();
 
     cape_mutex_lock (self->mutex);
+
+    if (clear_buffer)
+    {
+        // to ensure that our new message is the next message sent
+        cape_list_clr (self->cached_buffers);
+    }
 
     // move the buffer into the list
     cape_list_push_back (self->cached_buffers, (void*)cape_stream_mv (p_buffer));

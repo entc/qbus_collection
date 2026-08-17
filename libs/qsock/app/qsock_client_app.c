@@ -10,7 +10,7 @@ void __STDCALL client__on_conn (void* user_ptr)
 
     cape_stream_append_str (s, "hello world!\n\n");
 
-    qsock_client_send (user_ptr, &s);
+    qsock_client_send (user_ptr, &s, TRUE);
 }
 
 //-----------------------------------------------------------------------------

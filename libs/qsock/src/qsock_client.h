@@ -29,7 +29,7 @@ typedef void     (__STDCALL *fct_qsock_client__on_recv)      (void* user_ptr, co
 
 __CAPE_LIBEX     void               qsock_client_cb     (QSockClient, void* user_ptr, fct_qsock_client__on_conn on_conn, fct_qsock_client__on_recv on_recv);
 
-__CAPE_LIBEX     void               qsock_client_send   (QSockClient, CapeStream* p_buffer);
+__CAPE_LIBEX     void               qsock_client_send   (QSockClient, CapeStream* p_buffer, int clear_buffer);
 
 //-----------------------------------------------------------------------------
 
