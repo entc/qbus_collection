@@ -1316,6 +1316,34 @@ namespace cape
 
     //-----------------------------------------------------------------------------
 
+    void set_type (int new_type)
+    {
+        if (m_obj == NULL)
+        {
+            std::string error_message = "UDC object has no content: {set_type}";
+
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+        }
+
+        cape_udc_set_type (m_obj, new_type);
+    }
+
+    //-----------------------------------------------------------------------------
+
+    bool merge_type (int new_type)
+    {
+        if (m_obj == NULL)
+        {
+            std::string error_message = "UDC object has no content: {merge_type}";
+
+            throw cape::Exception (CAPE_ERR_NO_OBJECT, error_message.c_str());
+        }
+
+        return (cape_udc_merge_type (m_obj, new_type) == TRUE);
+    }
+
+    //-----------------------------------------------------------------------------
+
     number_t size () const
     {
       return cape_udc_size (m_obj);
