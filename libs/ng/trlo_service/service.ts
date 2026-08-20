@@ -113,32 +113,43 @@ console.log(user_lang);
 
   public diff_date__future (date_in_iso: string): string
   {
-    var time = new Date(date_in_iso).getTime() - new Date().getTime();
+    const target = new Date(date_in_iso).getTime();
 
-    if (time < 0)
+    if (Number.isNaN(target))
     {
-      return this.translate('DATE.NAT');
+        return this.translate('DATE.INVALID');
     }
-    else
+
+    const diff = target - Date.now();
+
+    if (diff <= 0)
     {
-      return this.datetime_to_h (time);
+        return this.translate('DATE.NAT');
     }
+
+    return this.datetime_to_h(diff);
   }
 
   //---------------------------------------------------------------------------
 
   public diff_date__past (date_in_iso: string): string
   {
-    var time = new Date().getTime() - new Date(date_in_iso).getTime();
+    const target = new Date(date_in_iso).getTime();
 
-    if (time < 0)
+    if (Number.isNaN(target))
     {
-      return this.translate('DATE.NAT');
+        return this.translate('DATE.INVALID');
     }
-    else
+
+    const diff = Date.now() - target;
+
+
+    if (diff <= 0)
     {
-      return this.datetime_to_h (time);
+        return this.translate('DATE.NAT');
     }
+
+    return this.datetime_to_h(diff);
   }
 
   //---------------------------------------------------------------------------
