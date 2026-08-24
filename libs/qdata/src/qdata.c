@@ -116,6 +116,8 @@ static int qdata__designation_to_mimeuuid (QData self, const CapeString designat
 
     if (!cape_str_begins (designation, "data:"))
     {
+        cape_log_fmt (CAPE_LL_TRACE, "QDATA", "convert", "designation: %s", designation);
+        
         return cape_err_set(err, CAPE_ERR_RUNTIME, "designation has no 'data' format");
     }
     
