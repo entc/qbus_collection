@@ -103,7 +103,7 @@ CapeString qdata__dform_to_text (const CapeString designation)
 
 //-----------------------------------------------------------------------------
 
-int qdata__designation_to_mimeuuid (QData self, const CapeString designation, CapeErr err)
+static int qdata__designation_to_mimeuuid (QData self, const CapeString designation, CapeErr err)
 {
     number_t pos;
 
@@ -154,7 +154,7 @@ int qdata__designation_to_mimeuuid (QData self, const CapeString designation, Ca
 
 //-----------------------------------------------------------------------------
 
-CapeString qdata__mimeuuid_to_designation (QData self)
+static CapeString qdata__mimeuuid_to_designation (QData self)
 {
     if (self->data)
     {
@@ -168,7 +168,7 @@ CapeString qdata__mimeuuid_to_designation (QData self)
 
 //-----------------------------------------------------------------------------
 
-int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
+static int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
 {
     // local objects
     CapeString file = NULL;
@@ -200,7 +200,7 @@ int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
+static int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
 {
     int res;
     
@@ -241,7 +241,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
+static int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
 {
     int res;
 
@@ -328,6 +328,15 @@ int qdata_set__load (QData self, const CapeString designation, CapeErr err)
     }
     
     return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qdata_set__load_m__mv  (QData self, CapeStream* p_designation, CapeErr err)
+{
+    self->data = cape_stream_mv (p_designation);
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

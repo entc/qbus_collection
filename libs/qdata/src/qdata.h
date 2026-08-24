@@ -39,6 +39,9 @@ __CAPE_LIBEX     int                qdata_set_m__cp        (QData, const CapeStr
                                     /* set the data string by loading it from the file system, input designation muste be encrypted  */
 __CAPE_LIBEX     int                qdata_set__load        (QData, const CapeString designation_encrypted, CapeErr);
 
+                                    /* set the data string by cloning it from the designation stream  */
+__CAPE_LIBEX     int                qdata_set__load_m__mv  (QData, CapeStream* p_designation, CapeErr);
+
                                     /* set the data string by loading it from the file system */
 __CAPE_LIBEX     int                qdata_set__load_enc    (QData, const CapeString vsec, const CapeString designation_encrypted, CapeErr);
 
