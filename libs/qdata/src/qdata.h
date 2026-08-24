@@ -18,6 +18,10 @@ __CAPE_LIBEX     void               qdata_del              (QData*);
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX     QData              qdata_factory          (CapeUdc item, CapeString* p_path, CapeErr err);
+
+//-----------------------------------------------------------------------------
+
                                     /* generate the designation */
 __CAPE_LIBEX     CapeString         qdata_gen              (QData);
 
@@ -50,7 +54,7 @@ __CAPE_LIBEX     int                qdata_rm               (QData, const CapeStr
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX     CapeString         qdata__dform_to_text   (const CapeString vsec);
+__CAPE_LIBEX     CapeString         qdata_dform_to_text    (const CapeString vsec);
 
 //-----------------------------------------------------------------------------
 

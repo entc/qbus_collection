@@ -71,7 +71,7 @@ void qdata_del (QData* p_self)
 
 //-----------------------------------------------------------------------------
 
-CapeString qdata__dform_to_text (const CapeString designation)
+CapeString qdata_dform_to_text (const CapeString designation)
 {
     CapeString ret = NULL;
     
@@ -625,6 +625,107 @@ int qdata_set_m__cp (QData self, const CapeString vsec, const CapeStream data, c
     }
     
     return qdata_set (self, vsec, cape_stream_data (data), cape_stream_size (data), cape_stream_mime_get (data), err);
+}
+
+//-----------------------------------------------------------------------------
+
+QData qdata_factory (CapeUdc item, CapeString* p_path, CapeErr err)
+{
+    QData ret = NULL;
+    
+    CapeUdc qdata_node;
+    CapeUdc img_node;
+
+    // local objects
+    CapeString designation = NULL;
+    CapeStream s = NULL;
+
+    // support img node
+    img_node = cape_udc_get (item, "img");
+    if (img_node)
+    {
+        cape_log_msg (CAPE_LL_TRACE, "QDATA", "factory", "use image node");
+
+        switch (cape_udc_type (img_node))
+        {
+            case CAPE_UDC_STREAM:
+            {
+                // extract the stream from the UDC node
+                s = cape_udc_m_mv (img_node);
+                
+                // create and set the return value
+                ret = qdata_new (p_path);
+
+                if (qdata_set__load_m__mv (ret, &s, err))
+                {
+                    // cleanup qdata
+                    qdata_del (&ret);
+                    goto cleanup_and_exit;
+                }
+
+                goto cleanup_and_exit;
+            }
+            default:
+            {
+                cape_log_msg (CAPE_LL_WARN, "QDATA", "factory", "not supported type found in image node");
+                goto cleanup_and_exit;
+            }
+        }
+    }
+
+    // get the qdata node object
+    qdata_node = cape_udc_get (item, "qdata");
+    if (qdata_node)
+    {
+        cape_log_msg (CAPE_LL_TRACE, "QDATA", "factory", "use qdata node");
+
+        // first gather the designation of the qdata object
+        switch (cape_udc_type (qdata_node))
+        {
+            case CAPE_UDC_STREAM:
+            {
+                // TODO: support a designation as direct stream
+                designation = cape_stream_serialize (cape_udc_m (qdata_node), qcrypt__stream_base64_encode);
+                break;
+            }
+            case CAPE_UDC_STRING:
+            {
+                designation = cape_udc_s_mv (qdata_node, NULL);
+                break;
+            }
+            default:
+            {
+                cape_log_msg (CAPE_LL_WARN, "QDATA", "factory", "not supported type found in qdata node");
+                goto cleanup_and_exit;
+            }
+        }
+
+        if (NULL == designation)
+        {
+            cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.NO_DESIGNATION");
+            goto cleanup_and_exit;
+        }
+        
+        // create and set the return value
+        ret = qdata_new (p_path);
+        
+        if (qdata_set__load (ret, designation, err))
+        {
+            // cleanup
+            qdata_del (&ret);
+            goto cleanup_and_exit;
+        }
+
+        goto cleanup_and_exit;
+    }
+
+    cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.NO_DESIGNATION");
+    
+cleanup_and_exit:
+    
+    cape_stream_del (&s);
+    cape_str_del (&designation);
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
