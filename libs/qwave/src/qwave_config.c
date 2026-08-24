@@ -2,6 +2,7 @@
 
 // cape includes
 #include <stc/cape_map.h>
+#include <sys/cape_log.h>
 
 //-----------------------------------------------------------------------------
 
@@ -58,21 +59,31 @@ void qwave_config_set (QWaveConfig self, CapeUdc parameters)
     
     // extract route list
     self->route_list = cape_udc_ext (parameters, "route_list");
-        
-    if (sites)
+
+    if (NULL == self->route_list)
     {
-        self->sites = cape_map_new (cape_map__compare__s, qwave_config__on_del, NULL);
-        
+        cape_log_msg (CAPE_LL_WARN, "QWAVE", "config", "no 'route_list' found in parameters");
+    }
+
+    if (NULL == sites)
+    {
+        cape_log_msg (CAPE_LL_WARN, "QWAVE", "config", "no 'sites' found in parameters");
+        return;
+    }
+
+    cape_log_msg (CAPE_LL_TRACE, "QWAVE", "config", "found sites in parameters");
+
+    self->sites = cape_map_new (cape_map__compare__s, qwave_config__on_del, NULL);
+
+    {
+        CapeUdcCursor* cursor = cape_udc_cursor_new (sites, CAPE_DIRECTION_FORW);
+
+        while (cape_udc_cursor_next (cursor))
         {
-            CapeUdcCursor* cursor = cape_udc_cursor_new (sites, CAPE_DIRECTION_FORW);
-                        
-            while (cape_udc_cursor_next (cursor))
-            {
-                cape_map_insert (self->sites, cape_str_cp (cape_udc_name (cursor->item)), cape_str_cp (cape_udc_s (cursor->item, NULL)));
-            }
-            
-            cape_udc_cursor_del (&cursor);
+            cape_map_insert (self->sites, cape_str_cp (cape_udc_name (cursor->item)), cape_str_cp (cape_udc_s (cursor->item, NULL)));
         }
+
+        cape_udc_cursor_del (&cursor);
     }
 }
 
