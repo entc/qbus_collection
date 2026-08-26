@@ -5,6 +5,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_types.h"
 #include "stc/cape_str.h"
+#include "stc/cape_stream.h"
 
 //=============================================================================
 
@@ -63,6 +64,10 @@ __CAPE_LIBEX cape_uint64     cape_cursor_scan_64    (CapeCursor, int network_byt
 __CAPE_LIBEX double          cape_cursor_scan_bd    (CapeCursor, int network_byte_order);
 
 __CAPE_LIBEX float           cape_cursor_scan_bf    (CapeCursor, int network_byte_order);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX void            cape_cursor_adjust     (CapeCursor, CapeStream);
 
 //-----------------------------------------------------------------------------
 
