@@ -504,7 +504,7 @@ void cape_stream_append_fmt (CapeStream self, const char* format, ...)
       }
   }
 
-  #endif
+#endif
 
   va_end(valist);
 }

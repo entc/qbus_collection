@@ -308,3 +308,21 @@ float cape_cursor_scan_bf (CapeCursor self, int network_byte_order)
 }
 
 //-----------------------------------------------------------------------------
+
+void cape_cursor_adjust (CapeCursor self, CapeStream buffer)
+{
+    // returns the bytes which had not been used for parsing
+    number_t bytes_left_to_scan = cape_cursor_tail (self);
+
+    cape_stream_clr (buffer);
+
+    if (bytes_left_to_scan > 0)
+    {
+        // returns the current cursor position
+        // travers the cursor (to the end)
+        // copies the tail of the cursor into the buffer
+        cape_stream_append_buf (buffer, cape_cursor_tpos (self, bytes_left_to_scan), bytes_left_to_scan);
+    }
+}
+
+//-----------------------------------------------------------------------------
