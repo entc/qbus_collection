@@ -196,8 +196,12 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         return NULL;
     }
     
-    // allocate and initialize object
-    clone = cape_udc_new (self->type, self->name);
+    clone = CAPE_NEW (struct CapeUdc_s);
+
+    clone->type = self->type;
+    clone->data = NULL;
+
+    clone->name = cape_str_cp (self->name);
 
     switch (self->type)
     {
@@ -213,7 +217,11 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_STRING:
         {
-            clone->data = cape_str_cp (self->data);
+            if (self->data)
+            {
+                clone->data = cape_str_cp (self->data);
+            }
+            
             break;
         }
         case CAPE_UDC_NUMBER:
@@ -228,11 +236,7 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_FLOAT:
         {
-            if (NULL == self->data)
-            {
-                clone->data = NULL;
-            }
-            else
+            if (self->data)
             {
                 // allocate memory
                 clone->data = CAPE_NEW (double);
@@ -245,18 +249,29 @@ CapeUdc cape_udc_cp (const CapeUdc self)
         }
         case CAPE_UDC_DATETIME:
         {
-            // allocate memory
-            clone->data = cape_datetime_cp (self->data);
+            if (self->data)
+            {
+                // allocate memory
+                clone->data = cape_datetime_cp (self->data);
+            }
+            
             break;
         }
         case CAPE_UDC_STREAM:
         {
-            clone->data = cape_stream_cp (self->data);
+            if (self->data)
+            {
+                clone->data = cape_stream_cp (self->data);
+            }
+            
             break;
         }
         default:
         {
             cape_log_msg (CAPE_LL_WARN, "CAPE", "UDC", "cloning object with unsupported type");
+
+            // return NULL
+            cape_udc_del (&clone);
             break;
         }
     }
