@@ -20,8 +20,8 @@ typedef struct
   unsigned int hour;
   unsigned int minute;
 
-  unsigned int usec;
-  unsigned int msec;
+  unsigned int usec;    // microseconds within second [0..999999]
+  unsigned int msec;    // milliseconds within second [0..999]
   unsigned int sec;
 
   int is_dst;
@@ -60,31 +60,29 @@ __CAPE_LIBEX   void            cape_datetime_set          (CapeDatetime*, const 
                                   -> in seconds
                                   -> in UTC
                                 */
-__CAPE_LIBEX   void            cape_datetime_utc__s       (CapeDatetime*, time_t unix_time_since_1970);
+__CAPE_LIBEX   void            cape_datetime_utc__unix       (CapeDatetime*, time_t unix_time_since_1970_in_seconds);
 
                                /* sets the internal structure by using epoch time
                                   -> in milliseconds
                                   -> in UTC
                                 */
-__CAPE_LIBEX   void            cape_datetime_utc__ms      (CapeDatetime*, time_t unix_time_since_1970);
+__CAPE_LIBEX   void            cape_datetime_utc__unix_msec  (CapeDatetime*, number_t unix_time_since_1970);
 
                                /* sets the internal structure from day of the year
                                   -> time = 00:00:00.000
                                   -> in UTC
                                 */
-__CAPE_LIBEX   void            cape_datetime_utc__doy     (CapeDatetime*, number_t year, number_t doy);
+__CAPE_LIBEX   void            cape_datetime_utc__doy        (CapeDatetime*, number_t year, number_t doy);
 
                                /* sets the internal structure starting by start time and interval in seconds
                                   -> finds the next time not in the past
                                   -> in UTC
                                 */
-__CAPE_LIBEX   void            cape_datetime_utc__next    (CapeDatetime*, const CapeString start, number_t interval);
+__CAPE_LIBEX   void            cape_datetime_utc__next       (CapeDatetime*, const CapeString start, number_t interval);
 
 //-----------------------------------------------------------------------------
 
 __CAPE_LIBEX   void            cape_datetime_utc          (CapeDatetime*);
-
-__CAPE_LIBEX   void            cape_datetime_utc__t       (CapeDatetime*, time_t);
 
 __CAPE_LIBEX   void            cape_datetime_local        (CapeDatetime*);
 
