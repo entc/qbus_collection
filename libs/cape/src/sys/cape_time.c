@@ -153,56 +153,6 @@ void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
-void cape_datetime_utc__s (CapeDatetime* dt, time_t unix_time_since_1970)
-{
-#if defined __WINDOWS_OS
-
-#else
-
-  struct tm* l01;
-  time_t h = unix_time_since_1970;
-
-  l01 = gmtime (&h);
-
-  cape_datetime__convert_timeinfo (dt, l01);
-
-  dt->msec = 0;
-  dt->usec = 0;
-
-  dt->is_utc = TRUE;
-
-#endif
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_datetime_utc__ms (CapeDatetime* dt, time_t unix_time_since_1970)
-{
-#if defined __WINDOWS_OS
-
-#else
-
-  struct tm* l01;
-  time_t h;
-  double d = (double)unix_time_since_1970 / 1000;
-
-  // fast floor
-  h = (time_t)d; if (h > d) h--;
-
-  l01 = gmtime (&h);
-
-  cape_datetime__convert_timeinfo (dt, l01);
-
-  dt->msec = (unsigned int)(unix_time_since_1970 - h * 1000);
-  dt->usec = 0;
-
-  dt->is_utc = TRUE;
-
-#endif
-}
-
-//-----------------------------------------------------------------------------
-
 int cape_datetime_year_isleap (const CapeDatetime* self)
 {
     return (self->year % 4 == 0 && self->year % 100 != 0) || (self->year % 400 == 0);
@@ -218,11 +168,20 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
 
     int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
+    int isleap = cape_datetime_year_isleap (self);
+    
+    // do some checks
+    if (doy < 1 || doy > (isleap ? 366 : 365))
+    {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "datetime", "doy is invalid");
+        return;
+    }
+    
     // set the year
     self->year = (unsigned int)year;
 
     // correct leap year
-    if (cape_datetime_year_isleap (self))
+    if (isleap)
     {
         days_in_month[1] = 29;
     }
@@ -331,27 +290,74 @@ void cape_datetime_utc (CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
-void cape_datetime_utc__t (CapeDatetime* self, time_t unix_time)
+void cape_datetime_utc__unix (CapeDatetime* self, time_t unix_time)
 {
 #if defined __WINDOWS_OS
 
     struct tm timeinfo;
 
-    gmtime_s (&timeinfo, &unix_time);
-    cape_datetime__convert_timeinfo (self, &timeinfo);
+    if (gmtime_s (&timeinfo, &unix_time) == 0)
+    {
+        cape_datetime__convert_timeinfo (self, &timeinfo);
+
+        self->msec = 0;
+        self->usec = 0;
+        self->is_utc = TRUE;
+    }
 
 #else
 
     struct tm timeinfo;
 
-    gmtime_r (&unix_time, &timeinfo);
-    cape_datetime__convert_timeinfo (self, &timeinfo);
+    if (gmtime_r (&unix_time, &timeinfo) != NULL)
+    {
+        cape_datetime__convert_timeinfo (self, &timeinfo);
+
+        self->msec = 0;
+        self->usec = 0;
+        self->is_utc = TRUE;
+    }
 
 #endif
+}
 
-    self->msec = 0;
-    self->usec = 0;
-    self->is_utc = TRUE;
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__unix_msec (CapeDatetime* self, number_t unix_msec)
+{
+#if defined __WINDOWS_OS
+    
+    time_t unix_sec = (time_t)(unix_msec / 1000);
+    unsigned int msec = (unsigned int)(unix_msec % 1000);
+    
+    struct tm timeinfo;
+    
+    if (gmtime_s (&timeinfo, &unix_sec) == 0)
+    {
+        cape_datetime__convert_timeinfo (self, &timeinfo);
+        
+        self->msec = msec;
+        self->usec = msec * 1000;
+        self->is_utc = TRUE;
+    }
+    
+#else
+    
+    time_t unix_sec = (time_t)(unix_msec / 1000);
+    unsigned int msec = (unsigned int)(unix_msec % 1000);
+    
+    struct tm timeinfo;
+    
+    if (gmtime_r (&unix_sec, &timeinfo) != NULL)
+    {
+        cape_datetime__convert_timeinfo (self, &timeinfo);
+        
+        self->msec = msec;
+        self->usec = msec * 1000;
+        self->is_utc = TRUE;
+    }
+    
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -444,26 +450,28 @@ void cape_datetime_to_local (CapeDatetime* dt)
 
 void cape_datetime__convert_int_cape (CapeDatetime* self, struct timeval* time_timeval, struct tm* time_tm)
 {
-  // convert to cape time representation
-  cape_datetime__convert_timeinfo (self, time_tm);
+    // convert to cape time representation
+    cape_datetime__convert_timeinfo (self, time_tm);
 
-  // check if the result was within defined boundaries
-  // c functions somtimes don't return usec within 0 - 999999 as defined
-  if (time_timeval->tv_usec < 999999)
-  {
-    // calculate milliseconds and microseconds
-    self->msec = time_timeval->tv_usec / 1000;
-    self->usec = time_timeval->tv_usec;
-  }
-  else
-  {
-    cape_log_fmt (CAPE_LL_WARN, "CAPE", "datetime class", "faulty USEC value in time_timeval.tv_usec (out of range): %li", time_timeval->tv_usec);
+    // check if the result was within defined boundaries
+    // c functions somtimes don't return usec within 0 - 999999 as defined
+    if ((time_timeval->tv_usec >= 0) && (time_timeval->tv_usec < 1000000))
+    {
+        // copy microseconds
+        self->usec = time_timeval->tv_usec;
 
-    self->msec = 0;
-    self->usec = 0;
-  }
+        // calculate milliseconds
+        self->msec = self->usec / 1000;
+    }
+    else
+    {
+        cape_log_fmt (CAPE_LL_WARN, "CAPE", "datetime class", "faulty USEC value in time_timeval.tv_usec (out of range): %li", time_timeval->tv_usec);
 
-  self->is_utc = TRUE;
+        self->msec = 0;
+        self->usec = 0;
+    }
+
+    self->is_utc = TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -628,7 +636,7 @@ void cape_datetime_add_s (CapeDatetime* self, const CapeString delta)
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  time_timeval.tv_usec = self->usec;
 
   // substract delta from time_timeval
   cape_datetime__intern_add_delta (&time_timeval, delta);
@@ -656,7 +664,7 @@ void cape_datetime_sub_s (CapeDatetime* self, const CapeString delta)
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  time_timeval.tv_usec = self->usec;
 
   // substract delta from time_timeval
   cape_datetime__intern_sub_delta (&time_timeval, delta);
@@ -747,7 +755,7 @@ void cape_datetime__add_s (const CapeDatetime* input, const CapeString delta, Ca
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (input);
-  time_timeval.tv_usec = (input->msec * 1000) + input->usec;
+  time_timeval.tv_usec = input->usec;
 
   // accumulate delta to time_timeval
   cape_datetime__intern_add_delta (&time_timeval, delta);
@@ -775,7 +783,7 @@ void cape_datetime__sub_s (const CapeDatetime* self, const CapeString delta, Cap
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  time_timeval.tv_usec = self->usec;
 
   // accumulate delta to time_timeval
   cape_datetime__intern_sub_delta (&time_timeval, delta);
@@ -803,7 +811,7 @@ void cape_datetime__add_n (const CapeDatetime* self, number_t period, CapeDateti
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  time_timeval.tv_usec = self->usec;
 
   // append the period
   time_timeval.tv_sec += period;
@@ -831,7 +839,7 @@ void cape_datetime__sub_n (const CapeDatetime* self, number_t period, CapeDateti
 
   // convert cape datetime into c time struct
   time_timeval.tv_sec = cape_datetime_n__unix (self);
-  time_timeval.tv_usec = (self->msec * 1000) + self->usec;
+  time_timeval.tv_usec = self->usec;
 
   // append the period
   time_timeval.tv_sec -= period;
@@ -1114,7 +1122,7 @@ CapeString cape_datetime_s__std_msec (const CapeDatetime* dt)
 
 CapeString cape_datetime_s__std_usec (const CapeDatetime* dt)
 {
-  return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02i.%03iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec, dt->usec);
+  return cape_str_fmt ("%04i-%02i-%02iT%02i:%02i:%02i.%06iZ", dt->year, dt->month, dt->day, dt->hour, dt->minute, dt->sec, dt->usec);
 }
 
 //-----------------------------------------------------------------------------
@@ -1258,13 +1266,18 @@ int cape_datetime__date_iso (CapeDatetime* dt, const CapeString datetime_in_text
 
 int cape_datetime__date_sce (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  dt->hour = 0;
-  dt->minute = 0;
-  dt->sec = 0;
-  dt->msec = 0;
-  dt->usec = 0;
+    int ret;
+    
+    dt->hour = 0;
+    dt->minute = 0;
+    dt->sec = 0;
+    dt->msec = 0;
 
-  return cape_sscanf (datetime_in_text, "%u/%u/%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+    ret = cape_sscanf (datetime_in_text, "%u/%u/%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+    
+    dt->usec = dt->msec * 1000;
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -1316,40 +1329,47 @@ int cape_datetime__std_usec (CapeDatetime* dt, const CapeString datetime_in_text
 
 int cape_datetime__str_msec (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
-  {
-    dt->year = 0;
-    dt->month = 0;
-    dt->hour = 0;
-    dt->minute = 0;
+    int ret;
+    
+    if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
+    {
+        dt->year = 0;
+        dt->month = 0;
+        dt->hour = 0;
+        dt->minute = 0;
 
-    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u.%u", &(dt->day), &(dt->sec), &(dt->msec)) == 3;
-  }
-  else
-  {
-    return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
-  }
+        ret = cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u.%u", &(dt->day), &(dt->sec), &(dt->msec)) == 3;
+    }
+    else
+    {
+        ret = cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u.%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec), &(dt->msec)) == 7;
+    }
+    
+    dt->usec = dt->msec * 1000;
+    
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
 {
-  dt->msec = 0;
+    dt->msec = 0;
+    dt->usec = 0;
 
-  if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
-  {
-    dt->year = 0;
-    dt->month = 0;
-    dt->hour = 0;
-    dt->minute = 0;
+    if (cape_str_begins (datetime_in_text, "XXXX-XX-"))
+    {
+        dt->year = 0;
+        dt->month = 0;
+        dt->hour = 0;
+        dt->minute = 0;
 
-    return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u", &(dt->day), &(dt->sec)) == 2;
-  }
-  else
-  {
-    return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
-  }
+        return cape_sscanf (datetime_in_text, "XXXX-XX-%u XX:XX:%u", &(dt->day), &(dt->sec)) == 2;
+    }
+    else
+    {
+        return cape_sscanf (datetime_in_text, "%u-%u-%u %u:%u:%u", &(dt->year), &(dt->month), &(dt->day), &(dt->hour), &(dt->minute), &(dt->sec)) == 6;
+    }
 }
 
 //-----------------------------------------------------------------------------

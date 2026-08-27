@@ -911,7 +911,8 @@ static int cape_udc__convert_to_d (CapeUdc self)
 
           CapeDatetime dt;
 
-          cape_datetime_utc__t (&dt, h);
+          // assume the value is in seconds
+          cape_datetime_utc__unix (&dt, h);
           
           // change type and set value
           self->type = CAPE_UDC_DATETIME;
