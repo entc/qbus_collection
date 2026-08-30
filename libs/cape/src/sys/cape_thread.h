@@ -41,6 +41,12 @@ __CAPE_LIBEX   number_t        cape_thread_concurrency ();
 
 //-----------------------------------------------------------------------------
 
+__CAPE_LIBEX   number_t        cape_thread_atomic_inc  (number_t*);
+
+__CAPE_LIBEX   number_t        cape_thread_atomic_dec  (number_t*);
+
+//-----------------------------------------------------------------------------
+
 #endif
 
 

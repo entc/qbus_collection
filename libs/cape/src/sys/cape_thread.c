@@ -354,3 +354,30 @@ number_t cape_thread_concurrency ()
 
 //-----------------------------------------------------------------------------
 
+number_t cape_thread_atomic_inc  (number_t* p_var)
+{
+#if defined __LINUX_OS || defined __BSD_OS
+  
+    return __atomic_fetch_add (p_var, 1, __ATOMIC_SEQ_CST);
+  
+#elif defined _WIN64 || defined _WIN32
+
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_thread_atomic_dec  (number_t* p_var)
+{
+#if defined __LINUX_OS || defined __BSD_OS
+    
+    return __atomic_fetch_sub (p_var, 1, __ATOMIC_SEQ_CST);
+
+#elif defined _WIN64 || defined _WIN32
+
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
