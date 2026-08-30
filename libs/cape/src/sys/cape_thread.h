@@ -30,20 +30,28 @@ __CAPE_LIBEX   void            cape_thread_signal      (CapeThread);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void            cape_thread_nosignals   ();
+__CAPE_LIBEX   void            cape_thread_nosignals       ();
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   void            cape_thread_sleep       (unsigned long milliseconds);
+__CAPE_LIBEX   void            cape_thread_sleep           (unsigned long milliseconds);
 
                                /* returns the available physical cores of the system */
-__CAPE_LIBEX   number_t        cape_thread_concurrency ();
+__CAPE_LIBEX   number_t        cape_thread_concurrency     ();
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LIBEX   number_t        cape_thread_atomic_inc  (number_t*);
+                               /* atomic increase of p_var, returns the old value of p_var */
+__CAPE_LIBEX   number_t        cape_thread_atomic_inc      (number_t* p_var);
 
-__CAPE_LIBEX   number_t        cape_thread_atomic_dec  (number_t*);
+                               /* atomic increase of p_var (only if p_var is not negative), returns the old value of p_var */
+__CAPE_LIBEX   number_t        cape_thread_atomic_inc__nn  (number_t* p_var);
+
+                               /* atomic decrease of p_var, returns the old value of p_var */
+__CAPE_LIBEX   number_t        cape_thread_atomic_dec      (number_t* p_var);
+
+                               /* atomic decrease of p_var (only if p_var is not negative), returns the old value of p_var */
+__CAPE_LIBEX   number_t        cape_thread_atomic_dec__nn  (number_t* p_var);
 
 //-----------------------------------------------------------------------------
 

@@ -50,7 +50,10 @@ struct QWaveConctx_s
     CapeStream buffer;                        // receive buffer
     
     CapeAioItem connection_aio_item;          // AIO event handle
-    number_t connection_counter;              // reference counter for AIO event handle
+    number_t connection_counter;              // rfcnt for AIO event handle
+                                              // = 0: connection ist active, no references
+                                              // > 0: connection ist active, with references
+                                              // < 0: connection closed
     
     CapeString remote_address;                // the remote address
 
@@ -204,7 +207,7 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     cape_stream_cap (self->buffer, QWAVE_BUFFER_SIZE);
     
     self->connection_aio_item = event;
-    self->connection_counter = 1;
+    self->connection_counter = 0;
     
     self->remote_address = cape_str_cp (remote_address);
 
@@ -273,29 +276,6 @@ QWaveConctx qwave_conctx_inc (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-CapeAioItem qwave_conctx_connection_inc (QWaveConctx self)
-{
-    if (0 == cape_thread_atomic_inc (&(self->connection_counter)))
-    {
-        return NULL;
-    }
-    
-    return self->connection_aio_item;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_connection_dec (QWaveConctx self)
-{
-    if (1 == cape_thread_atomic_dec (&(self->connection_counter)))
-    {
-        // after this point self might be invalid
-        cape_aio_rm__item (self->aio, &(self->connection_aio_item));
-    }
-}
-
-//-----------------------------------------------------------------------------
-
 void qwave_conctx_dec (QWaveConctx* p_self)
 {
     if (*p_self)
@@ -308,6 +288,29 @@ void qwave_conctx_dec (QWaveConctx* p_self)
         {
             qwave_conctx_del (p_self);
         }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeAioItem qwave_conctx_connection_inc (QWaveConctx self)
+{
+    if (-1 == cape_thread_atomic_inc__nn (&(self->connection_counter)))
+    {
+        return NULL;
+    }
+    
+    return self->connection_aio_item;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_connection_dec (QWaveConctx self)
+{
+    if (0 == cape_thread_atomic_dec__nn (&(self->connection_counter)))
+    {
+        // after this point self might be invalid
+        cape_aio_rm__item (self->aio, &(self->connection_aio_item));
     }
 }
 

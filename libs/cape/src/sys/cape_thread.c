@@ -356,13 +356,66 @@ number_t cape_thread_concurrency ()
 
 number_t cape_thread_atomic_inc  (number_t* p_var)
 {
-#if defined __LINUX_OS || defined __BSD_OS
-  
+#if defined(__GNUC__) || defined(__clang__)
+    
     return __atomic_fetch_add (p_var, 1, __ATOMIC_SEQ_CST);
   
-#elif defined _WIN64 || defined _WIN32
+#elif defined(_MSC_VER)
 
+    return _InterlockedExchangeAdd64 ((volatile __int64*)p_var, 1);
+
+#else
+
+    #error "No atomic implementation available for this compiler"
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_thread_atomic_inc__nn (number_t* p_var)
+{
+#if defined(__GNUC__) || defined(__clang__)
     
+    number_t old_value;
+    number_t new_value;
+
+    do
+    {
+        old_value = __atomic_load_n (p_var, __ATOMIC_ACQUIRE);
+
+        if (old_value < 0)
+        {
+            return old_value;
+        }
+
+        new_value = old_value + 1;
+    }
+    while (!__atomic_compare_exchange_n (p_var, &old_value, new_value, FALSE, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
+
+    return old_value;
+    
+#elif defined(_MSC_VER)
+
+    number_t old_value;
+    number_t new_value;
+
+    do
+    {
+        old_value = _InterlockedCompareExchange64((volatile __int64*)p_var, 0, 0);
+
+        if (old_value < 0)
+        {
+            return old_value;
+        }
+
+        new_value = old_value + 1;
+
+    }
+    while (_InterlockedCompareExchange64((volatile __int64*)p_var, (__int64)new_value, (__int64)old_value) != (__int64)old_value);
+
+    return old_value;
+
 #endif
 }
 
@@ -370,12 +423,65 @@ number_t cape_thread_atomic_inc  (number_t* p_var)
 
 number_t cape_thread_atomic_dec  (number_t* p_var)
 {
-#if defined __LINUX_OS || defined __BSD_OS
-    
+#if defined(__GNUC__) || defined(__clang__)
+
     return __atomic_fetch_sub (p_var, 1, __ATOMIC_SEQ_CST);
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(_MSC_VER)
 
+    return _InterlockedExchangeAdd64 ((volatile __int64*)p_var, -1);
+    
+#else
+
+    #error "No atomic implementation available for this compiler"
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+number_t cape_thread_atomic_dec__nn (number_t* p_var)
+{
+#if defined(__GNUC__) || defined(__clang__)
+
+    number_t old_value;
+    number_t new_value;
+
+    do
+    {
+        old_value = __atomic_load_n(p_var, __ATOMIC_ACQUIRE);
+
+        if (old_value < 0)
+        {
+            return old_value;
+        }
+
+        new_value = old_value - 1;
+    }
+    while (!__atomic_compare_exchange_n (p_var, &old_value, new_value, FALSE, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
+
+    return old_value;
+
+#elif defined(_MSC_VER)
+
+    number_t old_value;
+    number_t new_value;
+
+    do
+    {
+        old_value = _InterlockedCompareExchange64((volatile __int64*)p_var, 0, 0);
+
+        if (old_value < 0)
+        {
+            return old_value;
+        }
+
+        new_value = old_value - 1;
+
+    }
+    while (_InterlockedCompareExchange64 ((volatile __int64*)p_var, (__int64)new_value, (__int64)old_value) != (__int64)old_value);
+
+    return old_value;
     
 #endif
 }
