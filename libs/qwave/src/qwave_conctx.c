@@ -11,6 +11,7 @@
 #include <stc/cape_map.h>
 #include <fmt/cape_tokenizer.h>
 #include <stc/cape_cursor.h>
+#include <sys/cape_thread.h>
 
 // qcrypt includes
 #include <qcrypt.h>
@@ -45,11 +46,12 @@ struct QWaveConctx_s
     CapeAio aio;                              // reference
     
     number_t reference_counter;               // the reference counter for requests
-    int close_connection;                     // tell the context to close the connection
     
     CapeStream buffer;                        // receive buffer
     
     CapeAioItem connection_aio_item;          // AIO event handle
+    number_t connection_counter;              // reference counter for AIO event handle
+    
     CapeString remote_address;                // the remote address
 
     // http parser
@@ -197,12 +199,13 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->aio = aio;
     
     self->reference_counter = 1;
-    self->close_connection = FALSE;
     
     self->buffer = cape_stream_new ();
     cape_stream_cap (self->buffer, QWAVE_BUFFER_SIZE);
     
     self->connection_aio_item = event;
+    self->connection_counter = 1;
+    
     self->remote_address = cape_str_cp (remote_address);
 
     self->on_upgrade = on_upgrade;
@@ -261,7 +264,7 @@ void qwave_conctx_del (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_reqinc (QWaveConctx self)
+QWaveConctx qwave_conctx_inc (QWaveConctx self)
 {
     self->reference_counter++;
     
@@ -270,15 +273,36 @@ QWaveConctx qwave_conctx_reqinc (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_reqdec (QWaveConctx* p_self)
+CapeAioItem qwave_conctx_connection_inc (QWaveConctx self)
+{
+    if (0 == cape_thread_atomic_inc (&(self->connection_counter)))
+    {
+        return NULL;
+    }
+    
+    return self->connection_aio_item;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_connection_dec (QWaveConctx self)
+{
+    if (1 == cape_thread_atomic_dec (&(self->connection_counter)))
+    {
+        // after this point self might be invalid
+        cape_aio_rm__item (self->aio, &(self->connection_aio_item));
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_dec (QWaveConctx* p_self)
 {
     if (*p_self)
     {
         QWaveConctx self = *p_self;
 
         self->reference_counter--;
-
-        cape_sock__touch (cape_aio_item_get (self->connection_aio_item), NULL);
 
         if (self->reference_counter == 0)
         {
@@ -289,30 +313,24 @@ void qwave_conctx_reqdec (QWaveConctx* p_self)
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
+void qwave_conctx_close (QWaveConctx self, int shutdown_socket)
 {
-    if ((self->reference_counter == 0) && (self->close_connection))
-    {
-        CapeAioItem aio_item = self->connection_aio_item;
+    CapeAioItem aio_item = qwave_conctx_connection_inc (self);
 
+    if (aio_item)
+    {
         if (shutdown_socket)
         {
             // close write part of the socket
             cape_sock__shutdown (cape_aio_item_get (aio_item));
         }
 
-        // self will be destroyed in the process
-        cape_aio_rm__item (self->aio, &aio_item);
+        // remove the connection
+        qwave_conctx_connection_dec (self);
     }
-}
 
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_close (QWaveConctx self, int shutdown_socket)
-{
-    self->close_connection = TRUE;
-    
-    qwave_conctx_shutdown (self, shutdown_socket);
+    // release aquired aio_item
+    qwave_conctx_connection_dec (self);
 }
 
 //-----------------------------------------------------------------------------
@@ -345,7 +363,7 @@ int qwave_conctx_read (QWaveConctx self)
                 if (NULL == self->parser.data)
                 {
                     // create a new request object to track this request
-                    self->parser.data = qwave_reqctx_new (qwave_conctx_reqinc (self), self->config);
+                    self->parser.data = qwave_reqctx_new (self, self->config);
                 }
                 
                 size_t parsed_bytes = http_parser_execute (&(self->parser), &(self->settings), cape_stream_data (self->buffer), cape_stream_size (self->buffer));
@@ -429,13 +447,20 @@ int qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
     
     //printf ("send file #1 [%i]\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle));
     
-    res = cape_sock__send (cape_aio_item_get (self->connection_aio_item), s, err);
-    if (res)
-    {
-        ret = FALSE;
-        
-    }
+    CapeAioItem aio_item = qwave_conctx_connection_inc (self);
 
+    if (aio_item)
+    {
+        res = cape_sock__send (cape_aio_item_get (self->connection_aio_item), s, err);
+        if (res)
+        {
+            ret = FALSE;
+            
+        }
+    }
+    
+    qwave_conctx_connection_dec (self);
+    
     //printf ("send file #2 [%i], %i -> %li\n", (int)(number_t)qwave_aioctx_event_get (self->connection_handle), res, cape_stream_size (s));
     
     cape_stream_del (&s);

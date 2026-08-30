@@ -32,7 +32,7 @@ QWaveReqctx qwave_reqctx_new (QWaveConctx conctx, QWaveConfig config)
 {
     QWaveReqctx self = CAPE_NEW (struct QWaveReqctx_s);
     
-    self->conctx = conctx;
+    self->conctx = qwave_conctx_inc (conctx);
     self->config = config;
     
     self->complete = FALSE;
@@ -55,6 +55,8 @@ void qwave_reqctx_dec (QWaveReqctx* p_self)
     if (*p_self)
     {
         QWaveReqctx self = *p_self;
+        
+        qwave_conctx_dec (&(self->conctx));
         
         cape_str_del (&(self->url));
         cape_str_del (&(self->method));
@@ -243,15 +245,8 @@ void qwave_reqctx_exec (QWaveReqctx self)
                 return;
             }
             
-                        
             qwave_conctx_upgrade (self->conctx, key);                        
         }
-        
-        // try to close connection
-        qwave_conctx_close (self->conctx, TRUE);
-        
-        // tell the context we don't need it anymore
-        qwave_conctx_reqdec (&(self->conctx));
     }
     else
     {
@@ -280,9 +275,6 @@ void qwave_reqctx_exec (QWaveReqctx self)
             // try to close connection
             qwave_conctx_close (self->conctx, TRUE);
         }
-
-        // tell the context we don't need it anymore
-        qwave_conctx_reqdec (&(self->conctx));
     }
 }
 

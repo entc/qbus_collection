@@ -117,6 +117,7 @@ int __STDCALL qwave_server__ws_recv (void* user_ptr, CapeAioItem item)
 
 //-----------------------------------------------------------------------------
 
+// this method is called when the AIO item was removed from the AIO subsystem
 void __STDCALL qwave_server__ws_done (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
@@ -128,7 +129,8 @@ void __STDCALL qwave_server__ws_done (void* user_ptr, CapeAioItem item)
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_reqdec (&ctx);
+    // decrease usage of the context
+    qwave_conctx_dec (&ctx);
 }
 
 //-----------------------------------------------------------------------------
@@ -161,6 +163,7 @@ int __STDCALL qwave_server__on_request (void* user_ptr, CapeAioItem item)
 
 //-----------------------------------------------------------------------------
 
+// this method is called when the AIO item was removed from the AIO subsystem
 void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
 {
     QWaveConctx ctx = user_ptr;
@@ -172,7 +175,8 @@ void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_reqdec (&ctx);
+    // decrease usage of the context
+    qwave_conctx_dec (&ctx);
 }
 
 //-----------------------------------------------------------------------------
