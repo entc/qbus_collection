@@ -80,7 +80,12 @@ void qwave_config_set (QWaveConfig self, CapeUdc parameters)
 
         while (cape_udc_cursor_next (cursor))
         {
-            cape_map_insert (self->sites, cape_str_cp (cape_udc_name (cursor->item)), cape_str_cp (cape_udc_s (cursor->item, NULL)));
+            const CapeString site_url_path = cape_udc_name (cursor->item);
+            const CapeString site_dst_path = cape_udc_s (cursor->item, NULL);
+
+            cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "config", "add site '%s' -> '%s'", site_url_path, site_dst_path);
+
+            cape_map_insert (self->sites, cape_str_cp (site_url_path), cape_str_cp (site_dst_path));
         }
 
         cape_udc_cursor_del (&cursor);

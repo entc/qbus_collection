@@ -196,7 +196,7 @@ QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQu
     self->queue = queue;
     self->aio = aio;
     
-    self->reference_counter = 0;
+    self->reference_counter = 1;
     self->close_connection = FALSE;
     
     self->buffer = cape_stream_new ();
@@ -270,6 +270,25 @@ QWaveConctx qwave_conctx_reqinc (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
+void qwave_conctx_reqdec (QWaveConctx* p_self)
+{
+    if (*p_self)
+    {
+        QWaveConctx self = *p_self;
+
+        self->reference_counter--;
+
+        cape_sock__touch (cape_aio_item_get (self->connection_aio_item), NULL);
+
+        if (self->reference_counter == 0)
+        {
+            qwave_conctx_del (p_self);
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
 {
     if ((self->reference_counter == 0) && (self->close_connection))
@@ -285,15 +304,6 @@ void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
         // self will be destroyed in the process
         cape_aio_rm__item (self->aio, &aio_item);
     }
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_reqdec (QWaveConctx self)
-{
-    self->reference_counter--;
-
-    cape_sock__touch (cape_aio_item_get (self->connection_aio_item), NULL);
 }
 
 //-----------------------------------------------------------------------------

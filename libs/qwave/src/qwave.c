@@ -79,8 +79,6 @@ void qwave_del (QWave* p_self)
     {
         QWave self = *p_self;
         
-        //cape_aio_rm (self->aio, &(self->accept_aio_item));
-        
         qwave_stop (self);
         
         if (self->thread)
@@ -130,7 +128,7 @@ void __STDCALL qwave_server__ws_done (void* user_ptr, CapeAioItem item)
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_del (&ctx);
+    qwave_conctx_reqdec (&ctx);
 }
 
 //-----------------------------------------------------------------------------
@@ -174,7 +172,7 @@ void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
     // close physical tcp connection
     cape_sock__close (handle_remote_connection);
     
-    qwave_conctx_del (&ctx);
+    qwave_conctx_reqdec (&ctx);
 }
 
 //-----------------------------------------------------------------------------

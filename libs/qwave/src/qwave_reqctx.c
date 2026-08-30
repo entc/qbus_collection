@@ -251,7 +251,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         qwave_conctx_close (self->conctx, TRUE);
         
         // tell the context we don't need it anymore
-        qwave_conctx_reqdec (self->conctx);
+        qwave_conctx_reqdec (&(self->conctx));
     }
     else
     {
@@ -282,7 +282,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         }
 
         // tell the context we don't need it anymore
-        qwave_conctx_reqdec (self->conctx);
+        qwave_conctx_reqdec (&(self->conctx));
     }
 }
 
