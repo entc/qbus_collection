@@ -309,8 +309,10 @@ void qwave_conctx_connection_dec (QWaveConctx self)
 {
     if (0 == cape_thread_atomic_dec__nn (&(self->connection_counter)))
     {
+        CapeAioItem item = CAPE_MV (&(self->connection_aio_item));
+        
         // after this point self might be invalid
-        cape_aio_rm__item (self->aio, &(self->connection_aio_item));
+        cape_aio_rm__item (self->aio, &item);
     }
 }
 
