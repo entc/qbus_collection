@@ -23,6 +23,10 @@ typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, CapeAioIt
                                     /* constructor: create a new instance of the qwave class */
 __CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, const CapeString remote_address);
 
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_inc            (QWaveConctx);
+
+__CAPE_LOCAL     void               qwave_conctx_dec            (QWaveConctx*);
+
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL     void               qwave_conctx_shutdown       (QWaveConctx, int shutdown);
