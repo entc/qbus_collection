@@ -106,81 +106,6 @@ void qwave_del (QWave* p_self)
 
 //-----------------------------------------------------------------------------
 
-int __STDCALL qwave_server__ws_recv (void* user_ptr, CapeAioItem item)
-{
-    QWaveConctx ctx = user_ptr;
-    
-    qwave_conctx_ws_read (ctx);
-
-    return TRUE;
-}
-
-//-----------------------------------------------------------------------------
-
-// this method is called when the AIO item was removed from the AIO subsystem
-void __STDCALL qwave_server__ws_done (void* user_ptr, CapeAioItem item)
-{
-    QWaveConctx ctx = user_ptr;
-    
-    void* handle_remote_connection = cape_aio_item_get (item);
-    
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
-    
-    // close physical tcp connection
-    cape_sock__close (handle_remote_connection);
-    
-    // decrease usage of the context
-    qwave_conctx_dec (&ctx);
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
-{
-    // TODO: use also the send callback
-    cape_aio_item_set (aio_item, (void*)ctx, qwave_server__ws_recv, NULL, qwave_server__ws_done);
-}
-
-//-----------------------------------------------------------------------------
-
-int __STDCALL qwave_server__on_request (void* user_ptr, CapeAioItem item)
-{
-    QWaveConctx ctx = user_ptr;
-    
-    if (qwave_conctx_read (ctx))
-    {
-        return TRUE;
-    }
-    else
-    {
-        // if read failed we don't need a shutdown
-        // TODO: use the return value to close connection
-        qwave_conctx_close (ctx, FALSE);
-
-        return FALSE;
-    }
-}
-
-//-----------------------------------------------------------------------------
-
-// this method is called when the AIO item was removed from the AIO subsystem
-void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
-{
-    QWaveConctx ctx = user_ptr;
-    
-    void* handle_remote_connection = cape_aio_item_get (item);
-
-    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
-
-    // close physical tcp connection
-    cape_sock__close (handle_remote_connection);
-    
-    // decrease usage of the context
-    qwave_conctx_dec (&ctx);
-}
-
-//-----------------------------------------------------------------------------
-
 void qwave_factory_conctx (QWave self, void* handle_remote_connection, const CapeString remote_address)
 {    
     cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "new connection from '%s' on fd [%lu]", remote_address, handle_remote_connection);
@@ -197,13 +122,8 @@ void qwave_factory_conctx (QWave self, void* handle_remote_connection, const Cap
         }
         else
         {
-            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aio, aio_item, remote_address, qwave_server__on_upgrade);
-        
-            // set the callbacks
-            // transfer the responsiblity of the ownership of conctx to
-            // the AIO system, qwave_server__on_drop will be called
-            cape_aio_item_set (aio_item, conctx, qwave_server__on_request, NULL, qwave_server__on_drop);
-            
+            QWaveConctx conctx = qwave_conctx_new (self->config, self->response, self->queue, self->aio, aio_item, remote_address);
+                    
             // set the callbacks
             qwave_conctx_ws_cb (conctx, self->ws_user_ptr, self->ws_on_upgrade, self->ws_on_message, self->ws_on_destroy);
         }

@@ -273,7 +273,7 @@ void qwave_reqctx_exec (QWaveReqctx self)
         if ((FALSE == qwave_conctx_send_file (self->conctx, site, self->url, self->keep_alive)) || (FALSE == self->keep_alive))
         {
             // try to close connection
-            qwave_conctx_close (self->conctx, TRUE);
+            qwave_conctx_shutdown (self->conctx, TRUE);
         }
     }
 }

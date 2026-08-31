@@ -652,7 +652,7 @@ void cape_aio__event_process (CapeAio self, struct kevent* event)
         return;
     }
 
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d) flags = {0x%x}", event->filter, event->flags);
+    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "event", "process filter = (%d) flags = {0x%x}", event->filter, event->flags);
 
     {
         CapeAioItem item = event->udata;

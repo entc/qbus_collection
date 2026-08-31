@@ -54,6 +54,7 @@ struct QWaveConctx_s
                                               // = 0: connection ist active, no references
                                               // > 0: connection ist active, with references
                                               // < 0: connection closed
+    number_t connection_closed;               // rfcnt for close action
     
     CapeString remote_address;                // the remote address
 
@@ -80,6 +81,31 @@ struct QWaveConctx_s
     fct_qwave__on_ws_message ws_on_message;
     fct_qwave__on_ws_destroy ws_on_destroy; 
 };
+
+//-----------------------------------------------------------------------------
+
+static CapeAioItem qwave_conctx_connection_inc (QWaveConctx self)
+{
+    if (-1 == cape_thread_atomic_inc__nn (&(self->connection_counter)))
+    {
+        return NULL;
+    }
+    
+    return self->connection_aio_item;
+}
+
+//-----------------------------------------------------------------------------
+
+static void qwave_conctx_connection_dec (QWaveConctx self)
+{
+    if (0 == cape_thread_atomic_dec__nn (&(self->connection_counter)))
+    {
+        CapeAioItem item = CAPE_MV (&(self->connection_aio_item));
+        
+        // after this point self might be invalid
+        cape_aio_rm__item (self->aio, &item);
+    }
+}
 
 //-----------------------------------------------------------------------------
 
@@ -192,155 +218,7 @@ static int qwave_conctx__internal__on_message_complete (http_parser* parser)
 
 //-----------------------------------------------------------------------------
 
-QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem event, const CapeString remote_address, fct_qwave__on_upgrade on_upgrade)
-{
-    QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
-    
-    self->config = config;
-    self->response =response;
-    self->queue = queue;
-    self->aio = aio;
-    
-    self->reference_counter = 1;
-    
-    self->buffer = cape_stream_new ();
-    cape_stream_cap (self->buffer, QWAVE_BUFFER_SIZE);
-    
-    self->connection_aio_item = event;
-    self->connection_counter = 0;
-    
-    self->remote_address = cape_str_cp (remote_address);
-
-    self->on_upgrade = on_upgrade;
-    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
-    self->ws_masking_key = NULL;
-    
-    http_parser_init (&(self->parser), HTTP_REQUEST);
-    
-    // initialize the HTTP parser
-    http_parser_settings_init (&(self->settings));
-    
-    // set some callbacks
-    self->settings.on_message_begin = qwave_conctx__internal__on_message_begin;
-    self->settings.on_url = qwave_conctx__internal__on_url;
-    self->settings.on_status = NULL;
-    self->settings.on_header_field = qwave_conctx__internal__on_header_field;
-    self->settings.on_header_value = qwave_conctx__internal__on_header_value;
-    self->settings.on_headers_complete = NULL;
-    self->settings.on_body = qwave_conctx__internal__on_body;
-    self->settings.on_message_complete = qwave_conctx__internal__on_message_complete;
-    self->settings.on_chunk_header = NULL;
-    self->settings.on_chunk_complete = NULL;
-    
-    self->parser.data = NULL;
-        
-    self->ws_user_ptr = NULL;
-    self->ws_on_upgrade = NULL;
-    
-    self->ws_conn_ptr = NULL;
-    self->ws_on_message = NULL;
-    self->ws_on_destroy = NULL;
-    
-    return self;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_del (QWaveConctx* p_self)
-{
-    if (*p_self)
-    {
-        QWaveConctx self = *p_self;
-        
-        if (self->ws_on_destroy)
-        {
-            self->ws_on_destroy (self->ws_conn_ptr);
-        }
-        
-        cape_str_del (&(self->remote_address));        
-        cape_str_del (&(self->ws_masking_key));
-        cape_stream_del (&(self->buffer));
-        
-        CAPE_DEL (p_self, struct QWaveConctx_s);
-    }
-}
-
-//-----------------------------------------------------------------------------
-
-QWaveConctx qwave_conctx_inc (QWaveConctx self)
-{
-    self->reference_counter++;
-    
-    return self;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_dec (QWaveConctx* p_self)
-{
-    if (*p_self)
-    {
-        QWaveConctx self = *p_self;
-
-        self->reference_counter--;
-
-        if (self->reference_counter == 0)
-        {
-            qwave_conctx_del (p_self);
-        }
-    }
-}
-
-//-----------------------------------------------------------------------------
-
-CapeAioItem qwave_conctx_connection_inc (QWaveConctx self)
-{
-    if (-1 == cape_thread_atomic_inc__nn (&(self->connection_counter)))
-    {
-        return NULL;
-    }
-    
-    return self->connection_aio_item;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_connection_dec (QWaveConctx self)
-{
-    if (0 == cape_thread_atomic_dec__nn (&(self->connection_counter)))
-    {
-        CapeAioItem item = CAPE_MV (&(self->connection_aio_item));
-        
-        // after this point self might be invalid
-        cape_aio_rm__item (self->aio, &item);
-    }
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_close (QWaveConctx self, int shutdown_socket)
-{
-    CapeAioItem aio_item = qwave_conctx_connection_inc (self);
-
-    if (aio_item)
-    {
-        if (shutdown_socket)
-        {
-            // close write part of the socket
-            cape_sock__shutdown (cape_aio_item_get (aio_item));
-        }
-
-        // remove the connection
-        qwave_conctx_connection_dec (self);
-    }
-
-    // release aquired aio_item
-    qwave_conctx_connection_dec (self);
-}
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_size)
+static void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_size)
 {
     QWaveReqctx request_context = ptr;
 
@@ -351,8 +229,8 @@ void __STDCALL qwave_conctx__on_event (void* ptr, number_t pos, number_t queue_s
 
 //-----------------------------------------------------------------------------
 
-int qwave_conctx_read (QWaveConctx self)
-{    
+static int qwave_conctx_read (QWaveConctx self)
+{
     int ret = TRUE;
     int con = TRUE;
     
@@ -404,7 +282,7 @@ int qwave_conctx_read (QWaveConctx self)
                     cape_log_fmt (CAPE_LL_TRACE, "QWAVE", "read", "parser finished");
 
                     con = FALSE;
-                    ret = TRUE;                    
+                    ret = TRUE;
                 }
                 */
 
@@ -419,9 +297,9 @@ int qwave_conctx_read (QWaveConctx self)
                 ret = FALSE;
                 con = FALSE;
                 break;
-            }            
+            }
             case CAPE_ERR_CONTINUE:
-            {            
+            {
                 con = FALSE;
                 break;
             }
@@ -441,6 +319,199 @@ int qwave_conctx_read (QWaveConctx self)
 
 //-----------------------------------------------------------------------------
 
+void qwave_conctx_shutdown (QWaveConctx self, int shutdown_socket)
+{
+    if (0 == cape_thread_atomic_inc (&(self->connection_closed)))
+    {
+        CapeAioItem aio_item = qwave_conctx_connection_inc (self);
+
+        if (aio_item)
+        {
+            if (shutdown_socket)
+            {
+                // close write part of the socket
+                cape_sock__shutdown (cape_aio_item_get (aio_item));
+            }
+
+            // remove the connection
+            qwave_conctx_connection_dec (self);
+        }
+
+        // release aquired aio_item
+        qwave_conctx_connection_dec (self);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL qwave_conctx__on_request (void* user_ptr, CapeAioItem item)
+{
+    QWaveConctx ctx = user_ptr;
+    
+    if (qwave_conctx_read (ctx))
+    {
+        return TRUE;
+    }
+    else
+    {
+        // if read failed we don't need a shutdown
+        // TODO: use the return value to close connection
+        qwave_conctx_shutdown (ctx, FALSE);
+
+        return FALSE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL qwave_server__on_ready_sent (void* user_ptr, CapeAioItem item)
+{
+    qwave_conctx__on_ready (user_ptr, item);
+}
+
+//-----------------------------------------------------------------------------
+
+// this method is called when the AIO item was removed from the AIO subsystem
+static void __STDCALL qwave_server__on_drop (void* user_ptr, CapeAioItem item)
+{
+    qwave_conctx__on_close (user_ptr, item);
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL qwave_server__on_upgrade (QWaveConctx ctx, CapeAioItem aio_item)
+{
+    // TODO: use also the send callback
+}
+
+//-----------------------------------------------------------------------------
+
+QWaveConctx qwave_conctx_new (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem event, const CapeString remote_address)
+{
+    QWaveConctx self = CAPE_NEW (struct QWaveConctx_s);
+    
+    self->config = config;
+    self->response =response;
+    self->queue = queue;
+    self->aio = aio;
+    
+    self->reference_counter = 1;
+    
+    self->buffer = cape_stream_new ();
+    cape_stream_cap (self->buffer, QWAVE_BUFFER_SIZE);
+    
+    self->connection_aio_item = event;
+    self->connection_counter = 0;
+    self->connection_closed = 0;
+    
+    self->remote_address = cape_str_cp (remote_address);
+
+    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
+    self->ws_masking_key = NULL;
+    
+    http_parser_init (&(self->parser), HTTP_REQUEST);
+    
+    // initialize the HTTP parser
+    http_parser_settings_init (&(self->settings));
+    
+    // set some callbacks
+    self->settings.on_message_begin = qwave_conctx__internal__on_message_begin;
+    self->settings.on_url = qwave_conctx__internal__on_url;
+    self->settings.on_status = NULL;
+    self->settings.on_header_field = qwave_conctx__internal__on_header_field;
+    self->settings.on_header_value = qwave_conctx__internal__on_header_value;
+    self->settings.on_headers_complete = NULL;
+    self->settings.on_body = qwave_conctx__internal__on_body;
+    self->settings.on_message_complete = qwave_conctx__internal__on_message_complete;
+    self->settings.on_chunk_header = NULL;
+    self->settings.on_chunk_complete = NULL;
+    
+    self->parser.data = NULL;
+        
+    self->ws_user_ptr = NULL;
+    self->ws_on_upgrade = NULL;
+    
+    self->ws_conn_ptr = NULL;
+    self->ws_on_message = NULL;
+    self->ws_on_destroy = NULL;
+    
+    // set the callbacks
+    // transfer the responsiblity of the ownership of conctx to
+    // the AIO system, qwave_server__on_drop will be called
+    cape_aio_item_set (self->connection_aio_item, self, qwave_conctx__on_request, qwave_server__on_ready_sent, qwave_server__on_drop);
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_del (QWaveConctx* p_self)
+{
+    if (*p_self)
+    {
+        QWaveConctx self = *p_self;
+        
+        if (self->ws_on_destroy)
+        {
+            self->ws_on_destroy (self->ws_conn_ptr);
+        }
+        
+        cape_str_del (&(self->remote_address));        
+        cape_str_del (&(self->ws_masking_key));
+        cape_stream_del (&(self->buffer));
+        
+        CAPE_DEL (p_self, struct QWaveConctx_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+QWaveConctx qwave_conctx_inc (QWaveConctx self)
+{
+    cape_thread_atomic_inc(&(self->reference_counter));
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_dec (QWaveConctx* p_self)
+{
+    if (*p_self)
+    {
+        QWaveConctx self = *p_self;
+
+        if (1 == cape_thread_atomic_dec (&(self->reference_counter)))
+        {
+            qwave_conctx_del (p_self);
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx__on_ready (QWaveConctx self, CapeAioItem item)
+{
+    
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx__on_close (QWaveConctx self, CapeAioItem item)
+{
+    void* handle_remote_connection = cape_aio_item_get (item);
+
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
+
+    // close physical tcp connection
+    cape_sock__close (handle_remote_connection);
+    
+    // decrease usage of the context
+    qwave_conctx_dec (&self);
+}
+
+//-----------------------------------------------------------------------------
+
 int qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
 {
     int ret = TRUE;
@@ -456,7 +527,7 @@ int qwave_conctx_send (QWaveConctx self, CapeStream* p_output)
 
     if (aio_item)
     {
-        res = cape_sock__send (cape_aio_item_get (self->connection_aio_item), s, err);
+        res = cape_sock__send (cape_aio_item_get (aio_item), s, err);
         if (res)
         {
             ret = FALSE;
@@ -514,62 +585,6 @@ int qwave_conctx_send_file (QWaveConctx self, const CapeString site, const CapeS
     cape_err_del (&err);
 
     return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void qwave_conctx_upgrade (QWaveConctx self, const CapeString key)
-{
-    // local objects
-    CapeErr err = cape_err_new ();
-    CapeString accept_key__text = NULL;
-    CapeStream accept_key__hash = NULL;
-    CapeString accept_key = NULL;
-    
-    // see RFC, concat the defined UUID as accept key
-    accept_key__text = cape_str_catenate_2 (key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    
-    // hash the accept key
-    accept_key__hash = qcrypt__hash_sha__bin_o  (accept_key__text, cape_str_size (accept_key__text), err);
-    
-    if (NULL == accept_key__hash)
-    {
-        cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "can't create hash for the accept-key");
-        
-    }
-    
-    accept_key = qcrypt__encode_base64_m (accept_key__hash);
-    
-    {
-        CapeStream s = cape_stream_new ();
-        
-        qwave_response_upgrade (self->response, s, accept_key);
-        
-        // send the response to the client (browser)
-        qwave_conctx_send (self, &s);
-    }
-
-    // call the user defined upgrade function to set a connection pointer
-    if (self->ws_on_upgrade)
-    {
-        // the method will return the connection user pointer
-        self->ws_conn_ptr = self->ws_on_upgrade (self->ws_user_ptr, self, self->remote_address);
-    }
-    
-    // reset values
-    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
-    cape_stream_clr (self->buffer);
-    
-    // reset the callbacks
-    if (self->on_upgrade)
-    {
-        self->on_upgrade (self, self->connection_aio_item);
-    }
-    
-    cape_str_del (&accept_key);
-    cape_stream_del (&accept_key__hash);
-    cape_str_del (&accept_key__text);
-    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
@@ -858,7 +873,7 @@ int qwave_conctx_ws__handle_protocol (QWaveConctx self, CapeCursor cursor)
 
     if (FALSE == continue_reading)
     {
-        qwave_conctx_close (self, TRUE);
+        qwave_conctx_shutdown (self, TRUE);
     }
 
     return continue_reading;
@@ -878,7 +893,7 @@ void qwave_conctx_ws_cb (QWaveConctx self, void* user_ptr, fct_qwave__on_ws_upgr
 
 //-----------------------------------------------------------------------------
 
-void qwave_conctx_ws_read (QWaveConctx self)
+static void qwave_conctx_ws_read (QWaveConctx self)
 {
     int read = TRUE;
     
@@ -929,6 +944,88 @@ void qwave_conctx_ws_read (QWaveConctx self)
 void qwave_conctx_ws_send (QWaveConctx self, const char* bufdat, number_t buflen)
 {
     qwave_conctx_ws__send_frame (self, RFC_WEBSOCKET_FRAME__TEXT, bufdat, buflen);
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL qwave_conctx__ws_recv (void* user_ptr, CapeAioItem item)
+{
+    QWaveConctx ctx = user_ptr;
+    
+    qwave_conctx_ws_read (ctx);
+
+    return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+// this method is called when the AIO item was removed from the AIO subsystem
+static void __STDCALL qwave_conctx__ws_done (void* user_ptr, CapeAioItem item)
+{
+    QWaveConctx ctx = user_ptr;
+    
+    void* handle_remote_connection = cape_aio_item_get (item);
+    
+    cape_log_fmt (CAPE_LL_DEBUG, "QWAVE", "accept", "connection shutdown on fd [%li]", handle_remote_connection);
+    
+    // close physical tcp connection
+    cape_sock__close (handle_remote_connection);
+    
+    // decrease usage of the context
+    qwave_conctx_dec (&ctx);
+}
+
+//-----------------------------------------------------------------------------
+
+void qwave_conctx_upgrade (QWaveConctx self, const CapeString key)
+{
+    // local objects
+    CapeErr err = cape_err_new ();
+    CapeString accept_key__text = NULL;
+    CapeStream accept_key__hash = NULL;
+    CapeString accept_key = NULL;
+    
+    // see RFC, concat the defined UUID as accept key
+    accept_key__text = cape_str_catenate_2 (key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    
+    // hash the accept key
+    accept_key__hash = qcrypt__hash_sha__bin_o  (accept_key__text, cape_str_size (accept_key__text), err);
+    
+    if (NULL == accept_key__hash)
+    {
+        cape_log_msg (CAPE_LL_WARN, "QWEBS", "on upgrade", "can't create hash for the accept-key");
+        
+    }
+    
+    accept_key = qcrypt__encode_base64_m (accept_key__hash);
+    
+    {
+        CapeStream s = cape_stream_new ();
+        
+        qwave_response_upgrade (self->response, s, accept_key);
+        
+        // send the response to the client (browser)
+        qwave_conctx_send (self, &s);
+    }
+
+    // call the user defined upgrade function to set a connection pointer
+    if (self->ws_on_upgrade)
+    {
+        // the method will return the connection user pointer
+        self->ws_conn_ptr = self->ws_on_upgrade (self->ws_user_ptr, self, self->remote_address);
+    }
+    
+    // reset values
+    self->ws_state = QWAVE_PROT_WEBSOCKET_RECV__NONE;
+    cape_stream_clr (self->buffer);
+    
+    // reset the callbacks
+    cape_aio_item_set (self->connection_aio_item, (void*)self, qwave_conctx__ws_recv, NULL, qwave_conctx__ws_done);
+
+    cape_str_del (&accept_key);
+    cape_stream_del (&accept_key__hash);
+    cape_str_del (&accept_key__text);
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------

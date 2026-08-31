@@ -21,23 +21,23 @@ typedef void     (__STDCALL *fct_qwave__on_upgrade)      (QWaveConctx, CapeAioIt
 //-----------------------------------------------------------------------------
 
                                     /* constructor: create a new instance of the qwave class */
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, const CapeString remote_address, fct_qwave__on_upgrade);
-
-__CAPE_LOCAL     QWaveConctx        qwave_conctx_inc            (QWaveConctx);
-
-__CAPE_LOCAL     void               qwave_conctx_dec            (QWaveConctx*);
+__CAPE_LOCAL     QWaveConctx        qwave_conctx_new            (QWaveConfig config, QWaveResponse response, CapeQueue queue, CapeAio aio, CapeAioItem aio_item, const CapeString remote_address);
 
 //-----------------------------------------------------------------------------
 
-__CAPE_LOCAL     void               qwave_conctx_close          (QWaveConctx, int shutdown);
-
-__CAPE_LOCAL     int                qwave_conctx_read           (QWaveConctx);
+__CAPE_LOCAL     void               qwave_conctx_shutdown       (QWaveConctx, int shutdown);
 
 __CAPE_LOCAL     int                qwave_conctx_send           (QWaveConctx, CapeStream* p_output);
 
 __CAPE_LOCAL     int                qwave_conctx_send_file      (QWaveConctx, const CapeString site, const CapeString path, int keep_alive);
 
 __CAPE_LOCAL     void               qwave_conctx_upgrade        (QWaveConctx, const CapeString accept_key);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LOCAL     void               qwave_conctx__on_ready      (QWaveConctx, CapeAioItem item);
+
+__CAPE_LOCAL     void               qwave_conctx__on_close      (QWaveConctx, CapeAioItem item);
 
 //-----------------------------------------------------------------------------
 
@@ -53,8 +53,6 @@ typedef void    (__STDCALL *fct_qwave__on_ws_destroy)        (void* conn_ptr);
 //-----------------------------------------------------------------------------
 
 __CAPE_LOCAL     void               qwave_conctx_ws_cb          (QWaveConctx, void* user_ptr, fct_qwave__on_ws_upgrade, fct_qwave__on_ws_message, fct_qwave__on_ws_destroy);
-
-__CAPE_LOCAL     void               qwave_conctx_ws_read        (QWaveConctx);
 
 __CAPE_LOCAL     void               qwave_conctx_ws_send        (QWaveConctx, const char* bufdat, number_t buflen);
 
