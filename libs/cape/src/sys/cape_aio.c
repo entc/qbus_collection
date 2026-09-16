@@ -6,7 +6,13 @@
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/timers.h>
+
+#elif defined(__LINUX_OS)
 
 #include <signal.h>
 #include <errno.h>
@@ -15,19 +21,21 @@
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
 
-#elif defined __BSD_OS
+#elif defined(__BSD_OS)
 
 #include <unistd.h>
 #include <sys/event.h>
 #include <errno.h>
 #include <signal.h>
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(__WINDOWS_OS)
 
 #include <ws2tcpip.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
+
+typedef struct CapeAioTimerCtx_s* CapeAioTimerCtx;
 
 //-----------------------------------------------------------------------------
 
@@ -39,13 +47,11 @@
 //-----------------------------------------------------------------------------
 
 #define CAPE_FDTYPE__USER_MANAGED              0
-#define CAPE_FDTYPE__TIMER_FD                  1
+#define CAPE_FDTYPE__TIMER                     1
 
 //-----------------------------------------------------------------------------
 
-typedef struct CapeAioTimerCtx_s* CapeAioTimerCtx;
-
-void  cape_aio_timer__del (CapeAioTimerCtx* p_self);
+void  cape_aio_timer__del (void** p_self);
 
 //-----------------------------------------------------------------------------
 
@@ -98,17 +104,21 @@ void cape_aio_item_del (CapeAioItem* p_self)
 
         switch (self->fd_type)
         {
-            case CAPE_FDTYPE__TIMER_FD:
+            case CAPE_FDTYPE__TIMER:
             {
- #if defined __LINUX_OS
-
-                close ((int)(number_t)self->handle);
-
- #elif defined _WIN64 || defined _WIN32
+#if defined(CAPE_USE_FREERTOS)
 
                 cape_aio_timer__del(&(self->handle));
 
- #endif
+#elif defined(__LINUX_OS)
+
+                close ((int)(number_t)self->handle);
+
+#elif defined(__WINDOWS_OS)
+
+                cape_aio_timer__del(&(self->handle));
+
+#endif
                 break;
             }
         }
@@ -141,7 +151,7 @@ int cape_aio_item__handle_fdtype__recv (CapeAioItem self)
 {
     switch (self->fd_type)
     {
-        case CAPE_FDTYPE__TIMER_FD:
+        case CAPE_FDTYPE__TIMER:
         {
 #if defined __LINUX_OS
 
@@ -235,25 +245,29 @@ int cape_aio_item__on_event (CapeAioItem self, int mode, number_t bytes_affected
 
 struct CapeAio_s
 {
-  int running;          // indicates the running status
-  CapeMap items;        // map of all added AIO items
+    int running;          // indicates the running status
+    CapeMap items;        // map of all added AIO items
   
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  int epoll_fd;
-  int signal_fd;
+    QueueHandle_t event_queue;
 
-  int smap[32];         // map for signal handling
-  sigset_t sigset;      // signal handling kernel set
+#elif defined(__LINUX_OS)
 
-#elif defined __BSD_OS
+    int epoll_fd;
+    int signal_fd;
+
+    int smap[32];         // map for signal handling
+    sigset_t sigset;      // signal handling kernel set
+
+#elif defined(__BSD_OS)
 
     int kq;
     CapeAioItem stop_item;    // fix a BUG in macosx kevent for NOTE_TRIGGER
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(__WINDOWS_OS)
 
-  HANDLE iocp;
+    HANDLE iocp;
 
 #endif
 };
@@ -271,37 +285,41 @@ void __STDCALL cape_aio__items__on_del (void* key, void* val)
 
 CapeAio cape_aio_new (void)
 {
-  CapeAio self = CAPE_NEW (struct CapeAio_s);
+    CapeAio self = CAPE_NEW (struct CapeAio_s);
 
-  self->running = TRUE;
-  self->items = cape_map_new (cape_map__compare__n, cape_aio__items__on_del, NULL);
+    self->running = TRUE;
+    self->items = cape_map_new (cape_map__compare__n, cape_aio__items__on_del, NULL);
   
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  self->epoll_fd = -1;
-  self->signal_fd = -1;
+    self->event_queue = NULL;
 
-  {
-    int i;
-    
-    for (i = 0; i < 32; i++)
+#elif defined(__LINUX_OS)
+
+    self->epoll_fd = -1;
+    self->signal_fd = -1;
+
     {
-      self->smap[i] = 0;
+        int i;
+    
+        for (i = 0; i < 32; i++)
+        {
+            self->smap[i] = 0;
+        }
     }
-  }
   
-#elif defined __BSD_OS
+#elif defined(__BSD_OS)
 
     self->kq = -1;
     self->stop_item = NULL;
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(__WINDOWS_OS)
 
-  self->iocp = NULL;
+    self->iocp = NULL;
 
 #endif
 
-  return self;
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -366,7 +384,37 @@ int __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, CapeAioIt
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
+
+//-----------------------------------------------------------------------------
+
+typedef struct
+{
+    int mode;
+    CapeAioItem item;
+
+} CapeAioEvent_s;
+
+//-----------------------------------------------------------------------------
+
+void cape_aio_timer__del (void** p_self)
+{
+    if (*p_self)
+    {
+        TimerHandle_t timer = (TimerHandle_t)*p_self;
+
+        if (xTimerDelete(timer, 0) != pdPASS)
+        {
+            // TODO: print error
+        }
+
+        *p_self = NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined __LINUX_OS
 
 //-----------------------------------------------------------------------------
 
@@ -836,7 +884,16 @@ int cape_aio_block_signals (CapeAio self, CapeErr err)
 
 int cape_aio_init (CapeAio self, CapeErr err)
 {
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
+
+    aio->event_queue = xQueueCreate (32, sizeof(CapeAioEvent_s));
+
+    if (NULL == aio->event_queue)
+    {
+        // error
+    }
+
+#elif defined __LINUX_OS
   
     self->epoll_fd = epoll_create1 (0);
 
@@ -958,7 +1015,50 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
         return NULL;
     }
 
-#if defined __LINUX_OS
+    if (interval_in_ms <= 0)
+    {
+        return NULL;
+    }
+
+#if defined(CAPE_USE_FREERTOS)
+
+    TickType_t ticks = pdMS_TO_TICKS(interval_in_ms);
+
+    if (ticks == 0)
+    {
+        ticks = 1;
+    }
+
+    {
+        // create the timer without ID
+        TimerHandle_t timer = xTimerCreate ("cape_aio", ticks, pdTRUE, NULL, cape_aio__timer_cb);
+
+        if (NULL == timer)
+        {
+            return NULL;
+        }
+
+        // create a new object for the timer handle
+        item = cape_aio_item_new ((void*)timer, CAPE_FDTYPE__TIMER);
+
+        // set the timer ID to CapeAioItem
+        vTimerSetTimerID (timer, (void*)item);
+
+        // add to items
+        cape_map_insert (self->items, (void*)item, NULL);
+
+        // start timer
+        if (xTimerStart (timer, 0) != pdPASS)
+        {
+            // TODO: add error print
+
+            // remove the item from items and free the timer
+            cape_aio_rm__item (self, &item);
+            retur NULL;
+        }
+    }
+
+#elif defined(__LINUX_OS)
 
     int fd = timerfd_create (CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (fd == -1)
@@ -984,13 +1084,15 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
     }
 
     // create a new object for the handler
-    item = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER_FD);
+    item = cape_aio_item_new ((void*)(number_t)fd, CAPE_FDTYPE__TIMER);
 
     if (cape_aio_set__mode (self, item, CAPE_AIO_MODE__TIMER, err))
     {
         cape_aio_item_del (&item);
         return NULL;
     }
+
+    cape_map_insert (self->items, (void*)item, NULL);
 
 #elif defined __BSD_OS
 
@@ -999,7 +1101,7 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
     g_timer_id++;
     
     // create a new object for the handler
-    item = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER_FD);
+    item = cape_aio_item_new ((void*)g_timer_id, CAPE_FDTYPE__TIMER);
 
     // add
     if (cape_aio__kevent_set (self, (int)(number_t)item->handle, EVFILT_TIMER, EV_ADD | EV_ENABLE, interval_in_ms, item, err))
@@ -1010,13 +1112,15 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
     
     item->mode_applied = CAPE_AIO_MODE__TIMER;
 
+    cape_map_insert (self->items, (void*)item, NULL);
+
 #elif defined _WIN64 || defined _WIN32
 
     // create a new timer
     CapeAioTimerCtx ctx = cape_aio_timer__new(self);
 
     // create a new object for the handler
-    ret = cape_aio_item_new ((void*)ctx, CAPE_FDTYPE__TIMER_FD);
+    ret = cape_aio_item_new ((void*)ctx, CAPE_FDTYPE__TIMER);
 
     if (cape_aio_timer__init (ctx, ret, interval_in_ms, err))
     {
@@ -1028,13 +1132,13 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
         return NULL;
     }
 
-#endif
-    
     if (item)
     {
         cape_map_insert (self->items, (void*)item, NULL);
     }
 
+#endif
+    
     cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio add", "new aio item was added {%p}", item);
 
     return item;
