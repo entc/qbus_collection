@@ -9,18 +9,12 @@
 #include "sys/cape_thread.h"
 #include "stc/cape_list.h"
 
-#if defined __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-#include <windows.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
-#elif defined __BSD_OS
-
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <dispatch/dispatch.h>
-
-#else
+#elif defined(__LINUX_OS)
 
 #include <unistd.h>
 #include <sys/ipc.h>
@@ -28,6 +22,17 @@
 #include <semaphore.h>
 #include <errno.h>
 #include <time.h>
+
+#elif defined(__BSD_OS)
+
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <dispatch/dispatch.h>
+
+#elif defined(__WINDOWS_OS)
+
+#include <windows.h>
 
 #endif
 
@@ -240,20 +245,24 @@ struct CapeQueue_s
   
   CapeThread observer_thread;
   
-#if defined __WINDOWS_OS
+#if defined(__LINUX_OS)
 
-  HANDLE semaphore;
+    sem_t sem;    // semaphore structure
 
-#elif defined __BSD_OS
+#elif defined(__BSD_OS)
 
-  dispatch_semaphore_t sem;
-  
-#else
-  
-  sem_t sem;    // semaphore structure
+    dispatch_semaphore_t sem;
 
+#elif defined(__WINDOWS_OS)
+
+    HANDLE semaphore;
+
+#elif defined(CAPE_USE_FREERTOS)
+
+    SemaphoreHandle_t sem;
+    
 #endif
-  
+
   int terminated;
   
   number_t timeout_in_ds;   // timeout in deciseconds
@@ -324,47 +333,51 @@ void __STDCALL cape_queue__threads__on_del (void* ptr)
 
 CapeQueue cape_queue_new (number_t timeout_in_ms)
 {
-  CapeQueue self = CAPE_NEW (struct CapeQueue_s);
-  
-  // calculate the deciseconds
-  self->timeout_in_ds = timeout_in_ms / 100;
-  
-  self->mutex = cape_mutex_new ();
-
-#if defined __WINDOWS_OS
-
-  self->semaphore = CreateSemaphore (NULL, 0, 1000, NULL);
-
-#elif defined __BSD_OS
-
-  self->sem = dispatch_semaphore_create (0);
-  
-#else
-  
-  int res = sem_init (&(self->sem), 0, 0);
-
-  if (res == -1)
-  {
-    CapeErr err = cape_err_new ();
+    CapeQueue self = CAPE_NEW (struct CapeQueue_s);
     
-    cape_err_lastOSError (err);
+    // calculate the deciseconds
+    self->timeout_in_ds = timeout_in_ms / 100;
     
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue new", "can't initialize semaphore: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
-  }
+    self->mutex = cape_mutex_new ();
 
+#if defined(__LINUX_OS)
+
+    int res = sem_init (&(self->sem), 0, 0);
+
+    if (res == -1)
+    {
+        CapeErr err = cape_err_new ();
+        
+        cape_err_lastOSError (err);
+        
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue new", "can't initialize semaphore: %s", cape_err_text(err));
+        
+        cape_err_del (&err);
+    }
+
+#elif defined(__BSD_OS)
+
+    self->sem = dispatch_semaphore_create (0);
+
+#elif defined(__WINDOWS_OS)
+
+    self->semaphore = CreateSemaphore (NULL, 0, 1000, NULL);
+
+#elif defined(CAPE_USE_FREERTOS)
+
+    self->sem = xSemaphoreCreateCounting (1000, 0);
+    
 #endif
-  
-  self->terminated = FALSE;
-  
-  self->threads = cape_list_new (cape_queue__threads__on_del);
-  
-  self->queue = cape_list_new (cape_queue__item__on_del);
-  
-  self->observer_thread = cape_thread_new ();
-  
-  return self; 
+
+    self->terminated = FALSE;
+    
+    self->threads = cape_list_new (cape_queue__threads__on_del);
+    
+    self->queue = cape_list_new (cape_queue__item__on_del);
+    
+    self->observer_thread = cape_thread_new ();
+    
+    return self;
 }
 
 //-----------------------------------------------------------------------------
@@ -494,84 +507,90 @@ int cape_queue_pull (CapeQueue self, CapeThreadItem ti, int has_timeout)
 
 int cape_queue_next (CapeQueue self, CapeThreadItem ti)
 {
-  int timeout = FALSE;
-  
-  #if defined __WINDOWS_OS
-  
-  DWORD res = WaitForSingleObject (self->semaphore, INFINITE);
-  
-  if (res == WAIT_OBJECT_0)
-  {
-    printf ("QUEUE WAIT DONE\n");
+    int timeout = FALSE;
+
+#if defined(__LINUX_OS)
+
+    struct timespec ts;
     
-  }
-  else
-  {
-    CapeErr err = cape_err_new ();
-    
-    cape_err_lastOSError (err);
-    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
-  }
-  
-  #elif defined __BSD_OS
-  
-  dispatch_semaphore_wait (self->sem, dispatch_time (DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
-  
-  #else
-  
-  struct timespec ts;
-  
-  if (clock_gettime (CLOCK_REALTIME, &ts) == -1)
-  {
-    CapeErr err = cape_err_new ();
-    
-    cape_err_lastOSError (err);
-    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't get realtime clock: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
-    
-    return FALSE;
-  }
-  
-  ts.tv_sec += 5;
-  
-  int res = sem_timedwait (&(self->sem), &ts);
-  
-  if (res == -1)
-  {
-    switch (errno)
+    if (clock_gettime (CLOCK_REALTIME, &ts) == -1)
     {
-      case EINTR:
-      {        
-        return TRUE;
-      }
-      case ETIMEDOUT:
+      CapeErr err = cape_err_new ();
+      
+      cape_err_lastOSError (err);
+      
+      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't get realtime clock: %s", cape_err_text(err));
+      
+      cape_err_del (&err);
+      
+      return FALSE;
+    }
+    
+    ts.tv_sec += 5;
+    
+    int res = sem_timedwait (&(self->sem), &ts);
+    
+    if (res == -1)
+    {
+      switch (errno)
       {
-        timeout = TRUE;
-        break;
+        case EINTR:
+        {
+          return TRUE;
+        }
+        case ETIMEDOUT:
+        {
+          timeout = TRUE;
+          break;
+        }
+        default:
+        {
+          CapeErr err = cape_err_new ();
+          
+          cape_err_lastOSError (err);
+          
+          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme sem_wait: %s", cape_err_text(err));
+          
+          cape_err_del (&err);
+          
+          return FALSE;
+        }
       }
-      default:
-      {
+    }
+
+#elif defined(__BSD_OS)
+
+    dispatch_semaphore_wait (self->sem, dispatch_time (DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+
+#elif defined(__WINDOWS_OS)
+
+    DWORD res = WaitForSingleObject (self->semaphore, INFINITE);
+    
+    if (res == WAIT_OBJECT_0)
+    {
+        // done
+    }
+    else
+    {
         CapeErr err = cape_err_new ();
         
         cape_err_lastOSError (err);
         
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme sem_wait: %s", cape_err_text(err));
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
         
         cape_err_del (&err);
-        
-        return FALSE;
-      }
     }
-  }
-  
-  #endif
-  
-  return cape_queue_pull (self, ti, timeout);
+
+#elif defined(CAPE_USE_FREERTOS)
+
+    if (xSemaphoreTake (self->sem, pdMS_TO_TICKS (5000)) != pdTRUE)
+    {
+        timeout = TRUE;
+    }
+    
+#endif
+
+    return cape_queue_pull (self, ti, timeout);
 }
 
 //-----------------------------------------------------------------------------
@@ -695,45 +714,52 @@ int cape_queue_start  (CapeQueue self, number_t amount_of_threads, CapeErr err)
 
 void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, cape_queue_cb_fct on_done, cape_queue_cb_fct on_cancel, void* ptr, number_t pos)
 {
-  CapeQueueItem item = CAPE_NEW (struct CapeQueueItem_s);
-  
-  item->on_done = on_done;
-  item->on_event = on_event;
-  item->on_cancel = on_cancel;
-  item->ptr = ptr;
-  item->sync = sync;
-  item->pos = pos;
-  
-  cape_mutex_lock (self->mutex);
-  
-  cape_list_push_back (self->queue, item);
-  
-  cape_mutex_unlock (self->mutex);
-
-  cape_sync_inc (sync);
-  
-#if defined __WINDOWS_OS
-
-  // increase the count
-  if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
-  {
-    CapeErr err = cape_err_new ();
+    CapeQueueItem item = CAPE_NEW (struct CapeQueueItem_s);
     
-    cape_err_lastOSError (err);
-    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
-  }
+    item->on_done = on_done;
+    item->on_event = on_event;
+    item->on_cancel = on_cancel;
+    item->ptr = ptr;
+    item->sync = sync;
+    item->pos = pos;
 
-#elif defined __BSD_OS
+    // monitor
+    {
+        cape_mutex_lock (self->mutex);
+        
+        cape_list_push_back (self->queue, item);
+        
+        cape_mutex_unlock (self->mutex);
+    }
 
-  dispatch_semaphore_signal (self->sem);
-  
-#else
-  
-  sem_post (&(self->sem));
-  
+    cape_sync_inc (sync);
+
+#if defined(__LINUX_OS)
+
+    sem_post (&(self->sem));
+
+#elif defined(__BSD_OS)
+
+    dispatch_semaphore_signal (self->sem);
+
+#elif defined(__WINDOWS_OS)
+
+    // increase the count
+    if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
+    {
+        CapeErr err = cape_err_new ();
+        
+        cape_err_lastOSError (err);
+        
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
+        
+        cape_err_del (&err);
+    }
+
+#elif defined(CAPE_USE_FREERTOS)
+
+    xSemaphoreGive (self->sem);
+    
 #endif
 }
 
