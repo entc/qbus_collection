@@ -9,12 +9,7 @@
 #include "sys/cape_thread.h"
 #include "stc/cape_list.h"
 
-#if defined(CAPE_USE_FREERTOS)
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-
-#elif defined(__LINUX_OS)
+#if defined(__LINUX_OS)
 
 #include <unistd.h>
 #include <sys/ipc.h>
@@ -33,6 +28,11 @@
 #elif defined(__WINDOWS_OS)
 
 #include <windows.h>
+
+#elif defined(CAPE_USE_FREERTOS)
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 #endif
 
