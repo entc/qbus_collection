@@ -2,6 +2,7 @@
 #define __CAPE_TYPES__H 1
 
 #include <sys/cape_export.h>
+#include <stdint.h>
 
 #if defined __APPLE__
 
@@ -10,7 +11,7 @@
 #include <memory.h>
 
 #define u_t unsigned
-#define number_t long
+#define number_t intptr_t
 #define ul32_t uint32_t
 
 #elif defined __OpenBSD__
@@ -26,7 +27,7 @@
 #include <sys/types.h>
 
 #define u_t unsigned
-#define number_t long long
+#define number_t intptr_t
 #define ul32_t u_long  
 
 #else
@@ -37,7 +38,7 @@
 #include <memory.h>
 
 #define u_t unsigned
-#define number_t long
+#define number_t intptr_t
 #define ul32_t uint32_t  
 
 #endif

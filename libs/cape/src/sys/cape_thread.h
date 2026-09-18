@@ -41,6 +41,24 @@ __CAPE_LIBEX   number_t        cape_thread_concurrency     ();
 
 //-----------------------------------------------------------------------------
 
+struct CapeThreadPool_s; typedef struct CapeThreadPool_s* CapeThreadPool;
+
+//-----------------------------------------------------------------------------
+
+                               /* constructor */
+__CAPE_LIBEX   CapeThreadPool  cape_thread_pool_new        (void);
+
+                               /* destructor, stops all threads */
+__CAPE_LIBEX   void            cape_thread_pool_del        (CapeThreadPool*);
+
+                               /* starts all threads */
+__CAPE_LIBEX   void            cape_thread_pool_start      (CapeThreadPool, number_t amount, void* ptr, cape_thread_worker_fct);
+
+                               /* send a signal to all threads */
+__CAPE_LIBEX   void            cape_thread_pool_signal     (CapeThreadPool);
+
+//-----------------------------------------------------------------------------
+
                                /* atomic increase of p_var, returns the old value of p_var */
 __CAPE_LIBEX   number_t        cape_thread_atomic_inc      (number_t* p_var);
 
