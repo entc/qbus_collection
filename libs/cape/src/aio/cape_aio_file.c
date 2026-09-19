@@ -1,5 +1,7 @@
 #include "cape_aio_file.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 #if defined __BSD_OS || defined __LINUX_OS
 
 #include <memory.h>
@@ -123,3 +125,6 @@ int cape_aio_freader_add (CapeAioFileReader* p_self, CapeAioContext aio)
 }
 
 //-----------------------------------------------------------------------------
+
+#endif
+

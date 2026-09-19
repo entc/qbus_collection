@@ -4,6 +4,8 @@
 #include "sys/cape_export.h"
 #include "aio/cape_aio_ctx.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 //=============================================================================
 
 struct CapeAioFileReader_s; typedef struct CapeAioFileReader_s* CapeAioFileReader;
@@ -19,6 +21,8 @@ __CAPE_LIBEX   CapeAioFileReader  cape_aio_freader_new           (void* handle, 
 __CAPE_LIBEX   int                cape_aio_freader_add           (CapeAioFileReader*, CapeAioContext);
 
 //=============================================================================
+
+#endif
 
 #endif
 
