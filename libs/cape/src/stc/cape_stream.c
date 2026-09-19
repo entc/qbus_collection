@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <memory.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "cape_stream.h"
 #include "fmt/cape_dragon4.h"

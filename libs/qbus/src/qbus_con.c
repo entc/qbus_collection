@@ -9,6 +9,9 @@
 // qcrypt includes
 #include <qcrypt.h>
 
+// some extra c includes
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 struct QBusCon_s

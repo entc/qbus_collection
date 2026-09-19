@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <stdio.h>
 
 #elif defined _WIN64 || defined _WIN32
 

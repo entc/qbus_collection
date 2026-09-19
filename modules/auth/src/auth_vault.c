@@ -194,9 +194,7 @@ const CapeString auth_vault__vsec (AuthVault self, number_t wpid)
 void auth_vault__save (AuthVault self, number_t wpid, const CapeString vsec)
 {
   cape_mutex_lock (self->mutex);
-  
-    printf ("VSEC [%lu]: %s\n", cape_str_size (vsec), vsec);
-    
+      
   {
     CapeMapNode n = cape_map_find (self->contexts, (void*)wpid);
     

@@ -1,5 +1,8 @@
 #include "cape_types.h"
 
+// some extra headers
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 void* cape_alloc (number_t size)

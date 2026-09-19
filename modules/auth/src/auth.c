@@ -675,15 +675,7 @@ int __STDCALL auth_context__on_perm_event (QJobs jobs, QJobsEvent event, void* u
   AuthContext self = user_ptr;
   
   if (event->params)
-  {
-    {
-      CapeString h = cape_json_to_s (event->params);
-      
-      printf ("EVENT: %s\n", h);
-      
-      cape_str_del (&h);
-    }
-   
+  {   
     number_t apid = cape_udc_get_n (event->params, "apid", 0);
     if (apid)
     {

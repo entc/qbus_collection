@@ -7,6 +7,8 @@
 #include "sys/cape_err.h"
 #include "stc/cape_udc.h"
 
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 int main (int argc, char *argv[])

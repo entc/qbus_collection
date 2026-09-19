@@ -2,6 +2,8 @@
 
 #include <aio/cape_aio_ctx.h>
 
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 int main (int argc, char *argv[])

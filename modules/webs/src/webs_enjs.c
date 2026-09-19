@@ -174,12 +174,6 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
     {
       if (qin->cdata)
       {
-          {
-              CapeString h = cape_json_to_s (qin->cdata);
-              
-              printf ("CDATA: %s\n", h);
-          }
-          
         h1 = cape_json_to_s__ex (qin->cdata, qcrypt__stream_base64_encode);
         if (h1 == NULL)
         {

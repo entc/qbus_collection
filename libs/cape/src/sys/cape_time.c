@@ -4,6 +4,9 @@
 #include "fmt/cape_tokenizer.h"
 #include "sys/cape_log.h"
 
+// some extra c includes
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 #if defined __LINUX_OS || defined __BSD_OS

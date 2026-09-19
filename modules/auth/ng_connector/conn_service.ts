@@ -206,16 +206,29 @@ type RpcEvent<T> =
   {
       if (sitem)
       {
-          const bearer = await this.qcrypt.header_base64 (sitem);
+          const bearer = await this.qcrypt.header_base64(sitem);
+          try
+          {
+              const params = await this.qcrypt.encrypt_object(sitem, qbus_params);
 
-          return {
+              return {
+              url: 'enjs/' + qbus_module + '/' + qbus_method,
+              header: new HttpHeaders({
+                  Authorization: 'Bearer ' + bearer,
+                  'Cache-Control': 'no-cache',
+                  Pragma: 'no-cache'
+              }),
+              params,
+              vsec: sitem.vsec
+          };
 
-            url: 'enjs/' + qbus_module + '/' + qbus_method,
-            header: new HttpHeaders ({'Authorization': "Bearer " + bearer, 'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}),
-            params: await this.qcrypt.encrypt_object (sitem, qbus_params),
-            vsec: sitem.vsec
+          }
+          catch (err)
+          {
+              console.error('encrypt_object failed', err);
+              throw err;
+          }
 
-          } as AuthEnjs;
       }
 
       return {
@@ -237,6 +250,8 @@ type RpcEvent<T> =
       const headers: HttpHeaders = error.headers;
       const warning = headers.get('warning');
 
+      console.log('catched error');
+
       if (warning)
       {
         var i = warning.indexOf(',');
@@ -256,7 +271,8 @@ type RpcEvent<T> =
   {
       return from(this.construct_enjs(sitem, stoken, qbus_module, qbus_method, qbus_cdata)).pipe(switchMap((enjs: AuthEnjs) =>
 
-          this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
+        {
+          return this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
 
               if (event.type !== HttpEventType.Response)
               {
@@ -277,7 +293,10 @@ type RpcEvent<T> =
 
               return of(JSON.parse(body) as T);
 
-          }))
+          }));
+
+        }
+
 
       ));
   }

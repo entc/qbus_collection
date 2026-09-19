@@ -10,6 +10,8 @@
 // qcrypt includes
 #include <qcrypt_file.h>
 
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 struct ClddCtx_s

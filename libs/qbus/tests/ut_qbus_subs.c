@@ -6,6 +6,8 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_mutex.h>
 
+#include <stdio.h>
+
 #define WAIT_AFTER_INIT 1000
 
 CapeMutex mutex = NULL;

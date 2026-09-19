@@ -3,6 +3,8 @@
 #include <sys/cape_socket.h>
 #include <sys/cape_time.h>
 
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 static int __STDCALL cape_aio_timer__on_event (void* ptr)

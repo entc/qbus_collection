@@ -8,6 +8,8 @@
 #include <sys/cape_dl.h>
 #include <fmt/cape_json.h>
 
+#include <stdio.h>
+
 //-----------------------------------------------------------------------------
 
 struct QBusRouteItem_s

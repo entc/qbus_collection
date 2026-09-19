@@ -16,6 +16,7 @@
 
 // regular expression
 #include <pcre.h>
+#include <stdio.h>
 
 #define MSGD_REGEX_SUBSTR_MAXAMOUNT 12
 

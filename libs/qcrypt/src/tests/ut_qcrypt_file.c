@@ -40,8 +40,6 @@ int main (int argc, char *argv[])
     
     if (FALSE == cape_str_equal (h, "c33f142aea8e46ad1f0fb769ed4a2521"))
     {
-      printf ("MD5: %s\n", h);
-      
       res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "md5 mismatch");
       goto exit_and_cleanup;
     }
@@ -62,8 +60,6 @@ int main (int argc, char *argv[])
     
     if (FALSE == cape_str_equal (h, "766cb54fc30b4d64d8294715c824ff8ce7304b6edb863347b1bca99b05573614"))
     {
-			printf("SHA256: %s\n", h);
-
       res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "sha256 mismatch");
       goto exit_and_cleanup;
     }
