@@ -1,54 +1,8 @@
 #include "cape_btrace.h"
 
-#if defined __WINDOWS_OS
-
-#include <windows.h>
-#include <Dbghelp.h>
-
-#pragma comment(lib, "Dbghelp.lib")
+#if defined(__LINUX_OS)
 
 //-----------------------------------------------------------------------------
-
-static LONG WINAPI cape_btrace_hdlr (struct _EXCEPTION_POINTERS* ptrs)
-{
-  if (0 != ptrs)
-  {
-    // open the minidump file
-    HANDLE fh = CreateFile ("minidump.dmp", GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-
-    if (INVALID_HANDLE_VALUE != fh)
-    {
-      MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
-
-      exceptionInfo.ThreadId = GetCurrentThreadId ();
-      exceptionInfo.ExceptionPointers = ptrs;
-      exceptionInfo.ClientPointers = FALSE;
-
-      // write the minidup into the file
-      MiniDumpWriteDump (GetCurrentProcess (), GetCurrentProcessId (), fh, MiniDumpNormal, &exceptionInfo, 0, 0);
-
-      // close the file
-      CloseHandle (fh);
-    }
-
-    MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
-  }
-
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_btrace_activate (CapeErr err)
-{
-  SetUnhandledExceptionFilter (cape_btrace_hdlr);
-
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
-#else
 
 #include <signal.h>
 #include <execinfo.h>
@@ -166,6 +120,80 @@ int cape_btrace_activate (CapeErr err)
 exit_and_cleanup:
   
   return res;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__BSD_OS)
+
+//-----------------------------------------------------------------------------
+
+int cape_btrace_activate (CapeErr err)
+{
+    // not supported
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__WINDOWS_OS)
+
+//-----------------------------------------------------------------------------
+
+#include <windows.h>
+#include <Dbghelp.h>
+
+#pragma comment(lib, "Dbghelp.lib")
+
+//-----------------------------------------------------------------------------
+
+static LONG WINAPI cape_btrace_hdlr (struct _EXCEPTION_POINTERS* ptrs)
+{
+  if (0 != ptrs)
+  {
+    // open the minidump file
+    HANDLE fh = CreateFile ("minidump.dmp", GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+    if (INVALID_HANDLE_VALUE != fh)
+    {
+      MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+
+      exceptionInfo.ThreadId = GetCurrentThreadId ();
+      exceptionInfo.ExceptionPointers = ptrs;
+      exceptionInfo.ClientPointers = FALSE;
+
+      // write the minidup into the file
+      MiniDumpWriteDump (GetCurrentProcess (), GetCurrentProcessId (), fh, MiniDumpNormal, &exceptionInfo, 0, 0);
+
+      // close the file
+      CloseHandle (fh);
+    }
+
+    MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+  }
+
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_btrace_activate (CapeErr err)
+{
+  SetUnhandledExceptionFilter (cape_btrace_hdlr);
+
+  return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(CAPE_USE_FREERTOS)
+
+//-----------------------------------------------------------------------------
+
+int cape_btrace_activate (CapeErr err)
+{
+    // not supported
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
