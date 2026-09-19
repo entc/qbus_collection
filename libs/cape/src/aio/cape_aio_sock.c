@@ -1,4 +1,7 @@
 #include "cape_aio_sock.h"
+
+#if !defined(CAPE_USE_FREERTOS)
+
 #include "cape_aio_ctx.h"
 #include "cape_aio_timer.h"
 
@@ -2747,3 +2750,5 @@ int cape_aio_socket_cache_active (CapeAioSocketCache self)
 }
 
 //-----------------------------------------------------------------------------
+
+#endif

@@ -1,5 +1,7 @@
 #include "cape_aio_ctx.h" 
 
+#if !defined(CAPE_USE_FREERTOS)
+
 // CAPE includes
 #include "sys/cape_types.h"
 #include "sys/cape_err.h"
@@ -1481,5 +1483,7 @@ int cape_aio_context_set_interupts (CapeAioContext self, int sigint, int term, C
 }
 
 //-----------------------------------------------------------------------------
+
+#endif
 
 #endif

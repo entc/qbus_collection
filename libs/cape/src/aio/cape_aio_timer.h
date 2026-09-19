@@ -5,6 +5,8 @@
 #include "sys/cape_err.h"
 #include "aio/cape_aio_ctx.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 //=============================================================================
 
 struct CapeAioTimer_s; typedef struct CapeAioTimer_s* CapeAioTimer;
@@ -23,4 +25,5 @@ __CAPE_LIBEX   int                cape_aio_timer_set            (CapeAioTimer, l
 
 //=============================================================================
 
+#endif
 #endif

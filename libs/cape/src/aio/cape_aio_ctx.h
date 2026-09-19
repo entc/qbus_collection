@@ -5,6 +5,8 @@
 #include "sys/cape_types.h"
 #include "sys/cape_err.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 //=============================================================================
 
 struct CapeAioHandle_s; typedef struct CapeAioHandle_s* CapeAioHandle;
@@ -72,5 +74,7 @@ __CAPE_LIBEX   void              cape_aio_context_tcb           (CapeAioContext,
 __CAPE_LIBEX   int               cape_aio_context_set_interupts (CapeAioContext, int sigint, int term, CapeErr);
 
 //=============================================================================
+
+#endif
 
 #endif

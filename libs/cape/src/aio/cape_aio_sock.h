@@ -8,6 +8,8 @@
 #include "aio/cape_aio_ctx.h"
 #include "stc/cape_stream.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 #include <sys/types.h>
 
 //=============================================================================
@@ -171,4 +173,5 @@ __CAPE_LIBEX  int                 cape_aio_socket_cache_simp    (CapeAioSocketCa
 
 //=============================================================================
 
+#endif
 #endif

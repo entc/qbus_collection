@@ -1,5 +1,7 @@
 #include "cape_aio_timer.h"
 
+#if !defined(CAPE_USE_FREERTOS)
+
 #include "sys/cape_types.h"
 #include "sys/cape_log.h"
 
@@ -360,3 +362,5 @@ int cape_aio_timer_set (CapeAioTimer self, long inMs, void* ptr, fct_cape_aio_ti
 #endif
 
 //-----------------------------------------------------------------------------
+
+#endif
