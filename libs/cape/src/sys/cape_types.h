@@ -47,58 +47,13 @@
 
 //-----------------------------------------------------------------------------
 
-static void* cape_alloc (number_t size)
-{
-  void* ptr = malloc (size);
+void* cape_alloc (number_t size);
 
-  if (ptr == NULL)
-  {
-    // write some last words
-    printf ("*** FATAL *** CAN't ALLOCATE MEMORY *** FATAL ***\n");
+void* cape_calloc (number_t count, number_t size);
 
-    // abort everything
-    abort ();
-  }
+void cape_free (void* ptr);
 
-  memset (ptr, 0, size);
-
-  return ptr;
-}
-
-//-----------------------------------------------------------------------------
-
-static void* cape_calloc (number_t count, number_t size)
-{
-    void* ptr = calloc (count, size);
-
-    if (ptr == NULL)
-    {
-        // write some last words
-        printf("*** FATAL *** CAN't ALLOCATE MEMORY *** FATAL ***\n");
-
-        // abort everything
-        abort();
-    }
-
-    return ptr;
-}
-
-//-----------------------------------------------------------------------------
-
-static void cape_free (void* ptr)
-{
-  free (ptr);
-}
-
-//-----------------------------------------------------------------------------
-
-static void* cape_mv (void** p_ptr)
-{
-    void* tmp = *p_ptr;
-    *p_ptr = NULL;
-    
-    return tmp;
-}
+void* cape_mv (void** p_ptr);
 
 //-----------------------------------------------------------------------------
 
