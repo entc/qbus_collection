@@ -5,6 +5,22 @@
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
 
+#if defined(CAPE_USE_FREERTOS)
+
+#include <lwip/sockets.h>
+#include <lwip/netdb.h>
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+#include <netdb.h>
+
+#elif defined(__WINDOWS_OS)
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#endif
+
 //-----------------------------------------------------------------------------
 
                                   /* constructor */
