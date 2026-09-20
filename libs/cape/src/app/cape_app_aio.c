@@ -14,6 +14,9 @@
 
 int main (int argc, char *argv[])
 {
+#if !defined(CAPE_USE_FREERTOS)
+
+    
   int res;
   
   CapeErr err = cape_err_new();
@@ -53,7 +56,9 @@ int main (int argc, char *argv[])
   cape_aio_context_del (&aio);
 
   cape_err_del (&err);
-  
+
+#endif
+    
   return 0;
 }
 
