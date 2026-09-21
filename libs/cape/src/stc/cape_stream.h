@@ -9,7 +9,7 @@
 
 //=============================================================================
 
-struct CapeStream_s; typedef struct CapeStream_s* CapeStream;
+struct CapeStream_s; typedef struct CapeStream_s* CapeStream; typedef const struct CapeStream_s* const_CapeStream;
 
 //-----------------------------------------------------------------------------
 

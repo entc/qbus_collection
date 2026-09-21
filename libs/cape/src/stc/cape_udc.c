@@ -1844,7 +1844,7 @@ CapeList cape_udc_list_mv (CapeUdc self)
 
 //-----------------------------------------------------------------------------
 
-const CapeStream cape_udc_m (CapeUdc self)
+const_CapeStream cape_udc_m (CapeUdc self)
 {
   switch (self->type)
   {
@@ -2111,7 +2111,7 @@ const CapeDatetime* cape_udc_get_d (CapeUdc self, const CapeString name, const C
 
 //-----------------------------------------------------------------------------
 
-const CapeStream cape_udc_get_m (CapeUdc self, const CapeString name)
+const_CapeStream cape_udc_get_m (CapeUdc self, const CapeString name)
 {
   CapeUdc h = cape_udc_get (self, name);
 

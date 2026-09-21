@@ -128,7 +128,7 @@ __CAPE_LIBEX   CapeDatetime*        cape_udc_d_mv             (CapeUdc, const Ca
 
 __CAPE_LIBEX   CapeList             cape_udc_list_mv          (CapeUdc);
 
-__CAPE_LIBEX   const CapeStream     cape_udc_m                (CapeUdc);
+__CAPE_LIBEX   const_CapeStream     cape_udc_m                (CapeUdc);
 
 __CAPE_LIBEX   CapeStream           cape_udc_m_mv             (CapeUdc);
 
@@ -176,7 +176,7 @@ __CAPE_LIBEX   int                  cape_udc_get_b            (CapeUdc, const Ca
 
 __CAPE_LIBEX   const CapeDatetime*  cape_udc_get_d            (CapeUdc, const CapeString name, const CapeDatetime* alt);
 
-__CAPE_LIBEX   const CapeStream     cape_udc_get_m            (CapeUdc, const CapeString name);
+__CAPE_LIBEX   const_CapeStream     cape_udc_get_m            (CapeUdc, const CapeString name);
 
 __CAPE_LIBEX   CapeUdc              cape_udc_get_node         (CapeUdc, const CapeString name);
 
