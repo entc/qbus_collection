@@ -571,7 +571,7 @@ int qtee_template_tag_apply (QTeePart self, CapeList node_stack, QTeeTemplateCB 
         }
         else
         {
-            qtee_template_cb__m (cb, self->format, cape_udc_m (found_item));
+            qtee_template_cb__m (cb, self->format, (const CapeStream)cape_udc_m (found_item));
         }
       }
     }
