@@ -331,6 +331,8 @@ struct CapeThread_s
 
     TaskHandle_t task;
     SemaphoreHandle_t done;
+
+    cape_thread_on_done on_done;
 };
 
 //-----------------------------------------------------------------------------------
@@ -346,6 +348,8 @@ CapeThread cape_thread_new (void)
 
     self->task = NULL;
     self->done = xSemaphoreCreateBinary();
+    
+    self->done = NULL;
 
     return self;
 }
@@ -469,6 +473,13 @@ void cape_thread_signal (CapeThread self)
 
 void cape_thread_nosignals()
 {
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_thread_cb (CapeThread self, cape_thread_on_done on_done)
+{
+  self->on_done = on_done;
 }
 
 //-----------------------------------------------------------------------------------
