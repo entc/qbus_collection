@@ -886,9 +886,9 @@ int cape_aio_init (CapeAio self, CapeErr err)
 {
 #if defined(CAPE_USE_FREERTOS)
 
-    aio->event_queue = xQueueCreate (32, sizeof(CapeAioEvent_s));
+    self->event_queue = xQueueCreate (32, sizeof(CapeAioEvent_s));
 
-    if (NULL == aio->event_queue)
+    if (NULL == self->event_queue)
     {
         // error
     }
