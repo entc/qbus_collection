@@ -630,7 +630,7 @@ void cape_json_fill (CapeStream stream, const CapeUdc node, number_t max_bytes, 
     }
     case CAPE_UDC_STREAM:
     {
-      const CapeStream s = cape_udc_m (node);
+      const CapeStream s = (const CapeStream)cape_udc_m (node);
       
       CapeString h = cape_stream_serialize (s, cb_encode);
       if (h)
@@ -777,7 +777,7 @@ void cape_json_fill__strict (CapeStream stream, const CapeUdc node, const CapeSt
       cape_json_fill__strict_name (stream, name, comma);
       
       {
-        const CapeStream s = cape_udc_m (node);
+        const CapeStream s = (const CapeStream)cape_udc_m (node);
         
         CapeString h = cape_stream_serialize (s, cb_encode);
         if (h)
