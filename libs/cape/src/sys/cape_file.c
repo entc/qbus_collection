@@ -8,12 +8,10 @@
 
 //-----------------------------------------------------------------------------
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-#include <windows.h>
-#include <shlwapi.h>
 
-#elif defined __LINUX_OS
+#elif defined(__LINUX_OS)
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -25,13 +23,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#elif defined __BSD_OS
-
-#if defined __APPLE__
-
-#include <copyfile.h>
-
-#endif
+#elif defined(__BSD_OS)
 
 #include <unistd.h>
 #include <limits.h>
@@ -40,6 +32,16 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fts.h>
+
+// special case MacOSX
+#if defined __APPLE__
+#include <copyfile.h>
+#endif
+
+#elif defined(__WINDOWS_OS)
+
+#include <windows.h>
+#include <shlwapi.h>
 
 #endif
 
@@ -102,20 +104,25 @@ CapeString cape_fs_path_reduce (const char* path)
 
 int cape_fs_is_relative (const char* filepath)
 {
-  if (filepath == NULL)
-  {
-    return TRUE;
-  }
+    if (filepath == NULL)
+    {
+        return TRUE;
+    }
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  // use windows API
-  return PathIsRelative (filepath);
+    // trivial approach: check if first character is the separator
+    return (*filepath != CAPE_FS_FOLDER_SEP);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  // trivial approach: check if first character is the separator
-  return (*filepath != CAPE_FS_FOLDER_SEP);
+    // trivial approach: check if first character is the separator
+    return (*filepath != CAPE_FS_FOLDER_SEP);
+
+#elif defined(__WINDOWS_OS)
+
+    // use windows API
+    return PathIsRelative (filepath);
 
 #endif
 }
@@ -124,103 +131,301 @@ int cape_fs_is_relative (const char* filepath)
 
 CapeString cape_fs_path_current (const char* filepath)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  char* ret = CAPE_ALLOC (MAX_PATH + 1);
-  DWORD dwRet;
+    char* ret = CAPE_ALLOC (2);
+    
+    ret[0] = CAPE_FS_FOLDER_SEP;
+    ret[1] = 0;
 
-  // use windows API
-  dwRet = GetCurrentDirectory (MAX_PATH, ret);
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if ((dwRet == 0) || (dwRet > MAX_PATH))
-  {
-    CAPE_FREE (ret);
-    return NULL;
-  }
+    char* ret = CAPE_ALLOC (PATH_MAX + 1);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+    getcwd (ret, PATH_MAX);
 
-  char* ret = CAPE_ALLOC (PATH_MAX + 1);
+#elif defined(__WINDOWS_OS)
 
-  getcwd (ret, PATH_MAX);
+    char* ret = CAPE_ALLOC (MAX_PATH + 1);
+    DWORD dwRet;
+
+    // use windows API
+    dwRet = GetCurrentDirectory (MAX_PATH, ret);
+
+    if ((dwRet == 0) || (dwRet > MAX_PATH))
+    {
+      CAPE_FREE (ret);
+      return NULL;
+    }
 
 #endif
 
-  if (filepath)
-  {
-    CapeString h = cape_fs_path_merge (ret, filepath);
+    if (filepath)
+    {
+        CapeString h = cape_fs_path_merge (ret, filepath);
 
-    CAPE_FREE(ret);
+        CAPE_FREE(ret);
 
-    return h;
-  }
-  else
-  {
-    return ret;
-  }
+        return h;
+    }
+    else
+    {
+        return ret;
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_fs_path_absolute (const char* filepath)
 {
-  if (filepath == NULL)
-  {
-    return cape_fs_path_current (NULL);
-  }
+    if (filepath == NULL)
+    {
+        return cape_fs_path_current (NULL);
+    }
 
-  if (cape_fs_is_relative (filepath))
-  {
-    return cape_fs_path_current (filepath);
-  }
-  else
-  {
-    return cape_str_cp (filepath);
-  }
+    if (cape_fs_is_relative (filepath))
+    {
+        return cape_fs_path_current (filepath);
+    }
+    else
+    {
+        return cape_str_cp (filepath);
+    }
 }
+
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+/*
+ * realpath() semantics:
+ *
+ * - relative path -> current path
+ * - absolute path -> use path as-is as base
+ * - resolve "." and ".."
+ * - collapse duplicate '/'
+ * - verify that the resulting path exists
+ */
+CapeString cape_fs_realpath (const char* filepath, CapeErr err)
+{
+    char* path = NULL;
+
+    if (cape_fs_is_relative (filepath))
+    {
+        path = cape_fs_path_current (filepath);
+    }
+    else
+    {
+        path = cape_str_cp (filepath);
+    }
+
+    if (path == NULL)
+    {
+        return NULL;
+    }
+
+    /*
+     * Canonicalize path.
+     *
+     * The source is read from the original path while the
+     * destination is compacted in the same buffer.
+     */
+    {
+        char* src = path;
+        char* dst = path;
+
+        /*
+         * Every ESP32 filesystem path is rooted at '/'.
+         */
+        *dst++ = CAPE_FS_FOLDER_SEP;
+
+        while (*src)
+        {
+            char* component;
+            number_t length;
+
+            /*
+             * Skip duplicate separators.
+             */
+            while (*src == CAPE_FS_FOLDER_SEP)
+            {
+                src++;
+            }
+
+            if (*src == 0)
+            {
+                break;
+            }
+
+            /*
+             * Find component.
+             */
+            component = src;
+
+            while (*src && (*src != CAPE_FS_FOLDER_SEP))
+            {
+                src++;
+            }
+
+            length = (number_t)(src - component);
+
+            /*
+             * "." -> nothing to do.
+             */
+            if ((length == 1) && (component[0] == '.'))
+            {
+                continue;
+            }
+
+            /*
+             * ".." -> remove previous component.
+             */
+            if ((length == 2) && (component[0] == '.') && (component[1] == '.'))
+            {
+                if (dst > path + 1)
+                {
+                    /*
+                     * Remove separator after previous component.
+                     */
+                    if (*(dst - 1) == CAPE_FS_FOLDER_SEP)
+                    {
+                        dst--;
+                    }
+
+                    /*
+                     * Find beginning of previous component.
+                     */
+                    while (dst > path + 1)
+                    {
+                        dst--;
+
+                        if (*dst == CAPE_FS_FOLDER_SEP)
+                        {
+                            break;
+                        }
+                    }
+
+                    /*
+                     * Position dst directly after '/'.
+                     */
+                    if (*dst == CAPE_FS_FOLDER_SEP)
+                    {
+                        dst++;
+                    }
+                }
+
+                continue;
+            }
+
+            /*
+             * Add separator between components.
+             */
+            if (dst > path + 1)
+            {
+                *dst++ = CAPE_FS_FOLDER_SEP;
+            }
+
+            /*
+             * Copy component.
+             *
+             * dst is never ahead of src, therefore memcpy()
+             * is safe here.
+             */
+            memcpy (dst, component, length);
+
+            dst += length;
+        }
+
+        /*
+         * Remove trailing separator unless this is root.
+         */
+        if ((dst > path + 1) && (*(dst - 1) == CAPE_FS_FOLDER_SEP))
+        {
+            dst--;
+        }
+
+        *dst = 0;
+    }
+
+    /*
+     * realpath() requires the resulting path to exist.
+     */
+    {
+        struct stat st;
+
+        if (stat (path, &st) != 0)
+        {
+            cape_err_lastOSError (err);
+
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text (err));
+
+            CAPE_FREE (path);
+
+            return NULL;
+        }
+    }
+
+    return path;
+}
+
+#endif
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_fs_path_resolve (const char* filepath, CapeErr err)
 {
-  if (filepath == NULL)
-  {
-    return cape_fs_path_current (NULL);
-  }
-
-#ifdef __WINDOWS_OS
-
-  {
-    char* ret = CAPE_ALLOC (MAX_PATH + 1);
-
-    if (!PathCanonicalize (ret, filepath))
+    char* ret = NULL;
+    
+    if (filepath == NULL)
     {
-      CAPE_FREE (ret);
-      return NULL;
+        return cape_fs_path_current (NULL);
     }
 
-    return ret;
-  }
+#if defined(CAPE_USE_FREERTOS)
 
-#elif defined __LINUX_OS || defined __BSD_OS
+    ret = cape_fs_realpath (filepath, err);
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  {
-    char* ret = CAPE_ALLOC (PATH_MAX + 1);
+    ret = CAPE_ALLOC (PATH_MAX + 1);
 
     if (!realpath (filepath, ret))
     {
-      cape_err_lastOSError (err);
+        cape_err_lastOSError (err);
 
-      cape_log_msg (CAPE_LL_ERROR, "CAPE", "path absolute", cape_err_text(err));
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text(err));
 
-      CAPE_FREE (ret);
-      return NULL;
+        CAPE_FREE (ret);
+        return NULL;
     }
 
-    return ret;
-  }
+#elif defined(__WINDOWS_OS)
+
+    ret = CAPE_ALLOC (MAX_PATH + 1);
+
+    if (!PathCanonicalize (ret, filepath))
+    {
+        CAPE_FREE (ret);
+        return NULL;
+    }
+    
+    if (GetFileAttributes (ret) == INVALID_FILE_ATTRIBUTES)
+    {
+        cape_err_lastOSError (err);
+
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text (err));
+
+        CAPE_FREE (ret);
+        return NULL;
+    }
+
+#else
+
+    cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "not supported on platform");
 
 #endif
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
