@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 // c includes
 #include <stdarg.h>
 #include <string.h>
