@@ -425,47 +425,61 @@ void cape_datetime_local (CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
-void cape_datetime_to_local (CapeDatetime* dt)
+static time_t cape_datetime__timegm (struct tm* timeinfo)
 {
-#if defined(__WINDOWS_OS)
+#if defined(__WINDOWS_OS__)
 
+  return _mkgmtime (timeinfo);
 
 #else
 
-  if (dt->is_utc && dt->month)
-  {
-    struct tm timeinfo;
-    struct tm* l01;
-    time_t t_of_day;
-    unsigned int msec;
-
-    cape_datetime__convert_cape (&timeinfo, dt);
-
-    // turn on automated DST, depends on the timezone
-    timeinfo.tm_isdst = -1;
-
-    // the function takes a local time and calculate extra values
-    // in our case it is UTC, so we will get the (localtime) UTC value
-    // because the function also applies timezone conversion
-    t_of_day = mktime (&timeinfo);
-
-    // correct (localtime) UTC to (current) UTC :-)
-    t_of_day = t_of_day + timeinfo.tm_gmtoff;
-
-    // now get the localtime from our UTC
-    l01 = localtime (&t_of_day);
-
-    // save the msec
-    msec = dt->msec;
-
-    cape_datetime__convert_timeinfo (dt, l01);
-
-    dt->msec = msec;
-
-    dt->is_utc = FALSE;
-  }
+  return timegm (timeinfo);
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_to_local (CapeDatetime* dt)
+{
+    if (dt->is_utc && dt->month)
+    {
+        struct tm localinfo;
+        time_t t_of_day;
+        unsigned int msec;
+
+        // CapeDatetime contains UTC
+        t_of_day = cape_datetime_n__unix (dt);
+
+        if (t_of_day == (time_t)-1)
+        {
+            return;
+        }
+
+#if defined(__WINDOWS_OS__)
+
+        if (localtime_s (&localinfo, &t_of_day) != 0)
+        {
+            return;
+        }
+
+#else
+
+        if (localtime_r (&t_of_day, &localinfo) == NULL)
+        {
+            return;
+        }
+
+#endif
+
+        // preserve milliseconds
+        msec = dt->msec;
+        
+        cape_datetime__convert_timeinfo (dt, &localinfo);
+
+        dt->msec = msec;
+        dt->is_utc = FALSE;
+    }
 }
 
 //-----------------------------------------------------------------------------
