@@ -425,21 +425,6 @@ void cape_datetime_local (CapeDatetime* dt)
 
 //-----------------------------------------------------------------------------
 
-static time_t cape_datetime__timegm (struct tm* timeinfo)
-{
-#if defined(__WINDOWS_OS__)
-
-  return _mkgmtime (timeinfo);
-
-#else
-
-  return timegm (timeinfo);
-
-#endif
-}
-
-//-----------------------------------------------------------------------------
-
 void cape_datetime_to_local (CapeDatetime* dt)
 {
     if (dt->is_utc && dt->month)
