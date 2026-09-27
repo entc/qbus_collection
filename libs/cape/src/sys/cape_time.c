@@ -9,7 +9,30 @@
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
+#if defined(CAPE_USE_FREERTOS)
+
+#include <stdio.h>
+#include <sys/time.h>
+
+#define cape_sscanf sscanf
+
+#ifndef timeradd
+#define timeradd(s,t,a) (void) ( \
+    (a)->tv_sec = (s)->tv_sec + (t)->tv_sec, \
+    ((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && \
+    ((a)->tv_usec -= 1000000, (a)->tv_sec++) \
+)
+#endif
+
+#ifndef timersub
+#define timersub(s,t,a) (void) ( \
+    (a)->tv_sec = (s)->tv_sec - (t)->tv_sec, \
+    ((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && \
+    ((a)->tv_usec += 1000000, (a)->tv_sec--) \
+)
+#endif
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
@@ -24,18 +47,18 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 
-#elif defined __WINDOWS_OS
+#elif defined(__WINDOWS_OS)
 
 #include <windows.h>
 #define cape_sscanf sscanf_s
 
 #define timeradd(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec + (t)->tv_sec, \
-	((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && \
-	((a)->tv_usec -= 1000000, (a)->tv_sec++) )
+    ((a)->tv_usec = (s)->tv_usec + (t)->tv_usec) >= 1000000 && \
+    ((a)->tv_usec -= 1000000, (a)->tv_sec++) )
 
 #define timersub(s,t,a) (void) ( (a)->tv_sec = (s)->tv_sec - (t)->tv_sec, \
-	((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && \
-	((a)->tv_usec += 1000000, (a)->tv_sec--) )
+    ((a)->tv_usec = (s)->tv_usec - (t)->tv_usec) < 0 && \
+    ((a)->tv_usec += 1000000, (a)->tv_sec--) )
 
 #endif
 
@@ -140,7 +163,7 @@ void cape_datetime__convert_cape (struct tm* timeinfo, const CapeDatetime* dt)
     timeinfo->tm_yday = 0;
     timeinfo->tm_wday = 0;
 
-#ifndef __WINDOWS_OS
+#if defined(__LINUX_OS) || defined(__BSD_OS)
 
     timeinfo->tm_zone = NULL;
     timeinfo->tm_gmtoff = 0;
@@ -165,44 +188,40 @@ int cape_datetime_year_isleap (const CapeDatetime* self)
 
 void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
 {
-#if defined __WINDOWS_OS
-
-#else
-
     int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    int isleap;
 
-    int isleap = cape_datetime_year_isleap (self);
-    
-    // do some checks
-    if (doy < 1 || doy > (isleap ? 366 : 365))
-    {
-        cape_log_msg (CAPE_LL_WARN, "CAPE", "datetime", "doy is invalid");
-        return;
-    }
-    
-    // set the year
+    // set the year first, because leap-year calculation depends on the year.
     self->year = (unsigned int)year;
 
-    // correct leap year
+    isleap = cape_datetime_year_isleap (self);
+
+    // check day of year.
+    if (doy < 1 || doy > (isleap ? 366 : 365))
+    {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "TIME", "doy is invalid");
+        return;
+    }
+
+    // correct February for leap years.
     if (isleap)
     {
         days_in_month[1] = 29;
     }
 
-    // start with January, will be increased
+    // Start with January.
     self->month = 1;
 
-    // start with the doy, will be reduced
+    // start with the day of year and reduce it while advancing the month.
     self->day = (unsigned int)doy;
 
-    // adjust day and month
     while (self->day > days_in_month[self->month - 1])
     {
         self->day -= days_in_month[self->month - 1];
-        (self->month)++;
+        self->month++;
     }
 
-    // set time to zero
+    // set time to zero.
     self->hour = 0;
     self->minute = 0;
     self->sec = 0;
@@ -210,8 +229,6 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
     self->usec = 0;
 
     self->is_utc = TRUE;
-
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -254,39 +271,41 @@ void cape_datetime_utc__next (CapeDatetime* self, const CapeString start, number
 
 void cape_datetime_utc (CapeDatetime* dt)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
-  SYSTEMTIME time;
-  GetSystemTime(&time);
+    SYSTEMTIME time;
 
-  dt->sec = time.wSecond;
-  dt->msec = time.wMilliseconds;
-  dt->usec = 0;
+    GetSystemTime (&time);
 
-  dt->minute = time.wMinute;
-  dt->hour = time.wHour;
+    dt->sec = time.wSecond;
+    dt->msec = time.wMilliseconds;
+    dt->usec = 0;
 
-  dt->day = time.wDay;
-  dt->month = time.wMonth;
-  dt->year = time.wYear;
+    dt->minute = time.wMinute;
+    dt->hour = time.wHour;
 
-  dt->is_dst = FALSE;
-  dt->is_utc = TRUE;
+    dt->day = time.wDay;
+    dt->month = time.wMonth;
+    dt->year = time.wYear;
+
+    dt->is_dst = FALSE;
+    dt->is_utc = TRUE;
 
 #else
 
-  struct timeval time;
-  struct tm* l01;
+    struct timeval time;
+    struct tm* timeinfo;
 
-  gettimeofday (&time, NULL);
-  l01 = gmtime (&(time.tv_sec));
+    gettimeofday (&time, NULL);
 
-  cape_datetime__convert_timeinfo (dt, l01);
+    timeinfo = gmtime (&(time.tv_sec));
 
-  dt->msec = time.tv_usec / 1000;
-  dt->usec = time.tv_usec;
+    cape_datetime__convert_timeinfo (dt, timeinfo);
 
-  dt->is_utc = TRUE;
+    dt->msec = time.tv_usec / 1000;
+    dt->usec = time.tv_usec;
+
+    dt->is_utc = TRUE;
 
 #endif
 }
@@ -295,7 +314,7 @@ void cape_datetime_utc (CapeDatetime* dt)
 
 void cape_datetime_utc__unix (CapeDatetime* self, time_t unix_time)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
     struct tm timeinfo;
 
@@ -328,8 +347,8 @@ void cape_datetime_utc__unix (CapeDatetime* self, time_t unix_time)
 
 void cape_datetime_utc__unix_msec (CapeDatetime* self, number_t unix_msec)
 {
-#if defined __WINDOWS_OS
-    
+#if defined(__WINDOWS_OS)
+
     time_t unix_sec = (time_t)(unix_msec / 1000);
     unsigned int msec = (unsigned int)(unix_msec % 1000);
     
@@ -367,7 +386,7 @@ void cape_datetime_utc__unix_msec (CapeDatetime* self, number_t unix_msec)
 
 void cape_datetime_local (CapeDatetime* dt)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
   SYSTEMTIME time;
   GetLocalTime(&time);
@@ -408,7 +427,7 @@ void cape_datetime_local (CapeDatetime* dt)
 
 void cape_datetime_to_local (CapeDatetime* dt)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
 
 #else
@@ -629,7 +648,7 @@ void cape_datetime__intern_add_delta (struct timeval* time_timeval, const CapeSt
 
 void cape_datetime_add_s (CapeDatetime* self, const CapeString delta)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
 
 #else
@@ -657,7 +676,7 @@ void cape_datetime_add_s (CapeDatetime* self, const CapeString delta)
 
 void cape_datetime_sub_s (CapeDatetime* self, const CapeString delta)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
 
 #else
@@ -685,7 +704,7 @@ void cape_datetime_sub_s (CapeDatetime* self, const CapeString delta)
 
 void cape_datetime_utc__sub_s (CapeDatetime* self, const CapeString delta)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
 
 #else
@@ -712,7 +731,7 @@ void cape_datetime_utc__sub_s (CapeDatetime* self, const CapeString delta)
 
 void cape_datetime_utc__add_s (CapeDatetime* dt, const CapeString delta)
 {
-#if defined __WINDOWS_OS
+#if defined(__WINDOWS_OS)
 
 
 #else
@@ -1219,25 +1238,58 @@ CapeString cape_datetime_s__fd1 (const CapeDatetime* self)
 
 time_t cape_datetime_n__unix (const CapeDatetime* dt)
 {
-  struct tm timeinfo = {0};
+    int64_t days = 0;
+    int year;
+    int month;
 
-  cape_datetime__convert_cape (&timeinfo, dt);
+    static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-  // this function uses the local timezone info
-  //return mktime (&timeinfo);
+    if (dt == NULL)
+    {
+        return (time_t)-1;
+    }
 
-#if defined __WINDOWS_OS
+    year = (int)dt->year;
 
-  return _mkgmtime (&timeinfo);
+    // days between 1970-01-01 and the beginning of the year
+    if (year >= 1970)
+    {
+        for (int y = 1970; y < year; y++)
+        {
+            days += ((y % 4 == 0) && ((y % 100 != 0) || (y % 400 == 0))) ? 366 : 365;
+        }
+    }
+    else
+    {
+        for (int y = 1969; y >= year; y--)
+        {
+            days -= ((y % 4 == 0) && ((y % 100 != 0) || (y % 400 == 0))) ? 366 : 365;
+        }
+    }
 
-#else
+    // days of previous months
+    for (month = 1; month < (int)dt->month; month++)
+    {
+        days += days_in_month[month - 1];
 
-  // this function only exsists on BSD / Linux
-  return timegm (&timeinfo);
+        if ((month == 2) && ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))))
+        {
+            days++;
+        }
+    }
 
-#endif
+    // days of current month
+    days += dt->day - 1;
+
+    // convert to seconds
+    days *= 86400;
+
+    days += (int64_t)dt->hour * 3600;
+    days += (int64_t)dt->minute * 60;
+    days += dt->sec;
+
+    return (time_t)days;
 }
-
 
 //-----------------------------------------------------------------------------
 

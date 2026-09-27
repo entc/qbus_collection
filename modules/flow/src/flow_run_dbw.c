@@ -2062,14 +2062,6 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
 
   if (self->pdata)
   {
-    {
-      CapeString h = cape_json_to_s (self->pdata);
-      
-      printf ("PDATA: %s\n", h);
-      
-      cape_str_del (&h);
-    }
-    
     module = cape_udc_ext_s (self->pdata, "module");
     method = cape_udc_ext_s (self->pdata, "method");
 
@@ -2120,14 +2112,6 @@ int flow_run_dbw_pdata__qbus (FlowRunDbw self, CapeString* p_module, CapeString*
   // check for the list in t_data
   if (self->tdata)
   {
-    {
-      CapeString h = cape_json_to_s (self->tdata);
-      
-      printf ("TDATA: %s\n", h);
-      
-      cape_str_del (&h);
-    }
-    
     if (cdata)
     {
       flow_run_dbw__apply_tdata (cdata, self->tdata);
@@ -2511,19 +2495,6 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
     if (params)
     {
       {
-        CapeString h = cape_json_to_s (params);
-        
-        printf ("PARAMS: %s\n", h);
-        
-      }
-      {
-        CapeString h = cape_json_to_s (self->tdata);
-        
-        printf ("TDATA: %s\n", h);
-        
-      }
-
-      {
         CapeUdcCursor* cursor = cape_udc_cursor_new (self->tdata, CAPE_DIRECTION_FORW);
 
         while (cape_udc_cursor_next (cursor))
@@ -2540,14 +2511,6 @@ void flow_run_dbw_tdata__merge_to (FlowRunDbw self, CapeUdc* p_params)
       }
 
       cape_udc_replace_mv (&(self->tdata), p_params);
-      
-      {
-        CapeString h = cape_json_to_s (self->tdata);
-        
-        printf ("TDATA RES: %s\n", h);
-        
-      }
-
     }
   }
   else
@@ -3239,7 +3202,7 @@ int flow_run_dbw_condition (FlowRunDbw self)
 
         res = qtee_eval_b (condition, self->tdata, &ret, NULL, err);
 
-        printf ("COND: %i\n", ret);
+//        printf ("COND: %i\n", ret);
 
         cape_err_del (&err);
 
