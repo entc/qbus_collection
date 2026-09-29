@@ -10,6 +10,8 @@
 
 #if defined(CAPE_USE_FREERTOS)
 
+#include <unistd.h>
+#include <errno.h>
 
 #elif defined(__LINUX_OS)
 
@@ -1275,7 +1277,11 @@ exit_and_cleanup:
 
 int cape_fs_path_ln (const char* source, const char* destination, const char* path, CapeErr err)
 {
-#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+#if defined(CAPE_USE_FREERTOS)
+    
+    #warning "CAPE: symbolic links are not supported on this platform"
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
     int res;
     int fd;
@@ -1347,23 +1353,23 @@ exit_and_cleanup:
 
 int cape_fs_file_rm (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (0 != _unlink (path))
-  {
-    return cape_err_lastOSError (err);
-  }
+    if (-1 == unlink (path))
+    {
+        return cape_err_lastOSError (err);
+    }
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__WINDOWS_OS)
 
-  if (-1 == unlink (path))
-  {
-    return cape_err_lastOSError (err);
-  }
+    if (0 != _unlink (path))
+    {
+        return cape_err_lastOSError (err);
+    }
 
 #endif
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1390,35 +1396,35 @@ exit_and_cleanup:
 
 int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (!MoveFile (source, destination))
-  {
-    return cape_err_lastOSError (err);
-  }
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  if (0 != rename (source, destination))
-  {
-    int err_no = errno;
-
-    // check for a specific error
-    // -> the source and target files are not on the same filesystem
-    // -> we still can try to copy and remove the file in sequence
-    if (err_no == EXDEV)
+    if (0 != rename (source, destination))
     {
-      return cape_fs_file_mv__cp_rm (source, destination, err);
+        int err_no = errno;
+
+        // check for a specific error
+        // -> the source and target files are not on the same filesystem
+        // -> we still can try to copy and remove the file in sequence
+        if (err_no == EXDEV)
+        {
+            return cape_fs_file_mv__cp_rm (source, destination, err);
+        }
+        else
+        {
+            return cape_err_lastOSError (err);
+        }
     }
-    else
+
+#elif defined(__WINDOWS_OS)
+
+    if (!MoveFile (source, destination))
     {
-      return cape_err_lastOSError (err);
+        return cape_err_lastOSError (err);
     }
-  }
 
 #endif
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
