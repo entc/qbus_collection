@@ -10,6 +10,7 @@
 
 #if defined(CAPE_USE_FREERTOS)
 
+#include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
 
