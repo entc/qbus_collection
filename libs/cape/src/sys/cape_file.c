@@ -929,29 +929,7 @@ int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 
 int cape_fs_path_create_xe (const char* path, CapeFileAc ac, CapeErr err)
 {
-#ifdef __WINDOWS_OS
-
-    DWORD attr = GetFileAttributesA (path);
-
-    if (cape_str_empty (path))
-    {
-        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
-    }
-
-    if (attr == INVALID_FILE_ATTRIBUTES)
-    {
-        // not found -> create
-        return cape_fs_path_create (path, ac, err);
-    }
-
-    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
-    {
-        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
-
-        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-    }
-
-#else
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
     struct stat st;
 
@@ -974,6 +952,28 @@ int cape_fs_path_create_xe (const char* path, CapeFileAc ac, CapeErr err)
         return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
     }
 
+#elif defined(__WINDOWS_OS)
+
+    DWORD attr = GetFileAttributesA (path);
+
+    if (cape_str_empty (path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        // not found -> create
+        return cape_fs_path_create (path, ac, err);
+    }
+
+    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
 #endif
 
     return CAPE_ERR_NONE;
@@ -988,69 +988,15 @@ static void __STDCALL cape_fs_path_size__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-/*
-number_t cape_fs_path_size__process_path (DIR* dir, CapeList folders, const char* path, CapeErr err)
-{
-  number_t total_size = 0;
-  struct dirent* dentry;
-
-  CapeString file = NULL;
-
-  for (dentry = readdir (dir); dentry; dentry = readdir (dir))
-  {
-    struct stat st;
-
-    // create the new filename
-    {
-      CapeString h = cape_fs_path_merge (path, dentry->d_name);
-
-      cape_str_replace_mv (&file, &h);
-    }
-
-    // excluse special folders
-    if (cape_str_equal (dentry->d_name, ".") || cape_str_equal (dentry->d_name, ".."))
-    {
-      continue;
-    }
-
-    // get detailed info about the file
-    // not all filesystems return the info with readdir
-    if (stat (file, &st) == 0)
-    {
-      // directory
-      if (S_ISDIR (st.st_mode))
-      {
-        cape_list_push_back (folders, file);
-        file = NULL;
-
-        continue;
-      }
-
-      // regular file
-      if (S_ISREG (st.st_mode))
-      {
-        total_size += st.st_size;
-      }
-    }
-  }
-
-  cape_str_del (&file);
-
-  return total_size;
-}
-*/
-
-//--------------------------------------------------------------------------------
-
 int cape_fs_path_rm__os (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
+    return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__WINDOWS_OS)
 
-  return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
+    return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
 
 #endif
 }
@@ -1329,51 +1275,71 @@ exit_and_cleanup:
 
 int cape_fs_path_ln (const char* source, const char* destination, const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
+    int res;
+    int fd;
 
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  int res;
-  int fd;
-
-  if (path)
-  {
-    // try to open the path
-    fd = open (path, O_RDONLY | O_DIRECTORY);
-
-    if (-1 == fd)
+    if (path)
     {
-      // some error occoured
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
-    }
-  }
-  else
-  {
-    fd = AT_FDCWD;    // current directory
-  }
+        // try to open the path
+        fd = open (path, O_RDONLY | O_DIRECTORY);
 
-  // try to create the symlink
-  if (-1 == symlinkat (source, fd, destination))
-  {
-    res = cape_err_lastOSError (err);
-  }
-  else
-  {
-    res = CAPE_ERR_NONE;
-  }
+        if (-1 == fd)
+        {
+            // some error occoured
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
+    }
+    else
+    {
+        fd = AT_FDCWD;    // current directory
+    }
+
+    // try to create the symlink
+    if (-1 == symlinkat (source, fd, destination))
+    {
+        res = cape_err_lastOSError (err);
+    }
+    else
+    {
+        res = CAPE_ERR_NONE;
+    }
 
 exit_and_cleanup:
 
-  if (path)
-  {
-    close (fd);
-  }
+    if (path)
+    {
+        close (fd);
+    }
 
-  return res;
+    return res;
 
+#elif defined(__WINDOWS_OS)
+
+    DWORD attr;
+    DWORD flags = 0;
+
+    attr = GetFileAttributesA (source);
+
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        return cape_err_formatErrorOS (err, GetLastError ());
+    }
+
+    if (attr & FILE_ATTRIBUTE_DIRECTORY)
+    {
+        flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+    }
+
+    if (CreateSymbolicLinkA (destination, source, flags) == 0)
+    {
+        return cape_err_formatErrorOS (err, GetLastError ());
+    }
+
+    return CAPE_ERR_NONE;
+    
 #endif
 }
 
