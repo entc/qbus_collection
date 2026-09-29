@@ -657,68 +657,78 @@ CapeString cape_fs_filename (const CapeString source)
 
 struct CapeFileAc_s
 {
-#ifdef __WINDOWS_OS
-  
-  SECURITY_DESCRIPTOR* sp;
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-  
-  mode_t permissions;
-  uid_t uid;
-  gid_t gid;
-  
+#if defined(CAPE_USE_FREERTOS)
+
+    int dummy;
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    mode_t permissions;
+    uid_t uid;
+    gid_t gid;
+
+#elif defined(__WINDOWS_OS)
+
+    SECURITY_DESCRIPTOR* sp;
+    PSID owner;
+    PSID group;
+
 #endif
 };
 
 //-----------------------------------------------------------------------------
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-#else
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
 {
-  CapeFileAc ret = NULL;
-  
-  if (ac_user)
-  {
-    // if everything was set we use the user given AC
-    if (ac_user->uid && ac_user->gid && ac_user->permissions)
+    CapeFileAc ret = NULL;
+    
+    if (ac_user)
     {
-      ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);      
-      goto exit_and_cleanup;
-    }
-  }
-  
-  ret = cape_fs_file_ac_get (source, err);
-  if (ret == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  // adjust values
-  if (ac_user)
-  {
-    if (ac_user->uid)
-    {
-      ret->uid = ac_user->uid;
+        // if everything was set we use the user given AC
+        if (ac_user->uid && ac_user->gid && ac_user->permissions)
+        {
+            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
+            goto exit_and_cleanup;
+        }
     }
     
-    if (ac_user->gid)
+    ret = cape_fs_file_ac_get (source, err);
+    if (ret == NULL)
     {
-      ret->gid = ac_user->gid;
+        goto exit_and_cleanup;
     }
     
-    if (ac_user->permissions)
+    // adjust values
+    if (ac_user)
     {
-      ret->permissions = ac_user->permissions;
+        if (ac_user->uid)
+        {
+            ret->uid = ac_user->uid;
+        }
+        
+        if (ac_user->gid)
+        {
+            ret->gid = ac_user->gid;
+        }
+        
+        if (ac_user->permissions)
+        {
+            ret->permissions = ac_user->permissions;
+        }
     }
-  }
-  
-  exit_and_cleanup:
-  
-  return ret;
+    
+    exit_and_cleanup:
+    
+    return ret;
 }
+
+#elif defined(__WINDOWS_OS)
+
 
 #endif
 
@@ -726,54 +736,83 @@ CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeE
 
 int cape_fs_path_create (const char* path, CapeFileAc ac, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  if (CreateDirectory (path, NULL) == 0)
-  {
-    // get current system error code
-    DWORD error_code = GetLastError();
+    // avoid compiler warning
+    (void) ac;
 
-    if (error_code != ERROR_ALREADY_EXISTS)  // ignore this error
+    // use 0770 to be most compatible to linux
+    if (mkdir (path, 0770) != 0)
     {
-      return cape_err_formatErrorOS (err, error_code);;
+        int err_no = errno;
+
+        if (err_no != EEXIST)
+        {
+            return cape_err_formatErrorOS (err, err_no);
+        }
     }
-  }
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  int res = mkdir (path, (ac && (ac->permissions > 0)) ? ac->permissions : 0770);
-  if (res)
-  {
-    int err_no = errno;
-    
-    if (err_no == EEXIST)
+    int res = mkdir (path, (ac && (ac->permissions > 0)) ? ac->permissions : 0770);
+    if (res)
     {
-      res = CAPE_ERR_NONE;
-      goto exit_and_cleanup;
+        int err_no = errno;
+        
+        if (err_no == EEXIST)
+        {
+            res = CAPE_ERR_NONE;
+            goto exit_and_cleanup;
+        }
+        else
+        {
+            res = cape_err_formatErrorOS (err, err_no);
+            goto exit_and_cleanup;
+        }
     }
-    else
-    {
-      res = cape_err_formatErrorOS (err, err_no);
-      goto exit_and_cleanup;
-    }
-  }
 
-  if (ac)
-  {
-    if (-1 == chown (path, (ac->uid > 0) ? ac->uid : getuid(), (ac->gid > 0) ? ac->gid : getgid()))
+    if (ac)
     {
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        if (-1 == chown (path, (ac->uid > 0) ? ac->uid : getuid(), (ac->gid > 0) ? ac->gid : getgid()))
+        {
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
     }
-  }
-    
-  res = CAPE_ERR_NONE;
-  
+      
+    res = CAPE_ERR_NONE;
+
 exit_and_cleanup:
   
-  return res;
+    return res;
+
+#elif defined(__WINDOWS_OS)
+
+    SECURITY_ATTRIBUTES sa;
+    SECURITY_ATTRIBUTES* p_sa = NULL;
+
+    if (ac)
+    {
+        sa.nLength = sizeof (SECURITY_ATTRIBUTES);
+        sa.lpSecurityDescriptor = ac->sp;
+        sa.bInheritHandle = FALSE;
+
+        p_sa = &sa;
+    }
+
+    if (CreateDirectory (path, p_sa) == 0)
+    {
+        DWORD error_code = GetLastError();
+
+        if (error_code != ERROR_ALREADY_EXISTS)
+        {
+            return cape_err_formatErrorOS (err, error_code);
+        }
+    }
+
+    return CAPE_ERR_NONE;
 
 #endif
 }

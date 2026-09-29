@@ -59,12 +59,17 @@ __CAPE_LIBEX   CapeString         cape_fs_filename       (const CapeString);
 
 struct CapeFileAc_s; typedef struct CapeFileAc_s* CapeFileAc;
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (void);
 
-#else
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 __CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (uid_t uid, gid_t gid, mode_t mod);
+
+#elif defined(__WINDOWS_OS)
+
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (PSID owner, PSID group);
 
 #endif
 
