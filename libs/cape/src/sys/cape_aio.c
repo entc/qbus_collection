@@ -414,6 +414,19 @@ void cape_aio_timer__del (void** p_self)
 
 //-----------------------------------------------------------------------------
 
+static void cape_aio__timer_cb (TimerHandle_t timer)
+{
+    CapeAioItem item = (CapeAioItem)pvTimerGetTimerID (timer);
+
+    // this handles the event, we can use a fixed mode here
+    if (FALSE == cape_aio_item__on_event (item, CAPE_AIO_MODE__TIMER, 0))
+    {
+        // TODO: print error
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 #elif defined __LINUX_OS
 
 //-----------------------------------------------------------------------------
@@ -747,7 +760,7 @@ CapeAioTimerCtx cape_aio_timer__new(CapeAio aio)
 
 //-----------------------------------------------------------------------------
 
-void  cape_aio_timer__del(CapeAioTimerCtx* p_self)
+void cape_aio_timer__del (CapeAioTimerCtx* p_self)
 {
     if (*p_self)
     {
@@ -771,7 +784,7 @@ void  cape_aio_timer__del(CapeAioTimerCtx* p_self)
 
 //-----------------------------------------------------------------------------
 
-VOID CALLBACK cape_aio_timer__on_threadpool(PTP_CALLBACK_INSTANCE instance, PVOID context, PTP_TIMER timer)
+VOID CALLBACK cape_aio_timer__on_threadpool (PTP_CALLBACK_INSTANCE instance, PVOID context, PTP_TIMER timer)
 {
     CapeAioItem item = (CapeAioItem)context;
 
@@ -793,7 +806,7 @@ VOID CALLBACK cape_aio_timer__on_threadpool(PTP_CALLBACK_INSTANCE instance, PVOI
 
 //-----------------------------------------------------------------------------
 
-int cape_aio_timer__init(CapeAioTimerCtx self, CapeAioItem item, number_t interval_in_ms, CapeErr err)
+int cape_aio_timer__init (CapeAioTimerCtx self, CapeAioItem item, number_t interval_in_ms, CapeErr err)
 {
     // create a new background timer
     self->timer = CreateThreadpoolTimer(cape_aio_timer__on_threadpool, item, NULL);
