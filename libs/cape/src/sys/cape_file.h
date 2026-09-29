@@ -77,8 +77,10 @@ __CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
 
 //-----------------------------------------------------------------------------
 
+                                  /* creates a path */
 __CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeFileAc, CapeErr);
 
+                                  /* creates a path recursive */
 __CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create only if it not exists */

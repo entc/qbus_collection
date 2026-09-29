@@ -875,7 +875,30 @@ exit_and_cleanup:
 
 int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
+    struct stat st;
+
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (stat (path, &st) != 0)
+    {
+        // not found or other error
+        // try to create the path
+        return cape_fs_path_create (path, ac, err);
+    }
+
+    if (FALSE == S_ISDIR(st.st_mode))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#elif defined(__WINDOWS_OS)
 
     DWORD attr = GetFileAttributesA(path);
 
@@ -891,29 +914,6 @@ int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
     }
 
     if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
-    {
-        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
-
-        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-    }
-
-#else
-
-    struct stat st;
-
-    if (cape_str_empty(path))
-    {
-        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
-    }
-
-    if (stat(path, &st) != 0)
-    {
-        // not found or other error
-        // try to create the path
-        return cape_fs_path_create(path, ac, err);
-    }
-
-    if (FALSE == S_ISDIR(st.st_mode))
     {
         cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
 
