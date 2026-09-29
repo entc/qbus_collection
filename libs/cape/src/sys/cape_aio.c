@@ -1067,7 +1067,7 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
 
             // remove the item from items and free the timer
             cape_aio_rm__item (self, &item);
-            retur NULL;
+            return NULL;
         }
     }
 
