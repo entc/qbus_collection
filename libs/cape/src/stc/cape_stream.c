@@ -14,6 +14,7 @@
 #include <winsock.h>
 #else
 #include <netinet/in.h>
+#include <inttypes.h>
 #endif
 
 #ifndef htonll
@@ -538,11 +539,11 @@ void cape_stream_append_n (CapeStream self, number_t val)
 
 #ifdef _MSC_VER
 
-  self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%Iu", val);
+    self->pos += _snprintf_s (self->pos, 24, _TRUNCATE, "%Iu", val);
 
 #else
 
-  self->pos += snprintf(self->pos, 24, "%li", val);
+    self->pos += snprintf (self->pos, 24, "%" PRIdPTR, val);
 
 #endif
 }
