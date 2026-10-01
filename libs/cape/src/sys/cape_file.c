@@ -92,13 +92,6 @@ CapeFileAc cape_fs_ac_new (void)
 
 //-----------------------------------------------------------------------------
 
-CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
-{
-    return NULL;
-}
-
-//-----------------------------------------------------------------------------
-
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 //-----------------------------------------------------------------------------
@@ -112,52 +105,6 @@ CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
     self->gid = gid;
 
     return self;
-}
-
-//-----------------------------------------------------------------------------
-
-CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
-{
-    CapeFileAc ret = NULL;
-    
-    if (ac_user)
-    {
-        // if everything was set we use the user given AC
-        if (ac_user->uid && ac_user->gid && ac_user->permissions)
-        {
-            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
-            goto exit_and_cleanup;
-        }
-    }
-    
-    ret = cape_fs_file_ac_get (source, err);
-    if (ret == NULL)
-    {
-        goto exit_and_cleanup;
-    }
-    
-    // adjust values
-    if (ac_user)
-    {
-        if (ac_user->uid)
-        {
-            ret->uid = ac_user->uid;
-        }
-        
-        if (ac_user->gid)
-        {
-            ret->gid = ac_user->gid;
-        }
-        
-        if (ac_user->permissions)
-        {
-            ret->permissions = ac_user->permissions;
-        }
-    }
-    
-exit_and_cleanup:
-    
-    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -256,8 +203,61 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
 
 //-----------------------------------------------------------------------------
 
+#endif
+
+//-----------------------------------------------------------------------------
+
 CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS)
+
+    return NULL;
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    CapeFileAc ret = NULL;
+    
+    if (ac_user)
+    {
+        // if everything was set we use the user given AC
+        if (ac_user->uid && ac_user->gid && ac_user->permissions)
+        {
+            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
+            goto exit_and_cleanup;
+        }
+    }
+    
+    ret = cape_fs_file_ac_get (source, err);
+    if (ret == NULL)
+    {
+        goto exit_and_cleanup;
+    }
+    
+    // adjust values
+    if (ac_user)
+    {
+        if (ac_user->uid)
+        {
+            ret->uid = ac_user->uid;
+        }
+        
+        if (ac_user->gid)
+        {
+            ret->gid = ac_user->gid;
+        }
+        
+        if (ac_user->permissions)
+        {
+            ret->permissions = ac_user->permissions;
+        }
+    }
+    
+exit_and_cleanup:
+    
+    return ret;
+
+#elif defined(__WINDOWS_OS)
+
     CapeFileAc ret = NULL;
 
     /*
@@ -349,11 +349,9 @@ CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeE
 exit_and_cleanup:
 
     return ret;
-}
-
-//-----------------------------------------------------------------------------
 
 #endif
+}
 
 //-----------------------------------------------------------------------------
 
@@ -1539,8 +1537,8 @@ int cape_fs_path_ln (const char* source, const char* destination, const char* pa
 {
 #if defined(CAPE_USE_FREERTOS)
     
-    #warning "CAPE: symbolic links are not supported on this platform"
-    
+    return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "symbolic links are not supported on this platform");
+
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
     int res;
