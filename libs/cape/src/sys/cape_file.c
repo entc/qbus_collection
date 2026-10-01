@@ -1833,48 +1833,63 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
 
 off_t cape_fs_file_size (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
+    
+    // try this version, but it depends on the used filesystem
+    // if the compilation fails, we need a switch here
+    struct stat st;
 
-  off_t ret = 0;
-  LARGE_INTEGER lFileSize;
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return 0;
+    }
 
-  // local objects
-  HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
+    return st.st_size;
 
-  if (hf == INVALID_HANDLE_VALUE)
-  {
-    cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  // retrieve the file size
-  if (GetFileSizeEx (hf, &lFileSize) == INVALID_FILE_SIZE)
-  {
-    cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
+    struct stat st;
 
-  // convert from large integer
-  ret = lFileSize.QuadPart;
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return 0;
+    }
+    else
+    {
+        return st.st_size;
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    off_t ret = 0;
+    LARGE_INTEGER lFileSize;
+
+    // local objects
+    HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
+
+    if (hf == INVALID_HANDLE_VALUE)
+    {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    // retrieve the file size
+    if (!GetFileSizeEx (hf, &lFileSize))
+    {
+        CloseHandle (hf);
+
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    // convert from large integer
+    ret = (off_t)lFileSize.QuadPart;
 
 exit_and_cleanup:
 
-  CloseHandle (hf);
-  return ret;
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  struct stat st;
-
-  if (stat (path, &st) == -1)
-  {
-    cape_err_lastOSError (err);
-    return 0;
-  }
-  else
-  {
-    return st.st_size;
-  }
+    return ret;
 
 #endif
 }
