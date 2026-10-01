@@ -152,7 +152,7 @@ __CAPE_LIBEX   void               cape_fh_del            (CapeFileHandle*);
 
 __CAPE_LIBEX   int                cape_fh_open           (CapeFileHandle, int flags, CapeErr);
 
-__CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int flags, int ac, CapeErr);
+//__CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int flags, int ac, CapeErr);
 
 __CAPE_LIBEX   int                cape_fh_open_ac        (CapeFileHandle, int flags, CapeFileAc*, CapeErr);
 

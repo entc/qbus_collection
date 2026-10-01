@@ -1581,109 +1581,137 @@ int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
+int cape_fs_file_cp__full (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+    int res;
 
-  if (!CopyFile (source, destination, TRUE))
-  {
-    return cape_err_lastOSError (err);
-  }
+    // local objects
+    char* buffer = NULL;
+    CapeFileHandle fh_s = cape_fh_new (NULL, source);
+    CapeFileHandle fh_d = cape_fh_new (NULL, destination);
+    CapeFileAc ac = NULL;
 
-  return CAPE_ERR_NONE;
-
-#elif defined __APPLE_CC__
-
-  if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  return CAPE_ERR_NONE;
-
-#else
-
-  int res;
-
-  // local objects
-  char* buffer = NULL;
-  CapeFileHandle fh_s = cape_fh_new (NULL, source);
-  CapeFileHandle fh_d = cape_fh_new (NULL, destination);
-  CapeFileAc ac = NULL;
-
-  res = cape_fh_open (fh_s, O_RDONLY, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  ac = cape_fs_file__merge_ac (source, ac_user, err);
-  if (NULL == ac)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  //printf ("use uid %i, gid %i\n", ac->uid, ac->gid);
-  
-  res = cape_fh_open_ex (fh_d, O_WRONLY | O_CREAT, ac->permissions, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
-
-  while (TRUE)
-  {
-    number_t bytes_read = cape_fh_read_buf (fh_s, buffer, CAPE_BUFFER_SIZE);
-
-    if (bytes_read > 0)
+    // open the source file
+    res = cape_fh_open (fh_s, O_RDONLY, err);
+    if (res)
     {
-      number_t bytes_written = 0;
+        goto exit_and_cleanup;
+    }
 
-      while (bytes_written < bytes_read)
-      {
-        bytes_written = cape_fh_write_buf (fh_d, buffer + bytes_written, bytes_read - bytes_written);
-
-        if (bytes_written <= 0)
+    if (ac_user)
+    {
+        ac = cape_fs_file__merge_ac (source, ac_user, err);
+        if (NULL == ac)
         {
-          res = cape_err_lastOSError (err);
-          goto exit_and_cleanup;
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
         }
-      }
     }
-    else
+
+    // open destination for writing
+    res = cape_fh_open_ac (fh_d, O_WRONLY | O_CREAT | O_TRUNC, &ac, err);
+    if (res)
     {
-      break;
+        goto exit_and_cleanup;
     }
-  }
-  
-  // update AC
-  if (ac->uid || ac->gid)
-  {
-    if (-1 == fchown ((number_t)cape_fh_fd(fh_d), ac->uid, ac->gid))
+
+    buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
+
+    while (TRUE)
     {
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        number_t bytes_read = cape_fh_read_buf (fh_s, buffer, CAPE_BUFFER_SIZE);
+
+        if (bytes_read > 0)
+        {
+            number_t bytes_written = 0;
+
+            while (bytes_written < bytes_read)
+            {
+                number_t written = cape_fh_write_buf (fh_d, buffer + bytes_written, bytes_read - bytes_written);
+
+                if (written <= 0)
+                {
+                    res = cape_err_lastOSError (err);
+                    goto exit_and_cleanup;
+                }
+
+                bytes_written += written;
+            }
+        }
+        else if (bytes_read == 0)
+        {
+            break;
+        }
+        else
+        {
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
     }
-  }
-  
-  res = CAPE_ERR_NONE;
+    
+    // set permissions
+    res = cape_fs_file_ac_set (destination, ac, err);
 
 exit_and_cleanup:
 
-  cape_fs_ac_del (&ac);
+    cape_fs_ac_del (&ac);
 
-  cape_fh_del (&fh_d);
-  cape_fh_del (&fh_s);
+    cape_fh_del (&fh_d);
+    cape_fh_del (&fh_s);
 
-  if (buffer)
-  {
-    CAPE_FREE (buffer);
-  }
+    if (buffer)
+    {
+        CAPE_FREE (buffer);
+    }
 
-  return res;
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
+{
+#if defined(CAPE_USE_FREERTOS)
+    
+    // use the full copy algorithm without any access rights
+    return cape_fs_file_cp__full (source, destination, NULL, err);
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+#if defined __APPLE_CC__
+
+    // copy data, ACLs and extended attributes
+    if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+    
+    // set permissions
+    return cape_fs_file_ac_set (destination, ac_user, err);
+    
+#else
+    
+    // use the full copy algorithm
+    return cape_fs_file_cp__full (source, destination, ac_user, err);
+
+#endif
+    
+#elif defined(__WINDOWS_OS)
+
+    if (!CopyFile (source, destination, TRUE))
+    {
+        DWORD error = GetLastError();
+
+        if (error == ERROR_NOT_SUPPORTED)
+        {
+            return cape_fs_file_cp__full (source, destination, ac_user, err);
+        }
+
+        return cape_err_lastOSError (err);
+    }
+
+    // set permissions
+    return cape_fs_file_ac_set (destination, ac_user, err);
 
 #endif
 }
@@ -1978,7 +2006,8 @@ const CapeString cape_fh_file (CapeFileHandle self)
 
 int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
 {
-  return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+//  return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+    return cape_fh_open_ac (self, flags, NULL, err);
 }
 
 //-----------------------------------------------------------------------------
