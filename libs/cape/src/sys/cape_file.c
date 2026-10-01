@@ -54,6 +54,236 @@
 
 //-----------------------------------------------------------------------------
 
+struct CapeFileAc_s
+{
+#if defined(CAPE_USE_FREERTOS)
+
+    int dummy;
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    mode_t permissions;
+    uid_t uid;
+    gid_t gid;
+
+#elif defined(__WINDOWS_OS)
+
+    SECURITY_DESCRIPTOR* sp;
+    PSID owner;
+    PSID group;
+
+#endif
+};
+
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+CapeFileAc cape_fs_ac_new (void)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+    self->dummy = 0;
+    
+    return self;
+}
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+    self->permissions = mod;
+    self->uid = uid;
+    self->gid = gid;
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
+{
+    CapeFileAc ret = NULL;
+    
+    if (ac_user)
+    {
+        // if everything was set we use the user given AC
+        if (ac_user->uid && ac_user->gid && ac_user->permissions)
+        {
+            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
+            goto exit_and_cleanup;
+        }
+    }
+    
+    ret = cape_fs_file_ac_get (source, err);
+    if (ret == NULL)
+    {
+        goto exit_and_cleanup;
+    }
+    
+    // adjust values
+    if (ac_user)
+    {
+        if (ac_user->uid)
+        {
+            ret->uid = ac_user->uid;
+        }
+        
+        if (ac_user->gid)
+        {
+            ret->gid = ac_user->gid;
+        }
+        
+        if (ac_user->permissions)
+        {
+            ret->permissions = ac_user->permissions;
+        }
+    }
+    
+    exit_and_cleanup:
+    
+    return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__WINDOWS_OS)
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+    
+    // allocate minimal memory, wothout owner and group
+    self->sp = CAPE_ALLOC (SECURITY_DESCRIPTOR_MIN_LENGTH);
+    self->owner = NULL;
+    self->group = NULL;
+        
+    // try to initialize the security descriptor
+    // if this fails we will continue
+    if (!InitializeSecurityDescriptor (self->sp, SECURITY_DESCRIPTOR_REVISION))
+    {
+        CAPE_FREE (self->sp);
+        self->sp = NULL;
+
+        // TODO: log error
+        
+        return self;
+    }
+
+    if (owner)
+    {
+        if (!IsValidSid (owner))
+        {
+            // TODO: log error
+        }
+        else
+        {
+            DWORD size = GetLengthSid (owner);
+            
+            self->owner = CAPE_ALLOC (size);
+            
+            if (!CopySid (size, self->owner, owner))
+            {
+                CAPE_FREE (self->owner);
+                self->owner = NULL;
+
+                // TODO: log error
+            }
+            else
+            {
+                if (!SetSecurityDescriptorOwner (self->sp, self->owner, FALSE))
+                {
+                    CAPE_FREE (self->owner);
+                    self->owner = NULL;
+
+                    // TODO: log error
+                }
+            }
+        }
+    }
+    
+    if (group)
+    {
+        if (!IsValidSid (group))
+        {
+            // TODO: log error
+        }
+        else
+        {
+            DWORD size = GetLengthSid (group);
+            
+            self->group = CAPE_ALLOC (size);
+            
+            if (!CopySid (size, self->group, group))
+            {
+                CAPE_FREE (self->group);
+                self->group = NULL;
+
+                // TODO: log error
+            }
+            else
+            {
+                if (!SetSecurityDescriptorGroup (self->sp, self->group, FALSE))
+                {
+                    CAPE_FREE (self->group);
+                    self->group = NULL;
+
+                    // TODO: log error
+                }
+            }
+        }
+    }
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+#endif
+
+//-----------------------------------------------------------------------------
+
+void cape_fs_ac_del (CapeFileAc* p_self)
+{
+    if (*p_self)
+    {
+#if defined(CAPE_USE_FREERTOS)
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+#elif defined(__WINDOWS_OS)
+
+        CapeFileAc self = *p_self;
+
+        if (self->sp)
+        {
+            CAPE_FREE(self->sp);
+        }
+
+        if (self->group)
+        {
+            CAPE_FREE (self->group);
+        }
+        
+        if (self->owner)
+        {
+            CAPE_FREE (self->owner);
+        }
+
+#endif
+
+        CAPE_DEL (p_self, struct CapeFileAc_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_fs_path_merge (const char* path1, const char* path2)
 {
   if (path1)
@@ -655,85 +885,6 @@ CapeString cape_fs_filename (const CapeString source)
 
   return ret;
 }
-
-//-----------------------------------------------------------------------------
-
-struct CapeFileAc_s
-{
-#if defined(CAPE_USE_FREERTOS)
-
-    int dummy;
-
-#elif defined(__LINUX_OS) || defined(__BSD_OS)
-
-    mode_t permissions;
-    uid_t uid;
-    gid_t gid;
-
-#elif defined(__WINDOWS_OS)
-
-    SECURITY_DESCRIPTOR* sp;
-    PSID owner;
-    PSID group;
-
-#endif
-};
-
-//-----------------------------------------------------------------------------
-
-#if defined(CAPE_USE_FREERTOS)
-
-
-#elif defined(__LINUX_OS) || defined(__BSD_OS)
-
-CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
-{
-    CapeFileAc ret = NULL;
-    
-    if (ac_user)
-    {
-        // if everything was set we use the user given AC
-        if (ac_user->uid && ac_user->gid && ac_user->permissions)
-        {
-            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
-            goto exit_and_cleanup;
-        }
-    }
-    
-    ret = cape_fs_file_ac_get (source, err);
-    if (ret == NULL)
-    {
-        goto exit_and_cleanup;
-    }
-    
-    // adjust values
-    if (ac_user)
-    {
-        if (ac_user->uid)
-        {
-            ret->uid = ac_user->uid;
-        }
-        
-        if (ac_user->gid)
-        {
-            ret->gid = ac_user->gid;
-        }
-        
-        if (ac_user->permissions)
-        {
-            ret->permissions = ac_user->permissions;
-        }
-    }
-    
-    exit_and_cleanup:
-    
-    return ret;
-}
-
-#elif defined(__WINDOWS_OS)
-
-
-#endif
 
 //-----------------------------------------------------------------------------
 
@@ -1593,45 +1744,6 @@ exit_and_cleanup:
 
 #endif
 }
-
-//-----------------------------------------------------------------------------
-
-void cape_fs_ac_del (CapeFileAc* p_self)
-{
-  if (*p_self)
-  {
-#ifdef __WINDOWS_OS
-    CapeFileAc self = *p_self;
-
-		CAPE_FREE(self->sp);
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-#endif
-
-    CAPE_DEL (p_self, struct CapeFileAc_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-#ifdef __WINDOWS_OS
-
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-
-CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
-{
-  CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
-
-  self->permissions = mod;
-  self->uid = uid;
-  self->gid = gid;
-
-  return self;
-}
-
-#endif
 
 //-----------------------------------------------------------------------------
 
