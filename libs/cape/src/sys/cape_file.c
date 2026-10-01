@@ -79,6 +79,8 @@ struct CapeFileAc_s
 
 #if defined(CAPE_USE_FREERTOS)
 
+//-----------------------------------------------------------------------------
+
 CapeFileAc cape_fs_ac_new (void)
 {
     CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
@@ -87,6 +89,15 @@ CapeFileAc cape_fs_ac_new (void)
     
     return self;
 }
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
+{
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
 
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
@@ -144,7 +155,7 @@ CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeE
         }
     }
     
-    exit_and_cleanup:
+exit_and_cleanup:
     
     return ret;
 }
@@ -241,6 +252,103 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
     }
 
     return self;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
+{
+    CapeFileAc ret = NULL;
+
+    /*
+     * If the user supplied a complete access control object,
+     * use it directly.
+     */
+    if (ac_user)
+    {
+        if (ac_user->owner && ac_user->group)
+        {
+            ret = cape_fs_ac_new (ac_user->owner, ac_user->group);
+            goto exit_and_cleanup;
+        }
+    }
+
+    /*
+     * Get the access control information from the source file.
+     */
+    ret = cape_fs_file_ac_get (source, err);
+
+    if (ret == NULL)
+    {
+        goto exit_and_cleanup;
+    }
+
+    /*
+     * Override values supplied by the user.
+     */
+    if (ac_user)
+    {
+        if (ac_user->owner)
+        {
+            /*
+             * Replace the owner in the resulting security descriptor.
+             */
+            DWORD size = GetLengthSid (ac_user->owner);
+            PSID owner = CAPE_ALLOC (size);
+
+            if (!CopySid (size, owner, ac_user->owner))
+            {
+                CAPE_FREE (owner);
+                res = cape_err_lastOSError (err);
+                goto exit_and_cleanup;
+            }
+
+            if (!SetSecurityDescriptorOwner (ret->sp, owner, FALSE))
+            {
+                CAPE_FREE (owner);
+                res = cape_err_lastOSError (err);
+                goto exit_and_cleanup;
+            }
+
+            if (ret->owner)
+            {
+                CAPE_FREE (ret->owner);
+            }
+
+            ret->owner = owner;
+        }
+
+        if (ac_user->group)
+        {
+            DWORD size = GetLengthSid (ac_user->group);
+            PSID group = CAPE_ALLOC (size);
+
+            if (!CopySid (size, group, ac_user->group))
+            {
+                CAPE_FREE (group);
+                res = cape_err_lastOSError (err);
+                goto exit_and_cleanup;
+            }
+
+            if (!SetSecurityDescriptorGroup (ret->sp, group, FALSE))
+            {
+                CAPE_FREE (group);
+                res = cape_err_lastOSError (err);
+                goto exit_and_cleanup;
+            }
+
+            if (ret->group)
+            {
+                CAPE_FREE (ret->group);
+            }
+
+            ret->group = group;
+        }
+    }
+
+exit_and_cleanup:
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
