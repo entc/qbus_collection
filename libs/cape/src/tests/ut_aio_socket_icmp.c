@@ -3,6 +3,15 @@
 #include <sys/cape_socket.h>
 #include <sys/cape_time.h>
 
+#if defined(CAPE_USE_FREERTOS)
+
+int main (int argc, char *argv[])
+{
+    return 0;
+}
+
+#else
+
 //-----------------------------------------------------------------------------
 
 void __STDCALL cape_aio_socket__on_pong (void* ptr, CapeAioSocketIcmp self, number_t ms_second, int timeout)
@@ -97,4 +106,6 @@ int main (int argc, char *argv[])
   
   return 0;
 }
+
+#endif
 
