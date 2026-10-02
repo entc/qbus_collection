@@ -2240,14 +2240,6 @@ const CapeString cape_fh_file (CapeFileHandle self)
 
 //-----------------------------------------------------------------------------
 
-int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
-{
-//  return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
-    return cape_fh_open_ac (self, flags, NULL, err);
-}
-
-//-----------------------------------------------------------------------------
-
 int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
 {
   self->fd = open (self->file, flags, permissions);
@@ -2262,67 +2254,32 @@ int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr er
 
 //-----------------------------------------------------------------------------
 
+int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
+{
+    return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr err)
 {
-  int res;
-  CapeFileAc ac = *p_ac;
+    int res;
 
-  /*
-  uid_t uid = getuid ();
-  gid_t gid = getgid ();
-
-  if (uid != ac->uid)
-  {
-    if (setuid (ac->uid) == -1)
+    if (p_ac)
     {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", ac->uid);
+        CapeFileAc ac = *p_ac;
 
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        // set a new effective GID
+        res = cape_fh_open_ex (self, flags, ac->permissions, err);
+
+        cape_fs_ac_del (p_ac);
     }
-  }
-
-  if (gid != ac->gid)
-  {
-    if (setgid (ac->gid) == -1)
+    else
     {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", ac->gid);
-      
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        res = cape_fh_open (self, flags, err);
     }
-  }
-  */
-  // set a new effective GID
-  res = cape_fh_open_ex (self, flags, ac->permissions, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
 
-  /*
-  if (setuid (uid) == -1)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", uid);
-    
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  
-  if (setgid (gid) == -1)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", gid);
-    
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  */
-  res = CAPE_ERR_NONE;
-
-exit_and_cleanup:
-
-  cape_fs_ac_del (p_ac);
-  return res;
+    return res;
 }
 
 //-----------------------------------------------------------------------------
