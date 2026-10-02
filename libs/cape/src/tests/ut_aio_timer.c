@@ -5,6 +5,15 @@
 
 #include <stdio.h>
 
+#if defined(CAPE_USE_FREERTOS)
+
+int main (int argc, char *argv[])
+{
+    return 0;
+}
+
+#else
+
 //-----------------------------------------------------------------------------
 
 static int __STDCALL cape_aio_timer__on_event (void* ptr)
@@ -81,3 +90,4 @@ exit_and_cleanup:
   return res;
 }
 
+#endif

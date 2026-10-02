@@ -3,6 +3,15 @@
 #include <sys/cape_socket.h>
 #include <sys/cape_time.h>
 
+#if defined(CAPE_USE_FREERTOS)
+
+int main (int argc, char *argv[])
+{
+    return 0;
+}
+
+#else
+
 //-----------------------------------------------------------------------------
 
 void __STDCALL cape_aio_socket__srv__on_sent_ready (void* ptr, CapeAioSocketUdp self, void* userdata)
@@ -148,3 +157,4 @@ int main (int argc, char *argv[])
   return 0;
 }
 
+#endif
