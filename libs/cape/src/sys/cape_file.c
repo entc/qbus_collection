@@ -2240,7 +2240,7 @@ const CapeString cape_fh_file (CapeFileHandle self)
 
 //-----------------------------------------------------------------------------
 
-int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
+static int cape_fh_open__ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
 {
   self->fd = open (self->file, flags, permissions);
 
@@ -2256,7 +2256,7 @@ int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr er
 
 int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
 {
-    return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+    return cape_fh_open__ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
 }
 
 //-----------------------------------------------------------------------------
@@ -2270,7 +2270,7 @@ int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr e
         CapeFileAc ac = *p_ac;
 
         // set a new effective GID
-        res = cape_fh_open_ex (self, flags, ac->permissions, err);
+        res = cape_fh_open__ex (self, flags, ac->permissions, err);
 
         cape_fs_ac_del (p_ac);
     }
