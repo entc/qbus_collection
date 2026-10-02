@@ -112,12 +112,13 @@ CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
 
 //-----------------------------------------------------------------------------
 
-CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
+CapeFileAc cape_fs_ac_new (PSID owner, PSID group, PACL dacl, BOOL dacl_present)
 {
     CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
     
     DWORD owner_size = 0;
     DWORD group_size = 0;
+    DWORD dacl_size = 0;
     size_t size;
     
     if (owner)
@@ -125,28 +126,31 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
         if (!IsValidSid (owner))
         {
             // TODO: error handling
+            goto finish;
         }
-        else
-        {
-            owner_size = GetLengthSid (owner);
-        }
+        
+        owner_size = GetLengthSid (owner);
     }
-
+    
     if (group)
     {
         if (!IsValidSid (group))
         {
             // TODO: error handling
+            goto finish;
         }
-        else
-        {
-            group_size = GetLengthSid (group);
-        }
+        
+        group_size = GetLengthSid (group);
+    }
+    
+    if (dacl_present && dacl)
+    {
+        dacl_size = dacl->AclSize;
     }
 
     // calculate the full size of the structure
-    size = SECURITY_DESCRIPTOR_MIN_LENGTH + owner_size + group_size;
-
+    size = SECURITY_DESCRIPTOR_MIN_LENGTH + owner_size + group_size + dacl_size;
+    
     // allocate
     self->sp = CAPE_ALLOC (size);
     
@@ -156,7 +160,6 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
         self->sp = NULL;
         
         // TODO: error handling
-
         goto finish;
     }
     
@@ -167,6 +170,7 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
         {
             PSID owner_copy = (PSID) ptr;
             
+            // copies the content into the self->sp memory block
             if (!CopySid (owner_size, owner_copy, owner))
             {
                 CAPE_FREE (self->sp);
@@ -175,7 +179,9 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
                 // TODO: error handling
                 goto finish;
             }
-            else if (!SetSecurityDescriptorOwner (self->sp, owner_copy, FALSE))
+            
+            // tells the owner in the security descriptor to use the part of the memory block
+            if (!SetSecurityDescriptorOwner (self->sp, owner_copy, FALSE))
             {
                 CAPE_FREE (self->sp);
                 self->sp = NULL;
@@ -185,13 +191,13 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
             }
             
             ptr += owner_size;
-            
         }
         
         if (group_size)
         {
             PSID group_copy = (PSID) ptr;
             
+            // copies the content into the self->sp memory block
             if (!CopySid (group_size, group_copy, group))
             {
                 CAPE_FREE (self->sp);
@@ -200,7 +206,34 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
                 // TODO: error handling
                 goto finish;
             }
-            else if (!SetSecurityDescriptorGroup (self->sp, group_copy, FALSE))
+            
+            // tells the group in the security descriptor to use the part of the memory block
+            if (!SetSecurityDescriptorGroup (self->sp, group_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            ptr += group_size;
+        }
+        
+        if (dacl_present)
+        {
+            PACL dacl_copy = NULL;
+            
+            if (dacl_size)
+            {
+                dacl_copy = (PACL) ptr;
+                
+                // There is no dedicated API to copy an ACL, so copy its memory contents.
+                CopyMemory (dacl_copy, dacl, dacl_size);
+            }
+            
+            // Set the copied DACL in the security descriptor.
+            if (!SetSecurityDescriptorDacl (self->sp, TRUE, dacl_copy, FALSE))
             {
                 CAPE_FREE (self->sp);
                 self->sp = NULL;
@@ -214,6 +247,35 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
 finish:
     
     return self;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_fs_ac__values (PSECURITY_DESCRIPTOR sp, PSID* owner, PSID* group, PACL* dacl, BOOL* dacl_present, CapeErr err)
+{
+    BOOL owner_defaulted = FALSE;
+    BOOL group_defaulted = FALSE;
+    BOOL dacl_defaulted = FALSE;
+
+    if (!GetSecurityDescriptorOwner (sp, owner, &owner_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    if (!GetSecurityDescriptorGroup (sp, group, &group_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    if (!GetSecurityDescriptorDacl (sp, dacl_present, dacl, &dacl_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -275,81 +337,69 @@ exit_and_cleanup:
 
     CapeFileAc ret = NULL;
 
-    /*
-     * If the user supplied a complete access control object,
-     * use it directly.
-     */
-    if (ac_user)
-    {
-        if (ac_user->sp)
-        {
-            ret = cape_fs_ac_new (NULL, NULL);
-
-            if (ret)
-            {
-                DWORD size = GetSecurityDescriptorLength (ac_user->sp);
-
-                ret->sp = CAPE_REALLOC (ret->sp, size);
-
-                if (!CopyMemory (ret->sp, ac_user->sp, size))
-                {
-                    CAPE_FREE (ret->sp);
-                    ret->sp = NULL;
-
-                    // TODO: error handling
-                    goto exit_and_cleanup;
-                }
-            }
-
-            goto exit_and_cleanup;
-        }
-    }
+    PSID owner = NULL;
+    PSID group = NULL;
+    PACL dacl = NULL;
+    BOOL dacl_present = FALSE;
 
     /*
      * Get the access control information from the source file.
      */
     ret = cape_fs_file_ac_get (source, err);
 
-    if (ret == NULL)
+    if (ret == NULL || ret->sp == NULL)
     {
         goto exit_and_cleanup;
     }
 
     /*
+     * Get values from the source security descriptor.
+     */
+    if (cape_fs_ac_get_values (ret->sp, &owner, &group, &dacl, &dacl_present, err))
+    {
+        goto exit_and_cleanup;
+    }
+    
+    /*
      * Override values supplied by the user.
      */
-    if (ac_user)
+    if (ac_user && ac_user->sp)
     {
-        PSID owner = NULL;
-        PSID group = NULL;
+        PSID user_owner = NULL;
+        PSID user_group = NULL;
+        PACL user_dacl = NULL;
+        BOOL user_dacl_present = FALSE;
 
-        if (!GetSecurityDescriptorOwner (ac_user->sp, &owner, NULL))
+        if (cape_fs_ac_get_values (ac_user->sp, &user_owner, &user_group, &user_dacl, &user_dacl_present, err))
         {
-            // TODO: error handling
             goto exit_and_cleanup;
         }
 
-        if (!GetSecurityDescriptorGroup (ac_user->sp, &group, NULL))
+        if (user_owner)
         {
-            // TODO: error handling
-            goto exit_and_cleanup;
+            owner = user_owner;
         }
 
-        /*
-         * Rebuild the security descriptor with the user supplied
-         * owner and group.
-         */
-        if (owner || group)
+        if (user_group)
         {
-            // this never fails and always returns the object
-            CapeFileAc tmp = cape_fs_ac_new (owner, group);
-
-            CAPE_FREE (ret->sp);
-            ret->sp = tmp->sp;
-            tmp->sp = NULL;
-
-            cape_fs_ac_del (&tmp);
+            group = user_group;
         }
+
+        if (user_dacl_present)
+        {
+            dacl = user_dacl;
+            dacl_present = TRUE;
+        }
+    }
+
+    /*
+     * Create the resulting access control object.
+     */
+    {
+        CapeFileAc result = cape_fs_ac_new (owner, group, dacl, dacl_present);
+
+        cape_fs_ac_del (&ret);
+        ret = result;
     }
 
 exit_and_cleanup:
@@ -1924,8 +1974,11 @@ CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 
 #elif defined(__WINDOWS_OS)
 
+    CapeFileAc self = NULL;
     DWORD length_needed = 0;
+    PSECURITY_DESCRIPTOR sp = NULL;
 
+    // determine the length of the sp container
     GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, NULL, 0, &length_needed);
 
     if (length_needed == 0)
@@ -1934,22 +1987,35 @@ CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
         return NULL;
     }
 
+    // allocate temporary sp container
+    sp = CAPE_ALLOC (length_needed);
+
+    if (!GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, sp, length_needed, &length_needed))
     {
-        CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
 
-        self->sp = CAPE_ALLOC (length_needed);
+    {
+        PSID owner = NULL;
+        PSID group = NULL;
+        PACL dacl = NULL;
+        BOOL dacl_present = FALSE;
 
-        if (!GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, self->sp, length_needed, &length_needed))
+        if (cape_fs_ac__values (sp, &owner, &group, &dacl, &dacl_present, err))
         {
-            cape_fs_ac_del (&self);
-
-            cape_err_lastOSError (err);
-            return NULL;
+            goto exit_and_cleanup;
         }
-
-        return self;
+        
+        // creates an absolute sp and its structure
+        self = cape_fs_ac_new (owner, group, dacl, dacl_present);
     }
     
+exit_and_cleanup:
+
+    CAPE_FREE (sp);
+    return self;
+
 #endif
 }
 
@@ -1957,35 +2023,65 @@ CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 
 int cape_fs_file_ac_set (const char* path, CapeFileAc ac_user, CapeErr err)
 {
-#ifdef __WINDOWS_OS
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-  
-  int res;
-  
-  // local objects
-  CapeFileAc ac = NULL;
-  
-  ac = cape_fs_file__merge_ac (path, ac_user, err);
-  if (NULL == ac)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
+#if defined(CAPE_USE_FREERTOS)
+    
+    // not supported
+    return CAPE_ERR_NONE;
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (-1 == chown (path, ac->uid, ac->gid))
-  {
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  
-  res = CAPE_ERR_NONE;
-  
+    int res;
+    
+    // local objects
+    CapeFileAc ac = NULL;
+    
+    ac = cape_fs_file__merge_ac (path, ac_user, err);
+    if (NULL == ac)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (-1 == chown (path, ac->uid, ac->gid))
+    {
+        res = cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+    
+    res = CAPE_ERR_NONE;
+    
 exit_and_cleanup:
 
-  cape_fs_ac_del (&ac);
-  return res;
-  
+    cape_fs_ac_del (&ac);
+    return res;
+
+#elif defined(__WINDOWS_OS)
+
+    int res;
+
+    // local objects
+    CapeFileAc ac = NULL;
+
+    ac = cape_fs_file__merge_ac (path, ac_user, err);
+    if (NULL == ac || NULL == ac->sp)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (!SetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, ac->sp))
+    {
+        res = cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+
+    cape_fs_ac_del (&ac);
+    return res;
+    
 #endif
 }
 

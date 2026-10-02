@@ -69,7 +69,7 @@ __CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (uid_t uid, gid_t gid, 
 
 #elif defined(__WINDOWS_OS)
 
-__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (PSID owner, PSID group);
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (PSID owner, PSID group, PACL dacl, BOOL dacl_present);
 
 #endif
 
