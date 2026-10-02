@@ -68,9 +68,8 @@ struct CapeFileAc_s
 
 #elif defined(__WINDOWS_OS)
 
+    // contains owner, group, DACL
     SECURITY_DESCRIPTOR* sp;
-    PSID owner;
-    PSID group;
 
 #endif
 };
@@ -117,87 +116,103 @@ CapeFileAc cape_fs_ac_new (PSID owner, PSID group)
 {
     CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
     
-    // allocate minimal memory, wothout owner and group
-    self->sp = CAPE_ALLOC (SECURITY_DESCRIPTOR_MIN_LENGTH);
-    self->owner = NULL;
-    self->group = NULL;
-        
-    // try to initialize the security descriptor
-    // if this fails we will continue
-    if (!InitializeSecurityDescriptor (self->sp, SECURITY_DESCRIPTOR_REVISION))
-    {
-        CAPE_FREE (self->sp);
-        self->sp = NULL;
-
-        // TODO: log error
-        
-        return self;
-    }
-
+    DWORD owner_size = 0;
+    DWORD group_size = 0;
+    size_t size;
+    
     if (owner)
     {
         if (!IsValidSid (owner))
         {
-            // TODO: log error
+            // TODO: error handling
         }
         else
         {
-            DWORD size = GetLengthSid (owner);
-            
-            self->owner = CAPE_ALLOC (size);
-            
-            if (!CopySid (size, self->owner, owner))
-            {
-                CAPE_FREE (self->owner);
-                self->owner = NULL;
-
-                // TODO: log error
-            }
-            else
-            {
-                if (!SetSecurityDescriptorOwner (self->sp, self->owner, FALSE))
-                {
-                    CAPE_FREE (self->owner);
-                    self->owner = NULL;
-
-                    // TODO: log error
-                }
-            }
+            owner_size = GetLengthSid (owner);
         }
     }
-    
+
     if (group)
     {
         if (!IsValidSid (group))
         {
-            // TODO: log error
+            // TODO: error handling
         }
         else
         {
-            DWORD size = GetLengthSid (group);
-            
-            self->group = CAPE_ALLOC (size);
-            
-            if (!CopySid (size, self->group, group))
-            {
-                CAPE_FREE (self->group);
-                self->group = NULL;
-
-                // TODO: log error
-            }
-            else
-            {
-                if (!SetSecurityDescriptorGroup (self->sp, self->group, FALSE))
-                {
-                    CAPE_FREE (self->group);
-                    self->group = NULL;
-
-                    // TODO: log error
-                }
-            }
+            group_size = GetLengthSid (group);
         }
     }
 
+    // calculate the full size of the structure
+    size = SECURITY_DESCRIPTOR_MIN_LENGTH + owner_size + group_size;
+
+    // allocate
+    self->sp = CAPE_ALLOC (size);
+    
+    if (!InitializeSecurityDescriptor (self->sp, SECURITY_DESCRIPTOR_REVISION))
+    {
+        CAPE_FREE (self->sp);
+        self->sp = NULL;
+        
+        // TODO: error handling
+
+        goto finish;
+    }
+    
+    {
+        BYTE* ptr = (BYTE*) self->sp + SECURITY_DESCRIPTOR_MIN_LENGTH;
+        
+        if (owner_size)
+        {
+            PSID owner_copy = (PSID) ptr;
+            
+            if (!CopySid (owner_size, owner_copy, owner))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            else if (!SetSecurityDescriptorOwner (self->sp, owner_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            ptr += owner_size;
+            
+        }
+        
+        if (group_size)
+        {
+            PSID group_copy = (PSID) ptr;
+            
+            if (!CopySid (group_size, group_copy, group))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            else if (!SetSecurityDescriptorGroup (self->sp, group_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+        }
+    }
+    
+finish:
+    
     return self;
 }
 
@@ -266,9 +281,26 @@ exit_and_cleanup:
      */
     if (ac_user)
     {
-        if (ac_user->owner && ac_user->group)
+        if (ac_user->sp)
         {
-            ret = cape_fs_ac_new (ac_user->owner, ac_user->group);
+            ret = cape_fs_ac_new (NULL, NULL);
+
+            if (ret)
+            {
+                DWORD size = GetSecurityDescriptorLength (ac_user->sp);
+
+                ret->sp = CAPE_REALLOC (ret->sp, size);
+
+                if (!CopyMemory (ret->sp, ac_user->sp, size))
+                {
+                    CAPE_FREE (ret->sp);
+                    ret->sp = NULL;
+
+                    // TODO: error handling
+                    goto exit_and_cleanup;
+                }
+            }
+
             goto exit_and_cleanup;
         }
     }
@@ -288,68 +320,42 @@ exit_and_cleanup:
      */
     if (ac_user)
     {
-        if (ac_user->owner)
+        PSID owner = NULL;
+        PSID group = NULL;
+
+        if (!GetSecurityDescriptorOwner (ac_user->sp, &owner, NULL))
         {
-            /*
-             * Replace the owner in the resulting security descriptor.
-             */
-            DWORD size = GetLengthSid (ac_user->owner);
-            PSID owner = CAPE_ALLOC (size);
-
-            if (!CopySid (size, owner, ac_user->owner))
-            {
-                CAPE_FREE (owner);
-                res = cape_err_lastOSError (err);
-                goto exit_and_cleanup;
-            }
-
-            if (!SetSecurityDescriptorOwner (ret->sp, owner, FALSE))
-            {
-                CAPE_FREE (owner);
-                res = cape_err_lastOSError (err);
-                goto exit_and_cleanup;
-            }
-
-            if (ret->owner)
-            {
-                CAPE_FREE (ret->owner);
-            }
-
-            ret->owner = owner;
+            // TODO: error handling
+            goto exit_and_cleanup;
         }
 
-        if (ac_user->group)
+        if (!GetSecurityDescriptorGroup (ac_user->sp, &group, NULL))
         {
-            DWORD size = GetLengthSid (ac_user->group);
-            PSID group = CAPE_ALLOC (size);
+            // TODO: error handling
+            goto exit_and_cleanup;
+        }
 
-            if (!CopySid (size, group, ac_user->group))
-            {
-                CAPE_FREE (group);
-                res = cape_err_lastOSError (err);
-                goto exit_and_cleanup;
-            }
+        /*
+         * Rebuild the security descriptor with the user supplied
+         * owner and group.
+         */
+        if (owner || group)
+        {
+            // this never fails and always returns the object
+            CapeFileAc tmp = cape_fs_ac_new (owner, group);
 
-            if (!SetSecurityDescriptorGroup (ret->sp, group, FALSE))
-            {
-                CAPE_FREE (group);
-                res = cape_err_lastOSError (err);
-                goto exit_and_cleanup;
-            }
+            CAPE_FREE (ret->sp);
+            ret->sp = tmp->sp;
+            tmp->sp = NULL;
 
-            if (ret->group)
-            {
-                CAPE_FREE (ret->group);
-            }
-
-            ret->group = group;
+            cape_fs_ac_del (&tmp);
         }
     }
 
 exit_and_cleanup:
 
     return ret;
-
+    
 #endif
 }
 
@@ -370,16 +376,6 @@ void cape_fs_ac_del (CapeFileAc* p_self)
         if (self->sp)
         {
             CAPE_FREE(self->sp);
-        }
-
-        if (self->group)
-        {
-            CAPE_FREE (self->group);
-        }
-        
-        if (self->owner)
-        {
-            CAPE_FREE (self->owner);
         }
 
 #endif
@@ -1898,48 +1894,62 @@ exit_and_cleanup:
 
 CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
-
-  DWORD LengthNeeded = 0;
-  SECURITY_DESCRIPTOR* sp = CAPE_ALLOC (100);
-
-  BOOL rs = GetFileSecurity (path, ATTRIBUTE_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION, sp, 100, &LengthNeeded);
-	if (!rs)
-	{
-		CAPE_FREE (sp);
-
-		cape_err_lastOSError (err);
-		return NULL;
-	}
-
-	{
-		CapeFileAc self = CAPE_NEW(struct CapeFileAc_s);
-
-		self->sp = sp;
-
-		return self;
-	}
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  struct stat st;
-
-  if (stat (path, &st) == -1)
-  {
-    cape_err_lastOSError (err);
-    return NULL;
-  }
-
-  {
+#if defined(CAPE_USE_FREERTOS)
+    
     CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
 
-    self->permissions = st.st_mode;
-    self->uid = st.st_uid;
-    self->gid = st.st_gid;
-
+    self->dummy = 0;
+    
     return self;
-  }
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
+    struct stat st;
+
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+
+    {
+        CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+        self->permissions = st.st_mode;
+        self->uid = st.st_uid;
+        self->gid = st.st_gid;
+
+        return self;
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    DWORD length_needed = 0;
+
+    GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, NULL, 0, &length_needed);
+
+    if (length_needed == 0)
+    {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+
+    {
+        CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+        self->sp = CAPE_ALLOC (length_needed);
+
+        if (!GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, self->sp, length_needed, &length_needed))
+        {
+            cape_fs_ac_del (&self);
+
+            cape_err_lastOSError (err);
+            return NULL;
+        }
+
+        return self;
+    }
+    
 #endif
 }
 
