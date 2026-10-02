@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <sys/time.h>
+#include <lwip/inet.h>
 
 #define cape_sscanf sscanf
 
@@ -1428,8 +1429,8 @@ int cape_datetime__str (CapeDatetime* dt, const CapeString datetime_in_text)
 
 //-----------------------------------------------------------------------------
 
-static inline number_t bcd_to_number (unsigned char c)
-{ 
+static inline unsigned int bcd_to_number (unsigned char c)
+{
   return c / 16 * 10 + c % 16;
 } 
 
@@ -1438,7 +1439,7 @@ static inline number_t bcd_to_number (unsigned char c)
 int cape_datetime__date_bcd (CapeDatetime* self, cape_uint32 date, cape_uint32 time)
 {
   {
-    // correct endianess to local
+    // correct endianness to local
     cape_uint32 correct_endianess = htonl (date);
 
     // convert uint32 into array of char
@@ -1453,11 +1454,11 @@ int cape_datetime__date_bcd (CapeDatetime* self, cape_uint32 date, cape_uint32 t
     cape_uint32 correct_endianess = htonl (time);
     
     // convert uint32 into array of char
-    const char* bytes_date = ((const char*)(&correct_endianess));
+    const char* bytes_time = ((const char*)(&correct_endianess));
     
-    self->hour = bcd_to_number (*bytes_date);
-    self->minute = bcd_to_number (*(bytes_date + 1));
-    self->sec = bcd_to_number (*(bytes_date + 2));
+    self->hour = bcd_to_number (*bytes_time);
+    self->minute = bcd_to_number (*(bytes_time + 1));
+    self->sec = bcd_to_number (*(bytes_time + 2));
   }
   
   self->msec = 0;
