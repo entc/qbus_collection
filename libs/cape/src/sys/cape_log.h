@@ -24,6 +24,8 @@ __CAPE_LIBEX   void              cape_log_msg           (CapeLogLevel, const cha
 
 __CAPE_LIBEX   void              cape_log_fmt           (CapeLogLevel, const char* unit, const char* method, const char* format, ...);
 
+__CAPE_LIBEX   void              cape_log_err           (CapeLogLevel, const char* unit, const char* method, const char* format, ...);
+
 __CAPE_LIBEX   void              cape_log_set_level     (CapeLogLevel);
 
 __CAPE_LIBEX   CapeLogLevel      cape_log_level_from_s  (const char* log_level_as_text, CapeLogLevel alt);

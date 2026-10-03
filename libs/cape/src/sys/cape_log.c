@@ -234,6 +234,13 @@ void cape_log_fmt (CapeLogLevel lvl, const char* unit, const char* method, const
 
 //-----------------------------------------------------------------------------
 
+void cape_log_err (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
+{
+    
+}
+
+//-----------------------------------------------------------------------------
+
 struct CapeFileLog_s
 {
   CapeFileHandle fh;

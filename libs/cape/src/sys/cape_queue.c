@@ -1,7 +1,5 @@
 #include "cape_queue.h"
 
-//-----------------------------------------------------------------------------
-
 // cape includes
 #include "sys/cape_types.h"
 #include "sys/cape_log.h"
@@ -9,7 +7,14 @@
 #include "sys/cape_thread.h"
 #include "stc/cape_list.h"
 
-#if defined(__LINUX_OS)
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
+#elif defined(__LINUX_OS)
 
 #include <unistd.h>
 #include <sys/ipc.h>
@@ -29,26 +34,26 @@
 
 #include <windows.h>
 
-#elif defined(CAPE_USE_FREERTOS)
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-
 #endif
 
 //-----------------------------------------------------------------------------
 
 struct CapeSync_s
 {
-#if defined __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  LONG refcnt;
+    int refcnt;
+    SemaphoreHandle_t mutex;
+    EventGroupHandle_t revent;
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  HANDLE revent;
+    int semid;
 
-#else
+#elif defined(__WINDOWS_OS)
 
-  int semid;
+    LONG refcnt;
+    HANDLE revent;
 
 #endif
 };
@@ -59,178 +64,186 @@ CapeSync cape_sync_new (void)
 {
   CapeSync self = CAPE_NEW (struct CapeSync_s);
   
-#if defined __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  self->refcnt = 0;
-  self->revent = CreateEvent (NULL, FALSE, TRUE, NULL);
+    self->refcnt = 0;
 
-#else
+    self->mutex = xSemaphoreCreateMutex ();
+    self->revent = xEventGroupCreate ();
+    
+    xEventGroupSetBits (self->revent, CAPE_SYNC_EVENT_DONE);
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  self->semid = semget (IPC_PRIVATE, 1, IPC_CREAT  | IPC_EXCL | 0666);
-  
-  if (self->semid == -1)
-  {
-    CapeErr err = cape_err_new ();
+    self->semid = semget (IPC_PRIVATE, 1, IPC_CREAT  | IPC_EXCL | 0666);
     
-    cape_err_lastOSError (err);
+    if (self->semid == -1)
+    {
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't create semaphore");
+    }
+    else
+    {
+        semctl (self->semid, 0, SETVAL, 0);
+    }
     
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "sync del", "can't permforme semaphore action: %s", cape_err_text(err));
-    
-    cape_err_del (&err);
-  }
-  
-  semctl (self->semid, 0, SETVAL, 0);
+#elif defined(__WINDOWS_OS)
+
+    self->refcnt = 0;
+    self->revent = CreateEvent (NULL, TRUE, TRUE, NULL);
 
 #endif
-
-  return self;
+    
+    return self;
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_sync_del (CapeSync* p_self)
 {
-  if (*p_self)
-  {
-    CapeSync self = *p_self;
+    if (*p_self)
+    {
+        CapeSync self = *p_self;
 
-    cape_sync_wait (self);
-    
-#if defined __WINDOWS_OS
+        cape_sync_wait (self);
 
-    CloseHandle (self->revent);
+#if defined(CAPE_USE_FREERTOS)
 
-#else
+        vEventGroupDelete (self->revent);
+        vSemaphoreDelete (self->mutex);
+        
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-    semctl(self->semid, 0, IPC_RMID);
-      
+        semctl(self->semid, 0, IPC_RMID);
+
+#elif defined(__WINDOWS_OS)
+
+        CloseHandle (self->revent);
+
 #endif
 
-    CAPE_DEL (p_self, struct CapeSync_s);
-  }
+        CAPE_DEL (p_self, struct CapeSync_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_sync_inc (CapeSync self)
 {
-  if (self)
-  {
-#if defined __WINDOWS_OS
-
-    InterlockedIncrement (&(self->refcnt));
-
-    ResetEvent (self->revent);
-
-#else
-
-    struct sembuf sops[1];
-
-    sops[0].sem_num = 0;
-    sops[0].sem_op = 1;
-    sops[0].sem_flg = 0;
-
-    int res = semop (self->semid, sops, 1);
-    
-    if (res == -1)
+    if (self)
     {
-      CapeErr err = cape_err_new ();
-      
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "sync del", "can't permforme semaphore action: %s", cape_err_text(err));
-      
-      cape_err_del (&err);
-    }
+#if defined(CAPE_USE_FREERTOS)
+
+        xSemaphoreTake (self->mutex, portMAX_DELAY);
+
+        self->refcnt++;
+        xEventGroupClearBits (self->revent, CAPE_SYNC_EVENT_DONE);
+
+        xSemaphoreGive (self->mutex);
+        
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+        struct sembuf sops[1];
+
+        sops[0].sem_num = 0;
+        sops[0].sem_op = 1;
+        sops[0].sem_flg = 0;
+
+        if (semop (self->semid, sops, 1) == -1)
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't increase semaphore");
+        }
+
+#elif defined(__WINDOWS_OS)
+
+        InterlockedIncrement (&(self->refcnt));
+
+        ResetEvent (self->revent);
+
 #endif
-  }
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_sync_dec (CapeSync self)
 {
-  if (self)
-  {
-#if defined __WINDOWS_OS
-
-    int var = InterlockedDecrement (&(self->refcnt));
-    if (var == 0)
+    if (self)
     {
-      SetEvent (self->revent);
-    }
+#if defined(CAPE_USE_FREERTOS)
 
-#else
+        xSemaphoreTake (self->mutex, portMAX_DELAY);
 
-    struct sembuf sops[1];
-    
-    sops[0].sem_num = 0;
-    sops[0].sem_op = -1;
-    sops[0].sem_flg = 0;
-    
-    int res = semop (self->semid, sops, 1);    
+        self->refcnt--;
 
-    if (res == -1)
-    {
-      CapeErr err = cape_err_new ();
-      
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "sync del", "can't permforme semaphore action: %s", cape_err_text(err));
-      
-      cape_err_del (&err);
-    }
+        if (self->refcnt == 0)
+        {
+            xEventGroupSetBits (self->revent, CAPE_SYNC_EVENT_DONE);
+        }
+
+        xSemaphoreGive (self->mutex);
+        
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+        struct sembuf sops[1];
+        
+        sops[0].sem_num = 0;
+        sops[0].sem_op = -1;
+        sops[0].sem_flg = 0;
+        
+        if (semop (self->semid, sops, 1) == -1)
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't decrease semaphore");
+        }
+
+#elif defined(__WINDOWS_OS)
+
+        int var = InterlockedDecrement (&(self->refcnt));
+        if (var == 0)
+        {
+            SetEvent (self->revent);
+        }
+
 #endif
-  }
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_sync_wait (CapeSync self)
 {
-  if (self)
-  {
-#if defined __WINDOWS_OS
-
-    DWORD res = WaitForSingleObject (self->revent, INFINITE);
-
-    if (res == WAIT_OBJECT_0)
+    if (self)
     {
-      printf ("SYNC WAIT DONE\n");
-    }
-    else
-    {
-      CapeErr err = cape_err_new ();
-    
-      cape_err_lastOSError (err);
-    
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-    
-      cape_err_del (&err);
-    }
 
-#else
+#if defined(CAPE_USE_FREERTOS)
 
-    struct sembuf sops[1];
-    
-    sops[0].sem_op = 0;
-    sops[0].sem_flg = 0;
-    sops[0].sem_num = 0;
-    
-    int res = semop (self->semid, sops, 1);
-    
-    if (res == -1)
-    {
-      CapeErr err = cape_err_new ();
-      
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "sync del", "can't permforme semaphore action: %s", cape_err_text(err));
-      
-      cape_err_del (&err);
-    }
+        xEventGroupWaitBits (self->revent, CAPE_SYNC_EVENT_DONE, pdFALSE, pdTRUE, portMAX_DELAY);
+        
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+        struct sembuf sops[1];
+        
+        sops[0].sem_op = 0;
+        sops[0].sem_flg = 0;
+        sops[0].sem_num = 0;
+        
+        if (semop (self->semid, sops, 1) == -1)
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't wait semaphore");
+        }
+
+#elif defined(__WINDOWS_OS)
+
+        if (WaitForSingleObject (self->revent, INFINITE) == WAIT_OBJECT_0)
+        {
+            
+        }
+        else
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't wait for SingleObject");
+        }
+
 #endif
-  }
+    }
 }
 
 //-----------------------------------------------------------------------------
