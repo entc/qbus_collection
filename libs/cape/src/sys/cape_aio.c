@@ -838,55 +838,56 @@ int cape_aio_timer__init (CapeAioTimerCtx self, CapeAioItem item, number_t inter
 
 int cape_aio_block_signals (CapeAio self, CapeErr err)
 {
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
 
-    int res;
+    return CAPE_ERR_NONE;
+    
+#elif defined(__LINUX_OS)
+
+    int err_code;
 
     // we must block the signals for the current thread in order for signals for event to receive them
-    res = pthread_sigmask (SIG_BLOCK, &(self->sigset), NULL);
-    if (res)
+    err_code = pthread_sigmask (SIG_BLOCK, &(self->sigset), NULL);
+    if (err_code)
     {
-        return cape_err_lastOSError (err);
+        return cape_err_formatErrorOS (err, err_code);
     }
 
     return CAPE_ERR_NONE;
 
-#elif defined __BSD_OS
-
-    int res;
+#elif defined(__BSD_OS)
+    
+    int err_code;
     sigset_t sigset;
 
     // null the sigset
-    res = sigemptyset (&sigset);
-    if (res == -1)
+    if (0 != sigemptyset (&sigset))
     {
         return cape_err_lastOSError (err);
     }
 
-    // add this signal to the sigset
-    res = sigaddset (&sigset, SIGTERM);
-    if (res < 0)
+    // add SIGTERM to the sigset
+    if (0 != sigaddset (&sigset, SIGTERM))
     {
         return cape_err_lastOSError (err);
     }
 
-    // add this signal to the sigset
-    res = sigaddset (&sigset, SIGINT);
-    if (res < 0)
+    // add SIGINT to the sigset
+    if (0 != sigaddset (&sigset, SIGINT))
     {
         return cape_err_lastOSError (err);
     }
 
     // we must block the signals for the current thread in order for signals for event to receive them
-    res = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
-    if (res)
+    err_code = pthread_sigmask (SIG_BLOCK, &sigset, NULL);
+    if (err_code)
     {
-        return cape_err_lastOSError (err);
+        return cape_err_formatErrorOS (err, err_code);
     }
     
     return CAPE_ERR_NONE;
-
-#elif defined _WIN64 || defined _WIN32
+    
+#elif defined(__WINDOWS_OS)
 
     return CAPE_ERR_NONE;
 
