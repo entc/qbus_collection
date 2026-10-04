@@ -2,6 +2,7 @@
 #define __CAPE_SYS__ERR__H 1
 
 #include "sys/cape_export.h"
+#include "stc/cape_str.h"
 
 //=============================================================================
 
@@ -68,7 +69,13 @@ __CAPE_LIBEX   int               cape_err_code          (CapeErr);
 
 __CAPE_LIBEX   int               cape_err_lastOSError_i   (CapeErr, int line_number, const char* file);
 
-__CAPE_LIBEX   int               cape_err_formatErrorOS_i (CapeErr, int line_number, const char* file, int errCode);
+__CAPE_LIBEX   int               cape_err_formatErrorOS_i   (CapeErr, int line_number, const char* file, int errCode);
+
+//-----------------------------------------------------------------------------
+
+__CAPE_LIBEX   CapeString        cape_err_os_errcode        (int error_code);
+
+__CAPE_LIBEX   CapeString        cape_err_os_last_text      (void);
 
 //-----------------------------------------------------------------------------
 

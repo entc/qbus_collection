@@ -14,6 +14,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
+#define CAPE_SYNC_EVENT_DONE    (1 << 0)
+
 #elif defined(__LINUX_OS)
 
 #include <unistd.h>

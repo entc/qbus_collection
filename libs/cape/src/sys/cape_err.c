@@ -206,6 +206,49 @@ int cape_err_lastOSError_i (CapeErr self, int line_number, const char* file)
   
   return CAPE_ERR_OS;
 }
+//-----------------------------------------------------------------------------
+
+CapeString cape_err_os_errcode (int error_code)
+{
+#if defined(CAPE_USE_FREERTOS)
+
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    return cape_str_cp (strerror (error_code));
+
+#elif defined(__WINDOWS_OS)
+
+    LPTSTR buffer = NULL;
+    DWORD res = FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&buffer, 0, NULL);
+    
+    if (buffer)
+    {
+        
+        
+        // release buffer
+        LocalFree (buffer);
+    }
+
+#endif
+}
 
 //-----------------------------------------------------------------------------
 
+CapeString cape_err_os_last_text (void)
+{
+#if defined(CAPE_USE_FREERTOS)
+
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    return cape_err_os_errcode (errno);
+
+#elif defined(__WINDOWS_OS)
+
+    return cape_err_os_errcode (GetLastError ());
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
