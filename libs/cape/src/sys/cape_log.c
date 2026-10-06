@@ -236,7 +236,18 @@ void cape_log_fmt (CapeLogLevel lvl, const char* unit, const char* method, const
 
 void cape_log_err (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
 {
+    CapeString last_os_error = cape_err_os_last_text ();
     
+    if (last_os_error)
+    {
+        
+    }
+    else
+    {
+        
+    }
+    
+    cape_str_del (&last_os_error);
 }
 
 //-----------------------------------------------------------------------------

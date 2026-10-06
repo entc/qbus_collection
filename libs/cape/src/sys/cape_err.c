@@ -212,6 +212,7 @@ CapeString cape_err_os_errcode (int error_code)
 {
 #if defined(CAPE_USE_FREERTOS)
 
+    return NULL;
 
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
@@ -219,15 +220,18 @@ CapeString cape_err_os_errcode (int error_code)
 
 #elif defined(__WINDOWS_OS)
 
-    LPTSTR buffer = NULL;
-    DWORD res = FormatMessageA (FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&buffer, 0, NULL);
+    char* buffer = CAPE_ALLOC (1024);
     
-    if (buffer)
+    DWORD res = FormatMessageA (FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, 1024, NULL);
+    
+    if (res)
     {
-        
-        
-        // release buffer
-        LocalFree (buffer);
+        return buffer;
+    }
+    else
+    {
+        CAPE_FREE (buffer);
+        return NULL;
     }
 
 #endif
@@ -239,6 +243,7 @@ CapeString cape_err_os_last_text (void)
 {
 #if defined(CAPE_USE_FREERTOS)
 
+    return NULL;
 
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
