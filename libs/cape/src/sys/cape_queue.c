@@ -252,16 +252,18 @@ void cape_sync_wait (CapeSync self)
 
 struct CapeQueue_s
 {
-  CapeMutex mutex;
-  
-  CapeList threads;
-  
-  CapeList queue;
-  
-  CapeThread observer_thread;
-  
-#if defined(__LINUX_OS)
+    CapeMutex mutex;
+    
+    CapeThreadPool thread_pool;
+    
+    CapeList queue;
+    
+#if defined(CAPE_USE_FREERTOS)
 
+    SemaphoreHandle_t sem;
+
+#elif defined(__LINUX_OS)
+            
     sem_t sem;    // semaphore structure
 
 #elif defined(__BSD_OS)
@@ -272,33 +274,29 @@ struct CapeQueue_s
 
     HANDLE semaphore;
 
-#elif defined(CAPE_USE_FREERTOS)
-
-    SemaphoreHandle_t sem;
-    
 #endif
 
-  int terminated;
-  
-  number_t timeout_in_ds;   // timeout in deciseconds
+    int terminated;
+    
+    number_t timeout_in_ms;
 };
 
 //-----------------------------------------------------------------------------
 
 struct CapeQueueItem_s
 {
-  cape_queue_cb_fct on_event;
-  
-  cape_queue_cb_fct on_done;
-  
-  cape_queue_cb_fct on_cancel;
-  
-  void* ptr;
-  
-  CapeSync sync;    // reference
-  
-  number_t pos;
-  
+    cape_queue_cb_fct on_event;
+    
+    cape_queue_cb_fct on_done;
+    
+    cape_queue_cb_fct on_cancel;
+    
+    void* ptr;
+    
+    CapeSync sync;    // reference
+    
+    number_t pos;
+
 }; typedef struct CapeQueueItem_s* CapeQueueItem;
 
 //-----------------------------------------------------------------------------
@@ -319,211 +317,8 @@ void __STDCALL cape_queue__item__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-struct CapeThreadItem_s
+static int cape_queue__next (CapeQueue self)
 {
-  CapeThread thread;
-  
-  CapeQueue queue;
-  
-  number_t busy_cnt;
-  
-  CapeQueueItem item;
-  
-}; typedef struct CapeThreadItem_s* CapeThreadItem;
-
-//-----------------------------------------------------------------------------
-
-void __STDCALL cape_queue__threads__on_del (void* ptr)
-{
-  CapeThreadItem self = ptr;
-  
-  cape_thread_join (self->thread);
-  
-  cape_thread_del (&(self->thread));
-  
-  CAPE_DEL (&self, struct CapeThreadItem_s);
-}
-
-//-----------------------------------------------------------------------------
-
-CapeQueue cape_queue_new (number_t timeout_in_ms)
-{
-    CapeQueue self = CAPE_NEW (struct CapeQueue_s);
-    
-    // calculate the deciseconds
-    self->timeout_in_ds = timeout_in_ms / 100;
-    
-    self->mutex = cape_mutex_new ();
-
-#if defined(__LINUX_OS)
-
-    int res = sem_init (&(self->sem), 0, 0);
-
-    if (res == -1)
-    {
-        CapeErr err = cape_err_new ();
-        
-        cape_err_lastOSError (err);
-        
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue new", "can't initialize semaphore: %s", cape_err_text(err));
-        
-        cape_err_del (&err);
-    }
-
-#elif defined(__BSD_OS)
-
-    self->sem = dispatch_semaphore_create (0);
-
-#elif defined(__WINDOWS_OS)
-
-    self->semaphore = CreateSemaphore (NULL, 0, 1000, NULL);
-
-#elif defined(CAPE_USE_FREERTOS)
-
-    self->sem = xSemaphoreCreateCounting (1000, 0);
-    
-#endif
-
-    self->terminated = FALSE;
-    
-    self->threads = cape_list_new (cape_queue__threads__on_del);
-    
-    self->queue = cape_list_new (cape_queue__item__on_del);
-    
-    self->observer_thread = cape_thread_new ();
-    
-    return self;
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_queue_del (CapeQueue* p_self)
-{
-  if (*p_self)
-  {
-    CapeQueue self = *p_self;
-    
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down queue processes");
-    
-    self->terminated = TRUE;
-        
-    {
-      CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
-      
-      while (cape_list_cursor_next (cursor))
-      {
-#if defined __WINDOWS_OS
-
-        // increase the count
-        if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
-        {
-          CapeErr err = cape_err_new ();
-    
-          cape_err_lastOSError (err);
-    
-          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-    
-          cape_err_del (&err);
-        }
-
-#elif defined __BSD_OS
-        dispatch_semaphore_signal (self->sem);
-#else
-        sem_post (&(self->sem));
-#endif
-
-        cape_thread_join (cape_list_node_data (cursor->node));
-      }
-      
-      cape_list_cursor_destroy (&cursor);
-    }
-    
-    // wait for the observer thread to terminate
-    cape_thread_join (self->observer_thread);
-
-    {
-      number_t left_queues = cape_list_size (self->queue);
-
-      if (left_queues > 0)
-      {
-        cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue del", "%i left in queue", left_queues);
-      }
-    }
-    
-    // wait for all worker threads
-    cape_list_del (&(self->threads));
-
-    cape_list_del (&(self->queue));
-    
-    cape_thread_del (&(self->observer_thread));
-    
-    cape_mutex_del (&(self->mutex));
-    
-    //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down done");
-    
-    CAPE_DEL (p_self, struct CapeQueue_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_queue_pull (CapeQueue self, CapeThreadItem ti, int has_timeout)
-{
-  int ret = TRUE;
-  
-  number_t queue_size;
-  CapeQueueItem item = NULL;
-  
-  cape_mutex_lock (self->mutex);
-  
-  ret = !self->terminated;
-  
-  if (ret)
-  {
-    item = cape_list_pop_front (self->queue);
-  }
-  
-  // get the remaining items in the queue
-  queue_size = cape_list_size (self->queue);
-  
-  cape_mutex_unlock (self->mutex);
-  
-  if (item && ret)
-  {
-    if (has_timeout)
-    {
-      cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue next", "queue got stacked, size = %i", queue_size);
-    }
-    
-    if (item->on_event)
-    {
-      // set the thread to busy
-      // -> item ownership is temporary moved to the thread handling
-      ti->item = item;
-      
-      // reset the busy counter
-      ti->busy_cnt = 0;
-      
-      // we don't know what happens here
-      // this might block forever
-      item->on_event (item->ptr, item->pos, queue_size);
-      
-      // reset the busy state
-      ti->item = NULL;
-    }
-    
-    cape_queue__item__on_del (item);
-  }
-  
-  return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_queue_next (CapeQueue self, CapeThreadItem ti)
-{
-    int timeout = FALSE;
-
 #if defined(__LINUX_OS)
 
     struct timespec ts;
@@ -555,7 +350,6 @@ int cape_queue_next (CapeQueue self, CapeThreadItem ti)
         }
         case ETIMEDOUT:
         {
-          timeout = TRUE;
           break;
         }
         default:
@@ -605,124 +399,201 @@ int cape_queue_next (CapeQueue self, CapeThreadItem ti)
     
 #endif
 
-    return cape_queue_pull (self, ti, timeout);
+    return TRUE;
 }
 
 //-----------------------------------------------------------------------------
 
-static int __STDCALL cape_queue__worker__thread (void* ptr)
+static CapeQueueItem cape_queue__pop (CapeQueue self)
 {
-  CapeThreadItem ti = ptr;
-  
-  // disable signale handling in this thread
-  // signal handling must happen outside
-  cape_thread_nosignals ();
-  
-  return cape_queue_next (ti->queue, ti);
-}
+    CapeQueueItem item = NULL;
 
-//-----------------------------------------------------------------------------
-
-static int __STDCALL cape_queue__observer__thread (void* ptr)
-{
-  CapeQueue self = ptr;
-
-  cape_thread_nosignals ();
-
-  while (self->terminated == FALSE)
-  {
-    number_t busy_threads = 0;
-
-    cape_thread_sleep (self->timeout_in_ds);
-
-    {
-      CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
-      
-      while (cape_list_cursor_next (cursor))
-      {
-        CapeThreadItem ti = cape_list_node_data (cursor->node);
-        
-        if (ti->item)
-        {
-          busy_threads++;
-          
-          (ti->busy_cnt)++;
-          
-          if (ti->busy_cnt > self->timeout_in_ds)
-          {
-            cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
-            
-            if (ti->item->on_cancel)
-            {
-              cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "run user defined callback");
-
-              ti->item->on_cancel (ti->item->ptr, ti->item->pos, 0);
-
-              // reset the state
-              ti->busy_cnt = 0;
-            }
-            else
-            {
-              // try to cancel the thread
-              cape_thread_cancel (ti->thread);
-              
-              // release the item allocations and call the on_done method
-              // -> not all memory might be released
-              // -> this depends on the user function implementations
-              cape_queue__item__on_del (ti->item);
-              
-              // reset the state
-              ti->busy_cnt = 0;
-              ti->item = NULL;
-              
-              // restart the thread
-              cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
-            }            
-          }
-        }
-      }
-      
-      cape_list_cursor_destroy (&cursor);
-    }
-
-    /*
     cape_mutex_lock (self->mutex);
     
-    printf ("B: %lu, L: %lu\n", busy_threads, cape_list_size (self->queue));
+    item = cape_list_pop_front (self->queue);
     
     cape_mutex_unlock (self->mutex);
-     */
-  }
-  
-  return FALSE;
+
+    return item;
 }
 
 //-----------------------------------------------------------------------------
 
-int cape_queue_start  (CapeQueue self, number_t amount_of_threads, CapeErr err)
+static number_t cape_queue__size (CapeQueue self)
 {
-  number_t i;
+    number_t queue_size;
+    
+    cape_mutex_lock (self->mutex);
+    
+    queue_size = cape_list_size (self->queue);
+    
+    cape_mutex_unlock (self->mutex);
+
+    return queue_size;
+}
+
+//-----------------------------------------------------------------------------
+
+static void* __STDCALL cape_queue__on_new_item (void* user_ptr)
+{
+    CapeQueue self = user_ptr;
+    
+    // waits until a possible queue event might be available
+    if (cape_queue__next (self))
+    {
+        // fetch the queue event and return it as obj_ptr
+        return cape_queue__pop (self);
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL cape_queue__worker__thread (void* obj_ptr, void* user_ptr, CapeThreadPoolItem pool_item)
+{
+    CapeQueue self = user_ptr;
+    CapeQueueItem item = obj_ptr;
+    
+    if (item && item->on_event)
+    {
+        // set the active state
+        cape_thread_item_set (pool_item, TRUE);
+        
+        // we don't know what happens here
+        // this might block forever
+        item->on_event (item->ptr, item->pos, cape_queue__size (self));
+
+        // unset the active state
+        cape_thread_item_set (pool_item, FALSE);
+    }
+
+    return !self->terminated;
+}
+
+//-----------------------------------------------------------------------------
+
+void __STDCALL cape_queue__on_stop_item (void* obj_ptr, void* user_ptr)
+{
+    CapeQueue self = user_ptr;
+    
+#if defined(CAPE_USE_FREERTOS)
+
+    xSemaphoreGive (self->sem);
+    
+#elif defined(__LINUX_OS)
+            
+    sem_post (&(self->sem));
+
+#elif defined(__BSD_OS)
+
+    dispatch_semaphore_signal (self->sem);
+
+#elif defined(__WINDOWS_OS)
+
+    // increase the count
+    if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
+    {
+        CapeErr err = cape_err_new ();
+
+        cape_err_lastOSError (err);
+
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
+
+        cape_err_del (&err);
+    }
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+CapeQueue cape_queue_new (number_t timeout_in_ms)
+{
+    CapeQueue self = CAPE_NEW (struct CapeQueue_s);
+    
+    // calculate the deciseconds
+    self->timeout_in_ms = timeout_in_ms;
+    
+    self->terminated = FALSE;
+    
+    // create the thread pool with the related callbacks
+    self->thread_pool = cape_thread_pool_new (self, cape_queue__worker__thread, cape_queue__on_new_item, cape_queue__on_stop_item, cape_queue__item__on_del);
+
+    self->mutex = cape_mutex_new ();
+
+    self->queue = cape_list_new (cape_queue__item__on_del);
+
+#if defined(CAPE_USE_FREERTOS)
+
+    self->sem = xSemaphoreCreateCounting (1000, 0);
+
+#elif defined(__LINUX_OS)
+            
+    int res = sem_init (&(self->sem), 0, 0);
+
+    if (res == -1)
+    {
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't initialize semaphore");
+    }
+
+#elif defined(__BSD_OS)
+
+    self->sem = dispatch_semaphore_create (0);
+
+#elif defined(__WINDOWS_OS)
+
+    self->semaphore = CreateSemaphore (NULL, 0, 1000, NULL);
+
+#endif
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_queue_del (CapeQueue* p_self)
+{
+    if (*p_self)
+    {
+        CapeQueue self = *p_self;
+        
+        cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down queue processes");
+
+        self->terminated = TRUE;
+
+        // waits until all threads have been joined
+        // destroys all threads
+        cape_thread_pool_del (&(self->thread_pool));
+
+        {
+            number_t left_queues = cape_list_size (self->queue);
+
+            if (left_queues > 0)
+            {
+                cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue del", "%i left in queue", left_queues);
+            }
+        }
+    
+        cape_list_del (&(self->queue));
+        
+        cape_mutex_del (&(self->mutex));
+        
+        //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down done");
+        
+        CAPE_DEL (p_self, struct CapeQueue_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_queue_start (CapeQueue self, number_t amount_of_threads, CapeErr err)
+{
+    cape_thread_pool_start (self->thread_pool, amount_of_threads, self->timeout_in_ms);
   
-  for (i = 0; i < amount_of_threads; i++)
-  {
-    CapeThreadItem ti = CAPE_NEW (struct CapeThreadItem_s);
-    
-    ti->thread = cape_thread_new ();
-    ti->queue = self;
-    ti->busy_cnt = 0;
-    ti->item = NULL;
-    
-    //cape_log_msg (CAPE_LL_TRACE, "CAPE", "queue start", "start new thread");
-    
-    cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
-    
-    cape_list_push_back (self->threads, ti);
-  }
-  
-  // start the observer thread
-  cape_thread_start (self->observer_thread, cape_queue__observer__thread, self);
-  
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------

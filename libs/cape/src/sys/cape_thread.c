@@ -5,6 +5,7 @@
 #include "sys/cape_log.h"
 #include "sys/cape_types.h"
 #include "stc/cape_list.h"
+#include "sys/cape_time.h"
 
 //-----------------------------------------------------------------------------
 
@@ -560,29 +561,170 @@ number_t cape_thread_concurrency ()
 
 //-----------------------------------------------------------------------------
 
+// forward declarations
+static void* cape_thread_pool__cb_new (CapeThreadPool self);
+static void cape_thread_pool__cb_del (CapeThreadPool self, void* obj_ptr);
+static int cape_thread_pool__cb_worker (CapeThreadPool self, void* obj_ptr, CapeThreadPoolItem pool_item);
+
+//-----------------------------------------------------------------------------
+
+struct CapeThreadPoolItem_s
+{
+    CapeThreadPool pool;
+    
+    void* obj_ptr;
+    
+    CapeThread thread;
+    
+    uint64_t work_start;
+};
+
+//-----------------------------------------------------------------------------
+
+static CapeThreadPoolItem cape_thread_pool__item_new (CapeThreadPool pool)
+{
+    CapeThreadPoolItem self = CAPE_NEW (struct CapeThreadPoolItem_s);
+    
+    self->pool = pool;
+    self->obj_ptr = NULL;
+
+    // create a new thread object
+    self->thread = cape_thread_new ();
+    
+    self->work_start = 0;
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_thread_pool__item_del (CapeThreadPoolItem* p_self)
+{
+    if (*p_self)
+    {
+        CapeThreadPoolItem self = *p_self;
+        
+        // wait for JOIN and cleanup resources
+        cape_thread_del (&(self->thread));
+                
+        CAPE_DEL (p_self, struct CapeThreadPoolItem_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_thread_item_set (CapeThreadPoolItem self, int active)
+{
+    if (active)
+    {
+        self->work_start = cape_time_msec ();
+    }
+    else
+    {
+        self->work_start = 0;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int __STDCALL cape_thread_pool__item_worker (void* ptr)
+{
+    CapeThreadPoolItem self = ptr;
+
+    int running = TRUE;
+    
+    // disable signale handling in this thread
+    // signal handling must happen outside
+    cape_thread_nosignals ();
+
+    while (running)
+    {
+        // transfer the object pointer
+        self->obj_ptr = cape_thread_pool__cb_new (self->pool);
+
+        running = cape_thread_pool__cb_worker (self->pool, self->obj_ptr, self);
+        
+        // delete user defined object
+        cape_thread_pool__cb_del (self->pool, self->obj_ptr);
+
+        // reset ptr
+        self->obj_ptr = NULL;
+    }
+        
+    return FALSE;
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_thread_pool__item_start (CapeThreadPoolItem self)
+{
+    // start the thread
+    cape_thread_start (self->thread, cape_thread_pool__item_worker, self);
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_thread_pool__item_signal (CapeThreadPoolItem self)
+{
+    cape_thread_signal (self->thread);
+}
+
+//-----------------------------------------------------------------------------
+
 struct CapeThreadPool_s
 {
     CapeList threads;
+    
+    void* user_ptr;
+    cape_thread_pool__worker worker;
+    cape_thread_pool__on_new on_new;
+    cape_thread_pool__on_stop on_stop;
+    cape_thread_pool__on_del on_del;
 };
 
 //-----------------------------------------------------------------------------
 
 static void __STDCALL cape_thread_pool__on_thread_del (void* ptr)
 {
-    CapeThread h = ptr;
-
-    cape_thread_del (&h);
+    CapeThreadPoolItem pool_item = ptr; cape_thread_pool__item_del (&pool_item);
 }
 
 //-----------------------------------------------------------------------------
 
-CapeThreadPool cape_thread_pool_new (void)
+CapeThreadPool cape_thread_pool_new (void* user_ptr, cape_thread_pool__worker worker, cape_thread_pool__on_new on_new, cape_thread_pool__on_stop on_stop, cape_thread_pool__on_del on_del)
 {
     CapeThreadPool self = CAPE_NEW (struct CapeThreadPool_s);
 
     self->threads = cape_list_new (cape_thread_pool__on_thread_del);
-
+    
+    self->user_ptr = user_ptr;
+    
+    self->worker = worker;
+    self->on_new = on_new;
+    self->on_stop = on_stop;
+    self->on_del = on_del;
+    
     return self;
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_thread_pool__stop (CapeThreadPool self)
+{
+    CapeListCursor* cursor = cape_list_cursor_new (self->threads, CAPE_DIRECTION_FORW);
+
+    while (cape_list_cursor_next (cursor))
+    {
+        CapeThreadPoolItem pool_item = cape_list_node_data (cursor->node);
+
+        if (self->on_stop)
+        {
+            // signal the user defined object to stop
+            self->on_stop (pool_item->obj_ptr, self->user_ptr);
+        }
+    }
+
+    cape_list_cursor_del (&cursor);
 }
 
 //-----------------------------------------------------------------------------
@@ -593,6 +735,10 @@ void cape_thread_pool_del (CapeThreadPool* p_self)
     {
         CapeThreadPool self = *p_self;
 
+        // this will call all on_stop functions
+        cape_thread_pool__stop (self);
+        
+        // JOIN all threads
         cape_list_del (&(self->threads));
 
         CAPE_DEL (p_self, struct CapeThreadPool_s);
@@ -601,25 +747,62 @@ void cape_thread_pool_del (CapeThreadPool* p_self)
 
 //-----------------------------------------------------------------------------
 
-void cape_thread_pool_start (CapeThreadPool self, number_t amount, void* user_ptr, cape_thread_worker_fct worker_callback)
+static void* cape_thread_pool__cb_new (CapeThreadPool self)
+{
+    if (self->on_new)
+    {
+        return self->on_new (self->user_ptr);
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_thread_pool__cb_del (CapeThreadPool self, void* obj_ptr)
+{
+    if (self->on_del && obj_ptr)
+    {
+        self->on_del (obj_ptr);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_thread_pool__cb_worker (CapeThreadPool self, void* obj_ptr, CapeThreadPoolItem pool_item)
+{
+    if (self->worker)
+    {
+        return self->worker (obj_ptr, self->user_ptr, pool_item);
+    }
+    else
+    {
+        return FALSE;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_thread_pool_start (CapeThreadPool self, number_t amount, number_t timeout_in_ms)
 {
     number_t i;
 
-    if (!self || !worker_callback)
+    if (!self)
     {
         return;
     }
 
     for (i = 0; i < amount; i++)
     {
-        // create a new thread object
-        CapeThread thread = cape_thread_new ();
-
-        // start the thread
-        cape_thread_start (thread, worker_callback, user_ptr);
-
+        CapeThreadPoolItem pool_item = cape_thread_pool__item_new (self);
+                
         // add the thread to the list for housekeeping
-        cape_list_push_back (self->threads, thread);
+        cape_list_push_back (self->threads, pool_item);
+
+        // starts the thread
+        cape_thread_pool__item_start (pool_item);
     }
 }
 
@@ -631,13 +814,84 @@ void cape_thread_pool_signal (CapeThreadPool self)
 
     while (cape_list_cursor_next (cursor))
     {
-        CapeThread thread = cape_list_node_data (cursor->node);
+        CapeThreadPoolItem pool_item = cape_list_node_data (cursor->node);
 
-        cape_thread_signal (thread);
+        cape_thread_pool__item_signal (pool_item);
     }
 
     cape_list_cursor_del (&cursor);
 }
+
+//-----------------------------------------------------------------------------
+
+/*
+static int __STDCALL cape_queue__observer__thread (void* ptr)
+{
+  CapeQueue self = ptr;
+
+  cape_thread_nosignals ();
+
+  while (self->terminated == FALSE)
+  {
+    number_t busy_threads = 0;
+
+    cape_thread_sleep (self->timeout_in_ds);
+
+    {
+      CapeListCursor* cursor = cape_list_cursor_create (self->threads, CAPE_DIRECTION_FORW);
+      
+      while (cape_list_cursor_next (cursor))
+      {
+        CapeThreadItem ti = cape_list_node_data (cursor->node);
+        
+        if (ti->item)
+        {
+          busy_threads++;
+          
+          (ti->busy_cnt)++;
+          
+          if (ti->busy_cnt > self->timeout_in_ds)
+          {
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "thread is busy for too long -> cancel");
+            
+            if (ti->item->on_cancel)
+            {
+              cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue observer", "run user defined callback");
+
+              ti->item->on_cancel (ti->item->ptr, ti->item->pos, 0);
+
+              // reset the state
+              ti->busy_cnt = 0;
+            }
+            else
+            {
+              // try to cancel the thread
+              cape_thread_cancel (ti->thread);
+              
+              // release the item allocations and call the on_done method
+              // -> not all memory might be released
+              // -> this depends on the user function implementations
+              cape_queue__item__on_del (ti->item);
+              
+              // reset the state
+              ti->busy_cnt = 0;
+              ti->item = NULL;
+              
+              // restart the thread
+              cape_thread_start (ti->thread, cape_queue__worker__thread, ti);
+            }
+          }
+        }
+      }
+      
+      cape_list_cursor_destroy (&cursor);
+    }
+
+  }
+  
+  return FALSE;
+}
+*/
 
 //-----------------------------------------------------------------------------
 

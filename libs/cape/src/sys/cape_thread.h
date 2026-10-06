@@ -42,20 +42,38 @@ __CAPE_LIBEX   number_t        cape_thread_concurrency     ();
 //-----------------------------------------------------------------------------
 
 struct CapeThreadPool_s; typedef struct CapeThreadPool_s* CapeThreadPool;
+struct CapeThreadPoolItem_s; typedef struct CapeThreadPoolItem_s* CapeThreadPoolItem;
+
+/* will be called before thread was created and started */
+typedef void* (__STDCALL *cape_thread_pool__on_new)(void* user_ptr);
+
+/* will be called after the join of the thread */
+typedef void (__STDCALL *cape_thread_pool__on_del)(void* obj_ptr);
+
+/* will be called before the join */
+typedef void (__STDCALL *cape_thread_pool__on_stop)(void* obj_ptr, void* user_ptr);
+
+/* will be called as worker thread */
+typedef int (__STDCALL *cape_thread_pool__worker)(void* obj_ptr, void* user_ptr, CapeThreadPoolItem);
 
 //-----------------------------------------------------------------------------
 
                                /* constructor */
-__CAPE_LIBEX   CapeThreadPool  cape_thread_pool_new        (void);
+__CAPE_LIBEX   CapeThreadPool  cape_thread_pool_new        (void* user_ptr, cape_thread_pool__worker, cape_thread_pool__on_new, cape_thread_pool__on_stop, cape_thread_pool__on_del);
 
                                /* destructor, stops all threads */
 __CAPE_LIBEX   void            cape_thread_pool_del        (CapeThreadPool*);
 
                                /* starts all threads */
-__CAPE_LIBEX   void            cape_thread_pool_start      (CapeThreadPool, number_t amount, void* ptr, cape_thread_worker_fct);
+__CAPE_LIBEX   void            cape_thread_pool_start      (CapeThreadPool, number_t amount, number_t timeout_in_ms);
 
                                /* send a signal to all threads */
 __CAPE_LIBEX   void            cape_thread_pool_signal     (CapeThreadPool);
+
+//-----------------------------------------------------------------------------
+
+                               /* sets idle or active status of a thread */
+__CAPE_LIBEX   void            cape_thread_item_set        (CapeThreadPoolItem, int active);
 
 //-----------------------------------------------------------------------------
 
