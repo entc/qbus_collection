@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <lwip/inet.h>
+#include <esp_timer.h>
 
 #define cape_sscanf sscanf
 
