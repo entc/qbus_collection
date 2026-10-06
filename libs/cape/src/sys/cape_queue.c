@@ -394,7 +394,7 @@ static int cape_queue__next (CapeQueue self)
 
     if (xSemaphoreTake (self->sem, pdMS_TO_TICKS (5000)) != pdTRUE)
     {
-        timeout = TRUE;
+        
     }
     
 #endif
