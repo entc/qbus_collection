@@ -65,6 +65,33 @@
 
 //-----------------------------------------------------------------------------
 
+uint64_t cape_time_msec ()
+{
+#if defined(CAPE_USE_FREERTOS)
+    
+    return (uint64_t) esp_timer_get_time () / 1000ULL;
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+    
+    struct timespec ts;
+    
+    clock_gettime (CLOCK_MONOTONIC, &ts);
+    
+    return ((uint64_t) ts.tv_sec * 1000ULL) + ((uint64_t) ts.tv_nsec / 1000000ULL);
+    
+#elif defined(__WINDOWS_OS)
+    
+    return (uint64_t) GetTickCount64 ();
+    
+#else
+    
+    return 0;
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 CapeDatetime* cape_datetime_new (void)
 {
   CapeDatetime* self = CAPE_NEW(CapeDatetime);

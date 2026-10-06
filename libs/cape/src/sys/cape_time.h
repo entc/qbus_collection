@@ -10,6 +10,11 @@
 
 //=============================================================================
 
+                            /* returns milliseconds from monotone clock */
+__CAPE_LIBEX   uint64_t     cape_time_msec ();
+
+//-----------------------------------------------------------------------------
+
 #pragma pack(push, 16)
 typedef struct
 {
