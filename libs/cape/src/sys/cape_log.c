@@ -136,117 +136,186 @@ CapeLogLevel cape_log_level_from_s (const char* log_level_as_text, CapeLogLevel 
 
 //-----------------------------------------------------------------------------
 
+static int cape_log__correct_len (int len)
+{
+    if (len < 0)
+    {
+        return 0;
+    }
+    else if ((size_t) len >= CAPE_STACK__MAX_BUFFER_SIZE)
+    {
+        return CAPE_STACK__MAX_BUFFER_SIZE - 1;
+    }
+    
+    return len;
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const char* msg)
 {
-  char buffer [2050];
+    char buffer [CAPE_STACK__MAX_BUFFER_SIZE];
+    int len;
+    
+    if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
+    {
+        return;
+    }
+    
+#if defined _WIN64 || defined _WIN32
+    
+    len = _snprintf_s (buffer, sizeof(buffer), sizeof(buffer) - 1, "%-12s %s|%-8s] %s", method, msg_matrix[lvl], unit, msg);
 
-  if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
-  {
-    return;
-  }
-  
-#if defined _WIN64 || defined _WIN32 
-  
-  _snprintf_s (buffer, 2048, _TRUNCATE, "%-12s %s|%-8s] %s", method, msg_matrix[lvl], unit, msg);
-  {
-    CONSOLE_SCREEN_BUFFER_INFO info;
-    // get the console handle
-    HANDLE hStdout = GetStdHandle (STD_OUTPUT_HANDLE);      
-    // remember the original background color
-    GetConsoleScreenBufferInfo (hStdout, &info);
-    // do some fancy stuff
-    SetConsoleTextAttribute (hStdout, clr_matrix[lvl]);
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
+
+    {
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        // get the console handle
+        HANDLE hStdout = GetStdHandle (STD_OUTPUT_HANDLE);
+        // remember the original background color
+        GetConsoleScreenBufferInfo (hStdout, &info);
+        // do some fancy stuff
+        SetConsoleTextAttribute (hStdout, clr_matrix[lvl]);
+        
+        printf("%s\n", buffer);
+        
+        SetConsoleTextAttribute (hStdout, info.wAttributes);
+    }
     
-    printf("%s\n", buffer);
-    
-    SetConsoleTextAttribute (hStdout, info.wAttributes);
-  }
 
 #else
+    
+    CapeDatetime dt;
+    cape_datetime_utc (&dt);
+    
+    if (msg)
+    {
+        len = snprintf (buffer, sizeof(buffer), "%04i%02i%02i-%02i:%02i:%02i.%03i|%s|%8s|%-20s| %s", dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.sec, dt.msec, msg_matrix[lvl], unit, method, msg);
+    }
+    else
+    {
+        len = snprintf (buffer, sizeof(buffer), "%-12s %s|%-8s]", method, msg_matrix[lvl], unit);
+    }
 
-  CapeDatetime dt;
-  number_t len;
-  
-  cape_datetime_utc (&dt);
-  
-  if (msg)
-  {
-    len = snprintf (buffer, 2048, "%04i%02i%02i-%02i:%02i:%02i.%03i|%s|%8s|%-20s| %s", dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.sec, dt.msec, msg_matrix[lvl], unit, method, msg);
-  }
-  else
-  {
-    len = snprintf (buffer, 2048, "%-12s %s|%-8s]", method, msg_matrix[lvl], unit);
-  }
-  
-  if (CAPE_LOG_OUT_FD)
-  {
-    cape_fs_writeln_msg (CAPE_LOG_OUT_FD, buffer, len);
-  }
-  else if (lvl == CAPE_LL_TRACE)
-  {
-    printf("%s\n", buffer);
-  }
-  else
-  {
-    printf("\033[%sm%s\033[0m\n", clr_matrix[lvl], buffer);
-  }
-  
-  if (g_log_udp_handle)
-  {
-    CapeStream s = cape_stream_new ();
-    CapeErr err = cape_err_new_ex (FALSE);   // disable logging of errors
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
     
-    cape_stream_append_buf (s, buffer, len);
+    if (CAPE_LOG_OUT_FD)
+    {
+        cape_fs_writeln_msg (CAPE_LOG_OUT_FD, buffer, len);
+    }
+    else if (lvl == CAPE_LL_TRACE)
+    {
+        printf("%s\n", buffer);
+    }
+    else
+    {
+        printf("\033[%sm%s\033[0m\n", clr_matrix[lvl], buffer);
+    }
+    
+#endif
+    
+    if (g_log_udp_handle)
+    {
+        CapeStream s = cape_stream_new ();
+        CapeErr err = cape_err_new_ex (FALSE);   // disable logging of errors
         
-    cape_sock__udp__send_to_nr (g_log_udp_handle, s, g_sockaddr, err);
-    
-    cape_stream_del (&s);
-    cape_err_del (&err);
-  }
-  
-#endif 
+        cape_stream_append_buf (s, buffer, len);
+            
+        cape_sock__udp__send_to_nr (g_log_udp_handle, s, g_sockaddr, err);
+        
+        cape_stream_del (&s);
+        cape_err_del (&err);
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_log_fmt (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
 {
-  char buffer [1002];
-  va_list ptr;
-  
-  if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
-  {
-    return;
-  }
-  
-  va_start(ptr, format);
-  
+    char buffer [CAPE_STACK__MAX_BUFFER_SIZE];
+    int len;
+
+    va_list ptr;
+    
+    if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
+    {
+      return;
+    }
+
+    va_start(ptr, format);
+
 #ifdef _WIN32
-  vsnprintf_s (buffer, 1001, 1000, format, ptr);
+    len = vsnprintf_s (buffer, CAPE_STACK__MAX_BUFFER_SIZE, CAPE_STACK__MAX_BUFFER_SIZE - 1, format, ptr);
 #else
-  vsnprintf (buffer, 1000, format, ptr);
-#endif 
+    len = vsnprintf (buffer, CAPE_STACK__MAX_BUFFER_SIZE, format, ptr);
+#endif
   
-  cape_log_msg (lvl, unit, method, buffer);
-  
-  va_end(ptr);
+    va_end(ptr);
+
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
+
+    cape_log_msg (lvl, unit, method, buffer);
 }
 
 //-----------------------------------------------------------------------------
 
 void cape_log_err (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
 {
-    CapeString last_os_error = cape_err_os_last_text ();
+    char buffer [CAPE_STACK__MAX_BUFFER_SIZE];
+    int len;
+
+    va_list ptr;
     
+    // gather the last known OS error
+    CapeString last_os_error = NULL;
+
+    if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
+    {
+        return;
+    }
+
+    // gather the last OS system error message
+    last_os_error = cape_err_os_last_text ();
+    
+    va_start (ptr, format);
+
+#ifdef _WIN32
+    len = vsnprintf_s (buffer, CAPE_STACK__MAX_BUFFER_SIZE, CAPE_STACK__MAX_BUFFER_SIZE - 1, format, ptr);
+#else
+    len = vsnprintf (buffer, CAPE_STACK__MAX_BUFFER_SIZE, format, ptr);
+#endif
+
+    va_end (ptr);
+
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
+
     if (last_os_error)
     {
-        
+        if (len < (CAPE_STACK__MAX_BUFFER_SIZE - 1))
+        {
+            int append_len; 
+            
+            append_len = snprintf (buffer + len, CAPE_STACK__MAX_BUFFER_SIZE - len, ": %s", last_os_error);
+            
+            if (append_len > 0)
+            {
+                // correct len and buffer termination
+                len = cape_log__correct_len (len + append_len);
+                buffer[len] = '\0';
+            }
+        }
     }
-    else
-    {
-        
-    }
-    
+
+    cape_log_msg (lvl, unit, method, buffer);
+
     cape_str_del (&last_os_error);
 }
 

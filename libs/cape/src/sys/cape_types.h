@@ -4,6 +4,12 @@
 #include <sys/cape_export.h>
 #include <stdint.h>
 
+#if defined(CAPE_USE_FREERTOS)
+#define CAPE_STACK__MAX_BUFFER_SIZE 512
+#else
+#define CAPE_STACK__MAX_BUFFER_SIZE 1024
+#endif
+
 #if defined __APPLE__
 
 #include <malloc/malloc.h>
