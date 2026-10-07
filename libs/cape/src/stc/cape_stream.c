@@ -1,20 +1,24 @@
-// c includes
-#include <stdarg.h>
-#include <string.h>
-#include <memory.h>
-#include <stdio.h>
-
 #include "cape_stream.h"
 #include "fmt/cape_dragon4.h"
 #include "sys/cape_types.h"
 #include "sys/cape_file.h"
 #include "sys/cape_log.h"
 
+// c includes
+#include <stdarg.h>
+#include <string.h>
+#include <memory.h>
+#include <stdio.h>
+
 #if defined __WINDOWS_OS
+
 #include <winsock.h>
+
 #else
+
 #include <netinet/in.h>
 #include <inttypes.h>
+
 #endif
 
 #ifndef htonll
