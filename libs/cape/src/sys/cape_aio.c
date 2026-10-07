@@ -1312,7 +1312,10 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 {
   int res;
 
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
+
+    
+#elif defined __LINUX_OS
 
   // local objects
   struct epoll_event events[MAX_EVENTS];

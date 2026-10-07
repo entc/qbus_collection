@@ -7,12 +7,12 @@
 #include "sys/cape_log.h"
 #include "fmt/cape_dragon4.h"
 
+#include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
-
-#include <stdio.h>
 
 //-----------------------------------------------------------------------------
 
@@ -228,20 +228,19 @@ CapeString cape_str_f (double value)
 
 CapeString cape_str_n (number_t value)
 {
-  CapeString ret = CAPE_ALLOC (26);  // for very long intergers
+    CapeString ret = CAPE_ALLOC (26);  // for very long intergers
 
 #ifdef _MSC_VER
 
-  _snprintf_s (ret, 24, _TRUNCATE, "%Iu", value);
+    _snprintf_s (ret, 24, _TRUNCATE, "%Iu", value);
 
 #else
 
-  // TODO: use a different %i / %lli if number_t is 64bit etc
-  snprintf (ret, 24, "%li", value);
+    snprintf (ret, 24, "%" PRIdPTR, value);
 
 #endif
 
-  return ret;
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
