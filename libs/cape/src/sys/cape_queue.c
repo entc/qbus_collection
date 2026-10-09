@@ -325,15 +325,9 @@ static int cape_queue__next (CapeQueue self)
     
     if (clock_gettime (CLOCK_REALTIME, &ts) == -1)
     {
-      CapeErr err = cape_err_new ();
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't get realtime clock");
       
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't get realtime clock: %s", cape_err_text(err));
-      
-      cape_err_del (&err);
-      
-      return FALSE;
+        return FALSE;
     }
     
     ts.tv_sec += 5;
@@ -342,29 +336,19 @@ static int cape_queue__next (CapeQueue self)
     
     if (res == -1)
     {
-      switch (errno)
-      {
-        case EINTR:
+        switch (errno)
         {
-          return TRUE;
+            case EINTR:
+            case ETIMEDOUT:
+            {
+                break;
+            }
+            default:
+            {
+                cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme sem_wait");
+                return FALSE;
+            }
         }
-        case ETIMEDOUT:
-        {
-          break;
-        }
-        default:
-        {
-          CapeErr err = cape_err_new ();
-          
-          cape_err_lastOSError (err);
-          
-          cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme sem_wait: %s", cape_err_text(err));
-          
-          cape_err_del (&err);
-          
-          return FALSE;
-        }
-      }
     }
 
 #elif defined(__BSD_OS)
@@ -381,13 +365,7 @@ static int cape_queue__next (CapeQueue self)
     }
     else
     {
-        CapeErr err = cape_err_new ();
-        
-        cape_err_lastOSError (err);
-        
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-        
-        cape_err_del (&err);
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme queue next");
     }
 
 #elif defined(CAPE_USE_FREERTOS)
@@ -496,13 +474,7 @@ void __STDCALL cape_queue__on_stop_item (void* obj_ptr, void* user_ptr)
     // increase the count
     if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
     {
-        CapeErr err = cape_err_new ();
-
-        cape_err_lastOSError (err);
-
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-
-        cape_err_del (&err);
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme stop");
     }
 
 #endif
@@ -633,13 +605,7 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
     // increase the count
     if (ReleaseSemaphore (self->semaphore, 1, NULL) == 0)
     {
-        CapeErr err = cape_err_new ();
-        
-        cape_err_lastOSError (err);
-        
-        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "queue next", "can't permforme queue next: %s", cape_err_text(err));
-        
-        cape_err_del (&err);
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme add");
     }
 
 #elif defined(CAPE_USE_FREERTOS)

@@ -321,6 +321,62 @@ void cape_log_err (CapeLogLevel lvl, const char* unit, const char* method, const
 
 //-----------------------------------------------------------------------------
 
+void cape_log_err_code (CapeLogLevel lvl, const char* unit, const char* method, int error_code, const char* format, ...)
+{
+    char buffer [CAPE_STACK__MAX_BUFFER_SIZE];
+    int len;
+
+    va_list ptr;
+    
+    // gather the last known OS error
+    CapeString last_os_error = NULL;
+
+    if ((lvl > g_log_level) || (lvl > CAPE_LL_TRACE))
+    {
+        return;
+    }
+
+    // gather the last OS system error message
+    last_os_error = cape_err_os_errcode (error_code);
+    
+    va_start (ptr, format);
+
+#ifdef _WIN32
+    len = vsnprintf_s (buffer, CAPE_STACK__MAX_BUFFER_SIZE, CAPE_STACK__MAX_BUFFER_SIZE - 1, format, ptr);
+#else
+    len = vsnprintf (buffer, CAPE_STACK__MAX_BUFFER_SIZE, format, ptr);
+#endif
+
+    va_end (ptr);
+
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
+
+    if (last_os_error)
+    {
+        if (len < (CAPE_STACK__MAX_BUFFER_SIZE - 1))
+        {
+            int append_len;
+            
+            append_len = snprintf (buffer + len, CAPE_STACK__MAX_BUFFER_SIZE - len, ": %s", last_os_error);
+            
+            if (append_len > 0)
+            {
+                // correct len and buffer termination
+                len = cape_log__correct_len (len + append_len);
+                buffer[len] = '\0';
+            }
+        }
+    }
+
+    cape_log_msg (lvl, unit, method, buffer);
+
+    cape_str_del (&last_os_error);
+}
+
+//-----------------------------------------------------------------------------
+
 struct CapeFileLog_s
 {
   CapeFileHandle fh;

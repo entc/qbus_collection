@@ -10,6 +10,8 @@
 #define CAPE_STACK__MAX_BUFFER_SIZE 1024
 #endif
 
+#define number_t intptr_t
+
 #if defined __APPLE__
 
 #include <malloc/malloc.h>
@@ -17,7 +19,6 @@
 #include <memory.h>
 
 #define u_t unsigned
-#define number_t intptr_t
 #define ul32_t uint32_t
 
 #elif defined __OpenBSD__
@@ -33,8 +34,7 @@
 #include <sys/types.h>
 
 #define u_t unsigned
-#define number_t intptr_t
-#define ul32_t u_long  
+#define ul32_t u_long
 
 #else
 
@@ -44,8 +44,7 @@
 #include <memory.h>
 
 #define u_t unsigned
-#define number_t intptr_t
-#define ul32_t uint32_t  
+#define ul32_t uint32_t
 
 #endif
 

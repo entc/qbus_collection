@@ -121,18 +121,12 @@ void cape_thread_del (CapeThread* p_self)
 
 void cape_thread_cancel (CapeThread self)
 {
-  int errno = pthread_cancel (self->tid);
-  
-  if (errno)
-  {
-    CapeErr err = cape_err_new ();
+    int error_code = pthread_cancel (self->tid);
     
-    cape_err_lastOSError (err);
-    
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "thread", "can't cancel thread: %s", cape_err_text (err));
-    
-    cape_err_del (&err);
-  }
+    if (error_code)
+    {
+        cape_log_err_code (CAPE_LL_ERROR, "CAPE", "THREAD", error_code, "can't cancel thread");
+    }
 }
 
 //-----------------------------------------------------------------------------------
@@ -283,19 +277,13 @@ void cape_thread_join (CapeThread self)
 
 void cape_thread_cancel (CapeThread self)
 {
-  if (self->th != NULL)
-  {
-    if (TerminateThread(self->th, 0) == 0)
+    if (self->th != NULL)
     {
-      CapeErr err = cape_err_new ();
-      
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "thread", "can't cancel thread: %s", cape_err_text (err));
-      
-      cape_err_del (&err);
+        if (TerminateThread (self->th, 0) == 0)
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "THREAD", "can't cancel thread");
+        }
     }
-  }
 }
 
 //-----------------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 
 // STL includes
 #include <limits>
+#include <climits>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -474,13 +475,17 @@ namespace cape
 
   //-----------------------------------------------------------------------------------------------------
 
-  template <> struct StreamTransType<number_t>
-  {
-    static void append (CapeStream obj, number_t value)
+#if INTPTR_MAX > INT_MAX
+
+    template <> struct StreamTransType<number_t>
     {
-      cape_stream_append_n (obj, value);
-    }
-  };
+        static void append (CapeStream obj, number_t value)
+        {
+            cape_stream_append_n (obj, value);
+        }
+    };
+
+#endif
 
   //-----------------------------------------------------------------------------------------------------
 
