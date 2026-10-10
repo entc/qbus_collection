@@ -11,6 +11,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/timers.h>
+#include <freertos/semphr.h>
 
 #elif defined(__LINUX_OS)
 
@@ -251,7 +252,14 @@ struct CapeAio_s
 #if defined(CAPE_USE_FREERTOS)
 
     QueueHandle_t event_queue;
-
+    TaskHandle_t select_task;
+    SemaphoreHandle_t mutex;
+    
+    fd_set rfds;
+    fd_set wfds;
+    
+    int nfds;
+    
 #elif defined(__LINUX_OS)
 
     int epoll_fd;
@@ -293,6 +301,13 @@ CapeAio cape_aio_new (void)
 #if defined(CAPE_USE_FREERTOS)
 
     self->event_queue = NULL;
+    self->select_task = NULL;
+    self->mutx = NULL;
+    
+    FD_ZERO(&(self->rfds));
+    FD_ZERO(&(self->wfds));
+    
+    self->nfds = -1;
 
 #elif defined(__LINUX_OS)
 
@@ -326,46 +341,51 @@ CapeAio cape_aio_new (void)
 
 void cape_aio_del (CapeAio* p_self)
 {
-  if (*p_self)
-  {
-    CapeAio self = *p_self;
-
+    if (*p_self)
     {
-        // transfer ownership to local variable
-        // deleting of members of the map might result in new aio_add calls
-        // to prevent that events will be added in destructor phase
-        // there is a check for self->items
-        CapeMap items = cape_map_mv (&(self->items));
+        CapeAio self = *p_self;
 
-        cape_map_del (&items);
-    }
+        {
+            // transfer ownership to local variable
+            // deleting of members of the map might result in new aio_add calls
+            // to prevent that events will be added in destructor phase
+            // there is a check for self->items
+            CapeMap items = cape_map_mv (&(self->items));
 
-#if defined __LINUX_OS
+            cape_map_del (&items);
+        }
 
-    if (self->signal_fd != -1)
-    {
-      close (self->signal_fd);
-    }
-    
-    if (self->epoll_fd != -1)
-    {
-        close (self->epoll_fd);
-    }
+#if defined(CAPE_USE_FREERTOS)
 
-#elif defined __BSD_OS
+        vSemaphoreDelete (self->mutex);
+        self->mutex = NULL;
 
-    if (self->kq != -1)
-    {
-        close (self->kq);
-    }
+#elif defined(__LINUX_OS)
 
-#elif defined _WIN64 || defined _WIN32
+        if (self->signal_fd != -1)
+        {
+          close (self->signal_fd);
+        }
+        
+        if (self->epoll_fd != -1)
+        {
+            close (self->epoll_fd);
+        }
+
+#elif defined(__BSD_OS)
+
+        if (self->kq != -1)
+        {
+            close (self->kq);
+        }
+
+#elif defined(__WINDOWS_OS)
 
 
 #endif
 
-    CAPE_DEL (p_self, struct CapeAio_s);
-  }
+        CAPE_DEL (p_self, struct CapeAio_s);
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -405,7 +425,7 @@ void cape_aio_timer__del (void** p_self)
 
         if (xTimerDelete(timer, 0) != pdPASS)
         {
-            // TODO: print error
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "can't remove timer");
         }
 
         *p_self = NULL;
@@ -418,10 +438,171 @@ static void cape_aio__timer_cb (TimerHandle_t timer)
 {
     CapeAioItem item = (CapeAioItem)pvTimerGetTimerID (timer);
 
-    // this handles the event, we can use a fixed mode here
-    if (FALSE == cape_aio_item__on_event (item, CAPE_AIO_MODE__TIMER, 0))
+    CapeAioEvent_s event;
+    
+    event.item = item;
+    event.mode = CAPE_AIO_MODE__TIMER;
+    
+    if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
     {
-        // TODO: print error
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_aio__select_add_fds (CapeAio self)
+{
+    CapeMapCursor s_cursor;
+    cape_map_cursor_init (self->items, &s_cursor, CAPE_DIRECTION_FORW);
+        
+    FD_ZERO(&(self->rfds));
+    FD_ZERO(&(self->wfds));
+    
+    self->nfds = -1;
+
+    while (cape_map_cursor_next (&s_cursor))
+    {
+        CapeAioItem item = cape_map_node_value (s_cursor.node);
+        
+        if (item->fd_type != CAPE_FDTYPE__TIMER)
+        {
+            switch (item->mode_applied)
+            {
+                case CAPE_AIO_MODE__RECV:
+                {
+                    FD_SET ((int)item->handle, &(self->rfds));
+                    
+                    self->nfds = cape_max_n ((int)item->handle, self->nfds);
+                    break;
+                }
+                case CAPE_AIO_MODE__SEND:
+                {
+                    FD_SET ((int)item->handle, &(self->wfds));
+
+                    self->nfds = cape_max_n ((int)item->handle, self->nfds);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_aio__select_add_events (CapeAio self, fd_set* rfds, fd_set* wfds)
+{
+    CapeMapCursor s_cursor;
+    cape_map_cursor_init (self->items, &s_cursor, CAPE_DIRECTION_FORW);
+
+    while (cape_map_cursor_next (&s_cursor))
+    {
+        CapeAioItem item = cape_map_node_value (s_cursor.node);
+
+        if (item->mode_applied == CAPE_AIO_MODE__RECV && FD_ISSET ((int)item->handle, rfds))
+        {
+            CapeAioEvent_s event;
+            
+            event.item = item;
+            event.mode = CAPE_AIO_MODE__RECV;
+            
+            if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
+            {
+                cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+            }
+        }
+
+        if (item->mode_applied == CAPE_AIO_MODE__SEND && FD_ISSET ((int)item->handle, wfds))
+        {
+            CapeAioEvent_s event;
+            
+            event.item = item;
+            event.mode = CAPE_AIO_MODE__SEND;
+
+            if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
+            {
+                cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+static void cape_aio__select_task (void* arg)
+{
+    CapeAio self = arg;
+    
+    while (self->running)
+    {
+        int nfds;
+        fd_set rfds;
+        fd_set wfds;
+        
+        {
+            xSemaphoreTake (self->mutex, portMAX_DELAY);
+            
+            if (self->nfds < 0)
+            {
+                // re-generate the fds sets
+                cape_aio__select_add_fds (self);
+            }
+
+            // copy member variables to local variables
+            nfds = self->nfds;
+            rfds = self->rfds;
+            wfds = self->wfds;
+
+            xSemaphoreGive (self->mutex);
+        }
+        
+        if (nfds < 0)
+        {
+            // wait 100ms
+            vTaskDelay(pdMS_TO_TICKS (100));
+            continue;
+        }
+        else
+        {
+            int ret;
+                        
+            struct timeval timeout;
+            
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 10000;
+                        
+            ret = lwip_select (nfds + 1, &rfds, &wfds, NULL, &timeout);
+            
+            if (ret < 0)
+            {
+                if (errno == EINTR)
+                {
+                    // wait 100ms
+                    vTaskDelay(pdMS_TO_TICKS (100));
+                    continue;
+                }
+
+                cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "can't wait for select");
+                
+                // wait 100ms
+                vTaskDelay(pdMS_TO_TICKS (100));
+                continue;
+            }
+            
+            if (ret == 0)
+            {
+                // timeout
+                continue;
+            }
+            
+            {
+                xSemaphoreTake (self->mutex, portMAX_DELAY);
+
+                cape_aio__select_add_events (self, &rfds, &wfds);
+
+                xSemaphoreGive (self->mutex);
+            }
+        }
     }
 }
 
@@ -904,7 +1085,14 @@ int cape_aio_init (CapeAio self, CapeErr err)
 
     if (NULL == self->event_queue)
     {
-        // error
+        return cape_err_set (err, CAPE_ERR_OS, "can't create queue");
+    }
+    
+    self->mutex = xSemaphoreCreateMutex();
+
+    if (NULL == self->mutex)
+    {
+        return cape_err_set (err, CAPE_ERR_OS, "can't create mutex");
     }
 
 #elif defined __LINUX_OS
@@ -1202,7 +1390,30 @@ int cape_aio_set__mode (CapeAio self, CapeAioItem item, int mode, CapeErr err)
         return CAPE_ERR_NONE;
     }
 
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
+
+    // create the select task on demand
+    if (item->fd_type != CAPE_FDTYPE__TIMER && (mode & (CAPE_AIO_MODE__RECV | CAPE_AIO_MODE__SEND)))
+    {
+        // tell the select task to re-generate all fds
+        self->nfds = -1;
+
+        // check if the task was already created
+        if (NULL == self->select_task)
+        {
+            BaseType_t res = xTaskCreate (cape_aio__select_task, "cape_aio_select", CAPE_STACK__MAX_SIZE, self, tskIDLE_PRIORITY + 1, &self->select_task);
+
+            if (res != pdPASS)
+            {
+                self->select_task = NULL;
+                return cape_err_set (err, CAPE_ERR_OS, "can't create AIO select task");
+            }
+        }
+    }
+
+    item->mode_applied = mode;
+    
+#elif defined(__LINUX_OS)
 
     if (cape_aio__epoll_ctl (self, mode == 0 ? EPOLL_CTL_DEL : (item->mode_applied == 0 ? EPOLL_CTL_ADD : EPOLL_CTL_MOD), (int)(number_t)item->handle, cape_aio__epoll_convert_mode (mode), item, err))
     {
@@ -1211,8 +1422,8 @@ int cape_aio_set__mode (CapeAio self, CapeAioItem item, int mode, CapeErr err)
     }
 
     item->mode_applied = mode;
-    
-#elif defined __BSD_OS
+
+#elif defined(__BSD_OS)
 
     if ((mode & CAPE_AIO_MODE__RECV) && !(item->mode_applied & CAPE_AIO_MODE__RECV))
     {
@@ -1279,7 +1490,7 @@ int cape_aio_set__mode (CapeAio self, CapeAioItem item, int mode, CapeErr err)
         item->mode_applied &= ~CAPE_AIO_MODE__TIMER;
     }
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(__WINDOWS_OS)
 
     if (item->mode_applied == 0 && mode != 0)
     {
@@ -1300,9 +1511,9 @@ int cape_aio_set__mode (CapeAio self, CapeAioItem item, int mode, CapeErr err)
     }
     
     item->mode_applied = mode;
-    
+
 #endif
-    
+
     return CAPE_ERR_NONE;
 }
 
@@ -1314,7 +1525,31 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
 #if defined(CAPE_USE_FREERTOS)
 
-    
+    CapeAioEvent event;
+
+    TickType_t timeout;
+
+    if (timeout_in_ms < 0)
+    {
+        // wait indefinitely
+        timeout = portMAX_DELAY;
+    }
+    else
+    {
+        timeout = pdMS_TO_TICKS (timeout_in_ms);
+    }
+
+    if (xQueueReceive (self->event_queue, &event, timeout) == pdTRUE)
+    {
+        if (event.item)
+        {
+            cape_aio_item__on_event (event.item, event.mode, 0);
+        }
+    }
+
+    // a timeout is not an error
+    res = CAPE_ERR_NONE;
+
 #elif defined __LINUX_OS
 
   // local objects
@@ -1446,21 +1681,24 @@ void cape_aio_stop (CapeAio self)
 {
     CapeErr err = cape_err_new ();
     
-    // trigger event
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
 
+
+#elif defined(__LINUX_OS)
     
-#elif defined __BSD_OS
+    
+#elif defined(__BSD_OS)
 
     if (cape_aio__kevent_trigger (self, EVENT_IDENT_STOP, EVFILT_USER, self->stop_item, err))
     {
         cape_log_fmt (CAPE_LL_ERROR, "CAPE", "aio stop", "can't trigger kevent item: %s", cape_err_text (err));
     }
 
-#elif defined _WIN64 || defined _WIN32
+#elif defined(__WINDOWS_OS)
+
 
 #endif
-    
+
     cape_err_del (&err);
 }
 
@@ -1468,22 +1706,26 @@ void cape_aio_stop (CapeAio self)
 
 void cape_aio_kill (CapeAio self)
 {
-#if defined __LINUX_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "stop loop");
-  
-  // trigger the terminate signal
-  kill (getpid(), SIGTERM);
 
-#elif defined __BSD_OS
+#elif defined(__LINUX_OS)
+    
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "stop loop");
+    
+    // trigger the terminate signal
+    kill (getpid(), SIGTERM);
 
-  cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "stop loop");
-  
-  // trigger the terminate signal
-  kill (getpid(), SIGTERM);
+#elif defined(__BSD_OS)
 
-#elif defined _WIN64 || defined _WIN32
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "aio", "stop loop");
+    
+    // trigger the terminate signal
+    kill (getpid(), SIGTERM);
 
+#elif defined(__WINDOWS_OS)
+
+    
 #endif
 }
 

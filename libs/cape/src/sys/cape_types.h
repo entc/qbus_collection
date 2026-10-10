@@ -6,6 +6,7 @@
 
 #if defined(CAPE_USE_FREERTOS)
 #define CAPE_STACK__MAX_BUFFER_SIZE 512
+#define CAPE_STACK__MAX_SIZE 1024
 #else
 #define CAPE_STACK__MAX_BUFFER_SIZE 1024
 #endif
