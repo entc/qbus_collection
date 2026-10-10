@@ -12,6 +12,7 @@
 #include <freertos/queue.h>
 #include <freertos/timers.h>
 #include <freertos/semphr.h>
+#include <lwip/sockets.h>
 
 #elif defined(__LINUX_OS)
 
