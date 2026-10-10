@@ -436,12 +436,27 @@ typedef struct
 
 //-----------------------------------------------------------------------------
 
+struct CapeAioTimerCtx_s
+{
+    CapeAioItem item;
+    CapeAio aio;
+
+}; typedef struct CapeAioTimerCtx_s* CapeAioTimerCtx;
+
+//-----------------------------------------------------------------------------
+
 void cape_aio_timer__del (void** p_self)
 {
     if (*p_self)
     {
         TimerHandle_t timer = (TimerHandle_t)*p_self;
 
+        {
+            CapeAioTimerCtx ctx = (CapeAioTimerCtx)pvTimerGetTimerID (timer);
+            
+            CAPE_DEL (&ctx, struct CapeAioTimerCtx_s);
+        }
+        
         if (xTimerDelete(timer, 0) != pdPASS)
         {
             cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "can't remove timer");
@@ -455,16 +470,18 @@ void cape_aio_timer__del (void** p_self)
 
 static void cape_aio__timer_cb (TimerHandle_t timer)
 {
-    CapeAioItem item = (CapeAioItem)pvTimerGetTimerID (timer);
-
-    CapeAioEvent_s event;
+    CapeAioTimerCtx ctx = (CapeAioTimerCtx)pvTimerGetTimerID (timer);
     
-    event.item = item;
-    event.mode = CAPE_AIO_MODE__TIMER;
-    
-    if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
     {
-        cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+        CapeAioEvent_s event;
+        
+        event.item = ctx->item;
+        event.mode = CAPE_AIO_MODE__TIMER;
+        
+        if (pdTRUE != xQueueSend (ctx->aio->event_queue, &event, 0))
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+        }
     }
 }
 
@@ -1272,8 +1289,15 @@ CapeAioItem cape_aio_add__timer (CapeAio self, number_t interval_in_ms, CapeErr 
         // create a new object for the timer handle
         item = cape_aio_item_new ((void*)timer, CAPE_FDTYPE__TIMER);
 
-        // set the timer ID to CapeAioItem
-        vTimerSetTimerID (timer, (void*)item);
+        {
+            CapeAioTimerCtx ctx = CAPE_NEW (struct CapeAioTimerCtx_s);
+
+            ctx->item = item;
+            ctx->aio = self;
+
+            // set the timer ID to CapeAioItem
+            vTimerSetTimerID (timer, (void*)ctx);
+        }
 
         // add to items
         cape_map_insert (self->items, (void*)item, NULL);
