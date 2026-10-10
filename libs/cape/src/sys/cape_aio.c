@@ -252,8 +252,10 @@ struct CapeAio_s
 #if defined(CAPE_USE_FREERTOS)
 
     QueueHandle_t event_queue;
-    TaskHandle_t select_task;
     SemaphoreHandle_t mutex;
+
+    TaskHandle_t select_task;
+    SemaphoreHandle_t select_stopped;
     
     fd_set rfds;
     fd_set wfds;
@@ -302,7 +304,7 @@ CapeAio cape_aio_new (void)
 
     self->event_queue = NULL;
     self->select_task = NULL;
-    self->mutx = NULL;
+    self->mutex = NULL;
     
     FD_ZERO(&(self->rfds));
     FD_ZERO(&(self->wfds));
@@ -357,14 +359,31 @@ void cape_aio_del (CapeAio* p_self)
 
 #if defined(CAPE_USE_FREERTOS)
 
+        if (self->select_task != NULL)
+        {
+            cape_log_msg (CAPE_LL_DEBUG, "CAPE", "aio", "stop AIO loop");
+
+            self->running = false;
+
+            xSemaphoreTake (self->select_stopped, portMAX_DELAY);
+
+            self->select_task = NULL;
+        }
+
+        vQueueDelete (self->event_queue);
+        self->event_queue = NULL;
+
         vSemaphoreDelete (self->mutex);
         self->mutex = NULL;
+
+        vSemaphoreDelete (self->select_stopped);
+        self->select_stopped = NULL;
 
 #elif defined(__LINUX_OS)
 
         if (self->signal_fd != -1)
         {
-          close (self->signal_fd);
+            close (self->signal_fd);
         }
         
         if (self->epoll_fd != -1)
@@ -604,6 +623,9 @@ static void cape_aio__select_task (void* arg)
             }
         }
     }
+    
+    xSemaphoreGive (self->select_stopped);
+    vTaskDelete (NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -1093,6 +1115,13 @@ int cape_aio_init (CapeAio self, CapeErr err)
     if (NULL == self->mutex)
     {
         return cape_err_set (err, CAPE_ERR_OS, "can't create mutex");
+    }
+    
+    self->select_stopped = xSemaphoreCreateBinary ();
+
+    if (NULL == self->select_stopped)
+    {
+        return cape_err_set (err, CAPE_ERR_OS, "can't create select semaphore");
     }
 
 #elif defined __LINUX_OS
