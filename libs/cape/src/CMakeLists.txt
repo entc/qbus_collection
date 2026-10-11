@@ -123,14 +123,12 @@ INSTALL (TARGETS cape DESTINATION lib)
 
 #----------------------------------------------------------------------------------
 
-SET(CAPE_APP_AIO_SOURCES
-  app/cape_app_aio.c
-)
+#SET(CAPE_APP_AIO_SOURCES
+#  app/cape_app_aio.c
+#)
 
-add_executable          (cape_app ${CAPE_APP_AIO_SOURCES})
-target_link_libraries   (cape_app cape)
-set_target_properties   (cape_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
+#add_executable          (cape_app ${CAPE_APP_AIO_SOURCES})
+#target_link_libraries   (cape_app cape)
+#set_target_properties   (cape_app PROPERTIES VERSION 1.0.1 SOVERSION 1.0.1)
 
 #----------------------------------------------------------------------------------
-
-SUBDIRS(tests)

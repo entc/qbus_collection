@@ -1,5 +1,5 @@
 # abstract operation-system layer
-INCLUDE_DIRECTORIES("..")
+INCLUDE_DIRECTORIES("../src")
 SET(CMAKE_BUILD_TYPE Release)                                   # build type
 
 add_executable          (ut_fmt_json ut_fmt_json.c)
