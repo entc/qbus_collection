@@ -428,12 +428,12 @@ int __STDCALL cape_aio__internal_event_stop__on_event (void* user_ptr, CapeAioIt
 
 //-----------------------------------------------------------------------------
 
-typedef struct
+struct CapeAioEvent_s
 {
     int mode;
     CapeAioItem item;
 
-} CapeAioEvent_s;
+};
 
 //-----------------------------------------------------------------------------
 
