@@ -469,21 +469,26 @@ void cape_aio_timer__del (void** p_self)
 
 //-----------------------------------------------------------------------------
 
+static void cape_aio__queue_push (CapeAio self, CapeAioItem item, int mode)
+{
+    CapeAioEvent_s event;
+    
+    event.item = item;
+    event.mode = mode;
+    
+    if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
+    {
+        cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 static void cape_aio__timer_cb (TimerHandle_t timer)
 {
     CapeAioTimerCtx ctx = (CapeAioTimerCtx)pvTimerGetTimerID (timer);
     
-    {
-        CapeAioEvent_s event;
-        
-        event.item = ctx->item;
-        event.mode = CAPE_AIO_MODE__TIMER;
-        
-        if (pdTRUE != xQueueSend (ctx->aio->event_queue, &event, 0))
-        {
-            cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
-        }
-    }
+    cape_aio__queue_push (ctx->aio, ctx->item, CAPE_AIO_MODE__TIMER);
 }
 
 //-----------------------------------------------------------------------------
@@ -538,28 +543,12 @@ static void cape_aio__select_add_events (CapeAio self, fd_set* rfds, fd_set* wfd
 
         if (item->mode_applied == CAPE_AIO_MODE__RECV && FD_ISSET ((int)item->handle, rfds))
         {
-            CapeAioEvent_s event;
-            
-            event.item = item;
-            event.mode = CAPE_AIO_MODE__RECV;
-            
-            if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
-            {
-                cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
-            }
+            cape_aio__queue_push (self, item, CAPE_AIO_MODE__RECV);
         }
 
         if (item->mode_applied == CAPE_AIO_MODE__SEND && FD_ISSET ((int)item->handle, wfds))
         {
-            CapeAioEvent_s event;
-            
-            event.item = item;
-            event.mode = CAPE_AIO_MODE__SEND;
-
-            if (pdTRUE != xQueueSend (self->event_queue, &event, 0))
-            {
-                cape_log_err (CAPE_LL_ERROR, "CAPE", "AIO", "event queue full");
-            }
+            cape_aio__queue_push (self, item, CAPE_AIO_MODE__SEND);
         }
     }
 }
