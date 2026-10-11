@@ -1408,6 +1408,8 @@ namespace cape
 
   //-----------------------------------------------------------------------------------------------------
 
+#if INTPTR_MAX > INT_MAX
+
   template <> struct UdcTransType<number_t>
   {
     static void add_cp (CapeUdc obj, const char* name, const long& value)
@@ -1440,6 +1442,8 @@ namespace cape
         return cape_udc_n (obj, dv);
     }
   };
+
+#endif
 
   //-----------------------------------------------------------------------------------------------------
 
