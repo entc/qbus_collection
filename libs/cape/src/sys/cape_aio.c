@@ -1568,7 +1568,7 @@ int cape_aio_next (CapeAio self, number_t timeout_in_ms, CapeErr err)
 
 #if defined(CAPE_USE_FREERTOS)
 
-    CapeAioEvent event;
+    struct CapeAioEvent_s event;
 
     TickType_t timeout;
 
