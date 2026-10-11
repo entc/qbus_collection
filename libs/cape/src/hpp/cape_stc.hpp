@@ -1445,6 +1445,8 @@ namespace cape
 
 #endif
 
+#if INTPTR_MAX > INT_MAX
+
   //-----------------------------------------------------------------------------------------------------
 
   template <> struct UdcTransType<number_t&>
@@ -1455,6 +1457,8 @@ namespace cape
     static void put (CapeUdc obj, const char* name, const number_t& value) { cape_udc_put_n (obj, name, value); }
     static void set (CapeUdc obj, const number_t& value) { cape_udc_set_n (obj, value); }
   };
+
+#endif
 
   //-----------------------------------------------------------------------------------------------------
 
