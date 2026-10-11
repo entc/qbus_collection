@@ -471,7 +471,7 @@ void cape_aio_timer__del (void** p_self)
 
 static void cape_aio__queue_push (CapeAio self, CapeAioItem item, int mode)
 {
-    CapeAioEvent_s event;
+    struct CapeAioEvent_s event;
     
     event.item = item;
     event.mode = mode;
@@ -1110,7 +1110,7 @@ int cape_aio_init (CapeAio self, CapeErr err)
 {
 #if defined(CAPE_USE_FREERTOS)
 
-    self->event_queue = xQueueCreate (32, sizeof(CapeAioEvent_s));
+    self->event_queue = xQueueCreate (32, sizeof(struct CapeAioEvent_s));
 
     if (NULL == self->event_queue)
     {
