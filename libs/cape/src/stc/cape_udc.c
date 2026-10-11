@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #define CAPE_FLOAT_EPSILON 1e-9
 //-----------------------------------------------------------------------------
@@ -3227,9 +3228,9 @@ void cape_udc_print (const CapeUdc self)
     }
     case CAPE_UDC_NUMBER:
     {
-      printf ("UDC [number] : %ld\n", (number_t)(self->data));
+        printf ("UDC [number] : %" PRIdPTR "\n", (number_t)(self->data));
 
-      break;
+        break;
     }
     case CAPE_UDC_DATETIME:
     {

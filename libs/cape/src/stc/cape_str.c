@@ -1295,7 +1295,6 @@ CapeString cape_str_trim_lr (const CapeString source, char l, char r)
 
 CapeString cape_str_trim_lrstrict (const CapeString self)
 {
-  CapeString ret = NULL;
   const char* pos01;
   const char* pos02;
 
