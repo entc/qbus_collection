@@ -2909,50 +2909,50 @@ CapeStream cape_udc_ext_m (CapeUdc self, const CapeString name)
 
 CapeUdc cape_udc_ext_node (CapeUdc self, const CapeString name)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      CapeUdc h = cape_udc_get (self, name);
-
-      if (h)
-      {
-        if (h->type == CAPE_UDC_NODE)
+        case CAPE_UDC_NODE:
         {
-          return cape_udc_ext (self, name);
+            CapeUdc h = cape_udc_get (self, name);
+
+            if (h)
+            {
+                if (h->type == CAPE_UDC_NODE)
+                {
+                    return cape_udc_ext (self, name);
+                }
+            }
+
+            break;
         }
-      }
     }
-    default:
-    {
-      return NULL;
-    }
-  }
+
+    return NULL;
 }
 
 //-----------------------------------------------------------------------------
 
 CapeUdc cape_udc_ext_list (CapeUdc self, const CapeString name)
 {
-  switch (self->type)
-  {
-    case CAPE_UDC_NODE:
+    switch (self->type)
     {
-      CapeUdc h = cape_udc_get (self, name);
-
-      if (h)
-      {
-        if (h->type == CAPE_UDC_LIST)
+        case CAPE_UDC_NODE:
         {
-          return cape_udc_ext (self, name);
+            CapeUdc h = cape_udc_get (self, name);
+
+            if (h)
+            {
+                if (h->type == CAPE_UDC_LIST)
+                {
+                    return cape_udc_ext (self, name);
+                }
+            }
+            
+            break;
         }
-      }
     }
-    default:
-    {
-      return NULL;
-    }
-  }
+    
+    return NULL;
 }
 
 //-----------------------------------------------------------------------------
