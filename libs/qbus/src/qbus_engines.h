@@ -7,7 +7,7 @@
 #include "stc/cape_stream.h"
 #include "aio/cape_aio_ctx.h"
 
-#include "qbus_pvd.h"
+#include "pvd_common/qbus_pvd.h"
 
 //-----------------------------------------------------------------------------
 
