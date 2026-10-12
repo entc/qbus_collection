@@ -1,6 +1,6 @@
 #include "qbus_mqtt.h"
 #include "qbus.h"
-#include "qbus_frame.h"
+#include "pvd_common/qbus_frame.h"
 
 // cape includes
 #include <sys/cape_log.h>
