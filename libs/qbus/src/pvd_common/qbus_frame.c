@@ -4,7 +4,6 @@
 #include <fmt/cape_json.h>
 #include <sys/cape_log.h>
 
-#include <qcrypt.h>
 #include <stdio.h>
 
 //-----------------------------------------------------------------------------
