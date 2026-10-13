@@ -9,6 +9,11 @@
 
 //-----------------------------------------------------------------------------
 
+_Static_assert((time_t)-1 < (time_t)0, "CDS conversion requires signed time_t");
+_Static_assert(sizeof(time_t) >= 4, "CDS conversion requires at least 32-bit time_t");
+
+//-----------------------------------------------------------------------------
+
 #if defined(CAPE_USE_FREERTOS)
 
 #include <stdio.h>
@@ -257,6 +262,85 @@ void cape_datetime_utc__doy (CapeDatetime* self, number_t year, number_t doy)
     self->msec = 0;
     self->usec = 0;
 
+    self->is_utc = TRUE;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_datetime__time_t_is_signed (void)
+{
+    return (time_t)-1 < (time_t)0;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_datetime_utc__cds_3p (CapeDatetime* self, cape_uint16 days, cape_uint32 msec, cape_uint16 usec)
+{
+    time_t unix_time;
+
+    if (self == NULL)
+    {
+        // silent ignored
+        return;
+    }
+
+    // check value range
+    if (msec >= 86400000U || usec >= 1000U)
+    {
+        cape_log_msg (CAPE_LL_WARN, "CAPE", "datetime", "cds_3p: input values are invalid");
+        return;
+    }
+
+    {
+        // Calculate Unix time.
+        // 1958-01-01 00:00:00 UTC = -378691200 Unix seconds.
+        int64_t seconds = (int64_t)days * 86400 + (int64_t)(msec / 1000) - 378691200LL;
+
+        // check if signed
+        if (!cape_datetime__time_t_is_signed() && seconds < 0)
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "datetime", "cds_3p: negative Unix timestamp not supported");
+            return;
+        }
+
+        // convert into time_t
+        unix_time = (time_t)seconds;
+
+        // verify that time_t can represent the calculated value
+        if ((int64_t)unix_time != seconds)
+        {
+            cape_log_msg (CAPE_LL_WARN, "CAPE", "datetime", "cds_3p: Unix timestamp out of range");
+            return;
+        }
+    }
+
+    {
+        struct tm timeinfo;
+
+#if defined(__WINDOWS_OS)
+
+        errno_t error_code = gmtime_s (&timeinfo, &unix_time);
+
+        if (error_code != 0)
+        {
+            cape_log_err_code (CAPE_LL_ERROR, "CAPE", "datetime", error_code, "cds_3p: UTC conversion failed");
+            return;
+        }
+#else
+
+        if (gmtime_r (&unix_time, &timeinfo) == NULL)
+        {
+            cape_log_err (CAPE_LL_ERROR, "CAPE", "datetime", "cds_3p: UTC conversion failed");
+            return;
+        }
+
+#endif
+
+        cape_datetime__convert_timeinfo (self, &timeinfo);
+    }
+
+    self->msec = (int)(msec % 1000);
+    self->usec = (int)usec;
     self->is_utc = TRUE;
 }
 

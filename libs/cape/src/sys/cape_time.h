@@ -79,6 +79,12 @@ __CAPE_LIBEX   void            cape_datetime_utc__unix_msec  (CapeDatetime*, num
                                 */
 __CAPE_LIBEX   void            cape_datetime_utc__doy        (CapeDatetime*, number_t year, number_t doy);
 
+                               /* sets the internal structure from CDS time (CCSDS time format)
+                                  -> time = 00:00:00.000
+                                  -> in UTC
+                               */
+__CAPE_LIBEX   void            cape_datetime_utc__cds_3p      (CapeDatetime*, cape_uint16 days, cape_uint32 msec, cape_uint16 usec);
+
                                /* sets the internal structure starting by start time and interval in seconds
                                   -> finds the next time not in the past
                                   -> in UTC
