@@ -445,6 +445,12 @@ static void* __STDCALL cape_queue__on_new_item (void* user_ptr)
 
 static number_t cape_queue__size (CapeQueue self)
 {
+#if defined(CAPE_USE_FREERTOS)
+
+    return (number_t) uxQueueMessagesWaiting (self->queue);
+    
+#else
+    
     number_t queue_size;
     
     cape_mutex_lock (self->mutex);
@@ -454,6 +460,8 @@ static number_t cape_queue__size (CapeQueue self)
     cape_mutex_unlock (self->mutex);
 
     return queue_size;
+    
+#endif
 }
 
 //-----------------------------------------------------------------------------
