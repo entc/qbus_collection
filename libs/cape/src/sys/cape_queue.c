@@ -252,17 +252,22 @@ void cape_sync_wait (CapeSync self)
 
 struct CapeQueue_s
 {
-    CapeMutex mutex;
-    
     CapeThreadPool thread_pool;
-    
-    CapeList queue;
-    
+
 #if defined(CAPE_USE_FREERTOS)
 
-    SemaphoreHandle_t sem;
+    // we the queue from RTOS directly
+    QueueHandle_t queue;
 
-#elif defined(__LINUX_OS)
+#else
+
+    // to secure add / remove from the queue list
+    CapeMutex mutex;
+        
+    // the queue list
+    CapeList queue;
+
+#if defined(__LINUX_OS)
             
     sem_t sem;    // semaphore structure
 
@@ -273,6 +278,8 @@ struct CapeQueue_s
 #elif defined(__WINDOWS_OS)
 
     HANDLE semaphore;
+
+#endif
 
 #endif
 
@@ -314,6 +321,17 @@ void __STDCALL cape_queue__item__on_del (void* ptr)
   
   CAPE_DEL (&item, struct CapeQueueItem_s);
 }
+
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+#else
 
 //-----------------------------------------------------------------------------
 
@@ -368,13 +386,6 @@ static int cape_queue__next (CapeQueue self)
         cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme queue next");
     }
 
-#elif defined(CAPE_USE_FREERTOS)
-
-    if (xSemaphoreTake (self->sem, pdMS_TO_TICKS (5000)) != pdTRUE)
-    {
-        
-    }
-    
 #endif
 
     return TRUE;
@@ -397,6 +408,41 @@ static CapeQueueItem cape_queue__pop (CapeQueue self)
 
 //-----------------------------------------------------------------------------
 
+#endif
+
+//-----------------------------------------------------------------------------
+
+static void* __STDCALL cape_queue__on_new_item (void* user_ptr)
+{
+    CapeQueue self = user_ptr;
+    
+#if defined(CAPE_USE_FREERTOS)
+    
+    CapeQueueItem item = NULL;
+
+    if (xQueueReceive (self->queue, &item, portMAX_DELAY) == pdTRUE)
+    {
+        return item;
+    }
+
+    return NULL;
+    
+#else
+    
+    // waits until a possible queue event might be available
+    if (cape_queue__next (self))
+    {
+        // fetch the queue event and return it as obj_ptr
+        return cape_queue__pop (self);
+    }
+
+    return NULL;
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 static number_t cape_queue__size (CapeQueue self)
 {
     number_t queue_size;
@@ -408,24 +454,6 @@ static number_t cape_queue__size (CapeQueue self)
     cape_mutex_unlock (self->mutex);
 
     return queue_size;
-}
-
-//-----------------------------------------------------------------------------
-
-static void* __STDCALL cape_queue__on_new_item (void* user_ptr)
-{
-    CapeQueue self = user_ptr;
-    
-    // waits until a possible queue event might be available
-    if (cape_queue__next (self))
-    {
-        // fetch the queue event and return it as obj_ptr
-        return cape_queue__pop (self);
-    }
-    else
-    {
-        return NULL;
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -459,7 +487,10 @@ void __STDCALL cape_queue__on_stop_item (void* obj_ptr, void* user_ptr)
     
 #if defined(CAPE_USE_FREERTOS)
 
-    xSemaphoreGive (self->sem);
+    CapeQueueItem stop_item = NULL;
+
+    // Wake a worker waiting for the next item.
+    xQueueSend (self->queue, &stop_item, 0);
     
 #elif defined(__LINUX_OS)
             
@@ -494,15 +525,18 @@ CapeQueue cape_queue_new (number_t timeout_in_ms)
     // create the thread pool with the related callbacks
     self->thread_pool = cape_thread_pool_new (self, cape_queue__worker__thread, cape_queue__on_new_item, cape_queue__on_stop_item, cape_queue__item__on_del);
 
+#if defined(CAPE_USE_FREERTOS)
+
+    // TODO: consider to use a similar approach with max thread number for all parts
+    self->queue = xQueueCreate (1000, sizeof (CapeQueueItem));
+
+#else
+
     self->mutex = cape_mutex_new ();
 
     self->queue = cape_list_new (cape_queue__item__on_del);
 
-#if defined(CAPE_USE_FREERTOS)
-
-    self->sem = xSemaphoreCreateCounting (1000, 0);
-
-#elif defined(__LINUX_OS)
+#if defined(__LINUX_OS)
             
     int res = sem_init (&(self->sem), 0, 0);
 
@@ -520,7 +554,9 @@ CapeQueue cape_queue_new (number_t timeout_in_ms)
     self->semaphore = CreateSemaphore (NULL, 0, 1000, NULL);
 
 #endif
-    
+
+#endif
+
     return self;
 }
 
@@ -540,6 +576,32 @@ void cape_queue_del (CapeQueue* p_self)
         // destroys all threads
         cape_thread_pool_del (&(self->thread_pool));
 
+#if defined(CAPE_USE_FREERTOS)
+
+        {
+            CapeQueueItem item = NULL;
+            number_t left_queues = 0;
+
+            while (xQueueReceive (self->queue, &item, 0) == pdTRUE)
+            {
+                if (item)
+                {
+                    left_queues++;
+
+                    // Preserve the existing cleanup behavior for pending items.
+                    cape_queue__item__on_del (item);
+                }
+            }
+
+            if (left_queues > 0)
+            {
+                cape_log_fmt (CAPE_LL_WARN, "CAPE", "queue del", "%i left in queue", left_queues);
+            }
+        }
+
+        vQueueDelete (self->queue);
+
+#else
         {
             number_t left_queues = cape_list_size (self->queue);
 
@@ -552,9 +614,9 @@ void cape_queue_del (CapeQueue* p_self)
         cape_list_del (&(self->queue));
         
         cape_mutex_del (&(self->mutex));
-        
-        //cape_log_fmt (CAPE_LL_TRACE, "CAPE", "queue del", "tear down done");
-        
+
+#endif
+                
         CAPE_DEL (p_self, struct CapeQueue_s);
     }
 }
@@ -581,6 +643,21 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
     item->sync = sync;
     item->pos = pos;
 
+#if defined(CAPE_USE_FREERTOS)
+
+    // Register the pending operation before publishing the item.
+    cape_sync_inc (sync);
+
+    if (xQueueSend (self->queue, &item, 0) != pdPASS)
+    {
+        // preserve the existing cleanup behavior
+        cape_queue__item__on_del (item);
+        
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "queue add", "queue is full");
+    }
+    
+#else
+    
     // monitor
     {
         cape_mutex_lock (self->mutex);
@@ -593,7 +670,7 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
     cape_sync_inc (sync);
 
 #if defined(__LINUX_OS)
-
+            
     sem_post (&(self->sem));
 
 #elif defined(__BSD_OS)
@@ -608,10 +685,8 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
         cape_log_err (CAPE_LL_ERROR, "CAPE", "QUEUE", "can't permforme add");
     }
 
-#elif defined(CAPE_USE_FREERTOS)
+#endif
 
-    xSemaphoreGive (self->sem);
-    
 #endif
 }
 
