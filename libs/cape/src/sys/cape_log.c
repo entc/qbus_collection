@@ -162,31 +162,25 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
         return;
     }
     
-#if defined _WIN64 || defined _WIN32
-    
-    len = _snprintf_s (buffer, sizeof(buffer), sizeof(buffer) - 1, "%-12s %s|%-8s] %s", method, msg_matrix[lvl], unit, msg);
+#if defined(CAPE_USE_FREERTOS)
+
+    if (msg)
+    {
+        len = snprintf (buffer, sizeof(buffer), "%04i%02i%02i-%02i:%02i:%02i.%03i|%s|%8s|%-20s| %s", dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.sec, dt.msec, msg_matrix[lvl], unit, method, msg);
+    }
+    else
+    {
+        len = snprintf (buffer, sizeof(buffer), "%-12s %s|%-8s]", method, msg_matrix[lvl], unit);
+    }
 
     // correct len and buffer termination
     len = cape_log__correct_len (len);
     buffer[len] = '\0';
 
-    {
-        CONSOLE_SCREEN_BUFFER_INFO info;
-        // get the console handle
-        HANDLE hStdout = GetStdHandle (STD_OUTPUT_HANDLE);
-        // remember the original background color
-        GetConsoleScreenBufferInfo (hStdout, &info);
-        // do some fancy stuff
-        SetConsoleTextAttribute (hStdout, clr_matrix[lvl]);
-        
-        printf("%s\n", buffer);
-        
-        SetConsoleTextAttribute (hStdout, info.wAttributes);
-    }
+    Serial.print("%s\n", buffer);
     
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-#else
-    
     CapeDatetime dt;
     cape_datetime_utc (&dt);
     
@@ -215,9 +209,31 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
     {
         printf("\033[%sm%s\033[0m\n", clr_matrix[lvl], buffer);
     }
-    
+
+#elif defined(__WINDOWS_OS)
+
+    len = _snprintf_s (buffer, sizeof(buffer), sizeof(buffer) - 1, "%-12s %s|%-8s] %s", method, msg_matrix[lvl], unit, msg);
+
+    // correct len and buffer termination
+    len = cape_log__correct_len (len);
+    buffer[len] = '\0';
+
+    {
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        // get the console handle
+        HANDLE hStdout = GetStdHandle (STD_OUTPUT_HANDLE);
+        // remember the original background color
+        GetConsoleScreenBufferInfo (hStdout, &info);
+        // do some fancy stuff
+        SetConsoleTextAttribute (hStdout, clr_matrix[lvl]);
+        
+        printf("%s\n", buffer);
+        
+        SetConsoleTextAttribute (hStdout, info.wAttributes);
+    }
+
 #endif
-    
+
     if (g_log_udp_handle)
     {
         CapeStream s = cape_stream_new ();
