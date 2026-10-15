@@ -21,7 +21,6 @@ static const char* msg_matrix[7] = { "___", "FAT", "ERR", "WRN", "INF", "DBG", "
 
 #if defined(CAPE_USE_FREERTOS)
 
-#include <Arduino.h>
 
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
@@ -193,8 +192,8 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
     len = cape_log__correct_len (len);
     buffer[len] = '\0';
 
-    Serial.print("%s\n", buffer);
-    
+    printf ("%s\n", buffer);
+        
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
     CapeDatetime dt;
