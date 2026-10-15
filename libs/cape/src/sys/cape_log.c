@@ -19,12 +19,25 @@ struct addrinfo* g_sockaddr = NULL;
 
 static const char* msg_matrix[7] = { "___", "FAT", "ERR", "WRN", "INF", "DBG", "TRA" };
 
-#if defined _WIN64 || defined _WIN32
+#if defined(CAPE_USE_FREERTOS)
+
+#include <Arduino.h>
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+#include <sys/time.h>
+#include <time.h>
+#include <stdarg.h>
+#include <stdio.h>
+  
+  static const char* clr_matrix[7] = { "0", "0;31", "1;31", "1;33", "0;32", "0;34", "0;30" };
+
+#elif defined(__WINDOWS_OS)
 
 #include <windows.h>
 
   static WORD clr_matrix[11] = {
-  0, 
+  0,
   FOREGROUND_RED | FOREGROUND_INTENSITY,
   FOREGROUND_RED | FOREGROUND_INTENSITY,
   FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY,
@@ -33,14 +46,14 @@ static const char* msg_matrix[7] = { "___", "FAT", "ERR", "WRN", "INF", "DBG", "
   FOREGROUND_GREEN | FOREGROUND_BLUE
   };
 
+#endif
+
+
+#if defined _WIN64 || defined _WIN32
+
+
 #else
 
-#include <sys/time.h>
-#include <time.h>
-#include <stdarg.h>
-#include <stdio.h>
-  
-  static const char* clr_matrix[7] = { "0", "0;31", "1;31", "1;33", "0;32", "0;34", "0;30" };
 
 #endif
 
