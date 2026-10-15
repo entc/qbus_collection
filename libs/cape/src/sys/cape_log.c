@@ -164,6 +164,9 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
     
 #if defined(CAPE_USE_FREERTOS)
 
+    CapeDatetime dt;
+    cape_datetime_utc (&dt);
+
     if (msg)
     {
         len = snprintf (buffer, sizeof(buffer), "%04i%02i%02i-%02i:%02i:%02i.%03i|%s|%8s|%-20s| %s", dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.sec, dt.msec, msg_matrix[lvl], unit, method, msg);
