@@ -6,20 +6,36 @@
 #include "sys/cape_thread.h"
 
 //-----------------------------------------------------------------------------
+// HEADERS AND DEFINITIONS
+//-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
+#if defined(CAPE_USE_FREERTOS)
 
-// c includes
-#include <memory.h>
-#include <sys/socket.h>	// basic socket definitions
+// ESP-IDF lwIP BSD socket API
+#include <lwip/sockets.h>
+#include <lwip/netdb.h>
+#include <lwip/inet.h>
 #include <sys/types.h>
-#include <arpa/inet.h>	// inet(3) functions
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+// POSIX socket API
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <errno.h>
 
-#elif defined _WIN64 || defined _WIN32
+#define CAPE_SOCKET_INVALID -1
+
+#elif defined(__WINDOWS_OS)
 
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <ws2tcpip.h>
@@ -31,14 +47,14 @@
 #endif
 
 //-----------------------------------------------------------------------------
+// PLATFORM DEPENDEND STATIC FUNCTIONS
+//-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
-
-#define CAPE_SOCKET_INVALID -1
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__socket_make_reusable(int sock, CapeErr err)
+static int cape_sock__socket_make_reusable(int sock, CapeErr err)
 {
     int opt = 1;
 
@@ -56,7 +72,7 @@ int cape_sock__socket_make_reusable(int sock, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__socket (int domain, int type, int protocol, CapeErr err)
+static int cape_sock__socket (int domain, int type, int protocol, CapeErr err)
 {
     int sock;
     
@@ -91,8 +107,22 @@ int cape_sock__socket (int domain, int type, int protocol, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
+#elif defined(__WINDOWS_OS)
+
+
+#endif
+
+//-----------------------------------------------------------------------------
+// PUBLIC FUNCTIONS
+//-----------------------------------------------------------------------------
+
 void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS)
+
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
     void* ret = NULL;
 
     // local objects
@@ -152,12 +182,22 @@ cleanup_and_exit:
     }
 
     return ret;
+
+#elif defined(__WINDOWS_OS)
+
+    // TODO: needs to be done
+
+    return NULL;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
     void* ret = NULL;
 
     // local objects
@@ -172,7 +212,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     }
 
     // create socket
-    sock = cape_sock__socket (AF_INET, SOCK_STREAM, IPPROTO_TCP, err);
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
     if (sock < 0)
     {
         goto cleanup_and_exit;
@@ -180,33 +220,116 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
 
     cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
 
+    // bind socket
     if (bind (sock, addr->ai_addr, addr->ai_addrlen) < 0)
     {
-        // save the last system error into the error object
         cape_err_lastOSError (err);
         goto cleanup_and_exit;
     }
 
-    // cannot fail
-    listen(sock, SOMAXCONN);
+    // start listening
+    if (listen (sock, SOMAXCONN) < 0)
+    {
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
 
-    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "listen on [%s:%li]", host, port);
+    // configure nonblocking mode
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "listen on [%s:%li]", host ? host : "0.0.0.0", port);
 
     ret = (void*)(number_t)sock;
     sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
-    // free the add structure
+    // free the address information
     cape_net__resolve_del (&addr);
 
     if (sock >= 0)
     {
-        close(sock);
+        close (sock);
     }
 
     return ret;
+
+#elif defined(__WINDOWS_OS)
+
+    void* ret = NULL;
+
+    // local objects
+    struct addrinfo* addr = NULL;
+    SOCKET sock = INVALID_SOCKET;
+
+    // initialize Winsock
+    if (!cape_net__init ())
+    {
+        goto cleanup_and_exit;
+    }
+
+    // resolve host and port
+    addr = cape_net__resolve_os (host, port, FALSE, err);
+    if (NULL == addr)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // create socket
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
+    if (sock == INVALID_SOCKET)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // bind socket
+    if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR)
+    {
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
+
+    // start listening
+    if (listen (sock, SOMAXCONN) == SOCKET_ERROR)
+    {
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "listen on [%s:%li]", host ? host : "0.0.0.0", port);
+
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+
+cleanup_and_exit:
+
+    cape_net__resolve_del (&addr);
+
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket (sock);
+    }
+
+    return ret;
+
+#endif
 }
+
+//-----------------------------------------------------------------------------
+
+#if defined __LINUX_OS || defined __BSD_OS
+
+
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
 
 //-----------------------------------------------------------------------------
 
@@ -673,69 +796,6 @@ SOCKET cape_sock__socket (int domain, int type, int protocol, CapeErr err)
     }
 
     return cape_sock__socket_make_exclusive (sock, err);
-}
-
-//-----------------------------------------------------------------------------
-
-void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
-{
-    // TODO: needs to be done
-
-    return NULL;
-}
-
-//-----------------------------------------------------------------------------
-
-void* cape_sock__tcp__srv_new (const char* host, long port, CapeErr err)
-{
-    void* ret = NULL;
-
-    // local variables
-    struct addrinfo* addr = NULL;
-    SOCKET sock = INVALID_SOCKET;
-
-    // in windows the WSA system must be initialized first
-    if (!cape_net__init())
-    {
-        goto cleanup_and_exit;
-    }
-
-    // resolve host and port
-    addr = cape_net__resolve_os (host, port, FALSE, err);
-
-    // create the socket using the resolved address
-    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
-    if (sock == INVALID_SOCKET)
-    {
-        goto cleanup_and_exit;
-    }
-
-    if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR)
-    {
-        goto cleanup_and_exit;
-    }
-
-    // in windows this can fail
-    if (listen(sock, SOMAXCONN) == SOCKET_ERROR)
-    {
-        goto cleanup_and_exit;
-    }
-
-    cape_log_fmt(CAPE_LL_TRACE, "CAPE", "cape_socket", "listen on [%s:%li]", host ? host : "0.0.0.0", port);
-
-    ret = (void*)(number_t)sock;
-    sock = INVALID_SOCKET;
-
-cleanup_and_exit:
-
-    cape_net__resolve_del(&addr);
-
-    if (sock != INVALID_SOCKET)
-    {
-        closesocket (sock);
-    }
-
-    return ret;
 }
 
 //-----------------------------------------------------------------------------
