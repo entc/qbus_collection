@@ -21,6 +21,12 @@
 #include <unistd.h>
 #include <errno.h>
 
+#if defined(CAPE_USE_FREERTOS)
+#define CAPE_SOCKET__LISTEN_BACKLOG 4
+#else
+#define CAPE_SOCKET__LISTEN_BACKLOG SOMAXCONN
+#endif
+
 #define CAPE_SOCKET_INVALID -1
 
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
@@ -35,6 +41,7 @@
 #include <netdb.h>
 #include <errno.h>
 
+#define CAPE_SOCKET__LISTEN_BACKLOG SOMAXCONN
 #define CAPE_SOCKET_INVALID -1
 
 #elif defined(__WINDOWS_OS)
@@ -118,79 +125,168 @@ static int cape_sock__socket (int domain, int type, int protocol, CapeErr err)
 // PUBLIC FUNCTIONS
 //-----------------------------------------------------------------------------
 
+int cape_sock__noneblocking (void* handle, CapeErr err)
+{
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
+    int sock = (int)(number_t)handle;
+    
+    // save the current flags
+    int flags = fcntl ((int)(number_t)sock, F_GETFL, 0);
+    if (flags == -1)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    // add noneblocking
+    flags |= O_NONBLOCK;
+
+    // apply the flags
+    if (fcntl ((int)(number_t)sock, F_SETFL, flags) != 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+
+    return CAPE_ERR_NONE;
+
+#elif defined(__WINDOWS_OS)
+
+    u_long mode = 1;
+
+    if (ioctlsocket ((SOCKET)handle, FIONBIO, &mode) == SOCKET_ERROR)
+    {
+        return cape_err_formatErrorOS (err, WSAGetLastError ());
+    }
+
+    return CAPE_ERR_NONE;
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 void* cape_sock__tcp__clt_new (const char* host, long port, CapeErr err)
 {
-#if defined(CAPE_USE_FREERTOS)
-
-
-#elif defined(__LINUX_OS) || defined(__BSD_OS)
-
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+    
     void* ret = NULL;
-
+    
     // local objects
     struct addrinfo* addr = NULL;
     int sock = CAPE_SOCKET_INVALID;
-
+    
     // resolve host and port into an address object
     addr = cape_net__resolve_os (host, (int)port, FALSE, err);
     if (NULL == addr)
     {
         goto cleanup_and_exit;
     }
-
+    
     // create socket
-    sock = cape_sock__socket (AF_INET, SOCK_STREAM, IPPROTO_TCP, err);
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
     if (sock < 0)
     {
         goto cleanup_and_exit;
     }
     
-    // use the objects noneblocking function
+    // configure nonblocking mode
     if (cape_sock__noneblocking ((void*)(number_t)sock, err))
     {
         goto cleanup_and_exit;
     }
-
+    
     cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket created -> fd [%i]", sock);
-
-    // check results even if it is none-blocking
+    
+    // initiate connection
     int rc = connect (sock, addr->ai_addr, addr->ai_addrlen);
+    
     if (rc == 0)
     {
-        // connected
+        // connection established
     }
-    else if (errno == EINPROGRESS)
+    else if (errno == EINPROGRESS || errno == EWOULDBLOCK)
     {
-        // check this with epoll later
+        // connection is pending
+        // completion must be checked by the AIO handler
     }
     else
     {
-        // save the last system error into the error object
         cape_err_lastOSError (err);
         goto cleanup_and_exit;
     }
-
+    
     ret = (void*)(number_t)sock;
     sock = CAPE_SOCKET_INVALID;
-
+    
 cleanup_and_exit:
-
-    // free the add structure
+    
+    // free the address information
     cape_net__resolve_del (&addr);
-
+    
     if (sock >= 0)
     {
-        close(sock);
+        close (sock);
     }
-
+    
     return ret;
-
+    
 #elif defined(__WINDOWS_OS)
-
-    // TODO: needs to be done
-
-    return NULL;
-
+    
+    void* ret = NULL;
+    
+    // local objects
+    struct addrinfo* addr = NULL;
+    SOCKET sock = INVALID_SOCKET;
+    
+    // initialize Winsock
+    if (!cape_net__init ())
+    {
+        goto cleanup_and_exit;
+    }
+    
+    // resolve host and port
+    addr = cape_net__resolve_os (host, port, FALSE, err);
+    if (NULL == addr)
+    {
+        goto cleanup_and_exit;
+    }
+    
+    // create socket
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
+    if (sock == INVALID_SOCKET)
+    {
+        goto cleanup_and_exit;
+    }
+    
+    // connect synchronously
+    if (connect (sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR)
+    {
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
+    
+    // configure nonblocking mode after connecting
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+    
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket", "socket connected -> [%llu]", (unsigned long long)sock);
+    
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+    
+cleanup_and_exit:
+    
+    cape_net__resolve_del (&addr);
+    
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket (sock);
+    }
+    
+    return ret;
+    
 #endif
 }
 
@@ -230,7 +326,7 @@ void* cape_sock__tcp__srv_new  (const char* host, long port, CapeErr err)
     }
 
     // start listening
-    if (listen (sock, SOMAXCONN) < 0)
+    if (listen (sock, CAPE_SOCKET__LISTEN_BACKLOG) < 0)
     {
         cape_err_lastOSError (err);
         goto cleanup_and_exit;
@@ -739,29 +835,6 @@ void cape_sock__shutdown__wr (void* handle)
 
 //-----------------------------------------------------------------------------
 
-int cape_sock__noneblocking (void* sock, CapeErr err)
-{
-  // save the current flags
-  int flags = fcntl ((int)(number_t)sock, F_GETFL, 0);
-  if (flags == -1)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  // add noneblocking
-  flags |= O_NONBLOCK;
-
-  // apply the flags
-  if (fcntl ((int)(number_t)sock, F_SETFL, flags) != 0)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  return CAPE_ERR_NONE;
-}
-
-//-----------------------------------------------------------------------------
-
 #elif defined _WIN64 || defined _WIN32
 
 //-----------------------------------------------------------------------------
@@ -923,16 +996,6 @@ int cape_sock__status (void* handle, CapeErr err)
     }
 
     return cape_err_formatErrorOS (err, error_code);
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_sock__noneblocking (void* handle, CapeErr err)
-{
-    u_long mode = 1;  // 1 to enable non-blocking socket
-    ioctlsocket ((SOCKET)handle, FIONBIO, &mode);
-
-    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
