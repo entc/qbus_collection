@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define CAPE_SOCKET_INVALID -1
+
 #elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 // POSIX socket API
