@@ -418,38 +418,22 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
-
-
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
 void* cape_sock__udp__clt_new (CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
     void* ret = NULL;
 
     int sock = CAPE_SOCKET_INVALID;
 
     // create socket as datagram
-#if defined __LINUX_OS
-    sock = cape_sock__socket (AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP, err);
-#else
     sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
-#endif
-
     if (sock < 0)
     {
-      goto cleanup_and_exit;
+        goto cleanup_and_exit;
     }
 
-    // use the objects noneblocking function
+    // configure nonblocking mode
     if (cape_sock__noneblocking ((void*)(number_t)sock, err))
     {
         goto cleanup_and_exit;
@@ -464,11 +448,68 @@ cleanup_and_exit:
 
     if (sock >= 0)
     {
-        close(sock);
+        close (sock);
     }
 
     return ret;
+
+#elif defined(__WINDOWS_OS)
+
+    void* ret = NULL;
+
+    SOCKET sock = INVALID_SOCKET;
+
+    // initialize Winsock
+    if (!cape_net__init ())
+    {
+        goto cleanup_and_exit;
+    }
+
+    // create socket as datagram
+    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
+    if (sock == INVALID_SOCKET)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // configure nonblocking mode
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket clt UDP", "socket created");
+
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+
+cleanup_and_exit:
+
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket (sock);
+    }
+
+    return ret;
+
+#endif
 }
+
+//-----------------------------------------------------------------------------
+
+#if defined __LINUX_OS || defined __BSD_OS
+
+
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
 
 //-----------------------------------------------------------------------------
 
@@ -874,45 +915,6 @@ SOCKET cape_sock__socket (int domain, int type, int protocol, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
-
-void* cape_sock__udp__clt_new (CapeErr err)
-{
-    void* ret = NULL;
-
-    // local variables
-    SOCKET sock = INVALID_SOCKET;
-
-    // in windows the WSA system must be initialized first
-    if (!cape_net__init())
-    {
-        goto cleanup_and_exit;
-    }
-
-    // create socket as datagram
-    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
-    if (sock == INVALID_SOCKET)
-    {
-        goto cleanup_and_exit;
-    }
-
-    // use the objects noneblocking function
-    if (cape_sock__noneblocking((void*)(number_t)sock, err))
-    {
-        goto cleanup_and_exit;
-    }
-
-    ret = (void*)(number_t)sock;
-    sock = INVALID_SOCKET;
-
-cleanup_and_exit:
-
-    if (sock >= 0)
-    {
-        closesocket(sock);
-    }
-
-    return NULL;
-}
 
 //-----------------------------------------------------------------------------
 
