@@ -497,24 +497,10 @@ cleanup_and_exit:
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
-
-
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
 void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
     void* ret = NULL;
 
     // local objects
@@ -529,68 +515,127 @@ void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
     }
 
     // create socket as datagram
-#if defined __LINUX_OS
-    sock = cape_sock__socket (AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, IPPROTO_UDP, err);
-#else
-    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
-#endif
-
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
     if (sock < 0)
     {
-      goto cleanup_and_exit;
+        goto cleanup_and_exit;
     }
 
-    // try to bind the socket to an address
-    if (bind (sock, addr->ai_addr, addr->ai_addrlen) < 0)
-    {
-      // save the last system error into the error object
-      cape_err_lastOSError (err);
-      goto cleanup_and_exit;
-    }
-
-    // use the objects noneblocking function
+    // configure nonblocking mode
     if (cape_sock__noneblocking ((void*)(number_t)sock, err))
     {
         goto cleanup_and_exit;
     }
 
-    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%i", host, port);
+    // bind the socket to the address
+    if (bind (sock, addr->ai_addr, addr->ai_addrlen) < 0)
+    {
+        cape_err_lastOSError (err);
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%li", host ? host : "*", port);
 
     ret = (void*)(number_t)sock;
     sock = CAPE_SOCKET_INVALID;
 
 cleanup_and_exit:
 
-    // free the add structure
+    // free the address information
     cape_net__resolve_del (&addr);
 
     if (sock >= 0)
     {
-        close(sock);
+        close (sock);
     }
 
     return ret;
+
+#elif defined(__WINDOWS_OS)
+
+    void* ret = NULL;
+
+    // local objects
+    struct addrinfo* addr = NULL;
+    SOCKET sock = INVALID_SOCKET;
+
+    // initialize Winsock
+    if (!cape_net__init ())
+    {
+        goto cleanup_and_exit;
+    }
+
+    // resolve host and port into an address object
+    addr = cape_net__resolve_os (host, (int)port, FALSE, err);
+    if (NULL == addr)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // create socket as datagram
+    sock = cape_sock__socket (addr->ai_family, addr->ai_socktype, addr->ai_protocol, err);
+    if (sock == INVALID_SOCKET)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // configure nonblocking mode
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+
+    // bind the socket to the address
+    if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) == SOCKET_ERROR)
+    {
+        cape_err_formatErrorOS (err, WSAGetLastError ());
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "CAPE", "socket srv UDP", "open socket on %s:%li", host ? host : "*", port);
+
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+
+cleanup_and_exit:
+
+    // free the address information
+    cape_net__resolve_del (&addr);
+
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket (sock);
+    }
+
+    return ret;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
 
 void* cape_sock__icmp__new (CapeErr err)
 {
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
     void* ret = NULL;
 
     int sock = CAPE_SOCKET_INVALID;
 
-    // create socket as datagram
-#if defined __LINUX_OS
-    sock = cape_sock__socket (AF_INET, SOCK_RAW | SOCK_NONBLOCK, IPPROTO_ICMP, err);
-#else
+    // create ICMP raw socket
     sock = cape_sock__socket (AF_INET, SOCK_RAW, IPPROTO_ICMP, err);
-#endif
-
     if (sock < 0)
     {
         goto cleanup_and_exit;
     }
+
+    // configure nonblocking mode
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket ICMP", "socket created -> fd [%i]", sock);
 
     ret = (void*)(number_t)sock;
     sock = CAPE_SOCKET_INVALID;
@@ -599,49 +644,147 @@ cleanup_and_exit:
 
     if (sock >= 0)
     {
-        close(sock);
+        close (sock);
     }
 
     return ret;
-}
 
-//-----------------------------------------------------------------------------
+#elif defined(__WINDOWS_OS)
 
-int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, long port, CapeErr err)
-{
-  int res = CAPE_ERR_NONE;
-  number_t bufpos = 0;
+    void* ret = NULL;
 
-  if (host && port)
-  {
-      struct addrinfo* addr = cape_net__new_simple (0, AF_INET, SOCK_DGRAM, IPPROTO_UDP, host, (int)port, NULL);
+    SOCKET sock = INVALID_SOCKET;
 
-      res = cape_sock__udp__send_to_nr (handle, buf, addr, err);
-      
-      cape_net__resolve_del (&addr);
-  }
-      
-  return res;
+    // initialize Winsock
+    if (!cape_net__init ())
+    {
+        goto cleanup_and_exit;
+    }
+
+    // create ICMP raw socket
+    sock = cape_sock__socket (AF_INET, SOCK_RAW, IPPROTO_ICMP, err);
+    if (sock == INVALID_SOCKET)
+    {
+        goto cleanup_and_exit;
+    }
+
+    // configure nonblocking mode
+    if (cape_sock__noneblocking ((void*)(number_t)sock, err))
+    {
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "CAPE", "socket ICMP", "socket created");
+
+    ret = (void*)(number_t)sock;
+    sock = INVALID_SOCKET;
+
+cleanup_and_exit:
+
+    if (sock != INVALID_SOCKET)
+    {
+        closesocket (sock);
+    }
+
+    return ret;
+
+#endif
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, struct addrinfo* addr, CapeErr err)
 {
-  int res = CAPE_ERR_NONE;
-  number_t bufpos = 0;
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  // file descriptor
-  int fd = (int)(number_t)handle;
-  
-  ssize_t bytes_send = sendto (fd, cape_stream_data (buf) + bufpos, cape_stream_size (buf) - bufpos, MSG_DONTWAIT, addr->ai_addr, addr->ai_addrlen);
-  if (bytes_send == -1)
-  {
-    res = cape_err_lastOSError (err);
-  }
+    // file descriptor
+    int fd = (int)(number_t)handle;
 
-  return res;
+    ssize_t bytes_send = sendto (fd, cape_stream_data (buf), cape_stream_size (buf), 0, addr->ai_addr, addr->ai_addrlen);
+
+    if (bytes_send == -1)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+        {
+            return CAPE_ERR_CONTINUE;
+        }
+
+        return cape_err_lastOSError (err);
+    }
+
+    return CAPE_ERR_NONE;
+
+#elif defined(__WINDOWS_OS)
+
+    SOCKET sock = (SOCKET)(number_t)handle;
+
+    int bytes_send = sendto (sock, (const char*)cape_stream_data (buf), (int)cape_stream_size (buf), 0, addr->ai_addr, (int)addr->ai_addrlen);
+
+    if (bytes_send == SOCKET_ERROR)
+    {
+        int error_code = WSAGetLastError ();
+
+        if (error_code == WSAEWOULDBLOCK || error_code == WSAEINTR)
+        {
+            return CAPE_ERR_CONTINUE;
+        }
+
+        return cape_err_formatErrorOS (err, error_code);
+    }
+
+    return CAPE_ERR_NONE;
+
+#endif
 }
+
+//-----------------------------------------------------------------------------
+
+int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, long port, CapeErr err)
+{
+    int res = CAPE_ERR_NONE;
+    number_t bufpos = 0;
+
+    if (host && port)
+    {
+        struct addrinfo* addr = cape_net__new_simple (0, AF_INET, SOCK_DGRAM, IPPROTO_UDP, host, (int)port, NULL);
+
+        if (NULL == addr)
+        {
+            return cape_err_set (err, CAPE_ERR_RUNTIME, "can't resolve address");
+        }
+        
+        res = cape_sock__udp__send_to_nr (handle, buf, addr, err);
+        
+        cape_net__resolve_del (&addr);
+    }
+        
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+#if defined __LINUX_OS || defined __BSD_OS
+
+
+
+
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+
+
+//-----------------------------------------------------------------------------
+
 
 //-----------------------------------------------------------------------------
 
@@ -915,63 +1058,6 @@ SOCKET cape_sock__socket (int domain, int type, int protocol, CapeErr err)
 }
 
 //-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-void* cape_sock__udp__srv_new (const char* host, long port, CapeErr err)
-{
-    void* ret = NULL;
-
-    // local variables
-    struct addrinfo* addr = NULL;
-    SOCKET sock = INVALID_SOCKET;
-
-    // in windows the WSA system must be initialized first
-    if (!cape_net__init())
-    {
-        goto cleanup_and_exit;
-    }
-
-    sock = cape_sock__socket (AF_INET, SOCK_DGRAM, IPPROTO_UDP, err);
-    if (sock == INVALID_SOCKET)
-    {
-        goto cleanup_and_exit;
-    }
-
-    // use the objects noneblocking function
-    if (cape_sock__noneblocking((void*)(number_t)sock, err))
-    {
-        goto cleanup_and_exit;
-    }
-
-    addr = cape_net__resolve_os (host, port, FALSE, err);
-
-    if (bind (sock, addr->ai_addr, (int)addr->ai_addrlen) != 0)
-    {
-      goto cleanup_and_exit;
-    }
-  
-    ret = (void*)(number_t)sock;
-    sock = INVALID_SOCKET;
-
-cleanup_and_exit:
-
-    cape_net__resolve_del (&addr);
-
-    if (sock != INVALID_SOCKET)
-    {
-        closesocket(sock);
-    }
-
-    return ret;
-}
-
-//-----------------------------------------------------------------------------
-
-void* cape_sock__icmp__new (CapeErr err)
-{
-    return NULL;
-}
 
 //-----------------------------------------------------------------------------
 
