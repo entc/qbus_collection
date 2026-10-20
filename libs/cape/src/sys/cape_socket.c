@@ -742,7 +742,6 @@ int cape_sock__udp__send_to_nr (void* handle, CapeStream buf, struct addrinfo* a
 int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, long port, CapeErr err)
 {
     int res = CAPE_ERR_NONE;
-    number_t bufpos = 0;
 
     if (host && port)
     {
