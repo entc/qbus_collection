@@ -762,65 +762,100 @@ int cape_sock__udp__send_to (void* handle, CapeStream buf, const char* host, lon
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
-
-
-
-
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
-
-
-//-----------------------------------------------------------------------------
-
-
-//-----------------------------------------------------------------------------
-
 void* cape_sock__accept (void* handle, CapeString* p_remote_addr, CapeErr err)
 {
-  struct sockaddr addr;
-  socklen_t addrlen = 0;
-  
-  const char* remote_addr = NULL;
-  
-  memset (&addr, 0x00, sizeof(addr));
-  
-  int sock = accept ((int)(number_t)handle, &addr, &addrlen);
-  
-  if (sock < 0)
-  {
-    if( (errno != EWOULDBLOCK) && (errno != EINPROGRESS) && (errno != EAGAIN))
+    struct sockaddr_storage addr;
+    memset (&addr, 0x00, sizeof (addr));
+    
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
+    int sock;
+    socklen_t addrlen = sizeof (addr);
+    
+    sock = accept ((int)(number_t)handle, (struct sockaddr*)&addr, &addrlen);
+    if (sock < 0)
     {
-      cape_err_lastOSError (err);
-      
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "accept", "error in accept: %s", cape_err_text (err));
+        if (errno != EWOULDBLOCK && errno != EINPROGRESS && errno != EAGAIN && errno != EINTR)
+        {
+            cape_err_lastOSError (err);
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "accept", "error in accept: %s", cape_err_text (err));
+        }
+
+        return NULL;
     }
 
-    return NULL;
-  }
-  
-  remote_addr = inet_ntoa(((struct sockaddr_in*)&addr)->sin_addr);
+#elif defined(__WINDOWS_OS)
     
-  if (p_remote_addr)
-  {
-    cape_str_replace_cp (p_remote_addr, remote_addr);
-  }
-  
-  return (void*)(number_t)sock;
+    SOCKET sock;
+    int addrlen = sizeof (addr);
+
+    sock = accept ((SOCKET)(number_t)handle, (struct sockaddr*)&addr, &addrlen);
+    if (sock == INVALID_SOCKET)
+    {
+        int error_code = WSAGetLastError ();
+
+        if (error_code != WSAEWOULDBLOCK && error_code != WSAEINPROGRESS && error_code != WSAEINTR)
+        {
+            cape_err_formatErrorOS (err, error_code);
+            cape_log_fmt (CAPE_LL_ERROR, "CAPE", "accept", "error in accept: %s", cape_err_text (err));
+        }
+
+        return NULL;
+    }
+
+#endif
+    
+    if (p_remote_addr)
+    {
+        struct addrinfo ai;
+        memset (&ai, 0x00, sizeof (ai));
+
+        ai.ai_family = addr.ss_family;
+        ai.ai_addr = (struct sockaddr*) &addr;
+
+#if defined(__WINDOWS_OS)
+        ai.ai_addrlen = (size_t) addrlen;
+#else
+        ai.ai_addrlen = addrlen;
+#endif
+
+        {
+            CapeString h = cape_net__address (&ai, err);
+            if (h)
+            {
+                cape_str_replace_mv (p_remote_addr, &h);
+            }
+            else
+            {
+                cape_log_fmt (CAPE_LL_WARN, "CAPE", "socket", "can't convert address: %s", cape_err_text (err));
+                cape_err_clr (err);
+            }
+        }
+    }
+
+    // Configure accepted socket as nonblocking
+    if (cape_sock__noneblocking ((void*)(number_t) sock, err))
+    {
+#if defined(__WINDOWS_OS)
+        closesocket (sock);
+#else
+        close (sock);
+#endif
+        return NULL;
+    }
+
+    return (void*)(number_t) sock;
 }
 
 //-----------------------------------------------------------------------------
+
+#if defined __LINUX_OS || defined __BSD_OS
+
+//-----------------------------------------------------------------------------
+
+
+
+
 
 int cape_sock__recv (void* handle, CapeStream bufdat, number_t buflen, CapeErr err)
 {

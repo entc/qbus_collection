@@ -38,6 +38,12 @@ __CAPE_LIBEX   void               cape_net__resolve_del        (struct addrinfo*
                                   /* this function logs the content of the addrinfo, for debug purposes */
 __CAPE_LIBEX   void               cape_net__print              (struct addrinfo*);
 
+                                  /* re-implementation of ntop by supporting IPV4 and IPV6 */
+__CAPE_LIBEX   int                cape_net__ntop               (struct addrinfo*, char* bufdat, number_t buflen, CapeErr);
+
+                                  /* converts binary address information into string */
+__CAPE_LIBEX   CapeString         cape_net__address            (struct addrinfo*, CapeErr);
+
 //-----------------------------------------------------------------------------
 
                                   /* resolves a host into an IP address */

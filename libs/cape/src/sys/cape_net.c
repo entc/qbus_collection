@@ -140,6 +140,99 @@ void cape_net__resolve_del (struct addrinfo** p_self)
 
 //-----------------------------------------------------------------------------
 
+int cape_net__ntop (struct addrinfo* ai, char* bufdat, number_t buflen, CapeErr err)
+{
+    if (!ai || !ai->ai_addr || !bufdat || buflen <= 0)
+    {
+        return cape_err_set (err, CAPE_ERR_MISSING_PARAM, "invalid parameters");
+    }
+
+    bufdat[0] = '\0';
+
+    {
+        const void* addr = NULL;
+        int family = ai->ai_addr->sa_family;
+
+        switch (family)
+        {
+            case AF_INET:
+            {
+                addr = &((struct sockaddr_in*) ai->ai_addr)->sin_addr;
+                break;
+            }
+
+            case AF_INET6:
+            {
+                addr = &((struct sockaddr_in6*) ai->ai_addr)->sin6_addr;
+                break;
+            }
+
+            default:
+            {
+                return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "unsupported address family");
+            }
+        }
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
+
+        if (inet_ntop (family, addr, bufdat, (socklen_t) buflen) != NULL)
+        {
+            return CAPE_ERR_NONE;
+        }
+
+#elif defined(__WINDOWS_OS)
+
+        if (InetNtopA (family, (PVOID) addr, bufdat, (size_t) buflen) != NULL)
+        {
+            return CAPE_ERR_NONE;
+        }
+
+#else
+
+        return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "inet_ntop is not supported on this platform");
+
+#endif
+
+    }
+    
+    bufdat[0] = '\0';
+    return cape_err_set (err, CAPE_ERR_OS, "can't convert address");
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString cape_net__address (struct addrinfo* ai, CapeErr err)
+{
+    CapeString ret = cape_alloc (INET6_ADDRSTRLEN);
+    
+    if (cape_net__ntop (ai, ret, INET6_ADDRSTRLEN, err))
+    {
+        cape_str_del (&ret);
+        return NULL;
+    }
+    else
+    {
+        return ret;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_net__print (struct addrinfo* ai)
+{
+    CapeErr err = cape_err_new ();
+    
+    CapeString h = cape_net__address (ai, err);
+    if (h)
+    {
+        cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "addrinfo: %s", h);
+    }
+    
+    cape_str_del (&h);
+    cape_err_del (&err);
+}
+
+//-----------------------------------------------------------------------------
+
 #if defined __LINUX_OS || defined __BSD_OS
 
 //-----------------------------------------------------------------------------
@@ -147,35 +240,6 @@ void cape_net__resolve_del (struct addrinfo** p_self)
 int cape_net__init (void)
 {
     return TRUE;   // return always true
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_net__ntop (struct sockaddr* sa, char* bufdat, number_t buflen)
-{
-  switch (sa->sa_family)
-  {
-    case AF_INET:
-    {
-      inet_ntop (AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), bufdat, (socklen_t)buflen);
-      break;
-    }
-    case AF_INET6:
-    {
-      inet_ntop (AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), bufdat, (socklen_t)buflen);
-      break;
-    }
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-void cape_net__print (struct addrinfo* self)
-{
-    char address[64];
-    cape_net__ntop (self->ai_addr, address, 64);
-
-    cape_log_fmt(CAPE_LL_TRACE, "CAPE", "NET", "addrinfo: %s", address);
 }
 
 //-----------------------------------------------------------------------------
@@ -243,9 +307,15 @@ struct addrinfo* cape_net__resolve_os (const CapeString host, int port, int ipv6
             // for output purposes
             {
                 char address[64];
-                cape_net__ntop (addr_current->ai_addr, address, 64);
-
-                cape_log_fmt(CAPE_LL_TRACE, "CAPE", "resolve", "use address [%s:%i]", address, port);
+                
+                if (cape_net__ntop (addr_current, address, 64, err))
+                {
+                    // some error
+                }
+                else
+                {
+                    cape_log_fmt(CAPE_LL_TRACE, "CAPE", "resolve", "use address [%s:%i]", address, port);
+                }
             }
 
             ret = cape_net__new (addr_current->ai_flags, addr_current->ai_family, addr_current->ai_socktype, addr_current->ai_protocol, addr_current->ai_addr, addr_current->ai_addrlen, addr_current->ai_canonname);
@@ -303,9 +373,13 @@ CapeString cape_net__resolve (const CapeString host, int ipv6, CapeErr err)
 
     if (addr_current)
     {
-      ret = CAPE_ALLOC (65);
+        ret = CAPE_ALLOC (65);
 
-      cape_net__ntop (addr_current->ai_addr, ret, 64);
+        if (cape_net__ntop (addr_current, ret, 64, err))
+        {
+            CAPE_FREE (ret);
+            ret = NULL;
+        }
     }
   }
 
