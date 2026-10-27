@@ -478,12 +478,12 @@ static int __STDCALL cape_queue__worker__thread (void* obj_ptr, void* user_ptr, 
         // set the active state
         cape_thread_item_set (pool_item, TRUE);
         
+        // sets the last user pointer
+        self->last_ptr = item->ptr;
+
         // we don't know what happens here
         // this might block forever
         item->on_event (item->ptr, item->pos, cape_queue__size (self));
-
-        // sets the last user pointer
-        self->last_ptr = item->ptr;
 
         // unset the active state
         cape_thread_item_set (pool_item, FALSE);

@@ -171,6 +171,30 @@ unsigned char* cape_cursor_scan_buf (CapeCursor self, number_t len)
 
 //-----------------------------------------------------------------------------
 
+char* cape_cursor_scan_next (CapeCursor self, char character_to_seek)
+{
+    const char* max = self->buffer + self->size;
+    const char* ptr;
+
+    for (ptr = self->pos; ptr < max; ptr++)
+    {
+        if (*ptr == character_to_seek)
+        {
+            number_t progressed_position = ptr - self->pos;
+
+            CapeString h = cape_str_sub (self->pos, progressed_position);
+
+            self->pos = ptr + 1;
+
+            return h;
+        }
+    }
+
+    return NULL;
+}
+
+//-----------------------------------------------------------------------------
+
 cape_uint8 cape_cursor_scan_08 (CapeCursor self)
 {
   cape_uint8 ret = 0;
