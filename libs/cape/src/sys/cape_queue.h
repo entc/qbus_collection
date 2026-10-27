@@ -53,4 +53,9 @@ __CAPE_LIBEX   int         cape_queue_start        (CapeQueue, number_t amount_o
 
 //-----------------------------------------------------------------------------
 
+                           /* returns the last used user pointer */
+__CAPE_LIBEX   void*       cape_queue_last         (CapeQueue);
+
+//-----------------------------------------------------------------------------
+
 #endif

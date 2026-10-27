@@ -286,6 +286,8 @@ struct CapeQueue_s
     int terminated;
     
     number_t timeout_in_ms;
+
+    void* last_ptr;
 };
 
 //-----------------------------------------------------------------------------
@@ -480,6 +482,9 @@ static int __STDCALL cape_queue__worker__thread (void* obj_ptr, void* user_ptr, 
         // this might block forever
         item->on_event (item->ptr, item->pos, cape_queue__size (self));
 
+        // sets the last user pointer
+        self->last_ptr = item->ptr;
+
         // unset the active state
         cape_thread_item_set (pool_item, FALSE);
     }
@@ -564,6 +569,8 @@ CapeQueue cape_queue_new (number_t timeout_in_ms)
 #endif
 
 #endif
+
+    self->last_ptr = NULL;
 
     return self;
 }
@@ -696,6 +703,13 @@ void cape_queue_add (CapeQueue self, CapeSync sync, cape_queue_cb_fct on_event, 
 #endif
 
 #endif
+}
+
+//-----------------------------------------------------------------------------
+
+void* cape_queue_last (CapeQueue self)
+{
+    return self->last_ptr;
 }
 
 //-----------------------------------------------------------------------------
