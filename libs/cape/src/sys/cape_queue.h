@@ -21,6 +21,9 @@ __CAPE_LIBEX   void        cape_sync_dec           (CapeSync);
 
 __CAPE_LIBEX   void        cape_sync_wait          (CapeSync);
 
+                           /* 1: return normal, 0: timeout, -1: error */
+__CAPE_LIBEX   int         cape_sync_wait_timeout  (CapeSync, number_t timeout_ms);
+
 //-----------------------------------------------------------------------------
 
 struct CapeQueue_s; typedef struct CapeQueue_s* CapeQueue;

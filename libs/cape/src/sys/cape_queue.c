@@ -250,6 +250,80 @@ void cape_sync_wait (CapeSync self)
 
 //-----------------------------------------------------------------------------
 
+int cape_sync_wait_timeout (CapeSync self, number_t timeout_ms)
+{
+    if (self == NULL)
+    {
+        return -1;
+    }
+
+#if defined(CAPE_USE_FREERTOS)
+
+    EventBits_t bits = xEventGroupWaitBits (self->revent, CAPE_SYNC_EVENT_DONE, pdFALSE, pdTRUE, pdMS_TO_TICKS (timeout_ms));
+
+    return ((bits & CAPE_SYNC_EVENT_DONE) != 0) ? 1 : 0;
+
+#elif defined(__LINUX_OS)
+
+    struct sembuf sops[1];
+    struct timespec timeout;
+
+    sops[0].sem_num = 0;
+    sops[0].sem_op = 0;
+    sops[0].sem_flg = 0;
+
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_nsec = (timeout_ms % 1000) * 1000000L;
+
+    if (semtimedop (self->semid, sops, 1, &timeout) == 0)
+    {
+        return 1;
+    }
+
+    if (errno == EAGAIN)
+    {
+        return 0;
+    }
+
+    cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't wait semaphore with timeout");
+
+    return -1;
+
+#elif defined(__BSD_OS)
+
+    /*
+     * BSD implementation depends on the target OS.
+     * Use the platform's timed System V semaphore API,
+     * if available.
+     */
+    (void) timeout_ms;
+
+    cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "timed semaphore wait not implemented for BSD");
+
+    return -1;
+
+#elif defined(__WINDOWS_OS)
+
+    DWORD result = WaitForSingleObject (self->revent, (DWORD) timeout_ms);
+
+    if (result == WAIT_OBJECT_0)
+    {
+        return 1;
+    }
+    else if (result == WAIT_TIMEOUT)
+    {
+        return 0;
+    }
+
+    cape_log_err (CAPE_LL_ERROR, "CAPE", "SYNC", "can't wait for SingleObject with timeout");
+
+    return -1;
+
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
 struct CapeQueue_s
 {
     CapeThreadPool thread_pool;
