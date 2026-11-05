@@ -16,6 +16,9 @@ __CAPE_LIBEX     QData              qdata_new              (CapeString* p_path);
                                     /* destructor: cleans and frees all memory */
 __CAPE_LIBEX     void               qdata_del              (QData*);
 
+                                    /* cleans the internal values */
+__CAPE_LIBEX     void               qdata_clr              (QData);
+
 //-----------------------------------------------------------------------------
 
                                     /* generate the designation */
@@ -37,13 +40,16 @@ __CAPE_LIBEX     int                qdata_set_s__cp        (QData, const CapeStr
 __CAPE_LIBEX     int                qdata_set_m__cp        (QData, const CapeString vsec, const CapeStream data, const CapeString previous_designation_encrypted, CapeErr);
 
                                     /* set the data string by loading it from the file system, input designation muste be encrypted  */
-__CAPE_LIBEX     int                qdata_set__load        (QData, const CapeString designation_encrypted, CapeErr);
+__CAPE_LIBEX     int                qdata_set__load        (QData, const CapeString designation, CapeErr);
 
                                     /* set the data string by loading it from the file system */
 __CAPE_LIBEX     int                qdata_set__load_enc    (QData, const CapeString vsec, const CapeString designation_encrypted, CapeErr);
 
                                     /* removes the file with the designation */
 __CAPE_LIBEX     int                qdata_rm               (QData, const CapeString vsec, const CapeString designation_encrypted, CapeErr);
+
+                                    /* clones the content into a new designation (new UUID) */
+__CAPE_LIBEX     int                qdata_clone            (QData, const CapeString vsec, const CapeString designation_encrypted, CapeErr);
 
 //-----------------------------------------------------------------------------
 

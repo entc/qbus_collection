@@ -8,6 +8,8 @@
 #include <sys/cape_file.h>
 #include <sys/cape_log.h>
 
+#define QDATA_IDENTIFIER "qdid:"
+
 //-----------------------------------------------------------------------------
 
 struct QData_s
@@ -59,14 +61,21 @@ void qdata_del (QData* p_self)
     {
         QData self = *p_self;
 
-        cape_stream_del (&(self->data));
-        
-        cape_str_del (&(self->uuid));
-        cape_str_del (&(self->mime));
         cape_str_del (&(self->path));
+        qdata_clr (self);
         
         CAPE_DEL (p_self, struct QData_s);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+void qdata_clr (QData self)
+{
+    cape_stream_del (&(self->data));
+    
+    cape_str_del (&(self->uuid));
+    cape_str_del (&(self->mime));
 }
 
 //-----------------------------------------------------------------------------
@@ -114,41 +123,50 @@ int qdata__designation_to_mimeuuid (QData self, const CapeString designation, Ca
     // clear previous buffer
     cape_stream_del (&(self->data));
 
-    if (!cape_str_begins (designation, "data:"))
+    if (cape_str_begins (designation, QDATA_IDENTIFIER))
     {
-        return cape_err_set(err, CAPE_ERR_RUNTIME, "designation has no 'data' format");
-    }
-    
-    if (cape_str_find (designation + 5, ";qdata,", &pos))
-    {
-        self->uuid = cape_str_cp (designation + 5 + pos + 7);
-        self->mime = cape_str_sub (designation + 5, pos);
-        
-        return CAPE_ERR_NONE;
-    }
-    else if (cape_str_find (designation + 5, ";base64,", &pos))
-    {
-        self->data = qcrypt__decode_base64_s (designation + 5 + pos + 8);
-        
-        if (NULL == self->data)
+        if (cape_str_find (designation + 5, ";", &pos))
         {
-            return cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
+            self->uuid = cape_str_cp (designation + 5 + pos + 1);
+            self->mime = cape_str_sub (designation + 5, pos);
+
+            return CAPE_ERR_NONE;
         }
-
+        else
         {
-            CapeString mime = cape_str_sub (designation + 5, pos);
-
-            // use mime type withtin the buffer
-            cape_stream_mime_set (self->data, mime);
+            return cape_err_set (err, CAPE_ERR_RUNTIME, "qdata format must contain supported type");
+        }
+    }
+    else if (cape_str_begins (designation, "data:"))
+    {
+        if (cape_str_find (designation + 5, ";base64,", &pos))
+        {
+            self->data = qcrypt__decode_base64_s (designation + 5 + pos + 8);
             
-            cape_str_del (&mime);
+            if (NULL == self->data)
+            {
+                return cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
+            }
+            
+            {
+                CapeString mime = cape_str_sub (designation + 5, pos);
+                
+                // use mime type withtin the buffer
+                cape_stream_mime_set (self->data, mime);
+                
+                cape_str_del (&mime);
+            }
+            
+            return CAPE_ERR_NONE;
         }
-        
-        return CAPE_ERR_NONE;
+        else
+        {
+            return cape_err_set (err, CAPE_ERR_RUNTIME, "data format must contain supported type");
+        }
     }
     else
     {
-        return cape_err_set (err, CAPE_ERR_RUNTIME, "designation must contain ';qdata,' or ';base64,'");
+        return cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "designation must contain '%s' or 'data:'", QDATA_IDENTIFIER);
     }
 }
 
@@ -162,7 +180,7 @@ CapeString qdata__mimeuuid_to_designation (QData self)
     }
     else
     {
-        return cape_str_fmt ("data:%s;qdata,%s", self->mime, self->uuid);
+        return cape_str_fmt ("%s%s;%s", QDATA_IDENTIFIER, self->mime, self->uuid);
     }
 }
 
@@ -616,6 +634,68 @@ int qdata_set_m__cp (QData self, const CapeString vsec, const CapeStream data, c
     }
     
     return qdata_set (self, vsec, cape_stream_data (data), cape_stream_size (data), cape_stream_mime_get (data), err);
+}
+
+//-----------------------------------------------------------------------------
+
+int qdata_clone (QData self, const CapeString vsec, const CapeString designation_encrypted, CapeErr err)
+{
+    int res;
+    
+    // local objects
+    CapeString file_source = NULL;
+    CapeString file_destination = NULL;
+
+    // analyse the designation_encrypted and set uuid / mime or data
+    res = qdata_set__load_enc (self, vsec, designation_encrypted, err);
+    if (res)
+    {
+        goto cleanup_and_exit;
+    }
+
+    if (self->data)
+    {
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+    
+    // construct the filepath to the real file
+    res = qdata__construct_filepath (self, &file_source, err);
+    if (res)
+    {
+        // ignore error
+        cape_err_clr (err);
+
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+
+    // cleanup old UUID
+    cape_str_del (&(self->uuid));
+    
+    // create a new uuid for designation
+    self->uuid = cape_str_uuid ();
+
+    // construct the filepath to the real file
+    res = qdata__construct_filepath (self, &file_destination, err);
+    if (res)
+    {
+        // ignore error
+        cape_err_clr (err);
+
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "QDATA", "clone", "from file = %s to = %s", file_source, file_destination);
+
+    res = cape_fs_file_cp (file_source, file_destination, err);
+    
+cleanup_and_exit:
+    
+    cape_str_del (&file_source);
+    cape_str_del (&file_destination);
+    return res;
 }
 
 //-----------------------------------------------------------------------------

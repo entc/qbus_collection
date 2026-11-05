@@ -49,6 +49,7 @@ SET(CAPE_SYS_SOURCES
 )
 
 SET(CAPE_SYS_HEADERS
+  sys/cape_export.h
   sys/cape_types.h
   sys/cape_err.h
   sys/cape_log.h
