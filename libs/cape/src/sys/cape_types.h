@@ -54,13 +54,13 @@
 
 //-----------------------------------------------------------------------------
 
-void* cape_alloc (number_t size);
+__CAPE_LIBEX   void*              cape_alloc (number_t size);
 
-void* cape_calloc (number_t count, number_t size);
+__CAPE_LIBEX   void*              cape_calloc (number_t count, number_t size);
 
-void cape_free (void* ptr);
+__CAPE_LIBEX   void               cape_free (void* ptr);
 
-void* cape_mv (void** p_ptr);
+__CAPE_LIBEX   void*              cape_mv (void** p_ptr);
 
 //-----------------------------------------------------------------------------
 
