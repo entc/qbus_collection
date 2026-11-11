@@ -440,6 +440,7 @@ CapeStream qdata_ext_data__m (QData self, const CapeString vsec, CapeErr err)
     {
         if (NULL == vsec)
         {
+            cape_log_msg (CAPE_LL_WARN, "QDATA", "ext", "can't load content, NO VSEC given");
             goto cleanup_and_exit;
         }
         
