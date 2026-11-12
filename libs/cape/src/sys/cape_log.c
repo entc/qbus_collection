@@ -140,6 +140,36 @@ void cape_log_msg (CapeLogLevel lvl, const char* unit, const char* method, const
 
 //-----------------------------------------------------------------------------
 
+void cape_log_line (CapeLogLevel lvl, const char* unit, const char* method, const char* header)
+{
+    char buffer[80];
+    
+    // calculate some values
+    number_t width = sizeof(buffer) - 1;
+    number_t header_len = header ? cape_str_size(header) : 0;
+
+    if (header_len > 0 && header_len + 2 < width)
+    {
+        number_t padding = (width - header_len - 2) / 2;
+
+        memset(buffer, '-', width);
+
+        buffer[padding] = ' ';
+        memcpy(buffer + padding + 1, header, header_len);
+        buffer[padding + header_len + 1] = ' ';
+    }
+    else
+    {
+        memset(buffer, '-', width);
+    }
+
+    buffer[width] = '\0';
+
+    cape_log_msg(lvl, unit, method, buffer);
+}
+
+//-----------------------------------------------------------------------------
+
 void cape_log_fmt (CapeLogLevel lvl, const char* unit, const char* method, const char* format, ...)
 {
   char buffer [1002];
