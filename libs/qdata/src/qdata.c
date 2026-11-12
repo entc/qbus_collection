@@ -8,6 +8,8 @@
 #include <sys/cape_file.h>
 #include <sys/cape_log.h>
 
+#define QDATA_IDENTIFIER "qdid:"
+
 //-----------------------------------------------------------------------------
 
 struct QData_s
@@ -59,11 +61,8 @@ void qdata_del (QData* p_self)
     {
         QData self = *p_self;
 
-        cape_stream_del (&(self->data));
-        
-        cape_str_del (&(self->uuid));
-        cape_str_del (&(self->mime));
         cape_str_del (&(self->path));
+        qdata_clr (self);
         
         CAPE_DEL (p_self, struct QData_s);
     }
@@ -71,7 +70,17 @@ void qdata_del (QData* p_self)
 
 //-----------------------------------------------------------------------------
 
-CapeString qdata_dform_to_text (const CapeString designation)
+void qdata_clr (QData self)
+{
+    cape_stream_del (&(self->data));
+    
+    cape_str_del (&(self->uuid));
+    cape_str_del (&(self->mime));
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qdata__dform_to_text (const CapeString designation)
 {
     CapeString ret = NULL;
     
@@ -103,7 +112,7 @@ CapeString qdata_dform_to_text (const CapeString designation)
 
 //-----------------------------------------------------------------------------
 
-static int qdata__designation_to_mimeuuid (QData self, const CapeString designation, CapeErr err)
+int qdata__designation_to_mimeuuid (QData self, const CapeString designation, CapeErr err)
 {
     number_t pos;
 
@@ -114,49 +123,56 @@ static int qdata__designation_to_mimeuuid (QData self, const CapeString designat
     // clear previous buffer
     cape_stream_del (&(self->data));
 
-    if (!cape_str_begins (designation, "data:"))
+    if (cape_str_begins (designation, QDATA_IDENTIFIER))
     {
-        cape_log_fmt (CAPE_LL_TRACE, "QDATA", "convert", "designation: %s", designation);
-        
-        return cape_err_set(err, CAPE_ERR_RUNTIME, "designation has no 'data' format");
-    }
-    
-    if (cape_str_find (designation + 5, ";qdata,", &pos))
-    {
-        self->uuid = cape_str_cp (designation + 5 + pos + 7);
-        self->mime = cape_str_sub (designation + 5, pos);
-        
-        return CAPE_ERR_NONE;
-    }
-    else if (cape_str_find (designation + 5, ";base64,", &pos))
-    {
-        self->data = qcrypt__decode_base64_s (designation + 5 + pos + 8);
-        
-        if (NULL == self->data)
+        if (cape_str_find (designation + 5, ";", &pos))
         {
-            return cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
+            self->uuid = cape_str_cp (designation + 5 + pos + 1);
+            self->mime = cape_str_sub (designation + 5, pos);
+
+            return CAPE_ERR_NONE;
         }
-
+        else
         {
-            CapeString mime = cape_str_sub (designation + 5, pos);
-
-            // use mime type withtin the buffer
-            cape_stream_mime_set (self->data, mime);
+            return cape_err_set (err, CAPE_ERR_RUNTIME, "qdata format must contain supported type");
+        }
+    }
+    else if (cape_str_begins (designation, "data:"))
+    {
+        if (cape_str_find (designation + 5, ";base64,", &pos))
+        {
+            self->data = qcrypt__decode_base64_s (designation + 5 + pos + 8);
             
-            cape_str_del (&mime);
+            if (NULL == self->data)
+            {
+                return cape_err_set (err, CAPE_ERR_RUNTIME, "can't decode base64");
+            }
+            
+            {
+                CapeString mime = cape_str_sub (designation + 5, pos);
+                
+                // use mime type withtin the buffer
+                cape_stream_mime_set (self->data, mime);
+                
+                cape_str_del (&mime);
+            }
+            
+            return CAPE_ERR_NONE;
         }
-        
-        return CAPE_ERR_NONE;
+        else
+        {
+            return cape_err_set (err, CAPE_ERR_RUNTIME, "data format must contain supported type");
+        }
     }
     else
     {
-        return cape_err_set (err, CAPE_ERR_RUNTIME, "designation must contain ';qdata,' or ';base64,'");
+        return cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "designation must contain '%s' or 'data:'", QDATA_IDENTIFIER);
     }
 }
 
 //-----------------------------------------------------------------------------
 
-static CapeString qdata__mimeuuid_to_designation (QData self)
+CapeString qdata__mimeuuid_to_designation (QData self)
 {
     if (self->data)
     {
@@ -164,13 +180,13 @@ static CapeString qdata__mimeuuid_to_designation (QData self)
     }
     else
     {
-        return cape_str_fmt ("data:%s;qdata,%s", self->mime, self->uuid);
+        return cape_str_fmt ("%s%s;%s", QDATA_IDENTIFIER, self->mime, self->uuid);
     }
 }
 
 //-----------------------------------------------------------------------------
 
-static int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
+int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
 {
     // local objects
     CapeString file = NULL;
@@ -202,7 +218,7 @@ static int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr er
 
 //-----------------------------------------------------------------------------
 
-static int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
+int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
 {
     int res;
     
@@ -243,7 +259,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-static int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
+int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
 {
     int res;
 
@@ -330,15 +346,6 @@ int qdata_set__load (QData self, const CapeString designation, CapeErr err)
     }
     
     return res;
-}
-
-//-----------------------------------------------------------------------------
-
-int qdata_set__load_m__mv  (QData self, CapeStream* p_designation, CapeErr err)
-{
-    self->data = cape_stream_mv (p_designation);
-    
-    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -433,6 +440,7 @@ CapeStream qdata_ext_data__m (QData self, const CapeString vsec, CapeErr err)
     {
         if (NULL == vsec)
         {
+            cape_log_msg (CAPE_LL_WARN, "QDATA", "ext", "can't load content, NO VSEC given");
             goto cleanup_and_exit;
         }
         
@@ -631,103 +639,64 @@ int qdata_set_m__cp (QData self, const CapeString vsec, const CapeStream data, c
 
 //-----------------------------------------------------------------------------
 
-QData qdata_factory (CapeUdc item, CapeString* p_path, CapeErr err)
+int qdata_clone (QData self, const CapeString vsec, const CapeString designation_encrypted, CapeErr err)
 {
-    QData ret = NULL;
+    int res;
     
-    CapeUdc qdata_node;
-    CapeUdc img_node;
-
     // local objects
-    CapeString designation = NULL;
-    CapeStream s = NULL;
+    CapeString file_source = NULL;
+    CapeString file_destination = NULL;
 
-    // support img node
-    img_node = cape_udc_get (item, "img");
-    if (img_node)
+    // analyse the designation_encrypted and set uuid / mime or data
+    res = qdata_set__load_enc (self, vsec, designation_encrypted, err);
+    if (res)
     {
-        cape_log_msg (CAPE_LL_TRACE, "QDATA", "factory", "use image node");
-
-        switch (cape_udc_type (img_node))
-        {
-            case CAPE_UDC_STREAM:
-            {
-                // extract the stream from the UDC node
-                s = cape_udc_m_mv (img_node);
-                
-                // create and set the return value
-                ret = qdata_new (p_path);
-
-                if (qdata_set__load_m__mv (ret, &s, err))
-                {
-                    // cleanup qdata
-                    qdata_del (&ret);
-                    goto cleanup_and_exit;
-                }
-
-                goto cleanup_and_exit;
-            }
-            default:
-            {
-                cape_log_msg (CAPE_LL_WARN, "QDATA", "factory", "not supported type found in image node");
-                goto cleanup_and_exit;
-            }
-        }
-    }
-
-    // get the qdata node object
-    qdata_node = cape_udc_get (item, "qdata");
-    if (qdata_node)
-    {
-        cape_log_msg (CAPE_LL_TRACE, "QDATA", "factory", "use qdata node");
-
-        // first gather the designation of the qdata object
-        switch (cape_udc_type (qdata_node))
-        {
-            case CAPE_UDC_STREAM:
-            {
-                // TODO: support a designation as direct stream
-                designation = cape_stream_serialize (cape_udc_m (qdata_node), qcrypt__stream_base64_encode);
-                break;
-            }
-            case CAPE_UDC_STRING:
-            {
-                designation = cape_udc_s_mv (qdata_node, NULL);
-                break;
-            }
-            default:
-            {
-                cape_log_msg (CAPE_LL_WARN, "QDATA", "factory", "not supported type found in qdata node");
-                goto cleanup_and_exit;
-            }
-        }
-
-        if (NULL == designation)
-        {
-            cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.NO_DESIGNATION");
-            goto cleanup_and_exit;
-        }
-        
-        // create and set the return value
-        ret = qdata_new (p_path);
-        
-        if (qdata_set__load (ret, designation, err))
-        {
-            // cleanup
-            qdata_del (&ret);
-            goto cleanup_and_exit;
-        }
-
         goto cleanup_and_exit;
     }
 
-    cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.NO_DESIGNATION");
+    if (self->data)
+    {
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+    
+    // construct the filepath to the real file
+    res = qdata__construct_filepath (self, &file_source, err);
+    if (res)
+    {
+        // ignore error
+        cape_err_clr (err);
+
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+
+    // cleanup old UUID
+    cape_str_del (&(self->uuid));
+    
+    // create a new uuid for designation
+    self->uuid = cape_str_uuid ();
+
+    // construct the filepath to the real file
+    res = qdata__construct_filepath (self, &file_destination, err);
+    if (res)
+    {
+        // ignore error
+        cape_err_clr (err);
+
+        res = CAPE_ERR_NONE;
+        goto cleanup_and_exit;
+    }
+
+    cape_log_fmt (CAPE_LL_TRACE, "QDATA", "clone", "from file = %s to = %s", file_source, file_destination);
+
+    res = cape_fs_file_cp (file_source, file_destination, err);
     
 cleanup_and_exit:
     
-    cape_stream_del (&s);
-    cape_str_del (&designation);
-    return ret;
+    cape_str_del (&file_source);
+    cape_str_del (&file_destination);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
