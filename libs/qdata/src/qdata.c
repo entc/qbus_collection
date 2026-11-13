@@ -312,7 +312,7 @@ int qdata_set__load_enc (QData self, const CapeString vsec, const CapeString des
 
     if (NULL == designation_encrypted)
     {
-        return CAPE_ERR_NONE;
+        return cape_err_set (err, CAPE_ERR_NOT_FOUND, "no current designation was given (NULL)");
     }
     
     h2 = qcrypt__decrypt (vsec, designation_encrypted, err);
