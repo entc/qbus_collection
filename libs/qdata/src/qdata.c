@@ -8,6 +8,9 @@
 #include <sys/cape_file.h>
 #include <sys/cape_log.h>
 
+// C includes
+#include <stdio.h>
+
 #define QDATA_IDENTIFIER "qdid:"
 
 //-----------------------------------------------------------------------------
@@ -112,7 +115,7 @@ CapeString qdata__dform_to_text (const CapeString designation)
 
 //-----------------------------------------------------------------------------
 
-int qdata__designation_to_mimeuuid (QData self, const CapeString designation, CapeErr err)
+static int qdata__designation_to_mimeuuid_s__cp (QData self, const CapeString designation, CapeErr err)
 {
     number_t pos;
 
@@ -168,6 +171,24 @@ int qdata__designation_to_mimeuuid (QData self, const CapeString designation, Ca
     {
         return cape_err_set_fmt (err, CAPE_ERR_WRONG_VALUE, "designation must contain '%s' or 'data:'", QDATA_IDENTIFIER);
     }
+}
+
+//-----------------------------------------------------------------------------
+
+static int qdata__designation_to_mimeuuid_m__mv (QData self, CapeStream* p_designation, CapeErr err)
+{
+    CapeStream designation = *p_designation;
+    
+    // clear previous state
+    cape_str_del (&(self->uuid));
+    cape_str_del (&(self->mime));
+
+    const CapeString cont = cape_stream_get (designation);
+    const CapeString mime = cape_stream_mime_get (designation);
+    
+    printf ("MIME: %s, CONT: %s\n", cont, mime);
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -321,7 +342,7 @@ int qdata_set__load_enc (QData self, const CapeString vsec, const CapeString des
         return cape_err_code (err);
     }
     
-    res = qdata_set__load (self, h2, err);
+    res = qdata_load_s (self, h2, err);
     
     cape_str_del (&h2);
     return res;
@@ -329,12 +350,33 @@ int qdata_set__load_enc (QData self, const CapeString vsec, const CapeString des
 
 //-----------------------------------------------------------------------------
 
-int qdata_set__load (QData self, const CapeString designation, CapeErr err)
+int qdata_load_s (QData self, const CapeString designation, CapeErr err)
 {
     int res;
     
     // convert designation to internal members of mime and uuid
-    res = qdata__designation_to_mimeuuid (self, designation, err);
+    res = qdata__designation_to_mimeuuid_s__cp (self, designation, err);
+
+    if (self->data)
+    {
+        cape_log_fmt (CAPE_LL_TRACE, "QDATA", "load", "inline mime = %s size = %u", cape_stream_mime_get(self->data), cape_stream_size(self->data));
+    }
+    else
+    {
+        cape_log_fmt (CAPE_LL_TRACE, "QDATA", "load", "mime = %s, uuid = %s", self->mime, self->uuid);
+    }
+    
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int qdata_load_m__mv (QData self, CapeStream* p_designation, CapeErr err)
+{
+    int res;
+    
+    // convert designation to internal members of mime and uuid
+    res = qdata__designation_to_mimeuuid_m__mv (self, p_designation, err);
 
     if (self->data)
     {
