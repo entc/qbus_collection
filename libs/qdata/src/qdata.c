@@ -166,7 +166,7 @@ int qdata__designation_to_mimeuuid (QData self, const CapeString designation, Ca
     }
     else
     {
-        return cape_err_set_fmt (err, CAPE_ERR_RUNTIME, "designation must contain '%s' or 'data:'", QDATA_IDENTIFIER);
+        return cape_err_set_fmt (err, CAPE_ERR_WRONG_VALUE, "designation must contain '%s' or 'data:'", QDATA_IDENTIFIER);
     }
 }
 
