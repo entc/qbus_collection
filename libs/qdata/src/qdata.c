@@ -183,12 +183,22 @@ static int qdata__designation_to_mimeuuid_m__mv (QData self, CapeStream* p_desig
     cape_str_del (&(self->uuid));
     cape_str_del (&(self->mime));
 
-    const CapeString cont = cape_stream_get (designation);
-    const CapeString mime = cape_stream_mime_get (designation);
-    
-    printf ("MIME: %s, CONT: %s\n", cont, mime);
-    
-    return CAPE_ERR_NONE;
+    {
+        const CapeString mime = cape_stream_mime_get (designation);
+
+        if (mime)
+        {
+            cape_stream_replace_mv (&(self->data), p_designation);
+
+            return CAPE_ERR_NONE;
+        }
+        else
+        {
+            cape_stream_del (&(self->data));
+            
+            return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "content of stream is not a designation");
+        }
+    }
 }
 
 //-----------------------------------------------------------------------------
