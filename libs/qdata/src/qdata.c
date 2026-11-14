@@ -217,7 +217,7 @@ CapeString qdata__mimeuuid_to_designation (QData self)
 
 //-----------------------------------------------------------------------------
 
-int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
+static int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
 {
     // local objects
     CapeString file = NULL;
@@ -249,7 +249,7 @@ int qdata__construct_filepath (QData self, CapeString* p_file, CapeErr err)
 
 //-----------------------------------------------------------------------------
 
-int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
+static int qdata__save_file (QData self, const CapeString vsec, const char* bufdat, number_t buflen, const CapeString file_path, CapeErr err)
 {
     int res;
     
@@ -290,7 +290,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
+static int qdata__load_file (QData self, const CapeString current_file, const CapeString vsec, CapeStream s, CapeErr err)
 {
     int res;
 
