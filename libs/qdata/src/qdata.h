@@ -39,10 +39,13 @@ __CAPE_LIBEX     int                qdata_set_s__cp        (QData, const CapeStr
                                     /* set a new data content, a new data name will be generated */
 __CAPE_LIBEX     int                qdata_set_m__cp        (QData, const CapeString vsec, const CapeStream data, const CapeString previous_designation_encrypted, CapeErr);
 
-                                    /* set the data string by loading it from the file system, input designation muste be encrypted  */
-__CAPE_LIBEX     int                qdata_set__load        (QData, const CapeString designation, CapeErr);
+                                    /* set the data string by loading it from the file system */
+__CAPE_LIBEX     int                qdata_load_s           (QData, const CapeString designation, CapeErr);
 
                                     /* set the data string by loading it from the file system */
+__CAPE_LIBEX     int                qdata_load_m__mv       (QData, CapeStream* p_designation, CapeErr);
+
+                                    /* set the data string by loading it from the file system, input designation muste be encrypted */
 __CAPE_LIBEX     int                qdata_set__load_enc    (QData, const CapeString vsec, const CapeString designation_encrypted, CapeErr);
 
                                     /* removes the file with the designation */
