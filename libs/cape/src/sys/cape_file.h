@@ -4,6 +4,7 @@
 #include "sys/cape_export.h"
 #include "sys/cape_err.h"
 #include "stc/cape_str.h"
+#include "stc/cape_stream.h"
 #include "sys/cape_types.h"
 
 #include <fcntl.h>
@@ -58,12 +59,17 @@ __CAPE_LIBEX   CapeString         cape_fs_filename       (const CapeString);
 
 struct CapeFileAc_s; typedef struct CapeFileAc_s* CapeFileAc;
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (void);
 
-#else
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
 __CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (uid_t uid, gid_t gid, mode_t mod);
+
+#elif defined(__WINDOWS_OS)
+
+__CAPE_LIBEX   CapeFileAc         cape_fs_ac_new         (PSID owner, PSID group, PACL dacl, BOOL dacl_present);
 
 #endif
 
@@ -71,8 +77,10 @@ __CAPE_LIBEX   void               cape_fs_ac_del         (CapeFileAc*);
 
 //-----------------------------------------------------------------------------
 
+                                  /* creates a path */
 __CAPE_LIBEX   int                cape_fs_path_create    (const char* path, CapeFileAc, CapeErr);
 
+                                  /* creates a path recursive */
 __CAPE_LIBEX   int                cape_fs_path_create_x  (const char* path, CapeFileAc, CapeErr);
 
                                   /* creates a path like cape_fs_path_create only if it not exists */
@@ -144,9 +152,11 @@ __CAPE_LIBEX   void               cape_fh_del            (CapeFileHandle*);
 
 __CAPE_LIBEX   int                cape_fh_open           (CapeFileHandle, int flags, CapeErr);
 
-__CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int flags, int ac, CapeErr);
+//__CAPE_LIBEX   int                cape_fh_open_ex        (CapeFileHandle, int flags, int ac, CapeErr);
 
 __CAPE_LIBEX   int                cape_fh_open_ac        (CapeFileHandle, int flags, CapeFileAc*, CapeErr);
+
+__CAPE_LIBEX   void               cape_fh_close          (CapeFileHandle);
 
 __CAPE_LIBEX   void*              cape_fh_fd             (CapeFileHandle);
 
@@ -154,7 +164,12 @@ __CAPE_LIBEX   number_t           cape_fh_read_buf       (CapeFileHandle, char* 
 
 __CAPE_LIBEX   number_t           cape_fh_write_buf      (CapeFileHandle, const char* bufdat, number_t buflen);
 
+                                  /* this writes the full content of the stream into the file, returns error */
+__CAPE_LIBEX   int                cape_fh_write_m        (CapeFileHandle, CapeStream, CapeErr);
+
 __CAPE_LIBEX   const CapeString   cape_fh_file           (CapeFileHandle);
+
+__CAPE_LIBEX   void               cape_fh_rm             (CapeFileHandle);
 
 //-----------------------------------------------------------------------------
 

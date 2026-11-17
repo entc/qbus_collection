@@ -429,8 +429,6 @@ int qwebs_attach (QWebs self, CapeAioContext aio_context, CapeErr err)
   // add the acceptor to the AIO context
   cape_aio_accept_add (&(self->accept), aio_context);
 
-  cape_log_fmt (CAPE_LL_TRACE, "QWEBS", "attach", "socket eventhandler was attached to the AIO system");
-  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:

@@ -34,7 +34,7 @@ __CAPE_LIBEX   void                 qwebs_prot_websocket_dec        (QWebsProtWe
 //-----------------------------------------------------------------------------
 
                /* called if a new connection was established, return void* as conn_ptr */
-typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)        (void* user_ptr, QWebsProtWebsocketConnection connection, CapeMap query);
+typedef void*  (__STDCALL *fct_qwebs_prot_websocket__on_conn)        (void* user_ptr, QWebsProtWebsocketConnection connection, CapeString* p_remote, CapeMap query);
 
                /* called after upgrade was done */
 typedef void   (__STDCALL *fct_qwebs_prot_websocket__on_init)        (void* conn_ptr);

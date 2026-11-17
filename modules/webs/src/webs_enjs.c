@@ -174,7 +174,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
     {
       if (qin->cdata)
       {
-        h1 = cape_json_to_s__strict (qin->cdata);
+        h1 = cape_json_to_s__ex (qin->cdata, qcrypt__stream_base64_encode);
         if (h1 == NULL)
         {
           res = cape_err_set (err, CAPE_ERR_PARSER, "can't serialize");
@@ -182,7 +182,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
         }
         
         // encrypt response
-        h2 = qcrypt__encrypt (self->vsec, h1, err);
+        h2 = qcrypt__encrypt_ex (self->vsec, h1, QCRYPT_AES_TYPE_256_GCM, err);
         if (h2 == NULL)
         {
           res = cape_err_set (err, CAPE_ERR_WRONG_VALUE, "can't encrypt");
@@ -200,7 +200,7 @@ static int __STDCALL webs_enjs_run__on_call (QBus qbus, void* ptr, QBusM qin, QB
     }
     case QBUS_MTYPE_FILE:
     {
-      //cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
+      cape_log_msg (CAPE_LL_DEBUG, "WEBS", "on call", "handle FILE type");
 
       // if the file is encrypted check if we have the vsec for it
       if (cape_udc_get_b (qin->cdata, "encrypted", FALSE))
@@ -397,7 +397,7 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
 
   if (self->encrypted_content)
   {
-    content = qcrypt__decrypt (self->vsec, self->encrypted_content, err);
+    content = qcrypt__decrypt_ex (self->vsec, self->encrypted_content, QCRYPT_AES_TYPE_DETECT, err);
     if (content == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_PARSER, "can't decrypt");
@@ -416,7 +416,7 @@ static int __STDCALL webs_enjs_run__on_session_get (QBus qbus, void* ptr, QBusM 
   }
 
   qbus_message_clr (qin, CAPE_UDC_UNDEFINED);
-
+    
   // remote
   {
     CapeString remote = qwebs_request_remote (self->request);

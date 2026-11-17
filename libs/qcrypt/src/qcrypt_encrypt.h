@@ -26,7 +26,7 @@ __CAPE_LIBEX  int             qencrypt_base64_finalize  (QEncryptBase64, CapeErr
 
 struct QEncryptAES_s; typedef struct QEncryptAES_s* QEncryptAES;
 
-__CAPE_LIBEX  QEncryptAES     qencrypt_aes_new          (CapeStream r_product, number_t cypher_type, number_t padding_type, const CapeString secret, number_t key_type);
+__CAPE_LIBEX  QEncryptAES     qencrypt_aes_new          (CapeStream r_product, number_t cypher_type, const CapeString secret);
 
 __CAPE_LIBEX  void            qencrypt_aes_del          (QEncryptAES*);
 

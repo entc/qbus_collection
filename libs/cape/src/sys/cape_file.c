@@ -8,12 +8,13 @@
 
 //-----------------------------------------------------------------------------
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-#include <windows.h>
-#include <shlwapi.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
 
-#elif defined __LINUX_OS
+#elif defined(__LINUX_OS)
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -25,13 +26,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#elif defined __BSD_OS
-
-#if defined __APPLE__
-
-#include <copyfile.h>
-
-#endif
+#elif defined(__BSD_OS)
 
 #include <unistd.h>
 #include <limits.h>
@@ -41,6 +36,16 @@
 #include <dirent.h>
 #include <fts.h>
 
+// special case MacOSX
+#if defined __APPLE__
+#include <copyfile.h>
+#endif
+
+#elif defined(__WINDOWS_OS)
+
+#include <windows.h>
+#include <shlwapi.h>
+
 #endif
 
 //-----------------------------------------------------------------------------
@@ -49,10 +54,399 @@
 
 //-----------------------------------------------------------------------------
 
+struct CapeFileAc_s
+{
+#if defined(CAPE_USE_FREERTOS)
+
+    int dummy;
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    mode_t permissions;
+    uid_t uid;
+    gid_t gid;
+
+#elif defined(__WINDOWS_OS)
+
+    // contains owner, group, DACL
+    SECURITY_DESCRIPTOR* sp;
+
+#endif
+};
+
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_ac_new (void)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+    self->dummy = 0;
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+    self->permissions = mod;
+    self->uid = uid;
+    self->gid = gid;
+
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__WINDOWS_OS)
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_ac_new (PSID owner, PSID group, PACL dacl, BOOL dacl_present)
+{
+    CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+    
+    DWORD owner_size = 0;
+    DWORD group_size = 0;
+    DWORD dacl_size = 0;
+    size_t size;
+    
+    if (owner)
+    {
+        if (!IsValidSid (owner))
+        {
+            // TODO: error handling
+            goto finish;
+        }
+        
+        owner_size = GetLengthSid (owner);
+    }
+    
+    if (group)
+    {
+        if (!IsValidSid (group))
+        {
+            // TODO: error handling
+            goto finish;
+        }
+        
+        group_size = GetLengthSid (group);
+    }
+    
+    if (dacl_present && dacl)
+    {
+        dacl_size = dacl->AclSize;
+    }
+
+    // calculate the full size of the structure
+    size = SECURITY_DESCRIPTOR_MIN_LENGTH + owner_size + group_size + dacl_size;
+    
+    // allocate
+    self->sp = CAPE_ALLOC (size);
+    
+    if (!InitializeSecurityDescriptor (self->sp, SECURITY_DESCRIPTOR_REVISION))
+    {
+        CAPE_FREE (self->sp);
+        self->sp = NULL;
+        
+        // TODO: error handling
+        goto finish;
+    }
+    
+    {
+        BYTE* ptr = (BYTE*) self->sp + SECURITY_DESCRIPTOR_MIN_LENGTH;
+        
+        if (owner_size)
+        {
+            PSID owner_copy = (PSID) ptr;
+            
+            // copies the content into the self->sp memory block
+            if (!CopySid (owner_size, owner_copy, owner))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            // tells the owner in the security descriptor to use the part of the memory block
+            if (!SetSecurityDescriptorOwner (self->sp, owner_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            ptr += owner_size;
+        }
+        
+        if (group_size)
+        {
+            PSID group_copy = (PSID) ptr;
+            
+            // copies the content into the self->sp memory block
+            if (!CopySid (group_size, group_copy, group))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            // tells the group in the security descriptor to use the part of the memory block
+            if (!SetSecurityDescriptorGroup (self->sp, group_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+            
+            ptr += group_size;
+        }
+        
+        if (dacl_present)
+        {
+            PACL dacl_copy = NULL;
+            
+            if (dacl_size)
+            {
+                dacl_copy = (PACL) ptr;
+                
+                // There is no dedicated API to copy an ACL, so copy its memory contents.
+                CopyMemory (dacl_copy, dacl, dacl_size);
+            }
+            
+            // Set the copied DACL in the security descriptor.
+            if (!SetSecurityDescriptorDacl (self->sp, TRUE, dacl_copy, FALSE))
+            {
+                CAPE_FREE (self->sp);
+                self->sp = NULL;
+                
+                // TODO: error handling
+                goto finish;
+            }
+        }
+    }
+    
+finish:
+    
+    return self;
+}
+
+//-----------------------------------------------------------------------------
+
+static int cape_fs_ac__values (PSECURITY_DESCRIPTOR sp, PSID* owner, PSID* group, PACL* dacl, BOOL* dacl_present, CapeErr err)
+{
+    BOOL owner_defaulted = FALSE;
+    BOOL group_defaulted = FALSE;
+    BOOL dacl_defaulted = FALSE;
+
+    if (!GetSecurityDescriptorOwner (sp, owner, &owner_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    if (!GetSecurityDescriptorGroup (sp, group, &group_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    if (!GetSecurityDescriptorDacl (sp, dacl_present, dacl, &dacl_defaulted))
+    {
+        cape_err_lastOSError (err);
+        return -1;
+    }
+
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+#endif
+
+//-----------------------------------------------------------------------------
+
+CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
+{
+#if defined(CAPE_USE_FREERTOS)
+
+    return NULL;
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    CapeFileAc ret = NULL;
+    
+    if (ac_user)
+    {
+        // if everything was set we use the user given AC
+        if (ac_user->uid && ac_user->gid && ac_user->permissions)
+        {
+            ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);
+            goto exit_and_cleanup;
+        }
+    }
+    
+    ret = cape_fs_file_ac_get (source, err);
+    if (ret == NULL)
+    {
+        goto exit_and_cleanup;
+    }
+    
+    // adjust values
+    if (ac_user)
+    {
+        if (ac_user->uid)
+        {
+            ret->uid = ac_user->uid;
+        }
+        
+        if (ac_user->gid)
+        {
+            ret->gid = ac_user->gid;
+        }
+        
+        if (ac_user->permissions)
+        {
+            ret->permissions = ac_user->permissions;
+        }
+    }
+    
+exit_and_cleanup:
+    
+    return ret;
+
+#elif defined(__WINDOWS_OS)
+
+    CapeFileAc ret = NULL;
+
+    PSID owner = NULL;
+    PSID group = NULL;
+    PACL dacl = NULL;
+    BOOL dacl_present = FALSE;
+
+    /*
+     * Get the access control information from the source file.
+     */
+    ret = cape_fs_file_ac_get (source, err);
+
+    if (ret == NULL || ret->sp == NULL)
+    {
+        goto exit_and_cleanup;
+    }
+
+    /*
+     * Get values from the source security descriptor.
+     */
+    if (cape_fs_ac_get_values (ret->sp, &owner, &group, &dacl, &dacl_present, err))
+    {
+        goto exit_and_cleanup;
+    }
+    
+    /*
+     * Override values supplied by the user.
+     */
+    if (ac_user && ac_user->sp)
+    {
+        PSID user_owner = NULL;
+        PSID user_group = NULL;
+        PACL user_dacl = NULL;
+        BOOL user_dacl_present = FALSE;
+
+        if (cape_fs_ac_get_values (ac_user->sp, &user_owner, &user_group, &user_dacl, &user_dacl_present, err))
+        {
+            goto exit_and_cleanup;
+        }
+
+        if (user_owner)
+        {
+            owner = user_owner;
+        }
+
+        if (user_group)
+        {
+            group = user_group;
+        }
+
+        if (user_dacl_present)
+        {
+            dacl = user_dacl;
+            dacl_present = TRUE;
+        }
+    }
+
+    /*
+     * Create the resulting access control object.
+     */
+    {
+        CapeFileAc result = cape_fs_ac_new (owner, group, dacl, dacl_present);
+
+        cape_fs_ac_del (&ret);
+        ret = result;
+    }
+
+exit_and_cleanup:
+
+    return ret;
+    
+#endif
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_fs_ac_del (CapeFileAc* p_self)
+{
+    if (*p_self)
+    {
+#if defined(CAPE_USE_FREERTOS)
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+#elif defined(__WINDOWS_OS)
+
+        CapeFileAc self = *p_self;
+
+        if (self->sp)
+        {
+            CAPE_FREE(self->sp);
+        }
+
+#endif
+
+        CAPE_DEL (p_self, struct CapeFileAc_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
 CapeString cape_fs_path_merge (const char* path1, const char* path2)
 {
-  // use the platform dependant separator
-  return cape_str_catenate_c (path1, CAPE_FS_FOLDER_SEP, path2);
+  if (path1)
+  {
+    // use the platform dependant separator
+    return cape_str_catenate_c (path1, CAPE_FS_FOLDER_SEP, path2);
+  }
+  else
+  {
+    return cape_str_cp (path2);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -95,20 +489,25 @@ CapeString cape_fs_path_reduce (const char* path)
 
 int cape_fs_is_relative (const char* filepath)
 {
-  if (filepath == NULL)
-  {
-    return TRUE;
-  }
+    if (filepath == NULL)
+    {
+        return TRUE;
+    }
 
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  // use windows API
-  return PathIsRelative (filepath);
+    // trivial approach: check if first character is the separator
+    return (*filepath != CAPE_FS_FOLDER_SEP);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  // trivial approach: check if first character is the separator
-  return (*filepath != CAPE_FS_FOLDER_SEP);
+    // trivial approach: check if first character is the separator
+    return (*filepath != CAPE_FS_FOLDER_SEP);
+
+#elif defined(__WINDOWS_OS)
+
+    // use windows API
+    return PathIsRelative (filepath);
 
 #endif
 }
@@ -117,103 +516,301 @@ int cape_fs_is_relative (const char* filepath)
 
 CapeString cape_fs_path_current (const char* filepath)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  char* ret = CAPE_ALLOC (MAX_PATH + 1);
-  DWORD dwRet;
+    char* ret = CAPE_ALLOC (2);
+    
+    ret[0] = CAPE_FS_FOLDER_SEP;
+    ret[1] = 0;
 
-  // use windows API
-  dwRet = GetCurrentDirectory (MAX_PATH, ret);
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if ((dwRet == 0) || (dwRet > MAX_PATH))
-  {
-    CAPE_FREE (ret);
-    return NULL;
-  }
+    char* ret = CAPE_ALLOC (PATH_MAX + 1);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+    getcwd (ret, PATH_MAX);
 
-  char* ret = CAPE_ALLOC (PATH_MAX + 1);
+#elif defined(__WINDOWS_OS)
 
-  getcwd (ret, PATH_MAX);
+    char* ret = CAPE_ALLOC (MAX_PATH + 1);
+    DWORD dwRet;
+
+    // use windows API
+    dwRet = GetCurrentDirectory (MAX_PATH, ret);
+
+    if ((dwRet == 0) || (dwRet > MAX_PATH))
+    {
+      CAPE_FREE (ret);
+      return NULL;
+    }
 
 #endif
 
-  if (filepath)
-  {
-    CapeString h = cape_fs_path_merge (ret, filepath);
+    if (filepath)
+    {
+        CapeString h = cape_fs_path_merge (ret, filepath);
 
-    CAPE_FREE(ret);
+        CAPE_FREE(ret);
 
-    return h;
-  }
-  else
-  {
-    return ret;
-  }
+        return h;
+    }
+    else
+    {
+        return ret;
+    }
 }
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_fs_path_absolute (const char* filepath)
 {
-  if (filepath == NULL)
-  {
-    return cape_fs_path_current (NULL);
-  }
+    if (filepath == NULL)
+    {
+        return cape_fs_path_current (NULL);
+    }
 
-  if (cape_fs_is_relative (filepath))
-  {
-    return cape_fs_path_current (filepath);
-  }
-  else
-  {
-    return cape_str_cp (filepath);
-  }
+    if (cape_fs_is_relative (filepath))
+    {
+        return cape_fs_path_current (filepath);
+    }
+    else
+    {
+        return cape_str_cp (filepath);
+    }
 }
+
+//-----------------------------------------------------------------------------
+
+#if defined(CAPE_USE_FREERTOS)
+
+/*
+ * realpath() semantics:
+ *
+ * - relative path -> current path
+ * - absolute path -> use path as-is as base
+ * - resolve "." and ".."
+ * - collapse duplicate '/'
+ * - verify that the resulting path exists
+ */
+CapeString cape_fs_realpath (const char* filepath, CapeErr err)
+{
+    char* path = NULL;
+
+    if (cape_fs_is_relative (filepath))
+    {
+        path = cape_fs_path_current (filepath);
+    }
+    else
+    {
+        path = cape_str_cp (filepath);
+    }
+
+    if (path == NULL)
+    {
+        return NULL;
+    }
+
+    /*
+     * Canonicalize path.
+     *
+     * The source is read from the original path while the
+     * destination is compacted in the same buffer.
+     */
+    {
+        char* src = path;
+        char* dst = path;
+
+        /*
+         * Every ESP32 filesystem path is rooted at '/'.
+         */
+        *dst++ = CAPE_FS_FOLDER_SEP;
+
+        while (*src)
+        {
+            char* component;
+            number_t length;
+
+            /*
+             * Skip duplicate separators.
+             */
+            while (*src == CAPE_FS_FOLDER_SEP)
+            {
+                src++;
+            }
+
+            if (*src == 0)
+            {
+                break;
+            }
+
+            /*
+             * Find component.
+             */
+            component = src;
+
+            while (*src && (*src != CAPE_FS_FOLDER_SEP))
+            {
+                src++;
+            }
+
+            length = (number_t)(src - component);
+
+            /*
+             * "." -> nothing to do.
+             */
+            if ((length == 1) && (component[0] == '.'))
+            {
+                continue;
+            }
+
+            /*
+             * ".." -> remove previous component.
+             */
+            if ((length == 2) && (component[0] == '.') && (component[1] == '.'))
+            {
+                if (dst > path + 1)
+                {
+                    /*
+                     * Remove separator after previous component.
+                     */
+                    if (*(dst - 1) == CAPE_FS_FOLDER_SEP)
+                    {
+                        dst--;
+                    }
+
+                    /*
+                     * Find beginning of previous component.
+                     */
+                    while (dst > path + 1)
+                    {
+                        dst--;
+
+                        if (*dst == CAPE_FS_FOLDER_SEP)
+                        {
+                            break;
+                        }
+                    }
+
+                    /*
+                     * Position dst directly after '/'.
+                     */
+                    if (*dst == CAPE_FS_FOLDER_SEP)
+                    {
+                        dst++;
+                    }
+                }
+
+                continue;
+            }
+
+            /*
+             * Add separator between components.
+             */
+            if (dst > path + 1)
+            {
+                *dst++ = CAPE_FS_FOLDER_SEP;
+            }
+
+            /*
+             * Copy component.
+             *
+             * dst is never ahead of src, therefore memcpy()
+             * is safe here.
+             */
+            memcpy (dst, component, length);
+
+            dst += length;
+        }
+
+        /*
+         * Remove trailing separator unless this is root.
+         */
+        if ((dst > path + 1) && (*(dst - 1) == CAPE_FS_FOLDER_SEP))
+        {
+            dst--;
+        }
+
+        *dst = 0;
+    }
+
+    /*
+     * realpath() requires the resulting path to exist.
+     */
+    {
+        struct stat st;
+
+        if (stat (path, &st) != 0)
+        {
+            cape_err_lastOSError (err);
+
+            cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text (err));
+
+            CAPE_FREE (path);
+
+            return NULL;
+        }
+    }
+
+    return path;
+}
+
+#endif
 
 //-----------------------------------------------------------------------------
 
 CapeString cape_fs_path_resolve (const char* filepath, CapeErr err)
 {
-  if (filepath == NULL)
-  {
-    return cape_fs_path_current (NULL);
-  }
-
-#ifdef __WINDOWS_OS
-
-  {
-    char* ret = CAPE_ALLOC (MAX_PATH + 1);
-
-    if (!PathCanonicalize (ret, filepath))
+    char* ret = NULL;
+    
+    if (filepath == NULL)
     {
-      CAPE_FREE (ret);
-      return NULL;
+        return cape_fs_path_current (NULL);
     }
 
-    return ret;
-  }
+#if defined(CAPE_USE_FREERTOS)
 
-#elif defined __LINUX_OS || defined __BSD_OS
+    ret = cape_fs_realpath (filepath, err);
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  {
-    char* ret = CAPE_ALLOC (PATH_MAX + 1);
+    ret = CAPE_ALLOC (PATH_MAX + 1);
 
     if (!realpath (filepath, ret))
     {
-      cape_err_lastOSError (err);
+        cape_err_lastOSError (err);
 
-      cape_log_msg (CAPE_LL_ERROR, "CAPE", "path absolute", cape_err_text(err));
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text(err));
 
-      CAPE_FREE (ret);
-      return NULL;
+        CAPE_FREE (ret);
+        return NULL;
     }
 
-    return ret;
-  }
+#elif defined(__WINDOWS_OS)
+
+    ret = CAPE_ALLOC (MAX_PATH + 1);
+
+    if (!PathCanonicalize (ret, filepath))
+    {
+        CAPE_FREE (ret);
+        return NULL;
+    }
+    
+    if (GetFileAttributes (ret) == INVALID_FILE_ATTRIBUTES)
+    {
+        cape_err_lastOSError (err);
+
+        cape_log_msg (CAPE_LL_ERROR, "CAPE", "FILE", cape_err_text (err));
+
+        CAPE_FREE (ret);
+        return NULL;
+    }
+
+#else
+
+    cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "not supported on platform");
 
 #endif
+
+    return ret;
 }
 
 //-----------------------------------------------------------------------------
@@ -443,125 +1040,85 @@ CapeString cape_fs_filename (const CapeString source)
 
 //-----------------------------------------------------------------------------
 
-struct CapeFileAc_s
-{
-#ifdef __WINDOWS_OS
-  
-  SECURITY_DESCRIPTOR* sp;
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-  
-  mode_t permissions;
-  uid_t uid;
-  gid_t gid;
-  
-#endif
-};
-
-//-----------------------------------------------------------------------------
-
-#ifdef __WINDOWS_OS
-
-#else
-
-CapeFileAc cape_fs_file__merge_ac (const char* source, CapeFileAc ac_user, CapeErr err)
-{
-  CapeFileAc ret = NULL;
-  
-  if (ac_user)
-  {
-    // if everything was set we use the user given AC
-    if (ac_user->uid && ac_user->gid && ac_user->permissions)
-    {
-      ret = cape_fs_ac_new (ac_user->uid, ac_user->gid, ac_user->permissions);      
-      goto exit_and_cleanup;
-    }
-  }
-  
-  ret = cape_fs_file_ac_get (source, err);
-  if (ret == NULL)
-  {
-    goto exit_and_cleanup;
-  }
-  
-  // adjust values
-  if (ac_user)
-  {
-    if (ac_user->uid)
-    {
-      ret->uid = ac_user->uid;
-    }
-    
-    if (ac_user->gid)
-    {
-      ret->gid = ac_user->gid;
-    }
-    
-    if (ac_user->permissions)
-    {
-      ret->permissions = ac_user->permissions;
-    }
-  }
-  
-  exit_and_cleanup:
-  
-  return ret;
-}
-
-#endif
-
-//-----------------------------------------------------------------------------
-
 int cape_fs_path_create (const char* path, CapeFileAc ac, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
 
-  if (CreateDirectory (path, NULL) == 0)
-  {
-    // get current system error code
-    DWORD error_code = GetLastError();
+    // avoid compiler warning
+    (void) ac;
 
-    if (error_code != ERROR_ALREADY_EXISTS)  // ignore this error
+    // use 0770 to be most compatible to linux
+    if (mkdir (path, 0770) != 0)
     {
-      return cape_err_formatErrorOS (err, error_code);;
+        int err_no = errno;
+
+        if (err_no != EEXIST)
+        {
+            return cape_err_formatErrorOS (err, err_no);
+        }
     }
-  }
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  int res = mkdir (path, (ac && (ac->permissions > 0)) ? ac->permissions : 0770);
-  if (res)
-  {
-    int err_no = errno;
-    
-    if (err_no == EEXIST)
+    int res = mkdir (path, (ac && (ac->permissions > 0)) ? ac->permissions : 0770);
+    if (res)
     {
-      res = CAPE_ERR_NONE;
-      goto exit_and_cleanup;
+        int err_no = errno;
+        
+        if (err_no == EEXIST)
+        {
+            res = CAPE_ERR_NONE;
+            goto exit_and_cleanup;
+        }
+        else
+        {
+            res = cape_err_formatErrorOS (err, err_no);
+            goto exit_and_cleanup;
+        }
     }
-    else
-    {
-      res = cape_err_formatErrorOS (err, err_no);
-      goto exit_and_cleanup;
-    }
-  }
 
-  if (ac)
-  {
-    if (-1 == chown (path, (ac->uid > 0) ? ac->uid : getuid(), (ac->gid > 0) ? ac->gid : getgid()))
+    if (ac)
     {
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        if (-1 == chown (path, (ac->uid > 0) ? ac->uid : getuid(), (ac->gid > 0) ? ac->gid : getgid()))
+        {
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
     }
-  }
-    
-  res = CAPE_ERR_NONE;
-  
+      
+    res = CAPE_ERR_NONE;
+
 exit_and_cleanup:
   
-  return res;
+    return res;
+
+#elif defined(__WINDOWS_OS)
+
+    SECURITY_ATTRIBUTES sa;
+    SECURITY_ATTRIBUTES* p_sa = NULL;
+
+    if (ac)
+    {
+        sa.nLength = sizeof (SECURITY_ATTRIBUTES);
+        sa.lpSecurityDescriptor = ac->sp;
+        sa.bInheritHandle = FALSE;
+
+        p_sa = &sa;
+    }
+
+    if (CreateDirectory (path, p_sa) == 0)
+    {
+        DWORD error_code = GetLastError();
+
+        if (error_code != ERROR_ALREADY_EXISTS)
+        {
+            return cape_err_formatErrorOS (err, error_code);
+        }
+    }
+
+    return CAPE_ERR_NONE;
 
 #endif
 }
@@ -624,26 +1181,52 @@ exit_and_cleanup:
 
 int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 {
-  struct stat st;
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (cape_str_empty (path))
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
-  }
+    struct stat st;
 
-  if (stat (path, &st) != 0)
-  {
-    // not found or other error
-    // try to create the path
-    return cape_fs_path_create (path, ac, err);
-  }
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
 
-  if (FALSE == S_ISDIR (st.st_mode))
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+    if (stat (path, &st) != 0)
+    {
+        // not found or other error
+        // try to create the path
+        return cape_fs_path_create (path, ac, err);
+    }
 
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-  }
+    if (FALSE == S_ISDIR(st.st_mode))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    DWORD attr = GetFileAttributesA(path);
+
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        // not found or other error -> try create
+        return cape_fs_path_create(path, ac, err);
+    }
+
+    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#endif
 
   return CAPE_ERR_NONE;
 }
@@ -652,28 +1235,54 @@ int cape_fs_path_create_e (const char* path, CapeFileAc ac, CapeErr err)
 
 int cape_fs_path_create_xe (const char* path, CapeFileAc ac, CapeErr err)
 {
-  struct stat st;
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (cape_str_empty (path))
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is empty");
-  }
+    struct stat st;
 
-  if (stat (path, &st) != 0)
-  {
-    // not found or other error
-    // try to create the path
-    return cape_fs_path_create_x (path, ac, err);
-  }
+    if (cape_str_empty(path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
 
-  if (FALSE == S_ISDIR (st.st_mode))
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+    if (stat(path, &st) != 0)
+    {
+        // not found or other error
+        // try to create the path
+        return cape_fs_path_create_x(path, ac, err);
+    }
 
-    return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
-  }
+    if (FALSE == S_ISDIR(st.st_mode))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
 
-  return CAPE_ERR_NONE;
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    DWORD attr = GetFileAttributesA (path);
+
+    if (cape_str_empty (path))
+    {
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is empty");
+    }
+
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        // not found -> create
+        return cape_fs_path_create (path, ac, err);
+    }
+
+    if (!(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        cape_log_fmt(CAPE_LL_ERROR, "CAPE", "path create", "can't create path = %s", path);
+
+        return cape_err_set(err, CAPE_ERR_WRONG_VALUE, "path is not a directory");
+    }
+
+#endif
+
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -685,69 +1294,15 @@ static void __STDCALL cape_fs_path_size__on_del (void* ptr)
 
 //-----------------------------------------------------------------------------
 
-/*
-number_t cape_fs_path_size__process_path (DIR* dir, CapeList folders, const char* path, CapeErr err)
-{
-  number_t total_size = 0;
-  struct dirent* dentry;
-
-  CapeString file = NULL;
-
-  for (dentry = readdir (dir); dentry; dentry = readdir (dir))
-  {
-    struct stat st;
-
-    // create the new filename
-    {
-      CapeString h = cape_fs_path_merge (path, dentry->d_name);
-
-      cape_str_replace_mv (&file, &h);
-    }
-
-    // excluse special folders
-    if (cape_str_equal (dentry->d_name, ".") || cape_str_equal (dentry->d_name, ".."))
-    {
-      continue;
-    }
-
-    // get detailed info about the file
-    // not all filesystems return the info with readdir
-    if (stat (file, &st) == 0)
-    {
-      // directory
-      if (S_ISDIR (st.st_mode))
-      {
-        cape_list_push_back (folders, file);
-        file = NULL;
-
-        continue;
-      }
-
-      // regular file
-      if (S_ISREG (st.st_mode))
-      {
-        total_size += st.st_size;
-      }
-    }
-  }
-
-  cape_str_del (&file);
-
-  return total_size;
-}
-*/
-
-//--------------------------------------------------------------------------------
-
 int cape_fs_path_rm__os (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
+    return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__WINDOWS_OS)
 
-  return (rmdir (path) == 0) ? CAPE_ERR_NONE : cape_err_lastOSError (err);
+    return (RemoveDirectory (path) == 0) ? cape_err_lastOSError (err) : CAPE_ERR_NONE;
 
 #endif
 }
@@ -1026,51 +1581,75 @@ exit_and_cleanup:
 
 int cape_fs_path_ln (const char* source, const char* destination, const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
+    
+    return cape_err_set (err, CAPE_ERR_NOT_SUPPORTED, "symbolic links are not supported on this platform");
 
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
+    int res;
+    int fd;
 
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  int res;
-  int fd;
-
-  if (path)
-  {
-    // try to open the path
-    fd = open (path, O_RDONLY | O_DIRECTORY);
-
-    if (-1 == fd)
+    if (path)
     {
-      // some error occoured
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
-    }
-  }
-  else
-  {
-    fd = AT_FDCWD;    // current directory
-  }
+        // try to open the path
+        fd = open (path, O_RDONLY | O_DIRECTORY);
 
-  // try to create the symlink
-  if (-1 == symlinkat (source, fd, destination))
-  {
-    res = cape_err_lastOSError (err);
-  }
-  else
-  {
-    res = CAPE_ERR_NONE;
-  }
+        if (-1 == fd)
+        {
+            // some error occoured
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
+    }
+    else
+    {
+        fd = AT_FDCWD;    // current directory
+    }
+
+    // try to create the symlink
+    if (-1 == symlinkat (source, fd, destination))
+    {
+        res = cape_err_lastOSError (err);
+    }
+    else
+    {
+        res = CAPE_ERR_NONE;
+    }
 
 exit_and_cleanup:
 
-  if (path)
-  {
-    close (fd);
-  }
+    if (path)
+    {
+        close (fd);
+    }
 
-  return res;
+    return res;
 
+#elif defined(__WINDOWS_OS)
+
+    DWORD attr;
+    DWORD flags = 0;
+
+    attr = GetFileAttributesA (source);
+
+    if (attr == INVALID_FILE_ATTRIBUTES)
+    {
+        return cape_err_formatErrorOS (err, GetLastError ());
+    }
+
+    if (attr & FILE_ATTRIBUTE_DIRECTORY)
+    {
+        flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+    }
+
+    if (CreateSymbolicLinkA (destination, source, flags) == 0)
+    {
+        return cape_err_formatErrorOS (err, GetLastError ());
+    }
+
+    return CAPE_ERR_NONE;
+    
 #endif
 }
 
@@ -1078,23 +1657,23 @@ exit_and_cleanup:
 
 int cape_fs_file_rm (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (0 != _unlink (path))
-  {
-    return cape_err_lastOSError (err);
-  }
+    if (-1 == unlink (path))
+    {
+        return cape_err_lastOSError (err);
+    }
 
-#elif defined __LINUX_OS || defined __BSD_OS
+#elif defined(__WINDOWS_OS)
 
-  if (-1 == unlink (path))
-  {
-    return cape_err_lastOSError (err);
-  }
+    if (0 != _unlink (path))
+    {
+        return cape_err_lastOSError (err);
+    }
 
 #endif
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1121,142 +1700,170 @@ exit_and_cleanup:
 
 int cape_fs_file_mv (const char* source, const char* destination, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS) || defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (!MoveFile (source, destination))
-  {
-    return cape_err_lastOSError (err);
-  }
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  if (0 != rename (source, destination))
-  {
-    int err_no = errno;
-
-    // check for a specific error
-    // -> the source and target files are not on the same filesystem
-    // -> we still can try to copy and remove the file in sequence
-    if (err_no == EXDEV)
+    if (0 != rename (source, destination))
     {
-      return cape_fs_file_mv__cp_rm (source, destination, err);
+        int err_no = errno;
+
+        // check for a specific error
+        // -> the source and target files are not on the same filesystem
+        // -> we still can try to copy and remove the file in sequence
+        if (err_no == EXDEV)
+        {
+            return cape_fs_file_mv__cp_rm (source, destination, err);
+        }
+        else
+        {
+            return cape_err_lastOSError (err);
+        }
     }
-    else
+
+#elif defined(__WINDOWS_OS)
+
+    if (!MoveFile (source, destination))
     {
-      return cape_err_lastOSError (err);
+        return cape_err_lastOSError (err);
     }
-  }
 
 #endif
 
-  return CAPE_ERR_NONE;
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fs_file_cp__full (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
+{
+    int res;
+
+    // local objects
+    char* buffer = NULL;
+    CapeFileHandle fh_s = cape_fh_new (NULL, source);
+    CapeFileHandle fh_d = cape_fh_new (NULL, destination);
+    CapeFileAc ac = NULL;
+
+    // open the source file
+    res = cape_fh_open (fh_s, O_RDONLY, err);
+    if (res)
+    {
+        goto exit_and_cleanup;
+    }
+
+    if (ac_user)
+    {
+        ac = cape_fs_file__merge_ac (source, ac_user, err);
+        if (NULL == ac)
+        {
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+        }
+    }
+
+    // open destination for writing
+    res = cape_fh_open_ac (fh_d, O_WRONLY | O_CREAT | O_TRUNC, &ac, err);
+    if (res)
+    {
+        goto exit_and_cleanup;
+    }
+
+    buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
+
+    while (TRUE)
+    {
+        number_t bytes_read = cape_fh_read_buf (fh_s, buffer, CAPE_BUFFER_SIZE);
+
+        if (bytes_read > 0)
+        {
+            number_t bytes_written = 0;
+
+            while (bytes_written < bytes_read)
+            {
+                number_t written = cape_fh_write_buf (fh_d, buffer + bytes_written, bytes_read - bytes_written);
+
+                if (written <= 0)
+                {
+                    res = cape_err_lastOSError (err);
+                    goto exit_and_cleanup;
+                }
+
+                bytes_written += written;
+            }
+        }
+        else if (bytes_read == 0)
+        {
+            break;
+        }
+        else
+        {
+            res = cape_err_lastOSError (err);
+            goto exit_and_cleanup;
+        }
+    }
+    
+    // set permissions
+    res = cape_fs_file_ac_set (destination, ac, err);
+
+exit_and_cleanup:
+
+    cape_fs_ac_del (&ac);
+
+    cape_fh_del (&fh_d);
+    cape_fh_del (&fh_s);
+
+    if (buffer)
+    {
+        CAPE_FREE (buffer);
+    }
+
+    return res;
 }
 
 //-----------------------------------------------------------------------------
 
 int cape_fs_file_cp__ac (const char* source, const char* destination, CapeFileAc ac_user, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
+    
+    // use the full copy algorithm without any access rights
+    return cape_fs_file_cp__full (source, destination, NULL, err);
 
-  if (!CopyFile (source, destination, TRUE))
-  {
-    return cape_err_lastOSError (err);
-  }
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  return CAPE_ERR_NONE;
+#if defined __APPLE_CC__
 
-#elif defined __APPLE_CC__
-
-  if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
-  {
-    return cape_err_lastOSError (err);
-  }
-
-  return CAPE_ERR_NONE;
-
+    // copy data, ACLs and extended attributes
+    if (copyfile (source, destination, 0, COPYFILE_ACL | COPYFILE_XATTR | COPYFILE_DATA) != 0)
+    {
+        return cape_err_lastOSError (err);
+    }
+    
+    // set permissions
+    return cape_fs_file_ac_set (destination, ac_user, err);
+    
 #else
+    
+    // use the full copy algorithm
+    return cape_fs_file_cp__full (source, destination, ac_user, err);
 
-  int res;
+#endif
+    
+#elif defined(__WINDOWS_OS)
 
-  // local objects
-  char* buffer = NULL;
-  CapeFileHandle fh_s = cape_fh_new (NULL, source);
-  CapeFileHandle fh_d = cape_fh_new (NULL, destination);
-  CapeFileAc ac = NULL;
-
-  res = cape_fh_open (fh_s, O_RDONLY, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  ac = cape_fs_file__merge_ac (source, ac_user, err);
-  if (NULL == ac)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
-  
-  //printf ("use uid %i, gid %i\n", ac->uid, ac->gid);
-  
-  res = cape_fh_open_ex (fh_d, O_WRONLY | O_CREAT, ac->permissions, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
-
-  buffer = CAPE_ALLOC (CAPE_BUFFER_SIZE);
-
-  while (TRUE)
-  {
-    number_t bytes_read = cape_fh_read_buf (fh_s, buffer, CAPE_BUFFER_SIZE);
-
-    if (bytes_read > 0)
+    if (!CopyFile (source, destination, TRUE))
     {
-      number_t bytes_written = 0;
+        DWORD error = GetLastError();
 
-      while (bytes_written < bytes_read)
-      {
-        bytes_written = cape_fh_write_buf (fh_d, buffer + bytes_written, bytes_read - bytes_written);
-
-        if (bytes_written <= 0)
+        if (error == ERROR_NOT_SUPPORTED)
         {
-          res = cape_err_lastOSError (err);
-          goto exit_and_cleanup;
+            return cape_fs_file_cp__full (source, destination, ac_user, err);
         }
-      }
+
+        return cape_err_lastOSError (err);
     }
-    else
-    {
-      break;
-    }
-  }
-  
-  // update AC
-  if (ac->uid || ac->gid)
-  {
-    if (-1 == fchown ((number_t)cape_fh_fd(fh_d), ac->uid, ac->gid))
-    {
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
-    }
-  }
-  
-  res = CAPE_ERR_NONE;
 
-exit_and_cleanup:
-
-  cape_fs_ac_del (&ac);
-
-  cape_fh_del (&fh_d);
-  cape_fh_del (&fh_s);
-
-  if (buffer)
-  {
-    CAPE_FREE (buffer);
-  }
-
-  return res;
+    // set permissions
+    return cape_fs_file_ac_set (destination, ac_user, err);
 
 #endif
 }
@@ -1272,136 +1879,142 @@ int cape_fs_file_cp (const char* source, const char* destination, CapeErr err)
 
 off_t cape_fs_file_size (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
+#if defined(CAPE_USE_FREERTOS)
+    
+    // try this version, but it depends on the used filesystem
+    // if the compilation fails, we need a switch here
+    struct stat st;
 
-  off_t ret = 0;
-  LARGE_INTEGER lFileSize;
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return 0;
+    }
 
-  // local objects
-  HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
+    return st.st_size;
 
-  if (hf == INVALID_HANDLE_VALUE)
-  {
-    cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  // retrieve the file size
-  if (GetFileSizeEx (hf, &lFileSize) == INVALID_FILE_SIZE)
-  {
-    cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
+    struct stat st;
 
-  // convert from large integer
-  ret = lFileSize.QuadPart;
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return 0;
+    }
+    else
+    {
+        return st.st_size;
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    off_t ret = 0;
+    LARGE_INTEGER lFileSize;
+
+    // local objects
+    HANDLE hf = CreateFile (path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
+
+    if (hf == INVALID_HANDLE_VALUE)
+    {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    // retrieve the file size
+    if (!GetFileSizeEx (hf, &lFileSize))
+    {
+        CloseHandle (hf);
+
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    // convert from large integer
+    ret = (off_t)lFileSize.QuadPart;
 
 exit_and_cleanup:
 
-  CloseHandle (hf);
-  return ret;
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  struct stat st;
-
-  if (stat (path, &st) == -1)
-  {
-    cape_err_lastOSError (err);
-    return 0;
-  }
-  else
-  {
-    return st.st_size;
-  }
+    return ret;
 
 #endif
 }
-
-//-----------------------------------------------------------------------------
-
-void cape_fs_ac_del (CapeFileAc* p_self)
-{
-  if (*p_self)
-  {
-#ifdef __WINDOWS_OS
-    CapeFileAc self = *p_self;
-
-		CAPE_FREE(self->sp);
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-#endif
-
-    CAPE_DEL (p_self, struct CapeFileAc_s);
-  }
-}
-
-//-----------------------------------------------------------------------------
-
-#ifdef __WINDOWS_OS
-
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-
-CapeFileAc cape_fs_ac_new (uid_t uid, gid_t gid, mode_t mod)
-{
-  CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
-
-  self->permissions = mod;
-  self->uid = uid;
-  self->gid = gid;
-
-  return self;
-}
-
-#endif
 
 //-----------------------------------------------------------------------------
 
 CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 {
-#ifdef __WINDOWS_OS
-
-  DWORD LengthNeeded = 0;
-  SECURITY_DESCRIPTOR* sp = CAPE_ALLOC (100);
-
-  BOOL rs = GetFileSecurity (path, ATTRIBUTE_SECURITY_INFORMATION | OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION, sp, 100, &LengthNeeded);
-	if (!rs)
-	{
-		CAPE_FREE (sp);
-
-		cape_err_lastOSError (err);
-		return NULL;
-	}
-
-	{
-		CapeFileAc self = CAPE_NEW(struct CapeFileAc_s);
-
-		self->sp = sp;
-
-		return self;
-	}
-
-#elif defined __LINUX_OS || defined __BSD_OS
-
-  struct stat st;
-
-  if (stat (path, &st) == -1)
-  {
-    cape_err_lastOSError (err);
-    return NULL;
-  }
-
-  {
+#if defined(CAPE_USE_FREERTOS)
+    
     CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
 
-    self->permissions = st.st_mode;
-    self->uid = st.st_uid;
-    self->gid = st.st_gid;
-
+    self->dummy = 0;
+    
     return self;
-  }
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+    struct stat st;
+
+    if (stat (path, &st) == -1)
+    {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+
+    {
+        CapeFileAc self = CAPE_NEW (struct CapeFileAc_s);
+
+        self->permissions = st.st_mode;
+        self->uid = st.st_uid;
+        self->gid = st.st_gid;
+
+        return self;
+    }
+
+#elif defined(__WINDOWS_OS)
+
+    CapeFileAc self = NULL;
+    DWORD length_needed = 0;
+    PSECURITY_DESCRIPTOR sp = NULL;
+
+    // determine the length of the sp container
+    GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, NULL, 0, &length_needed);
+
+    if (length_needed == 0)
+    {
+        cape_err_lastOSError (err);
+        return NULL;
+    }
+
+    // allocate temporary sp container
+    sp = CAPE_ALLOC (length_needed);
+
+    if (!GetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, sp, length_needed, &length_needed))
+    {
+        cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    {
+        PSID owner = NULL;
+        PSID group = NULL;
+        PACL dacl = NULL;
+        BOOL dacl_present = FALSE;
+
+        if (cape_fs_ac__values (sp, &owner, &group, &dacl, &dacl_present, err))
+        {
+            goto exit_and_cleanup;
+        }
+        
+        // creates an absolute sp and its structure
+        self = cape_fs_ac_new (owner, group, dacl, dacl_present);
+    }
+    
+exit_and_cleanup:
+
+    CAPE_FREE (sp);
+    return self;
 
 #endif
 }
@@ -1410,35 +2023,65 @@ CapeFileAc cape_fs_file_ac_get (const char* path, CapeErr err)
 
 int cape_fs_file_ac_set (const char* path, CapeFileAc ac_user, CapeErr err)
 {
-#ifdef __WINDOWS_OS
-  
-#elif defined __LINUX_OS || defined __BSD_OS
-  
-  int res;
-  
-  // local objects
-  CapeFileAc ac = NULL;
-  
-  ac = cape_fs_file__merge_ac (path, ac_user, err);
-  if (NULL == ac)
-  {
-    res = cape_err_code (err);
-    goto exit_and_cleanup;
-  }
+#if defined(CAPE_USE_FREERTOS)
+    
+    // not supported
+    return CAPE_ERR_NONE;
+    
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
 
-  if (-1 == chown (path, ac->uid, ac->gid))
-  {
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  
-  res = CAPE_ERR_NONE;
-  
+    int res;
+    
+    // local objects
+    CapeFileAc ac = NULL;
+    
+    ac = cape_fs_file__merge_ac (path, ac_user, err);
+    if (NULL == ac)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (-1 == chown (path, ac->uid, ac->gid))
+    {
+        res = cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+    
+    res = CAPE_ERR_NONE;
+    
 exit_and_cleanup:
 
-  cape_fs_ac_del (&ac);
-  return res;
-  
+    cape_fs_ac_del (&ac);
+    return res;
+
+#elif defined(__WINDOWS_OS)
+
+    int res;
+
+    // local objects
+    CapeFileAc ac = NULL;
+
+    ac = cape_fs_file__merge_ac (path, ac_user, err);
+    if (NULL == ac || NULL == ac->sp)
+    {
+        res = cape_err_code (err);
+        goto exit_and_cleanup;
+    }
+
+    if (!SetFileSecurity (path, OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, ac->sp))
+    {
+        res = cape_err_lastOSError (err);
+        goto exit_and_cleanup;
+    }
+
+    res = CAPE_ERR_NONE;
+
+exit_and_cleanup:
+
+    cape_fs_ac_del (&ac);
+    return res;
+    
 #endif
 }
 
@@ -1486,7 +2129,16 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-#if defined __LINUX_OS || defined __BSD_OS
+#if defined(CAPE_USE_FREERTOS)
+
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+
+#elif defined(__LINUX_OS) || defined(__BSD_OS)
+
+//-----------------------------------------------------------------------------
 
 off_t cape_fs_path_size (const char* path, CapeErr err)
 {
@@ -1573,11 +2225,8 @@ void cape_fh_del (CapeFileHandle* p_self)
 
     cape_str_del (&(self->file));
 
-    if (self->fd >= 0)
-    {
-      close ((int)self->fd);
-    }
-
+    cape_fh_close (self);
+      
     CAPE_DEL (p_self, struct CapeFileHandle_s);
   }
 }
@@ -1591,14 +2240,7 @@ const CapeString cape_fh_file (CapeFileHandle self)
 
 //-----------------------------------------------------------------------------
 
-int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
-{
-  return cape_fh_open_ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
-}
-
-//-----------------------------------------------------------------------------
-
-int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
+static int cape_fh_open__ex (CapeFileHandle self, int flags, int permissions, CapeErr err)
 {
   self->fd = open (self->file, flags, permissions);
 
@@ -1612,67 +2254,59 @@ int cape_fh_open_ex (CapeFileHandle self, int flags, int permissions, CapeErr er
 
 //-----------------------------------------------------------------------------
 
+int cape_fh_open (CapeFileHandle self, int flags, CapeErr err)
+{
+    return cape_fh_open__ex (self, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP, err);
+}
+
+//-----------------------------------------------------------------------------
+
 int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr err)
 {
-  int res;
-  CapeFileAc ac = *p_ac;
+    int res;
 
-  /*
-  uid_t uid = getuid ();
-  gid_t gid = getgid ();
-
-  if (uid != ac->uid)
-  {
-    if (setuid (ac->uid) == -1)
+    if (p_ac)
     {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", ac->uid);
+        CapeFileAc ac = *p_ac;
 
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        // set a new effective GID
+        res = cape_fh_open__ex (self, flags, ac->permissions, err);
+
+        cape_fs_ac_del (p_ac);
     }
-  }
-
-  if (gid != ac->gid)
-  {
-    if (setgid (ac->gid) == -1)
+    else
     {
-      cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", ac->gid);
-      
-      res = cape_err_lastOSError (err);
-      goto exit_and_cleanup;
+        res = cape_fh_open (self, flags, err);
     }
-  }
-  */
-  // set a new effective GID
-  res = cape_fh_open_ex (self, flags, ac->permissions, err);
-  if (res)
-  {
-    goto exit_and_cleanup;
-  }
 
-  /*
-  if (setuid (uid) == -1)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set user id = %lu", uid);
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_fh_close (CapeFileHandle self)
+{
+    if (self->fd >= 0)
+    {
+        close ((int)self->fd);
+        
+        // set fd to invalid
+        self->fd = -1;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+void cape_fh_rm (CapeFileHandle self)
+{
+    CapeErr err = cape_err_new ();
     
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  
-  if (setgid (gid) == -1)
-  {
-    cape_log_fmt (CAPE_LL_ERROR, "CAPE", "open ac", "can't set group id = %lu", gid);
+    if (cape_fs_file_rm (self->file, err))
+    {
+        cape_log_fmt (CAPE_LL_ERROR, "CAPE", "fh rm", "error in removing file: %s", cape_err_text (err));
+    }
     
-    res = cape_err_lastOSError (err);
-    goto exit_and_cleanup;
-  }
-  */
-  res = CAPE_ERR_NONE;
-
-exit_and_cleanup:
-
-  cape_fs_ac_del (p_ac);
-  return res;
+    cape_err_del (&err);
 }
 
 //-----------------------------------------------------------------------------
@@ -1700,6 +2334,28 @@ number_t cape_fh_read_buf (CapeFileHandle self, char* bufdat, number_t buflen)
 number_t cape_fh_write_buf (CapeFileHandle self, const char* bufdat, number_t buflen)
 {
   return write ((int)self->fd, bufdat, buflen);
+}
+
+//-----------------------------------------------------------------------------
+
+int cape_fh_write_m (CapeFileHandle self, CapeStream stream, CapeErr err)
+{
+    number_t total = cape_stream_size (stream);
+    number_t written = 0;
+    
+    while (written < total)
+    {
+        number_t n = cape_fh_write_buf (self, cape_stream_data (stream) + written, total - written);
+        
+        if (n <= 0)
+        {
+            return cape_err_set (err, CAPE_ERR_OS, "file write failed");
+        }
+        
+        written += n;
+    }
+    
+    return CAPE_ERR_NONE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1831,8 +2487,7 @@ number_t cape_dc_type (CapeDirCursor self)
 {
   if (self->node)
   {
-    unsigned short fts_info = self->node->fts_info;
-
+//    unsigned short fts_info = self->node->fts_info;
 //    printf ("%i FTS_DEFAULT=%i, FTS_F=%i, FTS_SL=%i, FTS_DP=%i\n", fts_info, fts_info & FTS_DEFAULT, fts_info & FTS_F, fts_info & FTS_SL, fts_info & FTS_DP);
 
     switch (self->node->fts_info)
@@ -1894,6 +2549,8 @@ void cape_fs_write_fmt (const void* handle, const char* format, ...)
 
 #elif defined __WINDOWS_OS
 
+//-----------------------------------------------------------------------------
+
 #include <stdio.h>
 #include <share.h>
 #include <fcntl.h>
@@ -1954,7 +2611,7 @@ void cape_fh_del (CapeFileHandle* p_self)
 
     if (self->fd >= 0)
     {
-      _close (self->fd);
+      _close ((int)self->fd);
     }
 
     CAPE_DEL (p_self, struct CapeFileHandle_s);

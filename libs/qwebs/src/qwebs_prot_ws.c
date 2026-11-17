@@ -598,7 +598,9 @@ void* __STDCALL qwebs_prot_websocket__on_upgrade (void* user_ptr, QWebsRequest r
   
   if (self->on_conn)
   {
-    ret->conn_ptr = self->on_conn (self->user_ptr, ret, qwebs_request_query (request));
+    CapeString remote = qwebs_request_remote (request);
+    
+    ret->conn_ptr = self->on_conn (self->user_ptr, ret, &remote, qwebs_request_query (request));
   }
   
   exit_and_cleanup:

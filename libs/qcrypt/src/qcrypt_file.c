@@ -50,7 +50,7 @@ int qcrypt_decrypt_file (const CapeString vsec, const CapeString file, void* ptr
   }
   
   // create the decryption context
-  dec = qdecrypt_aes_new (outb, vsec, 0, 0);
+  dec = qdecrypt_aes_new (outb, 0, 0, vsec, 0);
   
   while (TRUE)
   {
@@ -129,7 +129,7 @@ QCryptDecrypt qcrypt_decrypt_new (const CapeString path, const CapeString file, 
   self->product = cape_stream_new ();
   
   // create the decryption context
-  self->dec = qdecrypt_aes_new (self->product, vsec, 0, 0);
+  self->dec = qdecrypt_aes_new (self->product, QCRYPT_AES_TYPE_DETECT, 0, vsec, 0);
   
   self->state = TRUE;
 
@@ -278,8 +278,8 @@ int qcrypt_file_encrypt (QCryptFile self, const CapeString vsec, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  // create encryption engine
-  self->enc = qencrypt_aes_new (self->product, 0, 0, vsec, 0);
+  // create encryption engine with the most secure we support
+  self->enc = qencrypt_aes_new (self->product, QCRYPT_AES_TYPE_256_GCM, vsec);
   if (self->enc == NULL)
   {
     res = cape_err_set (err, CAPE_ERR_NO_OBJECT, "can't initialize crypt");
@@ -303,52 +303,77 @@ exit_and_cleanup:
 
 int qcrypt_file_write (QCryptFile self, const char* bufdat, number_t buflen, CapeErr err)
 {
-  int res;
-  
-  // encrypt the buffer 'decrypted_text'
-  res = qencrypt_aes_process (self->enc, bufdat, buflen, err);
-  if (res)
-  {
-    goto exit;
-  }
+    int res;
+    
+    // encrypt the buffer 'decrypted_text'
+    res = qencrypt_aes_process (self->enc, bufdat, buflen, err);
+    if (res)
+    {
+        goto error;
+    }
 
-  // write the buffer into the file
-  cape_fh_write_buf (self->fh, cape_stream_data (self->product), cape_stream_size (self->product));
-  
-  // clean the buffer
-  cape_stream_clr (self->product);
-  
-  res = CAPE_ERR_NONE;
+    res = cape_fh_write_m (self->fh, self->product, err);
+    if (res)
+    {
+        goto error;
+    }
 
-exit:
+    // clean the buffer
+    cape_stream_clr (self->product);
 
-  return res;
+    return CAPE_ERR_NONE;
+
+error:
+
+    qcrypt_file_rollback (self);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
 
 int qcrypt_file_finalize (QCryptFile self, CapeErr err)
 {
-  int res;
-  
-  // finalize the encryption
-  res = qencrypt_aes_finalize (self->enc, err);
-  if (res)
-  {
-    goto exit;
-  }
+    int res;
+    
+    // finalize the encryption
+    res = qencrypt_aes_finalize (self->enc, err);
+    if (res)
+    {
+        goto error;
+    }
 
-  // write the buffer into the file
-  cape_fh_write_buf (self->fh, cape_stream_data (self->product), cape_stream_size (self->product));
-  
-  // clean the buffer
-  cape_stream_clr (self->product);
+    // write the buffer into the file
+    res = cape_fh_write_m (self->fh, self->product, err);
+    if (res)
+    {
+        goto error;
+    }
 
-  res = CAPE_ERR_NONE;
+    // clean the buffer
+    cape_stream_clr (self->product);
 
-exit:
+    return CAPE_ERR_NONE;
 
-  return res;
+error:
+
+    qcrypt_file_rollback (self);
+    return res;
+}
+
+//-----------------------------------------------------------------------------
+
+void qcrypt_file_rollback (QCryptFile self)
+{
+    if (self->fh)
+    {
+        // close the file handle
+        cape_fh_close (self->fh);
+
+        // remove the created file
+        cape_fh_rm (self->fh);
+    }
+    
+    cape_stream_clr (self->product);
 }
 
 //-----------------------------------------------------------------------------

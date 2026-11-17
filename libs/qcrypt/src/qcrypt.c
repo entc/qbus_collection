@@ -84,13 +84,12 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_text, CapeErr err)
+CapeStream qcrypt__decrypt_m (const CapeString vsec, const CapeString encrypted_text, CapeErr err)
 {
-  int res;
+  CapeStream ret = NULL;
+
+  // local objects
   QDecryptAES dec;
-  CapeStream s;
-  
-  CapeString ret = NULL;
   
   if (vsec == NULL)
   {
@@ -98,21 +97,40 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
     return NULL;
   }
   
-  s = cape_stream_new ();
+  ret = cape_stream_new ();
   
-  dec = qdecrypt_aes_new (s, vsec, QCRYPT_AES_TYPE_CFB, QCRYPT_KEY_PASSPHRASE_MD5);
+  dec = qdecrypt_aes_new (ret, QCRYPT_AES_TYPE_256_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
   
-  res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
-  
-  qdecrypt_aes_del (&dec);
-  
-  if (res)
   {
-    cape_stream_del (&s);
-    return NULL;
+    int res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
+    
+    qdecrypt_aes_del (&dec);
+    
+    if (res)
+    {
+      cape_stream_del (&ret);
+    }
+  }
+  
+  return ret;
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_text, CapeErr err)
+{
+  CapeStream s = qcrypt__decrypt_m (vsec, encrypted_text, err);
+
+  if (NULL == s)
+  {
+    return NULL;    
   }
   else
   {
+    return cape_stream_to_str (&s);
+    /*
+    CapeString ret = NULL;
+    
     // transform into a string
     CapeString h = cape_stream_to_str (&s);
     
@@ -122,7 +140,44 @@ CapeString qcrypt__decrypt (const CapeString vsec, const CapeString encrypted_te
     cape_str_del (&h);
     
     return ret;
+    */
   }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__decrypt_ex (const CapeString vsec, const CapeString encrypted_text, int type_aes, CapeErr err)
+{
+    CapeStream ret = NULL;
+
+    // local objects
+    QDecryptAES dec;
+    
+    if (vsec == NULL)
+    {
+      cape_err_set (err, CAPE_ERR_NO_OBJECT, "vsec is not set");
+      return NULL;
+    }
+    
+    ret = cape_stream_new ();
+    
+    dec = qdecrypt_aes_new (ret, type_aes, 0, vsec, 0);
+    
+    {
+      int res = qcrypt__decrypt_process (dec, encrypted_text, cape_str_size (encrypted_text), err);
+      
+      qdecrypt_aes_del (&dec);
+      
+      if (res)
+      {
+          cape_stream_del (&ret);
+          return NULL;
+      }
+      else
+      {
+          return cape_stream_to_str (&ret);
+      }
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -152,40 +207,48 @@ int qcrypt__decrypt_node (const CapeString vsec, const CapeString encrypted_text
 
 int qcrypt__decrypt_row_text (const CapeString vsec, const CapeUdc row, const CapeString data_name, CapeErr err)
 {
-  int res;
-  
-  // extract the node
-  CapeUdc extracted_text_node = cape_udc_ext (row, data_name);
-  
-  // do we have a node
-  if (extracted_text_node)
-  {
-    // assume that the node is a text node
-    const CapeString encrypted_text = cape_udc_s (extracted_text_node, NULL);
-    if (encrypted_text && encrypted_text[0])
+    int res;
+    
+    // local objects
+    CapeUdc extracted_text_node = NULL;
+
+    if (cape_str_size (vsec) < 10)
     {
-      CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
-      if (decrypted)
-      {
-        cape_udc_add_s_mv (row, data_name, &decrypted);
-      }
-      else
-      {
-        cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row text", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
-        
-        res = cape_err_code (err);
+        cape_err_set (err, CAPE_ERR_WRONG_VALUE, "ERR.INVALID_VSEC");
         goto exit_and_cleanup;
-      }
     }
-  }
-  
-  res = CAPE_ERR_NONE;
+    
+    // try to extract node
+    extracted_text_node = cape_udc_ext (row, data_name);
+
+    // do we have a node
+    if (extracted_text_node)
+    {
+        // assume that the node is a text node
+        const CapeString encrypted_text = cape_udc_s (extracted_text_node, NULL);
+        if (encrypted_text && encrypted_text[0])
+        {
+          CapeString decrypted = qcrypt__decrypt (vsec, encrypted_text, err);
+          if (decrypted)
+          {
+            cape_udc_add_s_mv (row, data_name, &decrypted);
+          }
+          else
+          {
+            cape_log_fmt (CAPE_LL_WARN, "QCRYPT", "decrypt row text", "can't decrypt '%s': %s", encrypted_text, cape_err_text (err));
+            
+            res = cape_err_code (err);
+            goto exit_and_cleanup;
+          }
+        }
+    }
+        
+    res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
   
-  cape_udc_del (&extracted_text_node);
-
-  return res;
+    cape_udc_del (&extracted_text_node);
+    return res;
 }
 
 //-----------------------------------------------------------------------------
@@ -210,8 +273,11 @@ int qcrypt__decrypt_row_node (const CapeString vsec, const CapeUdc row, const Ca
       {
         // convert to cape node
         CapeUdc k = cape_json_from_s (decrypted);
-        
-        cape_udc_add_name (row, &k, data_name);
+
+          if (k)
+          {
+              cape_udc_add_name (row, &k, data_name);
+          }
         
         cape_str_del (&decrypted);
       }
@@ -238,6 +304,48 @@ exit_and_cleanup:
 
 CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_text, CapeErr err)
 {
+  if (decrypted_text)
+  {
+    return qcrypt__encrypt_o (vsec, decrypted_text, cape_str_size (decrypted_text), QCRYPT_AES_TYPE_256_CFB, err);
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encrypt_ex (const CapeString vsec, const CapeString source, int type_aes, CapeErr err)
+{
+    if (source)
+    {
+        return qcrypt__encrypt_o (vsec, source, cape_str_size (source), type_aes, err);
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encrypt_m (const CapeString vsec, const CapeStream source, CapeErr err)
+{
+  if (source)
+  {
+    return qcrypt__encrypt_o (vsec, cape_stream_data (source), cape_stream_size (source), QCRYPT_AES_TYPE_256_CFB, err);
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+//-----------------------------------------------------------------------------
+
+CapeString qcrypt__encrypt_o (const CapeString vsec, const char* bufdat, number_t buflen, int type_aes, CapeErr err)
+{
   int res;
   CapeString ret = NULL;
   
@@ -252,10 +360,10 @@ CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_te
   }
   
   // create encryption engine
-  enc = qencrypt_aes_new (s, QCRYPT_AES_TYPE_CFB, QCRYPT_PADDING_ANSI_X923, vsec, QCRYPT_KEY_PASSPHRASE_MD5);
+  enc = qencrypt_aes_new (s, type_aes, vsec);
   
   // encrypt the buffer 'decrypted_text'
-  res = qencrypt_aes_process (enc, decrypted_text, cape_str_size (decrypted_text), err);
+  res = qencrypt_aes_process (enc, bufdat, buflen, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -272,7 +380,7 @@ CapeString qcrypt__encrypt (const CapeString vsec, const CapeString decrypted_te
   ret = qcrypt__encode_base64_m (s);
   
 exit_and_cleanup:
-
+  
   cape_stream_del (&s);
   qencrypt_aes_del (&enc);
   
@@ -336,30 +444,39 @@ CapeStream qcrypt__decode_base64_o (const char* bufdat, number_t buflen)
 
 #else
 
-  number_t len = ((buflen + 3) / 4 * 3) + 1;
-  CapeStream ret = cape_stream_new ();
+    int pad = 0;
 
-  // reserve memory
-  cape_stream_cap (ret, len);
-  
-  // openssl function
-  int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, (int)buflen);
-  
-  // everything worked fine
-  if ((decodedSize > 0) && (decodedSize < len))
-  {
-    // trim the last bytes which are 0
-    while ((cape_stream_pos (ret)[decodedSize - 1] == '\0') && (decodedSize > 0))
+    number_t len = ((buflen + 3) / 4 * 3) + 1;
+    CapeStream ret = cape_stream_new ();
+
+    // get the padding characters
+    if (buflen >= 1 && bufdat[buflen - 1] == '=')
     {
-      decodedSize--;
+        pad++;
     }
-    
-    cape_stream_set (ret, decodedSize);
-    return ret;
-  }
-  
-  cape_stream_del (&ret);
-  return NULL;
+
+    if (buflen >= 2 && bufdat[buflen - 2] == '=')
+    {
+        pad++;
+    }
+
+    // reserve memory
+    cape_stream_cap (ret, len);
+
+    {
+        // openssl function
+        int decodedSize = EVP_DecodeBlock ((unsigned char*)cape_stream_pos (ret), (const unsigned char*)bufdat, (int)buflen);
+
+        // everything worked fine
+        if ((decodedSize > 0) && (decodedSize < len))
+        {
+            cape_stream_set (ret, decodedSize - pad);
+            return ret;
+        }
+    }
+
+    cape_stream_del (&ret);
+    return NULL;
 
 #endif
 }

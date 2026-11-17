@@ -1,15 +1,17 @@
 #include "qcrypt_decrypt.h"
 #include "qcrypt_aes.h"
+#include "qcrypt.h"
 
 // cape includes
 #include <sys/cape_log.h>
 #include <fmt/cape_json.h>
+#include <stc/cape_cursor.h>
 
 #if defined __WINDOWS_OS
 
 #include <windows.h>
-#include <wincrypt.h>
-#pragma comment (lib, "Crypt32.lib")
+#include <bcrypt.h>
+#pragma comment(lib, "bcrypt.lib")
 
 #else
 
@@ -158,39 +160,43 @@ int qdecrypt_base64_finalize (QDecryptBase64 self, CapeErr err)
 
 struct QDecryptAES_s
 {
-  CapeStream product;
+    CapeStream product;
 
 #if defined __WINDOWS_OS
 
     
 #else
 
-  EVP_CIPHER_CTX* ctx;
+    EVP_CIPHER_CTX* ctx;
 
-  int blocksize;
-  
-  number_t cypher_type;
-  number_t key_type;
-  
-  number_t total_size;
-  
-  // this are our secrets
-  
-  CapeString secret;
-  
-  QCryptAESKeys keys;
+    int blocksize;
+    
+    number_t cypher_type;
+    number_t padding_type;
+    number_t key_type;
+    
+    number_t total_size;
+    
+    // this are our secrets
+    
+    CapeString secret;
+    
+    QCryptAESKeys keys;
+      
+    CapeStream rolling_buffer;
+    int tag_len;
 
 #endif
 };
 
 //-----------------------------------------------------------------------------
 
-QDecryptAES qdecrypt_aes_new (CapeStream r_product, const CapeString secret, number_t cypher_type, number_t key_type)
+QDecryptAES qdecrypt_aes_new (CapeStream r_product, number_t cypher_type, number_t padding_type, const CapeString secret, number_t key_type)
 {
-  QDecryptAES self = CAPE_NEW (struct QDecryptAES_s);
-  
-  self->product = r_product;
-  
+    QDecryptAES self = CAPE_NEW (struct QDecryptAES_s);
+    
+    self->product = r_product;
+
 #if defined __WINDOWS_OS
 
   
@@ -198,134 +204,336 @@ QDecryptAES qdecrypt_aes_new (CapeStream r_product, const CapeString secret, num
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   
-  self->ctx = CAPE_NEW (EVP_CIPHER_CTX);
-  
+    self->ctx = CAPE_NEW (EVP_CIPHER_CTX);
+
 #else
 
-  // it only allocates the memory
-  self->ctx = EVP_CIPHER_CTX_new ();
+    // it only allocates the memory
+    self->ctx = EVP_CIPHER_CTX_new ();
 
 #endif
 
-  self->blocksize = 0;
-  self->total_size = 0;
-  
-  // cipher settings
-  self->cypher_type = cypher_type;
-  self->key_type = key_type;
+    self->blocksize = 0;
+    self->total_size = 0;
+    
+    // cipher settings
+    self->cypher_type = cypher_type;
+    self->padding_type = padding_type;
+    self->key_type = key_type;
 
-  // key settings
-  self->secret = cape_str_cp (secret);
-  
-  self->keys = NULL;
+    // key settings
+    self->secret = cape_str_cp (secret);
 
+    self->keys = NULL;
+    self->rolling_buffer = NULL;
+    self->tag_len = 0;
+    
 #endif
   
-  return self;
+    return self;
 }
 
 //-----------------------------------------------------------------------------
 
 void qdecrypt_aes_del (QDecryptAES* p_self)
 {
-  if (*p_self)
-  {
-    QDecryptAES self = *p_self;
+    if (*p_self)
+    {
+        QDecryptAES self = *p_self;
     
 #if defined __WINDOWS_OS
 
   
 #else
 
-    // call the cleanup to free memory
-    EVP_CIPHER_CTX_cleanup (self->ctx);
+        // call the cleanup to free memory
+        EVP_CIPHER_CTX_cleanup (self->ctx);
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 
-    // free the object struct
-    CAPE_FREE (self->ctx);
-    
+        // free the object struct
+        CAPE_FREE (self->ctx);
+
 #else
     
-    // free the object struct
-    EVP_CIPHER_CTX_free (self->ctx);
+        // free the object struct
+        EVP_CIPHER_CTX_free (self->ctx);
 
 #endif
     
-    qcrypt_aes_keys_del (&(self->keys));
-    cape_str_del (&(self->secret));
-    
+        cape_stream_del (&(self->rolling_buffer));
+        qcrypt_aes_keys_del (&(self->keys));
+        cape_str_del (&(self->secret));
+
 #endif
     
-    CAPE_DEL (p_self, struct QDecryptAES_s);
-  }
+        CAPE_DEL (p_self, struct QDecryptAES_s);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+int qdecrypt_aes__cfb (QDecryptAES self, const EVP_CIPHER* cypher, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
+{
+    int res;
+          
+    switch (self->key_type)
+    {
+      case QCRYPT_KEY_SHA256:
+      {
+        self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
+        break;
+      }
+      case QCRYPT_KEY_PASSPHRASE_MD5:
+      {
+        self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
+        
+        // set the correct offset
+        *p_buffer_offset = 16;
+        
+        break;
+      }
+      case QCRYPT_PADDING_ZEROS:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_ANSI_X923:
+      {
+        self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
+        break;
+      }
+      case QCRYPT_PADDING_PKCS7:
+      {
+        self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
+        break;
+      }
+    }
+    
+    if (self->keys == NULL)
+    {
+      return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
+    }
+      
+    res = EVP_DecryptInit_ex (self->ctx, cypher, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys));
+    
+    if (res == 0)
+    {
+      return qcrypt_aes__handle_error (self->ctx, err);
+    }
+    
+    // check for the blocksize
+    self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
+    
+    return CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int qdecrypt_aes__gcm_256_pbkdf2 (QDecryptAES self, CapeCursor cursor, CapeErr err)
+{
+    int res;
+    
+    // local objects
+    int iterations = 0;
+    unsigned char* salt = NULL;
+    unsigned char* iv = NULL;
+
+    // check if there is enough data to parse the first 4 bytes
+    if (FALSE == cape_cursor__has_data (cursor, 4 + AES_256_GCM__SALT_LEN + AES_256_GCM__IV_LEN + 1))
+    {
+        res = cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Invalid encrypted payload");
+        goto cleanup_and_exit;
+    }
+
+    // scan the next values we need
+    iterations      = cape_cursor_scan_32  (cursor, TRUE);
+    salt            = cape_cursor_scan_buf (cursor, AES_256_GCM__SALT_LEN);
+    iv              = cape_cursor_scan_buf (cursor, AES_256_GCM__IV_LEN);
+    self->tag_len   = cape_cursor_scan_08  (cursor);
+
+    //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using iterations = %i", iterations);
+
+    // small sanity check
+    if (self->tag_len < 4 || self->tag_len > 16)
+    {
+        res = cape_err_set_fmt (err, CAPE_ERR_WRONG_VALUE, "Invalid tag length = %i", self->tag_len);
+        goto cleanup_and_exit;
+    }
+    
+    //cape_log_fmt (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using tag length = %i", self->tag_len);
+
+#if defined __WINDOWS_OS
+
+    BCRYPT_ALG_HANDLE hAes;
+    
+    BCryptOpenAlgorithmProvider (&hAes, BCRYPT_AES_ALGORITHM, NULL, 0);
+    
+    NTSTATUS status = BCryptDeriveKeyPBKDF2 (BCRYPT_ALG_HANDLE hPrf, (PUCHAR)secret, secret_len, salt, salt_len, iterations, key, key_len, 0);
+
+#else
+    
+    // create the keys needed for GCM
+    self->keys = qcrypt_aes_keys_gen__pbkdf2 (self->secret, iterations, &salt, AES_256_GCM__SALT_LEN, &iv, AES_256_GCM__IV_LEN, err);
+    if (NULL == self->keys)
+    {
+        res = cape_err_code (err);
+        goto cleanup_and_exit;
+    }
+
+    if (!EVP_DecryptInit_ex (self->ctx, EVP_aes_256_gcm(), NULL, NULL, NULL))
+    {
+        res = qcrypt_aes__handle_error (self->ctx, err);
+        goto cleanup_and_exit;
+    }
+
+    // set IV length (REQUIRED for GCM)
+    if (!EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_IVLEN, qcrypt_aes_iv_len (self->keys), NULL))
+    {
+        res = qcrypt_aes__handle_error (self->ctx, err);
+        goto cleanup_and_exit;
+    }
+    
+    // now set key + iv
+    if (!EVP_DecryptInit_ex (self->ctx, NULL, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys)))
+    {
+        res = qcrypt_aes__handle_error (self->ctx, err);
+        goto cleanup_and_exit;
+    }
+
+    if (!EVP_CIPHER_CTX_set_padding (self->ctx, 0))
+    {
+        res = qcrypt_aes__handle_error (self->ctx, err);
+        goto cleanup_and_exit;
+    }
+    
+    // create the rolling buffer to handle the tag
+    self->rolling_buffer = cape_stream_new();
+    
+    res = CAPE_ERR_NONE;
+
+#endif
+
+cleanup_and_exit:
+    
+    if (salt)
+    {
+        CAPE_FREE (salt);
+    }
+
+    if (iv)
+    {
+        CAPE_FREE (iv);
+    }
+
+    return res;
 }
 
 //-----------------------------------------------------------------------------
 
 int qdecrypt_aes__init (QDecryptAES self, const char* bufdat, number_t buflen, number_t* p_buffer_offset, CapeErr err)
 {
-#if defined __WINDOWS_OS
-
-
-#else
-
-  int res;
-  
-  // get the cypher
-  const EVP_CIPHER* cypher = qencrypt_aes__get_cipher (self->cypher_type);
+    int res;
+    CapeCursor cursor = cape_cursor_new ();
     
-  switch (self->key_type)
-  {
-    case QCRYPT_KEY_SHA256:
+    switch (self->cypher_type)
     {
-      self->keys = qcrypt_aes_keys_new__sha256 (self->secret, cypher, err);
-      break;
-    }
-    case QCRYPT_KEY_PASSPHRASE_MD5:
-    {
-      self->keys = qcrypt_aes_keys_new__md5_de (self->secret, cypher, bufdat, buflen, err);
-      
-      // set the correct offset
-      *p_buffer_offset = 16;
-      
-      break;
-    }
-    case QCRYPT_PADDING_ZEROS:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_zero (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_ANSI_X923:
-    {
-      self->keys = qcrypt_aes_keys_new__ansiX923 (self->secret, cypher);
-      break;
-    }
-    case QCRYPT_PADDING_PKCS7:
-    {
-      self->keys = qcrypt_aes_keys_new__padding_pkcs7 (self->secret, cypher);
-      break;
-    }
-  }
-  
-  if (self->keys == NULL)
-  {
-    return cape_err_set (err, CAPE_ERR_WRONG_STATE, "encoding of secret failed");
-  }
-    
-  res = EVP_DecryptInit_ex (self->ctx, cypher, NULL, qcrypt_aes_key (self->keys), qcrypt_aes_iv (self->keys));
-  
-  if (res == 0)
-  {
-    return qcrypt_aes__handle_error (self->ctx, err);
-  }
-  
-  // check for the blocksize
-  self->blocksize = EVP_CIPHER_CTX_block_size (self->ctx);
-  
-  return CAPE_ERR_NONE;
+        case QCRYPT_AES_TYPE_DETECT:
+        {
+            cape_cursor_set (cursor, bufdat, buflen);
+            
+            // check if there is enough data to parse the first 4 bytes
+            if (FALSE == cape_cursor__has_data (cursor, 4))
+            {
+                res = cape_err_set(err, CAPE_ERR_WRONG_VALUE, "Invalid encrypted payload");
+                goto cleanup_and_exit;
+            }
 
-#endif
+            //cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", bufdat);
+
+            // check the magic bytes
+            if ((cape_cursor_scan_08 (cursor) == 81) && (cape_cursor_scan_08 (cursor) == 67) && (cape_cursor_scan_08 (cursor) == 77))
+            {
+                char v = cape_cursor_scan_08 (cursor);
+                
+                switch (v)
+                {
+                    case QCRYPT_AES_TYPE_256_GCM:
+                    {
+                        cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_GCM");
+
+                        res = qdecrypt_aes__gcm_256_pbkdf2 (self, cursor, err);
+                        
+                        // set the offset from delta of the cursor's current position
+                        *p_buffer_offset = cape_cursor_apos (cursor);
+                        
+                        break;
+                    }
+                    default:
+                    {
+                        res = cape_err_set_fmt(err, CAPE_ERR_WRONG_VALUE, "Unsupported encryption version: %c", v);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                cape_log_msg (CAPE_LL_TRACE, "QCRYPT", "decrypt", "using AES_TYPE_256_CBC");
+
+                // current default version
+                res = qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
+            }
+            
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_GCM:
+        {
+            cape_cursor_set (cursor, bufdat + 4, buflen - 4);
+
+            res = qdecrypt_aes__gcm_256_pbkdf2 (self, cursor, err);
+            
+            // set the offset from delta of the cursor's current position
+            *p_buffer_offset = cape_cursor_apos (cursor);
+
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_CBC:
+        {
+            res = qdecrypt_aes__cfb (self, EVP_aes_256_cbc(), bufdat, buflen, p_buffer_offset, err);
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_CFB:
+        {
+            res = qdecrypt_aes__cfb (self, EVP_aes_256_cfb(), bufdat, buflen, p_buffer_offset, err);
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_CFB_1:
+        {
+            res = qdecrypt_aes__cfb (self, EVP_aes_256_cfb1(), bufdat, buflen, p_buffer_offset, err);
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_CFB_8:
+        {
+            res = qdecrypt_aes__cfb (self, EVP_aes_256_cfb8(), bufdat, buflen, p_buffer_offset, err);
+            break;
+        }
+        case QCRYPT_AES_TYPE_256_CFB_128:
+        {
+            res = qdecrypt_aes__cfb (self, EVP_aes_256_cfb128(), bufdat, buflen, p_buffer_offset, err);
+            break;
+        }
+        default:
+        {
+            res = cape_err_set_fmt(err, CAPE_ERR_WRONG_VALUE, "Unsupported encryption version: %lu", self->cypher_type);
+            break;
+        }
+    }
+    
+cleanup_and_exit:
+    
+    cape_cursor_del (&cursor);
+    return res;
+
 }
 
 //-----------------------------------------------------------------------------
@@ -337,34 +545,68 @@ int qdecrypt_aes_process (QDecryptAES self, const char* bufdat, number_t buflen,
     
 #else
 
-  number_t buffer_offset = 0;
-  
-  if (self->keys == NULL)
-  {
-    int res = qdecrypt_aes__init (self, bufdat, buflen, &buffer_offset, err);
-    if (res)
-    {
-      return res;
-    }
-  }
-  
-  // extend the buffer (use 2 bytes extra to be on the safe side)
-  cape_stream_cap (self->product, buflen + self->blocksize + 2);
-  
-  {
-    int lenLast;
+    number_t buffer_offset = 0;
     
-    if (EVP_DecryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, (const unsigned char*)bufdat + buffer_offset, buflen - buffer_offset) == 0)
+    if (self->keys == NULL)
     {
-      return qcrypt_aes__handle_error (self->ctx, err);
+        // run the initialization at the beginning
+        int res = qdecrypt_aes__init (self, bufdat, buflen, &buffer_offset, err);
+        if (res)
+        {
+            return res;
+        }
     }
     
-    cape_stream_set (self->product, lenLast);
-    self->total_size += lenLast;
-  }
+    if (self->tag_len)
+    {
+        // copy the buffer into the temporary status in the rolling buffer
+        cape_stream_append_buf (self->rolling_buffer, bufdat + buffer_offset, buflen - buffer_offset);
 
-  return CAPE_ERR_NONE;
-  
+        number_t current_buffer_size = cape_stream_size (self->rolling_buffer);
+
+        if (current_buffer_size > self->tag_len)
+        {
+            number_t bytes_to_decrypt = current_buffer_size - self->tag_len;
+            
+            // extend the buffer (use 2 bytes extra to be on the safe side)
+            cape_stream_cap (self->product, bytes_to_decrypt + self->blocksize + 2);
+
+            {
+                int lenLast;
+                
+                if (EVP_DecryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, (const unsigned char*)cape_stream_data (self->rolling_buffer), (int)bytes_to_decrypt) == 0)
+                {
+                    return qcrypt_aes__handle_error (self->ctx, err);
+                }
+                
+                cape_stream_set (self->product, lenLast);
+                self->total_size += lenLast;
+            }
+
+            // reduce the buffer to the last bytes of self->tag_len length
+            cape_stream_shift_l (self->rolling_buffer, bytes_to_decrypt);
+        }
+    }
+    else
+    {
+        // extend the buffer (use 2 bytes extra to be on the safe side)
+        cape_stream_cap (self->product, buflen + self->blocksize + 2);
+
+        {
+            int lenLast;
+            
+            if (EVP_DecryptUpdate (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast, (const unsigned char*)bufdat + buffer_offset, buflen - buffer_offset) == 0)
+            {
+                return qcrypt_aes__handle_error (self->ctx, err);
+            }
+            
+            cape_stream_set (self->product, lenLast);
+            self->total_size += lenLast;
+        }
+    }
+
+    return CAPE_ERR_NONE;
+
 #endif
 }
 
@@ -377,20 +619,44 @@ int qdecrypt_aes_finalize (QDecryptAES self, CapeErr err)
     
 #else
 
-  cape_stream_cap (self->product, self->blocksize);
-
-  {
-    int lenLast;
-    
-    if (EVP_DecryptFinal_ex (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast) == 0)
+    if (self->rolling_buffer && self->tag_len)
     {
-      return qcrypt_aes__handle_error (self->ctx, err);
+        if (cape_stream_size (self->rolling_buffer) != self->tag_len)
+        {
+            return cape_err_set (err, CAPE_ERR_WRONG_VALUE, "not enough bytes for setting tag");
+        }
+        
+        if (EVP_CIPHER_CTX_ctrl (self->ctx, EVP_CTRL_GCM_SET_TAG, self->tag_len, (void*)cape_stream_get (self->rolling_buffer)) == 0)
+        {
+            return qcrypt_aes__handle_error (self->ctx, err);
+        }
+    }
+        
+    cape_stream_cap (self->product, self->blocksize);
+
+    {
+        int lenLast;
+      
+        if (EVP_DecryptFinal_ex (self->ctx, (unsigned char*)cape_stream_pos (self->product), &lenLast) == 0)
+        {
+            return qcrypt_aes__handle_error (self->ctx, err);
+        }
+
+        cape_stream_set (self->product, lenLast);
     }
 
-    cape_stream_set (self->product, lenLast);
-  }
-
-  return CAPE_ERR_NONE;
+    switch (self->padding_type)
+    {
+        case QCRYPT_PADDING_ANSI_X923:   // forced padding
+        {
+            // identify the last byte which contains the padding information
+            // reduce the buffer length
+            cape_stream_dec (self->product, cape_stream_last_c (self->product));
+            break;
+        }
+    }
+    
+    return CAPE_ERR_NONE;
 
 #endif
 }
