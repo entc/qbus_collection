@@ -563,7 +563,7 @@ int webs_json_run_gen__handle_auth (WebsJson* p_self, const CapeString auth_type
       }
     }
     
-    res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
+    res = qbus_send (self->qbus, "AUTH", "ui_get", msg, self, qbus_webs__auth__on_ui, err);
     if (res)
     {
       
@@ -640,7 +640,7 @@ int webs_json_run_gen (WebsJson* p_self, CapeErr err)
       }
     }
     
-    res = qbus_send (self->qbus, "AUTH", "getUI", msg, self, qbus_webs__auth__on_ui, err);
+    res = qbus_send (self->qbus, "AUTH", "ui_get", msg, self, qbus_webs__auth__on_ui, err);
     
     qbus_message_del (&msg);
     

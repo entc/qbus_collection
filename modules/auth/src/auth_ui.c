@@ -26,6 +26,7 @@ struct AuthUI_s
   CapeUdc options_2factor;         // reference
   CapeUdc options_fp;              // reference
 
+  number_t wpid_default;
   number_t userid;
   number_t wpid;
   
@@ -35,7 +36,7 @@ struct AuthUI_s
 
 //-----------------------------------------------------------------------------
 
-AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp)
+AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, AuthVault vault, CapeUdc options_2factor, CapeUdc options_fp, number_t wpid_default)
 {
   AuthUI self = CAPE_NEW (struct AuthUI_s);
   
@@ -45,6 +46,7 @@ AuthUI auth_ui_new (QBus qbus, AdblSession adbl_session, AuthTokens tokens, Auth
   self->vault = vault;
   self->options_2factor = options_2factor;
   self->options_fp = options_fp;
+  self->wpid_default = wpid_default;
   
   self->userid = 0;
   self->wpid = 0;
@@ -89,14 +91,7 @@ int auth_ui__save_log_entry (AdblTrx adbl_trx, number_t wpid, number_t gpid, num
     
     cape_udc_add_d    (values, "ltime"        , &dt);
   }
-  
-  {
-    CapeString h = cape_json_to_s(rinfo);
     
-    printf ("RINFO: %s\n", h);
-    
-  }
-  
   {
     const CapeString remote = cape_udc_get_s (rinfo, "remote", NULL);
     if (remote)
@@ -185,12 +180,19 @@ CapeUdc auth_ui_crypt4__extract_from_content (const CapeString content)
   // decode base64
   CapeStream s = qcrypt__decode_base64_s (content);
     
-  // de-serialize into an UDC container
-  auth_crypt_credentials = cape_json_from_buf (cape_stream_data (s), cape_stream_size (s), NULL);
+  if (s)
+  {
+      // de-serialize into an UDC container
+      auth_crypt_credentials = cape_json_from_buf (cape_stream_data (s), cape_stream_size (s), NULL);
 
-  cape_stream_del (&s);
-  
-  return auth_crypt_credentials;
+      cape_stream_del (&s);
+
+      return auth_crypt_credentials;
+  }
+  else
+  {
+      return NULL;
+  }
 }
 
 //---------------------------------------------------------------------------
@@ -695,7 +697,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
   
   // in case there are several workspaces for the same user
   // a wpid will be added to the authentication credentials
-  self->wpid = cape_udc_get_n (auth_crypt_credentials, "wpid", 0);
+  self->wpid = cape_udc_get_n (auth_crypt_credentials, "wpid", self->wpid_default);
   
   // extract into parts
   cid = cape_udc_get_s (auth_crypt_credentials, "id", NULL);
@@ -830,7 +832,7 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
 
     cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui crypt4", "no vault found -> continue with parameter");
 
-    h1 = qcrypt__decrypt (self->secret, vault_password, err);
+    h1 = qcrypt__decrypt_ex (self->secret, vault_password, QCRYPT_AES_TYPE_DETECT, err);
     if (h1 == NULL)
     {
       res = cape_err_set (err, CAPE_ERR_NO_AUTH, "wrong vault");
@@ -853,7 +855,13 @@ int auth_ui_crypt4 (AuthUI* p_self, const CapeString content, CapeUdc extras, QB
       goto exit_and_cleanup;
     }
     
-    // set the vault 
+      if (cape_str_size (h2) < 10)
+      {
+          res = cape_err_set (err, CAPE_ERR_NO_AUTH, "invalid vault secret");
+          goto exit_and_cleanup;
+      }
+      
+    // set the vault
     auth_vault__save (self->vault, wpid, h2);
     
     vsec = auth_vault__vsec (self->vault, wpid);
@@ -1072,6 +1080,9 @@ int auth_ui_get (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
       }
       
       res = auth_ui_crypt4 (p_self, auth_content, auth_extras, qin, qout, err);
+        
+        cape_log_fmt (CAPE_LL_TRACE, "AUTH", "ui get", "new login: wpid = %lu", self->wpid);
+        
       goto exit_and_cleanup;
     }
     case 4:
@@ -2064,7 +2075,41 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr err)
+int auth_ui__workspace__fetch_users (AuthUI self, number_t wpid, CapeUdc* p_users, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"             , wpid);
+    cape_udc_add_n      (values, "userid"           , 0);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  cape_udc_replace_mv (p_users, &query_results);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__workspace__find (AuthUI self, number_t wpid, CapeString* p_domain, CapeErr err)
 {
   int res;
   
@@ -2077,7 +2122,7 @@ int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr
     CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
     CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
     
-    cape_udc_add_n      (params, "id"               , self->wpid);
+    cape_udc_add_n      (params, "id"               , wpid);
     cape_udc_add_s_cp   (values, "domain"           , NULL);
     
     // execute the query
@@ -2103,7 +2148,11 @@ int auth_ui__intern__check_workspace (AuthUI self, CapeString* p_domain, CapeErr
     goto exit_and_cleanup;
   }
   
-  cape_str_replace_mv (p_domain, &domain);
+  if (p_domain)
+  {
+    cape_str_replace_mv (p_domain, &domain);
+  }
+  
   res = CAPE_ERR_NONE;
   
 exit_and_cleanup:
@@ -2126,9 +2175,16 @@ int auth_ui__intern__encode (const CapeString domain, const CapeString vsec, con
   CapeString vsec_encoded = NULL;
   CapeString login_text = NULL;
   
-  cape_stream_append_str   (login, name);
-  cape_stream_append_c     (login, '@');
-  cape_stream_append_str   (login, domain);
+  if (domain)
+  {
+    cape_stream_append_str   (login, name);
+    cape_stream_append_c     (login, '@');
+    cape_stream_append_str   (login, domain);
+  }
+  else
+  {
+    cape_stream_append_str   (login, name);
+  }
   
   name_encoded = qcrypt__hash_sha256__hex_m (login, err);
   if (NULL == name_encoded)
@@ -2142,11 +2198,20 @@ int auth_ui__intern__encode (const CapeString domain, const CapeString vsec, con
   
   cape_stream_clr (login);
   
-  cape_stream_append_str   (login, name);
-  cape_stream_append_c     (login, '@');
-  cape_stream_append_str   (login, domain);
-  cape_stream_append_c     (login, ':');
-  cape_stream_append_str   (login, pass);
+  if (domain)
+  {
+    cape_stream_append_str   (login, name);
+    cape_stream_append_c     (login, '@');
+    cape_stream_append_str   (login, domain);
+    cape_stream_append_c     (login, ':');
+    cape_stream_append_str   (login, pass);
+  }
+  else
+  {
+    cape_stream_append_str   (login, name);
+    cape_stream_append_c     (login, ':');
+    cape_stream_append_str   (login, pass);    
+  }
   
   pass_encoded = qcrypt__hash_sha256__hex_m (login, err);
   if (pass_encoded == NULL)
@@ -2187,7 +2252,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui__intern__users_add (AdblTrx adbl_trx, number_t userid, number_t wpid, number_t gpid, const CapeString vsec_encrypted, number_t* p_ruid, CapeErr err)
+int auth_ui__user_rbac__create (AdblTrx adbl_trx, number_t userid, number_t wpid, number_t gpid, const CapeString vsec_encrypted, number_t* p_ruid, CapeErr err)
 {
   int res;
   number_t ruid;
@@ -2219,6 +2284,124 @@ int auth_ui__intern__users_add (AdblTrx adbl_trx, number_t userid, number_t wpid
 
 //-----------------------------------------------------------------------------
 
+int auth_ui__user__create (AuthUI self, AdblTrx trx, const CapeString pass_hashed, const CapeString user_hashed, CapeErr err)
+{
+  // prepare the insert query
+  CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // insert values
+  cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
+  cape_udc_add_s_cp   (values, "secret"       , pass_hashed);
+  cape_udc_add_s_cp   (values, "user512"      , user_hashed);
+  
+  // execute query
+  self->userid = adbl_trx_insert (trx, "q5_users", &values, err);
+  
+  return (self->userid == 0) ? cape_err_code (err) : CAPE_ERR_NONE;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__user_person__delete (AdblTrx adbl_trx, number_t gpid, CapeErr err)
+{
+  int res;
+  
+  // prepare the insert query
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params, "id", gpid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "glob_persons", &params, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__user_rbac__delete (AdblTrx adbl_trx, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // 1. Delete references to roles
+  
+  // prepare the insert query
+  CapeUdc params_roles = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params_roles, "userid", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "rbac_users_roles", &params_roles, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+    return res;
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  // 2. Delete rbac user
+  
+  // prepare the insert query
+  CapeUdc params_rbac = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params_rbac, "userid", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "rbac_users", &params_rbac, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__user__delete (AdblTrx adbl_trx, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // prepare the insert query
+  CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+  
+  // Choose user to delete
+  cape_udc_add_n (params, "id", userid);
+    
+  // execute query
+  res = adbl_trx_delete (adbl_trx, "q5_users", &params, err);
+  if (res)
+  {
+    res = cape_err_code (err);
+  }
+  else
+  {
+    res = CAPE_ERR_NONE;
+  }
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
 int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
 {
   int res;
@@ -2231,6 +2414,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   CapeString user = NULL;
   CapeString pass = NULL;
   CapeString domain = NULL;
+  int use_domain = FALSE;
   CapeString user_encoded = NULL;
   CapeString pass_encoded = NULL;
   CapeString vsec_encoded = NULL;
@@ -2273,6 +2457,9 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASSWORD");
     goto exit_and_cleanup;
   }
+  
+  // optional
+  use_domain = cape_udc_get_b (qin->cdata, "use_domain", TRUE);
 
   gpdata = cape_udc_ext (qin->cdata, "gpdata");
   if (NULL == gpdata)
@@ -2281,7 +2468,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_ui__intern__check_workspace (self, &domain, err);
+  res = auth_ui__workspace__find (self, self->wpid, &domain, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -2294,7 +2481,7 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
   
-  res = auth_ui__intern__encode (domain, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
+  res = auth_ui__intern__encode (use_domain ? domain : NULL, vsec, user, pass, &user_encoded, &pass_encoded, &vsec_encoded, &login, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -2308,31 +2495,19 @@ int auth_ui_add (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     goto exit_and_cleanup;
   }
 
+  res = auth_ui__user__create (self, trx, pass_encoded, user_encoded, err);
+  if (res)
   {
-    // prepare the insert query
-    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
-    
-    // insert values
-    cape_udc_add_n      (values, "id"           , ADBL_AUTO_SEQUENCE_ID);
-    cape_udc_add_s_cp   (values, "secret"       , pass_encoded);
-    cape_udc_add_s_cp   (values, "user512"      , user_encoded);
-    
-    // execute query
-    self->userid = adbl_trx_insert (trx, "q5_users", &values, err);
-    if (self->userid == 0)
-    {
-      res = cape_err_code (err);
-      goto exit_and_cleanup;
-    }
+    goto exit_and_cleanup;
   }
-
+  
   res = auth_wp_add (trx, vsec, self->wpid, gpdata, &gpid, err);
   if (res)
   {
     goto exit_and_cleanup;
   }
   
-  res = auth_ui__intern__users_add (trx, self->userid, self->wpid, gpid, vsec_encoded, &ruid, err);
+  res = auth_ui__user_rbac__create (trx, self->userid, self->wpid, gpid, vsec_encoded, &ruid, err);
   if (res)
   {
     goto exit_and_cleanup;
@@ -3003,7 +3178,7 @@ exit_and_cleanup:
 
 //-----------------------------------------------------------------------------
 
-int auth_ui__intern__send_message (AuthUI* p_self, CapeUdc item, CapeUdc options, QBusM qin, QBusM qout, fct_qbus_onMessage fct, CapeErr err)
+int auth_ui__intern__send_message (AuthUI* p_self, CapeUdc item, CapeUdc options, QBusM qin, QBusM qout, fct_qbus_on_msg fct, CapeErr err)
 {
   int res;
   AuthUI self = *p_self;
@@ -3273,7 +3448,7 @@ int auth_ui_2f_send (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     }
   }
 
-  printf ("CODE: %s\n", self->secret);
+  //printf ("CODE: %s\n", self->secret);
   
   adbl_trx_commit (&adbl_trx, err);
   
@@ -3693,9 +3868,11 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
   int res;
   AuthUI self = *p_self;
 
+  AdblTrx trx = NULL;
   number_t wpid;
   number_t gpid;
   number_t userid;
+  number_t rbac_userid;
   
   // local objects
   CapeUdc query_results = NULL;
@@ -3749,7 +3926,7 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     cape_udc_add_n      (values, "id"           , 0);
 
     // execute the query
-    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
     if (query_results == NULL)
     {
       res = cape_err_code (err);
@@ -3763,8 +3940,46 @@ int auth_ui_rm (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
     res = cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
     goto exit_and_cleanup;
   }
-
   
+  rbac_userid = cape_udc_get_n (first_row, "id", 0);
+  if (0 == rbac_userid)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USERID");
+    goto exit_and_cleanup;
+  }
+
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+
+  // delete user in glob_persons
+  res = auth_ui__user_person__delete (trx, gpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // delete user in rbac_users and rbac_users_roles
+  res = auth_ui__user_rbac__delete (trx, userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // delete user in q5_users 
+  res = auth_ui__user__delete (trx, userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = CAPE_ERR_NONE;
+  adbl_trx_commit (&trx, err);
+
   
   res = CAPE_ERR_NONE;
   
@@ -3772,6 +3987,294 @@ exit_and_cleanup:
   
   cape_udc_del (&first_row);
   cape_udc_del (&query_results);
+  
+  auth_ui_del (p_self);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__users__get (AuthUI self, number_t wpid, number_t userid, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeUdc query_results = NULL;
+
+  // check if account exists and userid and gpid belong together
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"         , wpid);
+    cape_udc_add_n      (params, "userid"       , userid);
+
+    cape_udc_add_n      (values, "id"           , 0);
+
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+
+  res = (1 == cape_udc_size (query_results)) ? CAPE_ERR_NONE : cape_err_set (err, CAPE_ERR_NOT_FOUND, "ERR.NOT_FOUND");
+  
+exit_and_cleanup:
+  
+  cape_udc_del (&query_results);
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui__glob_person__get (AuthUI self, number_t wpid, number_t userid, CapeUdc* p_gpdata, CapeErr err)
+{
+  int res;
+  
+  // local objects
+  CapeString vsec = cape_str_cp (auth_vault__vsec (self->vault, wpid));
+  CapeUdc query_results = NULL;
+  CapeUdc first_row = NULL;
+  
+  if (vsec == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "no vault");
+    goto exit_and_cleanup;
+  }
+  
+  {
+    CapeUdc params = cape_udc_new (CAPE_UDC_NODE, NULL);
+    CapeUdc values = cape_udc_new (CAPE_UDC_NODE, NULL);
+    
+    cape_udc_add_n      (params, "wpid"        , wpid);
+    cape_udc_add_n      (params, "userid"      , userid);
+    
+    cape_udc_add_s_cp   (values, "title"       , NULL);
+    cape_udc_add_s_cp   (values, "firstname"   , NULL);
+    cape_udc_add_s_cp   (values, "lastname"    , NULL);
+    
+    // execute the query
+    query_results = adbl_session_query (self->adbl_session, "rbac_users_view", &params, &values, err);
+    if (query_results == NULL)
+    {
+      res = cape_err_code (err);
+      goto exit_and_cleanup;
+    }
+  }
+  
+  if (cape_udc_size (query_results) != 1)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.USER_AMBIGIOUS");
+    goto exit_and_cleanup;    
+  }
+
+  first_row = cape_udc_ext_first (query_results);
+  if (NULL == first_row)
+  {
+    res = cape_err_set (err, CAPE_ERR_RUNTIME, "ERR.FIRST_ROW");
+    goto exit_and_cleanup;
+  }
+  
+  res = qcrypt__decrypt_row_text (vsec, first_row, "firstname", err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = qcrypt__decrypt_row_text (vsec, first_row, "lastname", err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  cape_udc_replace_mv (p_gpdata, &first_row);
+  res = CAPE_ERR_NONE;
+  
+exit_and_cleanup:
+
+  cape_str_del (&vsec);
+  cape_udc_del (&first_row);
+  cape_udc_del (&query_results);
+  
+  return res;
+}
+
+//-----------------------------------------------------------------------------
+
+int auth_ui_merge (AuthUI* p_self, QBusM qin, QBusM qout, CapeErr err)
+{
+  int res;
+  AuthUI self = *p_self;
+
+  number_t wpid_src;
+  number_t wpid_dst;
+  number_t users_dst;
+  number_t gpid;
+  number_t ruid;
+  
+  // local objects
+  AdblTrx trx = NULL;
+  CapeUdc wp_users = NULL;
+  CapeString vsec = NULL;
+  CapeString user_hashed = NULL;
+  CapeString pass_hashed = NULL;
+  CapeString vsec_encrypted = NULL;
+  CapeString login = NULL;
+  CapeString user = NULL;
+  CapeString pass = NULL;
+  CapeUdc gpdata = NULL;
+  
+  if (qin->cdata == NULL)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_CDATA");
+    goto exit_and_cleanup;
+  }
+
+  // run security check
+  if (qbus_message_role_has (qin, "admin"))
+  {
+    wpid_src = cape_udc_get_n (qin->cdata, "wpid_src", 0);
+    if (0 == wpid_src)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID_SRC");
+      goto exit_and_cleanup;
+    }
+
+    self->userid = cape_udc_get_n (qin->cdata, "user_src", 0);
+    if (0 == self->userid)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER_SRC");
+      goto exit_and_cleanup;
+    }
+
+    wpid_dst = cape_udc_get_n (qin->cdata, "wpid_dst", 0);
+    if (0 == wpid_dst)
+    {
+      res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_WPID_DST");
+      goto exit_and_cleanup;
+    }
+  }
+  else
+  {
+    res = cape_err_set (err, CAPE_ERR_NO_ROLE, "ERR.NO_ROLE");
+    goto exit_and_cleanup;
+  }
+  
+  user = cape_udc_ext_s (qin->cdata, "user");
+  if (NULL == user)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_USER");
+    goto exit_and_cleanup;
+  }
+  
+  pass = cape_udc_ext_s (qin->cdata, "pass");
+  if (NULL == pass)
+  {
+    res = cape_err_set (err, CAPE_ERR_MISSING_PARAM, "ERR.NO_PASS");
+    goto exit_and_cleanup;
+  }
+  
+  // check if a user like that exists
+  res = auth_ui__users__get (self, wpid_src, self->userid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+
+  // check if workspace exists
+  res = auth_ui__workspace__find (self, wpid_dst, NULL, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  res = auth_ui__workspace__fetch_users (self, wpid_dst, &wp_users, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  if (0 < cape_udc_size (wp_users))
+  {
+    // get the vault from the destination workspace
+    vsec = cape_str_cp (auth_vault__vsec (self->vault, wpid_dst));
+    if (vsec == NULL)
+    {
+      res = cape_err_set (err, CAPE_ERR_RUNTIME, "no vault");
+      goto exit_and_cleanup;
+    }
+
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "user", "create an user for workspace [%lu] -> use existing vault", wpid_dst);
+  }
+  else
+  {
+    vsec = cape_str_uuid ();
+    
+    // directly set the vault value
+    auth_vault__save (self->vault, wpid_dst, vsec);
+
+    cape_log_fmt (CAPE_LL_DEBUG, "AUTH", "user", "create an user for an empty workspace [%lu] -> create new vault", wpid_dst);
+  }
+  
+  // create the encoded variants
+  res = auth_ui__intern__encode (NULL, vsec, user, pass, &user_hashed, &pass_hashed, &vsec_encrypted, &login, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // get all person info from source
+  res = auth_ui__glob_person__get (self, wpid_src, self->userid, &gpdata, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+    
+  // start a new transaction
+  trx = adbl_trx_new (self->adbl_session, err);
+  if (trx == NULL)
+  {
+    res = cape_err_code (err);
+    goto exit_and_cleanup;
+  }
+  
+  // create a new global person
+  res = auth_wp_add (trx, vsec, wpid_dst, gpdata, &gpid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  // create a new rbac user to connect user and global person
+  res = auth_ui__user_rbac__create (trx, self->userid, wpid_dst, gpid, vsec_encrypted, &ruid, err);
+  if (res)
+  {
+    goto exit_and_cleanup;
+  }
+  
+  qout->cdata = cape_udc_new (CAPE_UDC_NODE, NULL);
+  cape_udc_add_s_mv (qout->cdata, "vsec", &vsec);
+  
+  res = CAPE_ERR_NONE;  
+  adbl_trx_commit (&trx, err);
+    
+exit_and_cleanup:
+  
+  adbl_trx_rollback (&trx, err);
+    
+  cape_str_del (&vsec_encrypted);
+  cape_str_del (&pass_hashed);
+  cape_str_del (&user_hashed);
+  cape_udc_del (&wp_users);
+  cape_udc_del (&gpdata);
+  cape_str_del (&login);
+  cape_str_del (&user);
+  cape_str_del (&pass);
+  cape_str_del (&vsec);
+  cape_udc_del (&wp_users);
   
   auth_ui_del (p_self);
   return res;
