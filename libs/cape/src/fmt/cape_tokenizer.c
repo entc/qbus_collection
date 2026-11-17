@@ -466,19 +466,21 @@ CapeUdc cape_tokenizer_options (const CapeString source)
       }
       case '\'':
       {
-        switch (state)
-        {
-          case CAPE_TOPTIONS_STATE__OPTION:
+          switch (state)
           {
-            state = CAPE_TOPTIONS_STATE__STRING;
-            break;
+              case CAPE_TOPTIONS_STATE__OPTION:
+              {
+                  state = CAPE_TOPTIONS_STATE__STRING;
+                  break;
+              }
+              case CAPE_TOPTIONS_STATE__STRING:
+              {
+                  state = CAPE_TOPTIONS_STATE__OPTION;
+                  break;
+              }
           }
-          case CAPE_TOPTIONS_STATE__STRING:
-          {
-            state = CAPE_TOPTIONS_STATE__OPTION;
-            break;
-          }
-        }
+
+          break;
       }
       default:
       {
