@@ -272,12 +272,7 @@ type RpcEvent<T> =
       return from(this.construct_enjs(sitem, stoken, qbus_module, qbus_method, qbus_cdata)).pipe(switchMap((enjs: AuthEnjs) =>
 
         {
-          return this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(switchMap((event: HttpEvent<string>) => {
-
-              if (event.type !== HttpEventType.Response)
-              {
-                  return of(null); // ignore intermediate events
-              }
+          return this.session__convert_error (this.http.post(enjs.url, enjs.params, {headers: enjs.header, responseType: 'text', observe: 'events', reportProgress: true})).pipe(filter((event): event is HttpResponse<string> => event.type === HttpEventType.Response), switchMap((event) => {
 
               const body = event.body;
 
