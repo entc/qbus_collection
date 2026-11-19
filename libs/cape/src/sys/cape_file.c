@@ -2265,7 +2265,7 @@ int cape_fh_open_ac (CapeFileHandle self, int flags, CapeFileAc* p_ac, CapeErr e
 {
     int res;
 
-    if (p_ac)
+    if (p_ac && *p_ac)
     {
         CapeFileAc ac = *p_ac;
 
@@ -2320,13 +2320,7 @@ void* cape_fh_fd (CapeFileHandle self)
 
 number_t cape_fh_read_buf (CapeFileHandle self, char* bufdat, number_t buflen)
 {
-  number_t ret = read ((int)self->fd, bufdat, buflen);
-  if (ret < 0)
-  {
-    return 0;
-  }
-
-  return ret;
+    return read ((int)self->fd, bufdat, buflen);
 }
 
 //-----------------------------------------------------------------------------
